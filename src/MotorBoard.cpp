@@ -1,0 +1,212 @@
+/**********************************************************************
+DCC++ BASE STATION FOR ESP32
+
+COPYRIGHT (c) 2017 Mike Dunston
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see http://www.gnu.org/licenses
+**********************************************************************/
+
+#include <Arduino.h>
+#include <functional>
+#include <StringArray.h>
+#include "DCCppESP32.h"
+#include "MotorBoard.h"
+
+///////////////////////////////////////////////////////////////////////////////
+
+#define  CURRENT_SAMPLE_TIME        250
+
+LinkedList<GenericMotorBoard *> motorBoards([](GenericMotorBoard *board) {delete board; });
+
+GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enablePin, uint16_t triggerMilliAmps, uint32_t maxMilliAmps, String name) :
+  _name(name), _senseChannel(senseChannel), _enablePin(enablePin), _maxMilliAmps(maxMilliAmps), _triggerValue(4096 / maxMilliAmps * triggerMilliAmps),
+  _state(false), _triggered(false) {
+  adc1_config_channel_atten(senseChannel, ADC_ATTEN_DB_0);
+  pinMode(enablePin, OUTPUT);
+  log_i("[%s] Configuring motor board [ADC1 Channel: %d, currentLimit: %d, enablePin: %d]",
+    _name.c_str(), _senseChannel, _triggerValue, _enablePin);
+}
+
+void GenericMotorBoard::powerOn(bool announce) {
+  log_i("[%s] Enabling DCC Signal", _name.c_str());
+  digitalWrite(_enablePin, HIGH);
+  _state = true;
+	if(announce) {
+		wifiInterface.printf(F("<p1 %s>"), _name.c_str());
+	}
+}
+
+void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
+  log_i("[%s] Disabling DCC Signal", _name.c_str());
+  digitalWrite(_enablePin, LOW);
+  _state = false;
+	if(announce) {
+		if(overCurrent) {
+			wifiInterface.printf(F("<p2 %s>"), _name.c_str());
+		} else {
+			wifiInterface.printf(F("<p0 %s>"), _name.c_str());
+		}
+	}
+}
+
+void GenericMotorBoard::showStatus() {
+	if(_state) {
+		wifiInterface.printf(F("<p1 %s>"), _name.c_str());
+    wifiInterface.printf(F("<a %s %d>"), _name.c_str(), getLastRead());
+	} else {
+		wifiInterface.printf(F("<p0 %s>"), _name.c_str());
+	}
+}
+
+void GenericMotorBoard::check() {
+	// if we have exceeded the CURRENT_SAMPLE_TIME we need to check if we are over/under current.
+	if(millis() - _lastCheckTime > CURRENT_SAMPLE_TIME) {
+    _lastCheckTime = millis();
+		_current = adc1_get_raw(_senseChannel);
+		if(_current > _triggerValue && isOn()) {
+      log_i("[%s] Overcurrent detected [%d] vs [%d]", _name.c_str(), _current, _triggerValue);
+			powerOff(true, true);
+			_triggered=true;
+		} else if(_current < _triggerValue && _triggered) {
+      log_i("[%s] Overcurrent cleared", _name.c_str());
+			powerOn();
+			_triggered=false;
+		}
+	}
+}
+
+GenericMotorBoard * MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin, MOTOR_BOARD_TYPE type, String name) {
+  GenericMotorBoard *board;
+  switch(type) {
+    case POLOLU:
+    case ARDUINO_SHIELD:
+      board = new GenericMotorBoard(sensePin, enablePin, 980, 2000, name);
+      break;
+    case BTS7960B_5A:
+      board = new GenericMotorBoard(sensePin, enablePin, 5000, 43000, name);
+      break;
+    case BTS7960B_10A:
+      board = new GenericMotorBoard(sensePin, enablePin, 10000, 43000, name);
+      break;
+  }
+  motorBoards.add(board);
+  return board;
+}
+
+GenericMotorBoard *MotorBoardManager::getBoardByName(String name) {
+  for (const auto& board : motorBoards) {
+		if(board->getName() == name) {
+      return board;
+    }
+	}
+  return NULL;
+}
+
+void MotorBoardManager::check() {
+  for (const auto& board : motorBoards) {
+		board->check();
+	}
+}
+
+void MotorBoardManager::powerOnAll() {
+  log_i("Enabling DCC Signal for all boards");
+  for (const auto& board : motorBoards) {
+    board->powerOn();
+  }
+  InfoScreen::printf(13, 3, F("ON   "));
+}
+
+void MotorBoardManager::powerOffAll() {
+  log_i("Disabling DCC Signal for all boards");
+  for (const auto& board : motorBoards) {
+    board->powerOff();
+  }
+  InfoScreen::printf(13, 3, F("OFF  "));
+}
+
+bool MotorBoardManager::powerOn(const String name) {
+  for (const auto& board : motorBoards) {
+    if(name.equalsIgnoreCase(board->getName()) == 0) {
+      board->powerOn();
+      return true;
+    }
+  }
+  return false;
+}
+
+bool MotorBoardManager::powerOff(const String name) {
+  for (const auto& board : motorBoards) {
+    if(name.equalsIgnoreCase(board->getName()) == 0) {
+      board->powerOff();
+      return true;
+    }
+  }
+  return false;
+}
+
+int MotorBoardManager::getLastRead(const String name) {
+  for (const auto& board : motorBoards) {
+    if(name.equalsIgnoreCase(board->getName()) == 0) {
+      return board->getLastRead();
+    }
+  }
+  return -1;
+}
+
+void MotorBoardManager::showStatus() {
+  for (const auto& board : motorBoards) {
+		board->showStatus();
+	}
+}
+
+std::vector<String> MotorBoardManager::getBoardNames() {
+  std::vector<String> boardNames;
+  for (const auto& board : motorBoards) {
+    boardNames.push_back(board->getName());
+  }
+  return boardNames;
+}
+
+void MotorBoardManager::getState(JsonArray &array) {
+  for (const auto& motorBoard : motorBoards) {
+    JsonObject &board = array.createNestedObject();
+    board[F("name")] = motorBoard->getName();
+    if(motorBoard->isOn()) {
+      board[F("state")] = F("Normal");
+    } else if(motorBoard->isOverCurrent()) {
+      board[F("state")] = F("Fault");
+    } else {
+      board[F("state")] = F("Off");
+    }
+    board[F("usage")] = motorBoard->getLastRead();
+ 	}
+}
+
+void CurrentDrawCommand::process(const std::vector<String> arguments) {
+  if(arguments.size() == 0) {
+    MotorBoardManager::showStatus();
+  } else {
+    wifiInterface.printf(F("<a %d %s>"), MotorBoardManager::getLastRead(arguments[0]), arguments[0].c_str());
+  }
+}
+
+void PowerOnCommand::process(const std::vector<String> arguments) {
+  if(arguments.size() == 0) {
+    MotorBoardManager::powerOnAll();
+  }
+}
+
+void PowerOffCommand::process(const std::vector<String> arguments) {
+  if(arguments.size() == 0) {
+    MotorBoardManager::powerOffAll();
+  }
+}
