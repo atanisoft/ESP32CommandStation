@@ -10,7 +10,6 @@ at least one Motor Shield that can be connected directly to the tracks of a
 model railroad.
 
 ## Whats in this Repository
--------------------------
 This repository, DCCppESP32, contains a complete DCC++ESP32 Base Station code
 designed for compiling and uploading into an ESP32. All files are in the folder
 named src.
