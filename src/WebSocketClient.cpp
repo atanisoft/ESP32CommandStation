@@ -66,7 +66,9 @@ WebSocketClientManager::WebSocketClientManager(AsyncWebServer &webServer) {
   		client->text(F("DCC++ESP v"));
       client->text(VERSION);
       client->text(F(". READY!"));
-      InfoScreen::printf(0, 12, F("%02d"), webSocketClients.length());
+#if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
+      InfoScreen::printf(12, 2, F("%02d"), webSocketClients.length());
+#endif
   	} else if (type == WS_EVT_DISCONNECT) {
       WebSocketClient *toRemove = NULL;
       for (const auto& clientNode : webSocketClients) {
@@ -77,7 +79,9 @@ WebSocketClientManager::WebSocketClientManager(AsyncWebServer &webServer) {
       if(toRemove != NULL) {
         webSocketClients.remove(toRemove);
       }
-      InfoScreen::printf(0, 12, F("%02d"), webSocketClients.length());
+#if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
+      InfoScreen::printf(12, 2, F("%02d"), webSocketClients.length());
+#endif
   	} else if (type == WS_EVT_DATA) {
       for (const auto& clientNode : webSocketClients) {
         if(clientNode->getID() == client->id()) {
@@ -88,8 +92,9 @@ WebSocketClientManager::WebSocketClientManager(AsyncWebServer &webServer) {
   });
 }
 void WebSocketClientManager::begin() {
+#if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
   InfoScreen::printf(0, 2, F("WS Clients: 0"));
-
+#endif
 }
 
 void WebSocketClientManager::broadcast(const char *buf) {

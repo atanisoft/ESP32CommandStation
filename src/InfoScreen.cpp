@@ -30,18 +30,20 @@ SSD1306Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, SDA, SCL);
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
 #include <Wire.h>
 #include <LiquidCrystal_PCF8574.h>
-LiquidCrystal_PCF8574 lcdDisplay(LCD_ADDRESS);
+LiquidCrystal_PCF8574 lcdDisplay(INFO_SCREEN_LCD_I2C_ADDRESS);
 #endif
 
 bool InfoScreen::_enabled;
+#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
 String InfoScreen::_lines[INFO_SCREEN_MAX_LINES];
+#endif
 
 void InfoScreen::init() {
   _enabled = false;
+#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
   for(int i = 0; i < INFO_SCREEN_MAX_LINES; i++) {
     _lines[i] = "";
   }
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
   Wire.begin();
   // Check that we can find the OLED screen by its address before attempting
   // to use/configure it.
@@ -66,7 +68,7 @@ void InfoScreen::init() {
   // Check that we can find the LCD by its address before attempting to use it.
   Wire.beginTransmission(INFO_SCREEN_LCD_I2C_ADDRESS);
   if(Wire.endTransmission() == 0) {
-    lcdDisplay.begin(LCD_COLUMNS, LCD_LINES);
+    lcdDisplay.begin(INFO_SCREEN_LCD_COLUMNS, INFO_SCREEN_LCD_LINES);
     lcdDisplay.setBacklight(255);
     lcdDisplay.clear();
     _enabled = true;

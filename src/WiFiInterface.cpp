@@ -37,7 +37,7 @@ WiFiInterface::WiFiInterface() {
 }
 
 void WiFiInterface::begin() {
-  InfoScreen::printf(0, 1, F("WiFi: Pending"));
+  InfoScreen::printf(0, 1, F("IP:Pending"));
   log_i("Connecting to WiFi: %s", wifiSSID.c_str());
   WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
   log_i("Waiting for WiFi to connect");
@@ -48,10 +48,11 @@ void WiFiInterface::begin() {
     delay(250);
   }
   if(WiFi.status() != WL_CONNECTED) {
+    InfoScreen::printf(3, 1, F("Failed"));
     log_i("WiFI connect failed, restarting");
     ESP.restart();
   }
-  InfoScreen::printf(6, 1, WiFi.localIP().toString().c_str());
+  InfoScreen::printf(3, 1, WiFi.localIP().toString().c_str());
   DCCppServer.setNoDelay(true);
   DCCppServer.begin();
   webSocketClientManager.begin();

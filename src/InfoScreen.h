@@ -28,7 +28,9 @@ class InfoScreen {
     static void printf(int col, int row, const char *format, ...);
   private:
     static bool _enabled;
+  #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
     static String _lines[INFO_SCREEN_MAX_LINES];
+  #endif
 };
 
 #endif
