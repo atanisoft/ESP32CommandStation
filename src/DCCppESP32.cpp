@@ -177,6 +177,7 @@ void setup() {
 	DCCPPProtocolHandler::init();
 	OutputManager::init();
 	TurnoutManager::init();
+	SensorManager::init();
 	log_i("DCC++ READY!");
 }
 
