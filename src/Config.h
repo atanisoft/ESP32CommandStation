@@ -57,6 +57,16 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
+// DEFINE WHICH PINS ARE USED FOR S88 INTERFACE
+//
+//#define S88_ENABLED true
+//#define S88_CLOCK_PIN 17
+//#define S88_RESET_PIN 16
+//#define S88_LOAD_PIN 27
+//#define S88_DATA_PIN 14
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // DEFINE INFO SCREEN Parameters
 //
 // BOTH OLED AND LCD SCREENS ARE SUPPORTED

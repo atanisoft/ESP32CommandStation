@@ -178,6 +178,9 @@ void setup() {
 	OutputManager::init();
 	TurnoutManager::init();
 	SensorManager::init();
+#if defined(S88_ENABLED) && S88_ENABLED
+	S88SensorManager::init();
+#endif
 	log_i("DCC++ READY!");
 }
 
@@ -185,5 +188,8 @@ void loop() {
 	wifiInterface.update();
 	MotorBoardManager::check();
 	SensorManager::check();
+	#if defined(S88_ENABLED) && S88_ENABLED
+		S88SensorManager::check();
+	#endif
 	LocomotiveManager::update();
 }

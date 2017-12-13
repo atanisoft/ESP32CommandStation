@@ -40,7 +40,7 @@ public:
   }
   void check();
   void show();
-private:
+protected:
   uint16_t _sensorID;
   uint8_t _pin;
   bool _pullUp;
@@ -65,5 +65,63 @@ public:
     return "S";
   }
 };
+
+#if defined(S88_ENABLED) && S88_ENABLED
+class S88Sensor : public Sensor {
+public:
+  S88Sensor(uint16_t id, uint8_t index) : Sensor(id, 0, true), _index(index) {
+
+  }
+  void store(uint16_t) {}
+  void check() {}
+  void setState(bool state) {
+    if(_lastState != state) {
+      _lastState = state;
+      show();
+    }
+  }
+  const uint8_t getIndex() {
+    return _index;
+  }
+private:
+  const uint8_t _index;
+};
+
+class S88SensorGroup {
+public:
+  S88SensorGroup(uint8_t, uint8_t=16);
+  void store(uint16_t);
+  void show();
+  const uint8_t getIndex() {
+    return _index;
+  }
+  const uint8_t getPinCount() {
+    return _pinCount;
+  }
+  void read();
+private:
+  const uint8_t _index;
+  const uint8_t _pinCount;
+  std::vector<S88Sensor *> _sensors;
+};
+
+class S88SensorManager {
+public:
+  static void init();
+  static void clear();
+  static uint8_t store();
+  static void check();
+  static bool create(const uint8_t, const uint8_t);
+  static bool remove(const uint8_t);
+};
+
+class S88SensorCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String>);
+  String getID() {
+    return "U";
+  }
+};
+#endif
 
 #endif

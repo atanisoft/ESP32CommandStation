@@ -84,6 +84,9 @@ Depending on whether the physical sensor is acting as an "event-trigger" or a
 **********************************************************************/
 
 LinkedList<Sensor *> sensors([](Sensor *sensor) {delete sensor; });
+#if defined(S88_ENABLED) && S88_ENABLED
+LinkedList<S88SensorGroup *> s88SensorGroups([](S88SensorGroup *sensorGroup) {delete sensorGroup; });
+#endif
 
 void SensorManager::init() {
   log_i("Initializing sensors list");
@@ -177,6 +180,7 @@ void Sensor::check() {
   bool currentState = digitalRead(_pin) != 0;
   if(currentState != _lastState) {
     _lastState = currentState;
+    log_i("Sensor: %d :: %s", _sensorID, _lastState ? "ACTIVE" : "INACTIVE");
     if(currentState) {
       wifiInterface.printf(F("<Q %d>"), _sensorID);
     } else {
@@ -208,3 +212,126 @@ void SensorCommandAdapter::process(const std::vector<String> arguments) {
     }
   }
 }
+
+#if defined(S88_ENABLED) && S88_ENABLED
+void S88SensorManager::init() {
+  pinMode(S88_CLOCK_PIN, OUTPUT);
+  pinMode(S88_RESET_PIN, OUTPUT);
+  pinMode(S88_LOAD_PIN, OUTPUT);
+  pinMode(S88_DATA_PIN, OUTPUT);
+
+  log_i("Initializing S88 Sensor list");
+  uint16_t sensorCount = configStore.getUShort("S88SensorCount", 0);
+  log_i("Found %d S88 Sensor Groups", sensorCount);
+  for(int index = 0; index < sensorCount; index++) {
+    s88SensorGroups.add(new S88SensorGroup(index));
+  }
+}
+
+void S88SensorManager::clear() {
+  configStore.putUShort("S88SensorCount", 0);
+  s88SensorGroups.free();
+}
+
+uint8_t S88SensorManager::store() {
+  uint8_t sensorGroupsStoredCount = 0;
+  for (const auto& sensorGroup : s88SensorGroups) {
+    sensorGroup->store(sensorGroupsStoredCount++);
+  }
+  configStore.putUShort("s88SensorGroups", sensorGroupsStoredCount);
+  return sensorGroupsStoredCount;
+}
+
+void S88SensorManager::check() {
+  digitalWrite(S88_LOAD_PIN, HIGH);
+  delayMicroseconds(S88_SENSOR_LOAD_PRE_CLOCK_TIME);
+  digitalWrite(S88_CLOCK_PIN, HIGH);
+	delayMicroseconds(S88_SENSOR_CLOCK_PULSE_TIME);
+	digitalWrite(S88_CLOCK_PIN, LOW);
+	delayMicroseconds(S88_SENSOR_CLOCK_PRE_RESET_TIME);
+	digitalWrite(S88_RESET_PIN, HIGH);
+	delayMicroseconds(S88_SENSOR_RESET_PULSE_TIME);
+	digitalWrite(S88_RESET_PIN, LOW);
+	delayMicroseconds(S88_SENSOR_LOAD_POST_RESET_TIME);
+	digitalWrite(S88_LOAD_PIN, LOW);
+
+  delayMicroseconds(S88_SENSOR_READ_TIME);
+  for (const auto& sensorGroup : s88SensorGroups) {
+    sensorGroup->read();
+  }
+}
+
+bool S88SensorManager::create(const uint8_t index, const uint8_t pinCount) {
+  // check for duplicate ID or PIN
+  for (const auto& sensorGroup : s88SensorGroups) {
+    if(sensorGroup->getIndex() == index) {
+      return false;
+    }
+  }
+  s88SensorGroups.add(new S88SensorGroup(index, pinCount));
+  return true;
+}
+
+bool S88SensorManager::remove(const uint8_t index) {
+  S88SensorGroup *sensorGroupToRemove = NULL;
+  // check for duplicate ID or PIN
+  for (const auto& sensorGroup : s88SensorGroups) {
+    if(sensorGroup->getIndex() == index) {
+      sensorGroupToRemove = sensorGroup;
+    }
+  }
+  if(sensorGroupToRemove != NULL) {
+    s88SensorGroups.remove(sensorGroupToRemove);
+    return true;
+  }
+  return false;
+}
+
+void S88SensorCommandAdapter::process(const std::vector<String> arguments) {
+  if(arguments.empty()) {
+    // list all sensor groups
+    for (const auto& sensorGroup : s88SensorGroups) {
+      sensorGroup->show();
+    }
+  } else {
+    if (arguments.size() == 1 && S88SensorManager::remove(arguments[0].toInt())) {
+      // delete turnout
+      wifiInterface.printf(F("<O>"));
+    } else if (arguments.size() == 2 && S88SensorManager::create(arguments[0].toInt(), arguments[1].toInt())) {
+      // create sensor
+      wifiInterface.printf(F("<O>"));
+    } else {
+      wifiInterface.printf(F("<X>"));
+    }
+  }
+}
+
+S88SensorGroup::S88SensorGroup(uint8_t index, uint8_t pinCount) : _index(index), _pinCount(pinCount) {
+  log_i("S88 SensorGroup %d created with %s inputs", _index, _pinCount);
+  for(int i = 0; i < pinCount; i++) {
+    _sensors.push_back(new S88Sensor(index*16 + i, i));
+    sensors.add(_sensors[i]);
+  }
+}
+
+void S88SensorGroup::show() {
+  wifiInterface.printf(F("<U %d %d>"), _index, _pinCount);
+  log_i("S88 SensorGroup(%d, %d):", _index, _pinCount);
+  for (const auto& sensor : _sensors) {
+    log_i("Input: %d :: %s", sensor->getIndex(), sensor->isActive() ? "ACTIVE" : "INACTIVE");
+  }
+}
+
+void S88SensorGroup::read() {
+  _sensors[0]->setState(digitalRead(S88_DATA_PIN) == 1);
+  for(int index = 1; index < _pinCount; index++) {
+    digitalWrite(S88_CLOCK_PIN, HIGH);
+    delayMicroseconds(S88_SENSOR_CLOCK_PULSE_TIME);
+    digitalWrite(S88_CLOCK_PIN, LOW);
+
+    delayMicroseconds(S88_SENSOR_READ_TIME);
+    _sensors[index]->setState(digitalRead(S88_DATA_PIN) == 1);
+  }
+
+}
+#endif
