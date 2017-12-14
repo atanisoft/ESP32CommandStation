@@ -19,12 +19,9 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <ESPAsyncWebServer.h>
-#include "WebSocketClient.h"
 #include "WebServer.h"
 
-AsyncWebServer webServer(80);
-DCCPPWebServer dccppWebServer(webServer);
-WebSocketClientManager webSocketClientManager(webServer);
+DCCPPWebServer dccppWebServer;
 
 const String wifiSSID = WIFI_SSID;
 const String wifiPassword = WIFI_PASSWORD;
@@ -55,8 +52,7 @@ void WiFiInterface::begin() {
   InfoScreen::printf(3, 1, WiFi.localIP().toString().c_str());
   DCCppServer.setNoDelay(true);
   DCCppServer.begin();
-  webSocketClientManager.begin();
-  webServer.begin();
+  dccppWebServer.begin();
 }
 
 void WiFiInterface::update() {
@@ -114,7 +110,7 @@ void WiFiInterface::send(const char *buf) {
       delay(1);
     }
   }
-  webSocketClientManager.broadcast(buf);
+  dccppWebServer.broadcastToWS(buf);
 }
 
 void WiFiInterface::printf(const __FlashStringHelper *fmt, ...) {

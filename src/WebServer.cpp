@@ -28,9 +28,46 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Sensors.h"
 #include "index_html.h"
 
-DCCPPWebServer::DCCPPWebServer(AsyncWebServer & webServer) {
-  webServer.rewrite("/", "/index.html");
-  webServer.on("/index.html", HTTP_GET,
+class WebSocketClient {
+public:
+  WebSocketClient(int clientID) : _id(clientID) {
+    buffer.reserve(128);
+  }
+  int getID() {
+    return _id;
+  }
+  void appendData(uint8_t * data, size_t len) {
+    for(int i = 0; i < len; i++) {
+      buffer.emplace_back(data[i]);
+    }
+    auto s = buffer.begin();
+    auto consumed = buffer.begin();
+    for(; s != buffer.end();) {
+      s = std::find(s, buffer.end(), '<');
+      auto e = std::find(s, buffer.end(), '>');
+      if(s != buffer.end() && e != buffer.end()) {
+        // discard the <
+        s++;
+        // discard the >
+        *e = 0;
+        String str(reinterpret_cast<char*>(&*s));
+        wifiInterface.printf(F("<%s>"), str.c_str());
+        DCCPPProtocolHandler::process(std::move(str));
+        consumed = e;
+      }
+      s = e;
+    }
+    buffer.erase(buffer.begin(), consumed); // drop everything we used from the buffer.
+  }
+private:
+  uint32_t _id;
+  std::vector<uint8_t> buffer;
+};
+LinkedList<WebSocketClient *> webSocketClients([](WebSocketClient *client) {delete client;});
+
+DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
+  rewrite("/", "/index.html");
+  on("/index.html", HTTP_GET,
     [](AsyncWebServerRequest *request) {
       const char * htmlBuildTime = __DATE__ " " __TIME__;
       if (request->header("If-Modified-Since").equals(htmlBuildTime)) {
@@ -42,16 +79,46 @@ DCCPPWebServer::DCCPPWebServer(AsyncWebServer & webServer) {
         request->send(response);
       }
     });
-  webServer.on("/programmer", HTTP_GET | HTTP_POST,
+  on("/programmer", HTTP_GET | HTTP_POST,
     std::bind(&DCCPPWebServer::handleProgrammer, this, std::placeholders::_1));
-  webServer.on("/powerStatus", HTTP_GET,
+  on("/powerStatus", HTTP_GET,
     std::bind(&DCCPPWebServer::handlePowerStatus, this, std::placeholders::_1));
-  webServer.on("/outputs", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
+  on("/outputs", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleOutputs, this, std::placeholders::_1));
-  webServer.on("/turnouts", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
+  on("/turnouts", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleTurnouts, this, std::placeholders::_1));
-  webServer.on("/sensors", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
+  on("/sensors", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleSensors, this, std::placeholders::_1));
+  webSocket.onEvent([](AsyncWebSocket * server, AsyncWebSocketClient * client,
+      AwsEventType type, void * arg, uint8_t *data, size_t len) {
+    if (type == WS_EVT_CONNECT) {
+      webSocketClients.add(new WebSocketClient(client->id()));
+      client->printf("DCC++ESP v%s. READY!", VERSION);
+  #if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
+      InfoScreen::printf(12, 2, F("%02d"), webSocketClients.length());
+  #endif
+    } else if (type == WS_EVT_DISCONNECT) {
+      WebSocketClient *toRemove = NULL;
+      for (const auto& clientNode : webSocketClients) {
+        if(clientNode->getID() == client->id()) {
+          toRemove = clientNode;
+        }
+      }
+      if(toRemove != NULL) {
+        webSocketClients.remove(toRemove);
+      }
+  #if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
+      InfoScreen::printf(12, 2, F("%02d"), webSocketClients.length());
+  #endif
+    } else if (type == WS_EVT_DATA) {
+      for (const auto& clientNode : webSocketClients) {
+        if(clientNode->getID() == client->id()) {
+          clientNode->appendData(data, len);
+        }
+      }
+    }
+  });
+  addHandler(&webSocket);
 }
 
 void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {

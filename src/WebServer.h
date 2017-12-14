@@ -16,10 +16,20 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 #include <ESPAsyncWebServer.h>
 
-class DCCPPWebServer {
+class DCCPPWebServer : public AsyncWebServer {
 public:
-  DCCPPWebServer(AsyncWebServer &);
+  DCCPPWebServer();
+  void begin() {
+    AsyncWebServer::begin();
+    #if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
+      InfoScreen::printf(0, 2, F("WS Clients: 0"));
+    #endif
+  }
+  void broadcastToWS(const char *buf) {
+    webSocket.textAll(buf);
+  }
 private:
+  AsyncWebSocket webSocket;
   void handleESPInfo(AsyncWebServerRequest *);
   void handleProgrammer(AsyncWebServerRequest *);
   void handlePowerStatus(AsyncWebServerRequest *);

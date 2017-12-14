@@ -369,8 +369,6 @@
 	function sendCommand(command) {
 		if(!socket) {
 			connectWebSocket(true);
-			$('#consoleConnect').toggles(true);
-			$('#throttleConnect').toggles(true);
 		}
 		console.log('Sending:', command);
 		socket.send(command);
@@ -474,11 +472,15 @@
 				socket = $.simpleWebSocket({url: socketUrl, dataType: 'text'});
 				socket.listen(receiveWebSocketData);
 				socket.connect();
+				$('#consoleConnect').data('toggles').toggle(true, false, true);
+				$('#throttleConnect').data('toggles').toggle(true, false, true);
 			}
 		} else {
 			if(socket && socket.isConnected()) {
 				console.log('disconnecting')
 				socket.close();
+				$('#consoleConnect').data('toggles').toggle(false, false, true);
+				$('#throttleConnect').data('toggles').toggle(false, false, true);
 			}
 		}
 	}
@@ -946,7 +948,7 @@
 		});
 		$('#throttlePower').on('toggle', function(e, active) {
 			if ($('#top-tabs').tabs('option', 'active') == 0) {
-				$('#statusTrackPower').toggle();
+				$('#statusTrackPower').data('toggles').toggle(active, false, true);
 				if(active) {
 					sendCommand('<1>');
 				} else {
@@ -956,7 +958,7 @@
 		});
 		$('#statusTrackPower').on('toggle', function(e, active) {
 			if ($('#top-tabs').tabs('option', 'active') == 1 && $('#dcc-tabs').tabs('option', 'active') == 0) {
-				$('#throttlePower').toggle();
+				$('#throttlePower').data('toggles').toggle(active, false, true);
 				if(active) {
 					sendCommand('<1>');
 				} else {
@@ -967,13 +969,11 @@
 		$('#consoleConnect').on('toggle', function(e, active) {
 			if ($('#top-tabs').tabs('option', 'active') == 1 && $('#dcc-tabs').tabs('option', 'active') == 0) {
 				connectWebSocket(active);
-				$('#throttleConnect').toggle();
 			}
 		});
 		$('#throttleConnect').on('toggle', function(e, active) {
 			if ($('#top-tabs').tabs('option', 'active') == 0) {
 				connectWebSocket(active);
-				$('#consoleConnect').toggle();
 			}
 		});
 		$('#throttleDirection').on('toggle', function(e, active) {
@@ -1040,6 +1040,7 @@
 		});
 		$('#btnProgExecute').button();
 		$('#btnProgExecute').click(function() {
+			$('#btnProgExecute').addClass('disabled');
 			if($('#progReadOrWrite').data('toggles').active) {
 				if($('#progByteOrBit').data('toggles').active) {
 					$.post({
@@ -1053,10 +1054,12 @@
 							'target': $('#progTarget').data('toggles').active
 						},
 						success : function (data, status, xhr) {
-							$('#progResult').append('writeCVBit completed.\n');
+							$('#progResult').append('Write CV: ' + $('#progCVNumber').val() + ' bit: ' + $('#progBitNumber').val() + ' value: ' + $('#progBitValue').data('toggles').active + ' completed.\n');
+							$('#btnProgExecute').removeClass('disabled');
 						},
 						error : function(xhr, status, error) {
-							$('#progResult').append('writeCVBit failed.\n');
+							$('#progResult').append('Write CV: ' + $('#progCVNumber').val() + ' bit: ' + $('#progBitNumber').val() + ' value: ' + $('#progBitValue').data('toggles').active + ' failed.\n');
+							$('#btnProgExecute').removeClass('disabled');
 						}
 					});
 				} else {
@@ -1070,10 +1073,12 @@
 							'target': $('#progTarget').data('toggles').active
 						},
 						success : function (data, status, xhr) {
-							$('#progResult').append('writeCV completed.\n');
+							$('#progResult').append('Write CV: ' + $('#progCVNumber').val() + ' value: ' + $('#progCVValue').val() + ' completed.\n');
+							$('#btnProgExecute').removeClass('disabled');
 						},
 						error : function(xhr, status, error) {
-							$('#progResult').append('writeCV failed.\n');
+							$('#progResult').append('Write CV: ' + $('#progCVNumber').val() + ' value: ' + $('#progCVValue').val() + ' failed.\n');
+							$('#btnProgExecute').removeClass('disabled');
 						}
 					});
 				}
@@ -1085,10 +1090,12 @@
 						'cv' : $('#progCVNumber').val()
 					},
 					success : function (data, status, xhr) {
-						$('#progResult').append('CV:' + data['cv'] + ' value: ' + data['value'] + '\n');
+						$('#progResult').append('CV: ' + data['cv'] + ' value: ' + data['value'] + '\n');
+						$('#btnProgExecute').removeClass('disabled');
 					},
 					error : function(xhr, status, error) {
-						$('#progResult').append('readCV failed.\n');
+						$('#progResult').append('CV ' + $('#progCVNumber').val() + ' read failed.\n');
+						$('#btnProgExecute').removeClass('disabled');
 					}
 				});
 			}
