@@ -162,6 +162,7 @@ public:
 class StatusCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
+    wifiInterface.printf(F("<iDCC++ BASE STATION FOR ESP32: V-%s / %s %s>"), VERSION, __DATE__, __TIME__);
     MotorBoardManager::showStatus();
     LocomotiveManager::showStatus();
     TurnoutManager::showStatus();
