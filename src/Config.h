@@ -61,6 +61,11 @@ COPYRIGHT (c) 2017 Mike Dunston
 //
 // BOTH OLED AND LCD SCREENS ARE SUPPORTED
 
+// If the ESP32 board does not use standard SDA/SCL pins as defined in pins_arduino.h
+// uncomment the next two lines and define the pins that need to be used instead
+//#define INFO_SCREEN_SDA_PIN SDA
+//#define INFO_SCREEN_SCL_PIN SCL
+
 // OLED SCREEN PARAMETERS
 //#define INFO_SCREEN_OLED true
 //#define OLED_CHIPSET SH1106

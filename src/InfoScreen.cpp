@@ -17,15 +17,22 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "DCCppESP32.h"
 
+#ifndef INFO_SCREEN_SDA_PIN
+#define INFO_SCREEN_SDA_PIN SDA
+#endif
+#ifndef INFO_SCREEN_SCL_PIN
+#define INFO_SCREEN_SCL_PIN SCL
+#endif
+
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
 #include <Wire.h>
 #include "InfoScreen_OLED_font.h"
 #if OLED_CHIPSET == SH1106
 #include <SH1106Wire.h>
-SH1106Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, SDA, SCL);
+SH1106Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
 #elif OLED_CHIPSET == SH1306
 #include <SSD1306Wire.h>
-SSD1306Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, SDA, SCL);
+SSD1306Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
 #endif
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
 #include <Wire.h>
@@ -44,7 +51,7 @@ void InfoScreen::init() {
   for(int i = 0; i < INFO_SCREEN_MAX_LINES; i++) {
     _lines[i] = "";
   }
-  Wire.begin();
+  Wire.begin(INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
   // Check that we can find the OLED screen by its address before attempting
   // to use/configure it.
   Wire.beginTransmission(INFO_SCREEN_OLED_I2C_ADDRESS);
