@@ -50,10 +50,16 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// DEFINE STATIC IP ADDRESS *OR* COMMENT OUT TO USE DHCP
+// DEFINE STATIC IP ADDRESS DETAILS OR LEAVE COMMENTED FOR DHCP
 //
 
-//#define IP_ADDRESS { 192, 168, 1, 200 }
+//#define WIFI_STATIC_IP_ADDRESS "192.168.0.115"
+//#define WIFI_STATIC_IP_GATEWAY "192.168.0.1"
+//#define WIFI_STATIC_IP_SUBNET "255.255.255.0"
+
+// WIFI_STATIC_IP_DNS is optional, if not defined the value below will be used
+// automatically. This is a Google provided DNS server.
+//#define WIFI_STATIC_IP_DNS "8.8.8.8"
 
 /////////////////////////////////////////////////////////////////////////////////////
 //

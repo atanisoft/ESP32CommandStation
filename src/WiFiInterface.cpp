@@ -19,6 +19,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <ESPAsyncWebServer.h>
+#include <IPAddress.h>
 #include "WebServer.h"
 
 DCCPPWebServer dccppWebServer;
@@ -35,6 +36,19 @@ WiFiInterface::WiFiInterface() {
 
 void WiFiInterface::begin() {
   InfoScreen::printf(0, 1, F("IP:Pending"));
+#if defined(WIFI_STATIC_IP_ADDRESS) && defined(WIFI_STATIC_IP_GATEWAY) && defined(WIFI_STATIC_IP_SUBNET)
+  IPAddress staticIP, gatewayIP, subnetMask, dnsServer;
+  staticIP.fromString(WIFI_STATIC_IP_ADDRESS);
+  gatewayIP.fromString(WIFI_STATIC_IP_GATEWAY);
+  subnetMask.fromString(WIFI_STATIC_IP_SUBNET);
+#if defined(WIFI_STATIC_IP_DNS)
+  dnsServer.fromString(WIFI_STATIC_IP_DNS);
+#else
+  dnsServer.fromString("8.8.8.8");
+#endif
+  WiFi.config(staticIP, gatewayIP, subnetMask, dnsServer);
+#endif
+
   log_i("Connecting to WiFi: %s", wifiSSID.c_str());
   WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
   log_i("Waiting for WiFi to connect");
