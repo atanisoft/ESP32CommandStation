@@ -16,13 +16,15 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 #include <ESPAsyncWebServer.h>
 
+#include "InfoScreen.h"
+
 class DCCPPWebServer : public AsyncWebServer {
 public:
   DCCPPWebServer();
   void begin() {
     AsyncWebServer::begin();
-    #if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
-      InfoScreen::printf(0, 2, F("WS Clients: 0"));
+    #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
+      InfoScreen::printf(0, INFO_SCREEN_WS_CLIENTS_LINE, F("WS Clients: 0"));
     #endif
   }
   void broadcastToWS(const char *buf) {
@@ -36,4 +38,5 @@ private:
   void handleOutputs(AsyncWebServerRequest *);
   void handleTurnouts(AsyncWebServerRequest *);
   void handleSensors(AsyncWebServerRequest *);
+  void handleConfig(AsyncWebServerRequest *);
 };

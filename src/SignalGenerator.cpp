@@ -38,14 +38,26 @@ COPYRIGHT (c) 2017 Mike Dunston
 // number of microseconds for each half of the DCC signal for a one
 #define DCC_ONE_BIT_PULSE_DURATION 58
 
-SignalGenerator dccSignalGenerators[2];
+SignalGenerator dccSignal[MAX_DCC_SIGNAL_GENERATORS];
 
 uint8_t idlePacket[] = {0xFF, 0x00};
 uint8_t resetPacket[] = {0x00, 0x00};
 
+void configureDCCSignalGenerators() {
+  dccSignal[DCC_SIGNAL_OPERATIONS].configureSignal<DCC_SIGNAL_OPERATIONS>("OPS",
+    DCC_SIGNAL_PIN_OPERATIONS, 512);
+  dccSignal[DCC_SIGNAL_PROGRAMMING].configureSignal<DCC_SIGNAL_PROGRAMMING>("PROG",
+    DCC_SIGNAL_PIN_PROGRAMMING, 64);
+}
+
 void startDCCSignalGenerators() {
-  dccSignalGenerators[SIGNAL_GENERATOR_MAIN].configureSignal<SIGNAL_GENERATOR_MAIN>("OPERATIONS", DIRECTION_MOTOR_CHANNEL_PIN_MAIN, 512);
-  dccSignalGenerators[SIGNAL_GENERATOR_PROG].configureSignal<SIGNAL_GENERATOR_PROG>("PROGRAMMING", DIRECTION_MOTOR_CHANNEL_PIN_PROG, 64);
+  dccSignal[DCC_SIGNAL_OPERATIONS].startSignal<DCC_SIGNAL_OPERATIONS>();
+  dccSignal[DCC_SIGNAL_PROGRAMMING].startSignal<DCC_SIGNAL_PROGRAMMING>();
+}
+
+void stopDCCSignalGenerators() {
+  dccSignal[DCC_SIGNAL_OPERATIONS].stopSignal<DCC_SIGNAL_OPERATIONS>();
+  dccSignal[DCC_SIGNAL_PROGRAMMING].stopSignal<DCC_SIGNAL_PROGRAMMING>();
 }
 
 void loadBytePacket(SignalGenerator &signalGenerator, uint8_t *data, uint8_t length, uint8_t repeatCount) {
@@ -157,7 +169,7 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats)
 template<int timerIndex>
 void IRAM_ATTR signalGeneratorPulseTimer(void)
 {
-  auto& signalGenerator = dccSignalGenerators[timerIndex];
+  auto& signalGenerator = dccSignal[timerIndex];
   if(signalGenerator.getNextBitToSend()) {
     timerAlarmWrite(signalGenerator._pulseTimer, DCC_ONE_BIT_PULSE_DURATION, false);
     timerAlarmWrite(signalGenerator._fullCycleTimer, DCC_ONE_BIT_TOTAL_DURATION, true);
@@ -173,7 +185,7 @@ void IRAM_ATTR signalGeneratorPulseTimer(void)
 template<int timerIndex>
 void IRAM_ATTR signalGeneratorDirectionTimer()
 {
-  auto& signalGenerator = dccSignalGenerators[timerIndex];
+  auto& signalGenerator = dccSignal[timerIndex];
   digitalWrite(signalGenerator._directionPin, LOW);
 }
 
@@ -193,17 +205,21 @@ void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_
   pinMode(_directionPin, INPUT);
   digitalWrite(_directionPin, LOW);
   pinMode(_directionPin, OUTPUT);
+  startSignal<timerIndex>();
+}
 
+template<int timerIndex>
+void SignalGenerator::startSignal() {
   // inject the required reset and idle packets into the queue
   // this is required as part of S-9.2.4 section A
   // at least 20 reset packets and 10 idle packets must be sent upon initialization
   // of the base station to force decoders to exit service mode.
   log_i("[%s] Adding reset packet to packet queue", _name.c_str());
-  loadBytePacket(dccSignalGenerators[timerIndex], resetPacket, 2, 20);
+  loadBytePacket(dccSignal[timerIndex], resetPacket, 2, 20);
   log_i("[%s] Adding idle packet to packet queue", _name.c_str());
-  loadBytePacket(dccSignalGenerators[timerIndex], idlePacket, 2, 10);
+  loadBytePacket(dccSignal[timerIndex], idlePacket, 2, 10);
 
-  log_i("[%s] Starting Timer(%d) for generating DCC Signal (Full Wave)", _name.c_str(), 2 * timerIndex);
+  log_i("[%s] Configuring Timer(%d) for generating DCC Signal (Full Wave)", _name.c_str(), 2 * timerIndex);
   _fullCycleTimer = timerBegin(2 * timerIndex, DCC_TIMER_PRESCALE, true);
   log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), 2 * timerIndex);
   timerAttachInterrupt(_fullCycleTimer, &signalGeneratorPulseTimer<timerIndex>, true);
@@ -212,7 +228,7 @@ void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_
   log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), 2 * timerIndex);
   timerWrite(_fullCycleTimer, 0);
 
-  log_i("[%s] Starting Timer(%d) for generating DCC Signal (Half Wave)", _name.c_str(), 2 * timerIndex + 1);
+  log_i("[%s] Configuring Timer(%d) for generating DCC Signal (Half Wave)", _name.c_str(), 2 * timerIndex + 1);
   _pulseTimer = timerBegin(2*timerIndex + 1, DCC_TIMER_PRESCALE, true);
   log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), 2 * timerIndex + 1);
   timerAttachInterrupt(_pulseTimer, &signalGeneratorDirectionTimer<timerIndex>, true);
@@ -225,6 +241,42 @@ void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_
   timerAlarmEnable(_fullCycleTimer);
   log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), 2 * timerIndex + 1);
   timerAlarmEnable(_pulseTimer);
+}
+
+template<int timerIndex>
+void SignalGenerator::stopSignal() {
+  log_i("[%s] Shutting down Timer(%d) (Full Wave)", _name.c_str(), 2 * timerIndex);
+  timerStop(_fullCycleTimer);
+  timerAlarmDisable(_fullCycleTimer);
+  timerDetachInterrupt(_fullCycleTimer);
+  timerEnd(_fullCycleTimer);
+
+  log_i("[%s] Shutting down Timer(%d) (Half Wave)", _name.c_str(), 2 * timerIndex + 1);
+  timerStop(_pulseTimer);
+  timerAlarmDisable(_pulseTimer);
+  timerDetachInterrupt(_pulseTimer);
+  timerEnd(_pulseTimer);
+
+  // give enough time for any timer ISR calls to complete before draining
+  // the packet queue and returning
+  delay(250);
+
+  // if we have a current packet being processed move it to the available
+  // queue if it is not the pre-canned idle packet.
+  if(_currentPacket != NULL && _currentPacket != &_idlePacket) {
+    _availablePackets.push(_currentPacket);
+    _currentPacket = NULL;
+  }
+
+  // drain any remaining packets that were not sent back into the available
+  // to use packets.
+  while(!_toSend.empty()) {
+    _currentPacket = _toSend.front();
+    _toSend.pop();
+    // make sure the packet is zeroed before pushing it back to the queue
+    memset(_currentPacket, 0, sizeof(Packet));
+    _availablePackets.push(_currentPacket);
+  }
 }
 
 void SignalGenerator::waitForQueueEmpty() {
@@ -259,19 +311,20 @@ uint64_t sampleADCChannel(adc1_channel_t channel, uint8_t sampleCount) {
 const uint8_t CVSampleCount = 250;
 
 int16_t readCV(const uint16_t cv) {
-  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName("PROG")->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName("PROG")->getMaxMilliAmps()) * 60;
+  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
+  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps()) * 60;
   uint8_t readCVBitPacket[4] = { (uint8_t)(0x78 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
   uint8_t verifyCVBitPacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
   int16_t cvValue = 0;
   log_d("[PROG] Attempting to read CV %d, samples: %d, ack value: %d", cv, CVSampleCount, milliAmpAck);
+  auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(uint8_t bit = 0; bit < 8; bit++) {
     log_d("[PROG] CV %d, bit [%d/7]", cv, bit);
     readCVBitPacket[2] = 0xE8 + bit;
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], resetPacket, 2, 3);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], readCVBitPacket, 3, 5);
-    dccSignalGenerators[SIGNAL_GENERATOR_PROG].waitForQueueEmpty();
+    loadBytePacket(signalGenerator, resetPacket, 2, 3);
+    loadBytePacket(signalGenerator, readCVBitPacket, 3, 5);
+    signalGenerator.waitForQueueEmpty();
     if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
       log_d("[PROG] CV %d, bit [%d/7] ON", cv, bit);
       bitWrite(cvValue, bit, 1);
@@ -283,9 +336,9 @@ int16_t readCV(const uint16_t cv) {
   // verify the byte we received
   verifyCVBitPacket[2] = cvValue & 0xFF;
   log_d("[PROG] CV %d, read value %d, verifying", cv, cvValue);
-  loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], resetPacket, 2, 3);
-  loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], verifyCVBitPacket, 3, 5);
-  dccSignalGenerators[SIGNAL_GENERATOR_PROG].waitForQueueEmpty();
+  loadBytePacket(signalGenerator, resetPacket, 2, 3);
+  loadBytePacket(signalGenerator, verifyCVBitPacket, 3, 5);
+  signalGenerator.waitForQueueEmpty();
   bool verified = false;
   if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
     verified = true;
@@ -299,23 +352,24 @@ int16_t readCV(const uint16_t cv) {
 }
 
 bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
-  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName("PROG")->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName("PROG")->getMaxMilliAmps()) * 60;
+  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
+  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps()) * 60;
   const uint8_t maxWriteAttempts = 5;
   uint8_t writeCVBytePacket[4] = { (uint8_t)(0x7C + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), cvValue, 0x00};
   uint8_t verifyCVBytePacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), cvValue, 0x00};
   bool writeVerified = false;
+  auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(uint8_t attempt = 1; attempt <= maxWriteAttempts && !writeVerified; attempt++) {
     log_d("[PROG %d/%d] Attempting to write CV %d as %d", attempt, maxWriteAttempts, cv, cvValue);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], resetPacket, 2, 1);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], writeCVBytePacket, 3, 4);
-    dccSignalGenerators[SIGNAL_GENERATOR_PROG].waitForQueueEmpty();
+    loadBytePacket(signalGenerator, resetPacket, 2, 1);
+    loadBytePacket(signalGenerator, writeCVBytePacket, 3, 4);
+    signalGenerator.waitForQueueEmpty();
     // verify that the decoder received the write byte packet and sent an ACK
     if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
-      loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], resetPacket, 2, 3);
-      loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], verifyCVBytePacket, 3, 5);
-      dccSignalGenerators[SIGNAL_GENERATOR_PROG].waitForQueueEmpty();
+      loadBytePacket(signalGenerator, resetPacket, 2, 3);
+      loadBytePacket(signalGenerator, verifyCVBytePacket, 3, 5);
+      signalGenerator.waitForQueueEmpty();
       // check that decoder sends an ACK for the verify operation
       if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
         writeVerified = true;
@@ -325,29 +379,30 @@ bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
       log_w("[PROG] CV %d write value %d could not be verified.", cv, cvValue);
     }
     log_i("[PROG] Sending decoder reset packet");
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], resetPacket, 2, 3);
+    loadBytePacket(signalGenerator, resetPacket, 2, 3);
   }
   return writeVerified;
 }
 
 bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
-  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName("PROG")->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName("PROG")->getMaxMilliAmps()) * 60;
+  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
+  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps()) * 60;
   const uint8_t maxWriteAttempts = 5;
   uint8_t writeCVBitPacket[4] = { (uint8_t)(0x78 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), (uint8_t)(0xF0 + bit + value * 8), 0x00};
   uint8_t verifyCVBitPacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), (uint8_t)(0xB0 + bit + value * 8), 0x00};
   bool writeVerified = false;
+  auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(uint8_t attempt = 1; attempt <= maxWriteAttempts && !writeVerified; attempt++) {
     log_d("[PROG %d/%d] Attempting to write CV %d bit %d as %d", attempt, maxWriteAttempts, cv, bit, value);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], resetPacket, 2, 1);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], writeCVBitPacket, 3, 4);
-    dccSignalGenerators[SIGNAL_GENERATOR_PROG].waitForQueueEmpty();
+    loadBytePacket(signalGenerator, resetPacket, 2, 1);
+    loadBytePacket(signalGenerator, writeCVBitPacket, 3, 4);
+    signalGenerator.waitForQueueEmpty();
     // verify that the decoder received the write byte packet and sent an ACK
     if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
-      loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], resetPacket, 2, 3);
-      loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], verifyCVBitPacket, 3, 5);
-      dccSignalGenerators[SIGNAL_GENERATOR_PROG].waitForQueueEmpty();
+      loadBytePacket(signalGenerator, resetPacket, 2, 3);
+      loadBytePacket(signalGenerator, verifyCVBitPacket, 3, 5);
+      signalGenerator.waitForQueueEmpty();
       // check that decoder sends an ACK for the verify operation
       if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
         writeVerified = true;
@@ -357,12 +412,14 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
       log_w("[PROG %d/%d] CV %d write bit %d could not be verified.", attempt, maxWriteAttempts, cv, bit);
     }
     log_i("[PROG] Sending decoder reset packet");
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_PROG], resetPacket, 2, 3);
+    loadBytePacket(signalGenerator, resetPacket, 2, 3);
   }
   return writeVerified;
 }
 
 void writeOpsCVByte(const uint16_t locoNumber, const uint16_t cv, const uint8_t cvValue) {
+  auto& signalGenerator = dccSignal[DCC_SIGNAL_OPERATIONS];
+  log_d("[OPS] Updating CV %d to %d for loco %d", cv, cvValue, locoNumber);
   if(locoNumber > 127) {
     uint8_t writeCVBytePacket[] = {
       (uint8_t)(0xC0 | highByte(locoNumber)),
@@ -371,8 +428,7 @@ void writeOpsCVByte(const uint16_t locoNumber, const uint16_t cv, const uint8_t 
       lowByte(cv - 1),
       cvValue,
       0x00};
-    log_d("[OPS] Updating CV %d to %d for loco %d", cv, cvValue, locoNumber);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_MAIN], writeCVBytePacket, 5, 4);
+    loadBytePacket(signalGenerator, writeCVBytePacket, 5, 4);
   } else {
     uint8_t writeCVBytePacket[] = {
       lowByte(locoNumber),
@@ -380,12 +436,13 @@ void writeOpsCVByte(const uint16_t locoNumber, const uint16_t cv, const uint8_t 
       lowByte(cv - 1),
       cvValue,
       0x00};
-    log_d("[OPS] Updating CV %d to %d for loco %d", cv, cvValue, locoNumber);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_MAIN], writeCVBytePacket, 4, 4);
+    loadBytePacket(signalGenerator, writeCVBytePacket, 4, 4);
   }
 }
 
 void writeOpsCVBit(const uint16_t locoNumber, const uint16_t cv, const uint8_t bit, const bool value) {
+  auto& signalGenerator = dccSignal[DCC_SIGNAL_OPERATIONS];
+  log_d("[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value, locoNumber);
   if(locoNumber > 127) {
     uint8_t writeCVBitPacket[] = {
       (uint8_t)(0xC0 | highByte(locoNumber)),
@@ -394,8 +451,7 @@ void writeOpsCVBit(const uint16_t locoNumber, const uint16_t cv, const uint8_t b
       lowByte(cv - 1),
       (uint8_t)(0xF0 + bit + value * 8),
       0x00};
-    log_d("[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value, locoNumber);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_MAIN], writeCVBitPacket, 5, 4);
+    loadBytePacket(signalGenerator, writeCVBitPacket, 5, 4);
   } else {
     uint8_t writeCVBitPacket[] = {
       lowByte(locoNumber),
@@ -403,7 +459,6 @@ void writeOpsCVBit(const uint16_t locoNumber, const uint16_t cv, const uint8_t b
       lowByte(cv - 1),
       (uint8_t)(0xF0 + bit + value * 8),
       0x00};
-    log_d("[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value, locoNumber);
-    loadBytePacket(dccSignalGenerators[SIGNAL_GENERATOR_MAIN], writeCVBitPacket, 4, 4);
+    loadBytePacket(signalGenerator, writeCVBitPacket, 4, 4);
   }
 }

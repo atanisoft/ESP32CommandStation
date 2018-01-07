@@ -40,7 +40,7 @@ void Locomotive::sendLocoUpdate() {
   } else {
     packetBuffer.push_back((uint8_t)(_speed + (_speed > 0) + _direction * 128));
   }
-  dccSignalGenerators[SIGNAL_GENERATOR_MAIN].loadPacket(packetBuffer, 0);
+  dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 0);
   _lastUpdate = millis();
 }
 
@@ -91,7 +91,7 @@ void LocomotiveManager::processFunction(const std::vector<String> arguments) {
     // be of binary form 10XX which should always be the case for FL,F1-F12
     packetBuffer.push_back((functionByte | 0x80) & 0xBF);
   }
-  dccSignalGenerators[SIGNAL_GENERATOR_MAIN].loadPacket(packetBuffer, 4);
+  dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 4);
 }
 
 void LocomotiveManager::showStatus() {

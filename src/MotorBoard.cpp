@@ -23,13 +23,17 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#define  CURRENT_SAMPLE_TIME        250
+const uint16_t motorBoardCheckInterval = 250;
+const uint16_t motorBoardCheckFaultCountdownInterval = 40;
 
 LinkedList<GenericMotorBoard *> motorBoards([](GenericMotorBoard *board) {delete board; });
 
-GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enablePin, uint16_t triggerMilliAmps, uint32_t maxMilliAmps, String name) :
-  _name(name), _senseChannel(senseChannel), _enablePin(enablePin), _maxMilliAmps(maxMilliAmps), _triggerValue(4096 / maxMilliAmps * triggerMilliAmps),
-  _state(false), _triggered(false) {
+GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enablePin,
+  uint16_t triggerMilliAmps, uint32_t maxMilliAmps, String name) :
+  _name(name), _senseChannel(senseChannel), _enablePin(enablePin),
+  _maxMilliAmps(maxMilliAmps), _triggerValue(4096 / maxMilliAmps * triggerMilliAmps),
+  _current(0), _state(false), _triggered(false), _triggerClearedCountdown(0),
+  _triggerRecurrenceCount(0) {
   adc1_config_channel_atten(senseChannel, ADC_ATTEN_DB_0);
   pinMode(enablePin, OUTPUT);
   log_i("[%s] Configuring motor board [ADC1 Channel: %d, currentLimit: %d, enablePin: %d]",
@@ -69,18 +73,28 @@ void GenericMotorBoard::showStatus() {
 
 void GenericMotorBoard::check() {
 	// if we have exceeded the CURRENT_SAMPLE_TIME we need to check if we are over/under current.
-	if(millis() - _lastCheckTime > CURRENT_SAMPLE_TIME) {
+	if(millis() - _lastCheckTime > motorBoardCheckInterval) {
     _lastCheckTime = millis();
 		_current = adc1_get_raw(_senseChannel);
-		if(_current > _triggerValue && isOn()) {
-      log_i("[%s] Overcurrent detected [%d] vs [%d]", _name.c_str(), _current, _triggerValue);
+		if(_current >= _triggerValue && isOn()) {
+      log_i("[%s] Overcurrent detected %2.2f mA", _name.c_str(), getCurrentDraw());
 			powerOff(true, true);
-			_triggered=true;
+			_triggered = true;
+      _triggerClearedCountdown = motorBoardCheckFaultCountdownInterval;
+      _triggerRecurrenceCount = 0;
+    } else if(_current >= _triggerValue && _triggered) {
+      _triggerRecurrenceCount++;
+      log_i("[%s] Overcurrent persists (%d ms) %2.2f mA", _name.c_str(), _triggerRecurrenceCount * motorBoardCheckInterval, getCurrentDraw());
 		} else if(_current < _triggerValue && _triggered) {
-      log_i("[%s] Overcurrent cleared", _name.c_str());
-			powerOn();
-			_triggered=false;
-		}
+      _triggerClearedCountdown--;
+      if(_triggerClearedCountdown == 0) {
+        log_i("[%s] Overcurrent cleared, enabling", _name.c_str());
+  			powerOn();
+  			_triggered=false;
+      } else {
+        log_i("[%s] Overcurrent cleared, %d ms before re-enable", _name.c_str(), _triggerClearedCountdown * motorBoardCheckInterval);
+      }
+    }
 	}
 }
 
@@ -122,7 +136,9 @@ void MotorBoardManager::powerOnAll() {
   for (const auto& board : motorBoards) {
     board->powerOn();
   }
-  InfoScreen::printf(13, 3, F("ON   "));
+#if INFO_SCREEN_TRACK_POWER_LINE >= 0
+  InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("ON   "));
+#endif
 }
 
 void MotorBoardManager::powerOffAll() {
@@ -130,7 +146,9 @@ void MotorBoardManager::powerOffAll() {
   for (const auto& board : motorBoards) {
     board->powerOff();
   }
-  InfoScreen::printf(13, 3, F("OFF  "));
+#if INFO_SCREEN_TRACK_POWER_LINE >= 0
+  InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("OFF  "));
+#endif
 }
 
 bool MotorBoardManager::powerOn(const String name) {
@@ -176,6 +194,10 @@ std::vector<String> MotorBoardManager::getBoardNames() {
   return boardNames;
 }
 
+uint8_t MotorBoardManager::getMotorBoardCount() {
+  return motorBoards.length();
+}
+
 void MotorBoardManager::getState(JsonArray &array) {
   for (const auto& motorBoard : motorBoards) {
     JsonObject &board = array.createNestedObject();
@@ -187,7 +209,7 @@ void MotorBoardManager::getState(JsonArray &array) {
     } else {
       board[F("state")] = F("Off");
     }
-    board[F("usage")] = motorBoard->getLastRead();
+    board[F("usage")] = motorBoard->getCurrentDraw();
  	}
 }
 

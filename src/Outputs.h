@@ -26,6 +26,7 @@ public:
   Output(uint16_t, uint8_t, uint8_t);
   Output(uint16_t);
   void set(bool=false, bool=true);
+  void update(uint8_t, uint8_t);
   void store(uint16_t);
   const uint16_t getID() {
     return _id;
@@ -55,7 +56,7 @@ class OutputManager {
     static bool set(uint16_t, bool=false);
     static void getState(JsonArray &);
     static void showStatus();
-    static bool create(const uint16_t, const uint8_t, const uint8_t);
+    static void createOrUpdate(const uint16_t, const uint8_t, const uint8_t);
     static bool remove(const uint16_t);
 };
 

@@ -16,6 +16,8 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 
 #include "DCCppESP32.h"
+#include "MotorBoard.h"
+#include "Locomotive.h"
 
 #ifndef INFO_SCREEN_SDA_PIN
 #define INFO_SCREEN_SDA_PIN SDA
@@ -41,15 +43,16 @@ LiquidCrystal_PCF8574 lcdDisplay(INFO_SCREEN_LCD_I2C_ADDRESS);
 #endif
 
 bool InfoScreen::_enabled;
+
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
-String InfoScreen::_lines[INFO_SCREEN_MAX_LINES];
+String infoScreenLines[INFO_SCREEN_OLED_LINES];
 #endif
 
 void InfoScreen::init() {
   _enabled = false;
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
-  for(int i = 0; i < INFO_SCREEN_MAX_LINES; i++) {
-    _lines[i] = "";
+  for(int i = 0; i < INFO_SCREEN_OLED_LINES; i++) {
+    infoScreenLines[i] = "";
   }
   Wire.begin(INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
   // Check that we can find the OLED screen by its address before attempting
@@ -97,17 +100,17 @@ void InfoScreen::clear() {
 }
 
 void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...) {
-  char buf[256] = {0};
+  char buf[512] = {0};
   va_list args;
   va_start(args, format);
   vsnprintf_P(buf, sizeof(buf), (const char *)format, args);
   va_end(args);
   if(_enabled) {
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
-    _lines[row] = _lines[row].substring(0, col) + buf + _lines[row].substring(col + strlen(buf));
+    infoScreenLines[row] = infoScreenLines[row].substring(0, col) + buf + infoScreenLines[row].substring(col + strlen(buf));
     oledDisplay.clear();
-    for(int line = 0; line < INFO_SCREEN_MAX_LINES; line++) {
-      oledDisplay.drawString(0, line * Monospaced_plain_10[1], _lines[line]);
+    for(int line = 0; line < INFO_SCREEN_OLED_LINES; line++) {
+      oledDisplay.drawString(0, line * Monospaced_plain_10[1], infoScreenLines[line]);
     }
     oledDisplay.display();
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
@@ -122,17 +125,17 @@ void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...
 }
 
 void InfoScreen::printf(int col, int row, const char *format, ...) {
-  char buf[256] = {0};
+  char buf[512] = {0};
   va_list args;
   va_start(args, format);
   vsnprintf(buf, sizeof(buf), (const char *)format, args);
   va_end(args);
   if(_enabled) {
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
-    _lines[row] = _lines[row].substring(0, col) + buf + _lines[row].substring(col + strlen(buf));
+    infoScreenLines[row] = infoScreenLines[row].substring(0, col) + buf + infoScreenLines[row].substring(col + strlen(buf));
     oledDisplay.clear();
-    for(int line = 0; line < INFO_SCREEN_MAX_LINES; line++) {
-      oledDisplay.drawString(0, line * Monospaced_plain_10[1], _lines[line]);
+    for(int line = 0; line < INFO_SCREEN_OLED_LINES; line++) {
+      oledDisplay.drawString(0, line * Monospaced_plain_10[1], infoScreenLines[line]);
     }
     oledDisplay.display();
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
@@ -143,5 +146,54 @@ void InfoScreen::printf(int col, int row, const char *format, ...) {
 #endif
   } else {
     Serial.println(buf);
+  }
+}
+
+void InfoScreen::update() {
+  static uint8_t _rotatingStatusIndex = 0;
+  static uint8_t _motorboardIndex = 0;
+  static uint8_t _dccIndex = 0;
+  static uint32_t _lastRotation = millis();
+  static uint32_t _lastUpdate = millis();
+  if(_enabled) {
+    // switch to next status line detail set every five seconds
+    if(millis() - _lastRotation >= 5000) {
+      _lastRotation = millis();
+      ++_rotatingStatusIndex %= 3;
+    }
+    // update the status line details every half second
+    if(millis() - _lastUpdate >= 450) {
+      _lastUpdate = millis();
+#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+      // clear the line so we don't have artifacts
+      infoScreenLines[INFO_SCREEN_ROTATING_STATUS_LINE] = "";
+#endif
+      switch(_rotatingStatusIndex) {
+        case 0: // free heap
+          printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap: %d"),
+            ESP.getFreeHeap());
+          break;
+        case 1: // locomotive count
+          printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("Active Locos: %03d"),
+            LocomotiveManager::getActiveLocoCount());
+          break;
+        case 2: // motor shield
+          ++_motorboardIndex %= MotorBoardManager::getMotorBoardCount();
+          auto board = MotorBoardManager::getBoardByName(MotorBoardManager::getBoardNames()[_motorboardIndex]);
+          if(board != NULL && (board->isOn() || board->isOverCurrent())) {
+            if(board->isOverCurrent()) {
+              printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Fault (%2.2f A)"),
+                board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+            } else if(board->isOn()) {
+              printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Normal (%2.2f A)"),
+                board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+            }
+          } else if(board != NULL) {
+            printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("%s: Off"),
+              board->getName().c_str());
+          }
+          break;
+        }
+    }
   }
 }

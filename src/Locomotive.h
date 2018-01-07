@@ -65,6 +65,9 @@ public:
   static void processThrottle(const std::vector<String> arguments);
   static void processFunction(const std::vector<String> arguments);
   static void showStatus();
+  static uint8_t getActiveLocoCount() {
+    return _locos.length();
+  }
 private:
   static LinkedList<Locomotive *> _locos;
 };

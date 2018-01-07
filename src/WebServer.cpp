@@ -89,13 +89,15 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     std::bind(&DCCPPWebServer::handleTurnouts, this, std::placeholders::_1));
   on("/sensors", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleSensors, this, std::placeholders::_1));
+  on("/config", HTTP_POST | HTTP_DELETE,
+    std::bind(&DCCPPWebServer::handleConfig, this, std::placeholders::_1));
   webSocket.onEvent([](AsyncWebSocket * server, AsyncWebSocketClient * client,
       AwsEventType type, void * arg, uint8_t *data, size_t len) {
     if (type == WS_EVT_CONNECT) {
       webSocketClients.add(new WebSocketClient(client->id()));
       client->printf("DCC++ESP v%s. READY!", VERSION);
-  #if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
-      InfoScreen::printf(12, 2, F("%02d"), webSocketClients.length());
+  #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
+      InfoScreen::printf(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
   #endif
     } else if (type == WS_EVT_DISCONNECT) {
       WebSocketClient *toRemove = NULL;
@@ -107,8 +109,8 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
       if(toRemove != NULL) {
         webSocketClients.remove(toRemove);
       }
-  #if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD_LINES > 2)
-      InfoScreen::printf(12, 2, F("%02d"), webSocketClients.length());
+  #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
+      InfoScreen::printf(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
   #endif
     } else if (type == WS_EVT_DATA) {
       for (const auto& clientNode : webSocketClients) {
@@ -179,7 +181,15 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
     JsonArray &array = jsonResponse->getRoot();
     OutputManager::getState(array);
   } else if(request->method() == HTTP_POST) {
+    uint16_t outputID = request->arg(F("id")).toInt();
+    uint8_t pin = request->arg(F("pin")).toInt();
+    bool inverted = request->arg(F("inverted")).toInt() == 1;
+    OutputManager::createOrUpdate(outputID, pin, inverted);
   } else if(request->method() == HTTP_DELETE) {
+    uint16_t outputID = request->arg(F("id")).toInt();
+    if(!OutputManager::remove(outputID)) {
+      jsonResponse->setCode(404);
+    }
   } else if(request->method() == HTTP_PUT) {
    uint16_t outputID = request->arg(F("id")).toInt();
    bool state = request->arg(F("state")).toInt() == 1;
@@ -225,10 +235,7 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
     uint16_t sensorID = request->arg(F("id")).toInt();
     uint8_t sensorPin = request->arg(F("pin")).toInt();
     bool sensorPullUp = request->arg(F("pullUp")).toInt() == 1;
-    if(!SensorManager::create(sensorID, sensorPin, sensorPullUp)) {
-      jsonResponse->setCode(406);
-      jsonResponse->getRoot()[F("message")] = F("Duplicate ID or Pin");
-    }
+    SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp);
   } else if(request->method() == HTTP_DELETE) {
     uint16_t sensorID = request->arg(F("id")).toInt();
     if(!SensorManager::remove(sensorID)) {
@@ -237,4 +244,13 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
+}
+
+void DCCPPWebServer::handleConfig(AsyncWebServerRequest *request) {
+  std::vector<String> arguments;
+  if(request->method() == HTTP_POST) {
+    DCCPPProtocolHandler::getCommandHandler("E")->process(arguments);
+  } else {
+    DCCPPProtocolHandler::getCommandHandler("e")->process(arguments);
+  }
 }

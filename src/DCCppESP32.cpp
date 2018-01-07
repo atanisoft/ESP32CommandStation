@@ -168,21 +168,31 @@ void setup() {
 	configStore.begin("DCCpp");
 
 	InfoScreen::init();
-	InfoScreen::printf(0, 0, F("DCC++ESP: v%s"), VERSION);
+	InfoScreen::printf(0, INFO_SCREEN_STATION_INFO_LINE, F("DCC++ESP: v%s"), VERSION);
+#if INFO_SCREEN_STATION_INFO_LINE == INFO_SCREEN_IP_ADDR_LINE
+	delay(250);
+#endif
 	wifiInterface.begin();
-	startDCCSignalGenerators();
-  MotorBoardManager::registerBoard(ADC1_CHANNEL_2, SIGNAL_ENABLE_PIN_MAIN, MOTOR_BOARD_TYPE::ARDUINO_SHIELD, "MAIN");
-  MotorBoardManager::registerBoard(ADC1_CHANNEL_6, SIGNAL_ENABLE_PIN_PROG, MOTOR_BOARD_TYPE::ARDUINO_SHIELD, "PROG");
-	InfoScreen::printf(0, 3, F("TRACK POWER: OFF"));
+  MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_MAIN,
+		MOTORBOARD_ENABLE_PIN_MAIN, MOTORBOARD_TYPE_MAIN, MOTORBOARD_NAME_MAIN);
+  MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_PROG,
+		MOTORBOARD_ENABLE_PIN_PROG, MOTORBOARD_TYPE_PROG, MOTORBOARD_NAME_PROG);
+#if INFO_SCREEN_TRACK_POWER_LINE >= 0
+	InfoScreen::printf(0, INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
+#endif
 	DCCPPProtocolHandler::init();
 	OutputManager::init();
 	TurnoutManager::init();
 	SensorManager::init();
+
+	configureDCCSignalGenerators();
+
 	log_i("DCC++ READY!");
 }
 
 void loop() {
 	wifiInterface.update();
+	InfoScreen::update();
 	MotorBoardManager::check();
 	SensorManager::check();
 	LocomotiveManager::update();

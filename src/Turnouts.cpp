@@ -226,5 +226,5 @@ void AccessoryCommand::process(const std::vector<String> arguments) {
   // significant D represent activate/deactivate
   packetBuffer.push_back(((((accessoryAddress / 64) % 8) << 4) +
     (accessoryIndex % 4 << 1) + activate) ^ 0xF8);
-  dccSignalGenerators[SIGNAL_GENERATOR_MAIN].loadPacket(packetBuffer, 4);
+  dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 4);
 }

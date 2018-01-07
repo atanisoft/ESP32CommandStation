@@ -124,15 +124,14 @@ void SensorManager::getState(JsonArray & array) {
   }
 }
 
-bool SensorManager::create(const uint16_t id, const uint8_t pin, const bool pullUp) {
+void SensorManager::createOrUpdate(const uint16_t id, const uint8_t pin, const bool pullUp) {
   // check for duplicate ID or PIN
   for (const auto& sensor : sensors) {
-    if(sensor->getID() == id || sensor->getPin() == pin) {
-      return false;
+    if(sensor->getID() == id) {
+      sensor->update(pin, pullUp);
     }
   }
   sensors.add(new Sensor(id, pin, pullUp));
-  return true;
 }
 
 bool SensorManager::remove(const uint16_t id) {
@@ -151,7 +150,12 @@ bool SensorManager::remove(const uint16_t id) {
 }
 
 Sensor::Sensor(uint16_t sensorID, uint8_t pin, bool pullUp) : _sensorID(sensorID), _pin(pin), _pullUp(pullUp), _lastState(false) {
-  log_i("Sensor %d created using pin %d with pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+  log_i("Sensor(%d) on pin %d created, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+  if(_pullUp) {
+    pinMode(_pin, INPUT_PULLUP);
+  } else {
+    pinMode(_pin, INPUT);
+  }
 }
 
 Sensor::Sensor(uint16_t index) : _lastState(false) {
@@ -161,7 +165,12 @@ Sensor::Sensor(uint16_t index) : _lastState(false) {
   _sensorID = configStore.getUShort(sensorIDKey.c_str(), index);
   _pin = configStore.getUChar(sensorPinKey.c_str(), 0);
   _pullUp = configStore.getBool(sensorPullUpKey.c_str(), false);
-  log_i("Sensor(%d, %d, %s)", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+  log_i("Sensor(%d) on pin %d loaded, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+  if(_pullUp) {
+    pinMode(_pin, INPUT_PULLUP);
+  } else {
+    pinMode(_pin, INPUT);
+  }
 }
 
 void Sensor::store(uint16_t index) {
@@ -171,6 +180,17 @@ void Sensor::store(uint16_t index) {
   configStore.putUShort(sensorIDKey.c_str(), _sensorID);
   configStore.putUChar(sensorPinKey.c_str(), _pin);
   configStore.putBool(sensorPullUpKey.c_str(), _pullUp);
+}
+
+void Sensor::update(uint8_t pin, bool pullUp) {
+  _pin = pin;
+  _pullUp = pullUp;
+  log_i("Sensor(%d) on pin %d updated, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+  if(_pullUp) {
+    pinMode(_pin, INPUT_PULLUP);
+  } else {
+    pinMode(_pin, INPUT);
+  }
 }
 
 void Sensor::check() {
@@ -200,8 +220,9 @@ void SensorCommandAdapter::process(const std::vector<String> arguments) {
     if (arguments.size() == 1 && SensorManager::remove(sensorID)) {
       // delete turnout
       wifiInterface.printf(F("<O>"));
-    } else if (arguments.size() == 3 && SensorManager::create(sensorID, arguments[1].toInt(), arguments[2].toInt() == 1)) {
+    } else if (arguments.size() == 3) {
       // create sensor
+      SensorManager::createOrUpdate(sensorID, arguments[1].toInt(), arguments[2].toInt() == 1);
       wifiInterface.printf(F("<O>"));
     } else {
       wifiInterface.printf(F("<X>"));

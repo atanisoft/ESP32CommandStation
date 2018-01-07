@@ -35,7 +35,7 @@ WiFiInterface::WiFiInterface() {
 }
 
 void WiFiInterface::begin() {
-  InfoScreen::printf(0, 1, F("IP:Pending"));
+  InfoScreen::printf(0, INFO_SCREEN_IP_ADDR_LINE, F("IP:Pending"));
 #if defined(WIFI_STATIC_IP_ADDRESS) && defined(WIFI_STATIC_IP_GATEWAY) && defined(WIFI_STATIC_IP_SUBNET)
   IPAddress staticIP, gatewayIP, subnetMask, dnsServer;
   staticIP.fromString(WIFI_STATIC_IP_ADDRESS);
@@ -52,18 +52,21 @@ void WiFiInterface::begin() {
   log_i("Connecting to WiFi: %s", wifiSSID.c_str());
   WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
   log_i("Waiting for WiFi to connect");
-  WiFi.waitForConnectResult();
+  if(WiFi.waitForConnectResult() == WL_NO_SSID_AVAIL) {
+    log_i("WiFI connect failed, restarting");
+    ESP.restart();
+  }
   uint8_t wifiConnectAttempts = 250;
   while(WiFi.status() != WL_CONNECTED && wifiConnectAttempts-- > 0) {
     log_i("WiFi status: %d", WiFi.status());
     delay(250);
   }
   if(WiFi.status() != WL_CONNECTED) {
-    InfoScreen::printf(3, 1, F("Failed"));
+    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
     log_i("WiFI connect failed, restarting");
     ESP.restart();
   }
-  InfoScreen::printf(3, 1, WiFi.localIP().toString().c_str());
+  InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
   DCCppServer.setNoDelay(true);
   DCCppServer.begin();
   dccppWebServer.begin();
@@ -102,6 +105,7 @@ void WiFiInterface::update() {
 						*e = 0;
 						String str(reinterpret_cast<char*>(&*s));
             printf(F("<%s>"), str.c_str());
+            log_d("Command: <%s>", str.c_str());
             DCCPPProtocolHandler::process(std::move(str));
 						consumed = e;
 					}

@@ -32,8 +32,13 @@ LinkedList<DCCPPProtocolCommand *> registeredCommands([](DCCPPProtocolCommand *c
 class ConfigErase : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
+    stopDCCSignalGenerators();
     configStore.clear();
+    TurnoutManager::clear();
+    SensorManager::clear();
+    OutputManager::clear();
     wifiInterface.printf(F("<O>"));
+    startDCCSignalGenerators();
   }
   String getID() {
     return "e";
@@ -45,10 +50,12 @@ public:
 class ConfigStore : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
+    stopDCCSignalGenerators();
     wifiInterface.printf(F("<e %d %d %d>"),
       TurnoutManager::store(),
       SensorManager::store(),
       OutputManager::store());
+    startDCCSignalGenerators();
   }
   String getID() {
     return "E";
@@ -192,6 +199,7 @@ void DCCPPProtocolHandler::init() {
   registerCommand(new ConfigStore());
   registerCommand(new OutputCommandAdapter());
   registerCommand(new TurnoutCommandAdapter());
+  registerCommand(new SensorCommandAdapter());
 }
 
 void DCCPPProtocolHandler::process(const String commandString) {
@@ -213,14 +221,17 @@ void DCCPPProtocolHandler::process(const String commandString) {
   }
   String commandID = parts.front();
   parts.erase(parts.begin());
+  //log_i("Command: %s, argument count: %d", commandID.c_str(), parts.size());
+  bool processed = false;
   for (const auto& command : registeredCommands) {
-    if(commandID.startsWith(command->getID())) {
-      if(commandID.length() > command->getID().length()) {
-        parts.insert(parts.begin(),
-          commandID.substring(command->getID().length() + 1));
-      }
+    if(commandID == command->getID()) {
       command->process(parts);
+      processed = true;
     }
+  }
+  if(!processed) {
+    log_e("No command handler for [%s]", commandID.c_str());
+    wifiInterface.printf(F("<X>"));
   }
 }
 
