@@ -101,6 +101,10 @@ or GUI program.
 **********************************************************************/
 LinkedList<Output *> outputs([](Output *output) {delete output; });
 
+const uint8_t OUTPUT_IFLAG_INVERT = 0;
+const uint8_t OUTPUT_IFLAG_RESTORE_STATE = 1;
+const uint8_t OUTPUT_IFLAG_FORCE_STATE = 2;
+
 void OutputManager::init() {
   log_i("Initializing outputs");
   uint16_t outputCount = configStore.getUShort("OutputCount", 0);
@@ -150,14 +154,13 @@ void OutputManager::showStatus() {
   }
 }
 
-bool OutputManager::create(const uint16_t id, const uint8_t pin, const uint8_t flags) {
+void OutputManager::createOrUpdate(const uint16_t id, const uint8_t pin, const uint8_t flags) {
   for (const auto& output : outputs) {
-    if(output->getID() == id || output->getPin() == pin) {
-      return false;
+    if(output->getID() == id) {
+      output->update(pin, flags);
     }
   }
   outputs.add(new Output(id, pin, flags));
-  return true;
 }
 
 bool OutputManager::remove(const uint16_t id) {
@@ -176,60 +179,59 @@ bool OutputManager::remove(const uint16_t id) {
 
 Output::Output(uint16_t id, uint8_t pin, uint8_t flags) : _id(id), _pin(pin), _flags(flags), _active(false) {
   String flagsString = "";
-  if(bitRead(_flags, 0)) {
-    flagsString += "activeHigh";
-  } else {
+  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
     flagsString += "activeLow";
+  } else {
+    flagsString += "activeHigh";
   }
-  if(bitRead(_flags, 1)) {
-    if(bitRead(_flags, 2)) {
+  if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
+    if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
       flagsString += ",forceState(on)";
-      _active = true;
+      set(true, false);
     } else {
       flagsString += ",forceState(off)";
-      _active = true;
+      set(false, false);
     }
-    set(_active, false);
   } else {
-    flagsString += ",restoreState(off)";
+    flagsString += ",restoreState";
+    set(false, false);
   }
-  log_i("Output %d created using pin %d and flags: %s", _id, _pin, flagsString.c_str());
+  log_i("Output(%d) on pin %d created, flags: %s", _id, _pin, flagsString.c_str());
   pinMode(_pin, OUTPUT);
 }
 
 Output::Output(uint16_t index) {
-  String outputIDKey = String("T_") + String(index);
+  String outputIDKey = String("O_") + String(index);
   String outputPinKey = outputIDKey + String("_p");
   String outputFlagsKey = outputIDKey + String("_f");
   _id = configStore.getUShort(outputIDKey.c_str(), index);
-  _pin = configStore.getUShort(outputPinKey.c_str(), 0);
+  _pin = configStore.getUChar(outputPinKey.c_str(), 0);
   _flags = configStore.getUChar(outputFlagsKey.c_str(), 0);
   String flagsString = "";
-  if(bitRead(_flags, 0)) {
-    flagsString += "activeHigh";
-  } else {
+  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
     flagsString += "activeLow";
+  } else {
+    flagsString += "activeHigh";
   }
-  if(bitRead(_flags, 1)) {
-    if(bitRead(_flags, 2)) {
+  if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
+    if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
       flagsString += ",forceState(on)";
-      _active = true;
+      set(true, false);
     } else {
       flagsString += ",forceState(off)";
-      _active = true;
+      set(false, false);
     }
-    set(_active, false);
   } else {
     String outputStateKey = outputIDKey + String("_s");
-    _active = configStore.getBool(outputStateKey.c_str(), false);
-    if(_active) {
+    if(configStore.getBool(outputStateKey.c_str(), false)) {
       flagsString += ",restoreState(on)";
+      set(true, false);
     } else {
       flagsString += ",restoreState(off)";
+      set(false, false);
     }
-    set(_active, false);
   }
-  log_i("Output(%d, %d, %s)", _id, _pin, flagsString.c_str());
+  log_i("Output(%d) on pin %d loaded, flags: %s", _id, _pin, flagsString.c_str());
   pinMode(_pin, OUTPUT);
 }
 
@@ -241,17 +243,40 @@ void Output::set(bool active, bool announce) {
   }
 }
 
+void Output::update(uint8_t pin, uint8_t flags) {
+  _pin = pin;
+  _flags = flags;
+  String flagsString = "";
+  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
+    flagsString += "activeLow";
+  } else {
+    flagsString += "activeHigh";
+  }
+  if(!bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
+    flagsString += ",restoreState";
+    set(false, false);
+  } else {
+    if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
+      flagsString += ",forceState(on)";
+      set(true, false);
+    } else {
+      flagsString += ",forceState(off)";
+      set(false, false);
+    }
+  }
+  log_i("Output(%d) on pin %d updated, flags: %s", _id, _pin, flagsString.c_str());
+  pinMode(_pin, OUTPUT);
+}
+
 void Output::store(uint16_t index) {
-  String outputIDKey = String("T_") + String(index);
+  String outputIDKey = String("O_") + String(index);
   String outputPinKey = outputIDKey + String("_p");
   String outputFlagsKey = outputIDKey + String("_f");
+  String outputStateKey = outputIDKey + String("_s");
   configStore.putUShort(outputIDKey.c_str(), _id);
-  configStore.putUShort(outputPinKey.c_str(), _pin);
-  configStore.putChar(outputFlagsKey.c_str(), _flags);
-  if(bitRead(_flags, 1) == 0) {
-    String outputStateKey = outputIDKey + String("_s");
-    configStore.putBool(outputStateKey.c_str(), _active);
-  }
+  configStore.putUChar(outputPinKey.c_str(), _pin);
+  configStore.putUChar(outputFlagsKey.c_str(), _flags);
+  configStore.putBool(outputStateKey.c_str(), _active);
 }
 
 void Output::showStatus() {
@@ -269,8 +294,9 @@ void OutputCommandAdapter::process(const std::vector<String> arguments) {
       wifiInterface.printf(F("<O>"));
     } else if (arguments.size() == 2 && OutputManager::set(outputID, arguments[1].toInt() == 1)) {
       // set output state
-    } else if (arguments.size() == 3 && OutputManager::create(outputID, arguments[1].toInt(), arguments[2].toInt())) {
+    } else if (arguments.size() == 3) {
       // create output
+      OutputManager::createOrUpdate(outputID, arguments[1].toInt(), arguments[2].toInt());
       wifiInterface.printf(F("<O>"));
     } else {
       wifiInterface.printf(F("<X>"));

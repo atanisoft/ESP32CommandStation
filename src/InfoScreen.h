@@ -18,7 +18,27 @@ COPYRIGHT (c) 2017 Mike Dunston
 #ifndef _INFOSCREEN_H_
 #define _INFOSCREEN_H_
 
-#define INFO_SCREEN_MAX_LINES 5
+#include "Config.h"
+
+#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+#define INFO_SCREEN_STATION_INFO_LINE 0
+#define INFO_SCREEN_IP_ADDR_LINE 1
+#define INFO_SCREEN_WS_CLIENTS_LINE 2
+#define INFO_SCREEN_TRACK_POWER_LINE 3
+#define INFO_SCREEN_ROTATING_STATUS_LINE 4
+#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && INFO_SCREEN_LCD_LINES > 2
+#define INFO_SCREEN_STATION_INFO_LINE 0
+#define INFO_SCREEN_IP_ADDR_LINE 1
+#define INFO_SCREEN_WS_CLIENTS_LINE -1
+#define INFO_SCREEN_TRACK_POWER_LINE 2
+#define INFO_SCREEN_ROTATING_STATUS_LINE 3
+#else
+#define INFO_SCREEN_STATION_INFO_LINE 0
+#define INFO_SCREEN_IP_ADDR_LINE 0
+#define INFO_SCREEN_WS_CLIENTS_LINE -1
+#define INFO_SCREEN_TRACK_POWER_LINE -1
+#define INFO_SCREEN_ROTATING_STATUS_LINE 1
+#endif
 
 class InfoScreen {
   public:
@@ -26,11 +46,9 @@ class InfoScreen {
     static void clear();
     static void printf(int col, int row, const __FlashStringHelper *format, ...);
     static void printf(int col, int row, const char *format, ...);
+    static void update();
   private:
     static bool _enabled;
-  #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
-    static String _lines[INFO_SCREEN_MAX_LINES];
-  #endif
 };
 
 #endif

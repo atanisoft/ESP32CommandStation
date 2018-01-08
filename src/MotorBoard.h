@@ -46,22 +46,27 @@ public:
 	const adc1_channel_t getADC1Channel() {
 		return _senseChannel;
 	}
-	int getLastRead() {
+	uint16_t getLastRead() {
 		return _current;
 	}
 	const uint32_t getMaxMilliAmps() {
 		return _maxMilliAmps;
 	}
-protected:
+	float getCurrentDraw() {
+		return (float)(_current * (4096.0f / _maxMilliAmps));
+	}
+private:
 	const String _name;
 	const adc1_channel_t _senseChannel;
 	const uint8_t _enablePin;
 	const uint32_t _maxMilliAmps;
 	const uint16_t _triggerValue;
-	float _current;
+	uint16_t _current;
 	uint32_t _lastCheckTime;
 	bool _state;
 	bool _triggered;
+	uint8_t _triggerClearedCountdown;
+	uint8_t _triggerRecurrenceCount;
 };
 
 class MotorBoardManager {
@@ -69,6 +74,7 @@ public:
 	static GenericMotorBoard *registerBoard(adc1_channel_t, uint8_t, MOTOR_BOARD_TYPE, String);
 	static GenericMotorBoard *getBoardByName(String);
 	static std::vector<String> getBoardNames();
+	static uint8_t getMotorBoardCount();
 	static void check();
 	static void powerOnAll();
 	static bool powerOn(const String);

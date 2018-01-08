@@ -25,6 +25,7 @@ class Sensor {
 public:
   Sensor(uint16_t, uint8_t, bool=false);
   Sensor(uint16_t);
+  void update(uint8_t, bool=false);
   void store(uint16_t);
   const uint16_t getID() {
     return _sensorID;
@@ -54,7 +55,7 @@ public:
   static uint16_t store();
   static void check();
   static void getState(JsonArray &);
-  static bool create(const uint16_t, const uint8_t, const bool);
+  static void createOrUpdate(const uint16_t, const uint8_t, const bool);
   static bool remove(const uint16_t);
 };
 

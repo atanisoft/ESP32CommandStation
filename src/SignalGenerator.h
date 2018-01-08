@@ -35,6 +35,10 @@ struct Packet {
 struct SignalGenerator {
   template<int timerIndex>
   void configureSignal(String, uint8_t, uint16_t);
+  template<int timerIndex>
+  void startSignal();
+  template<int timerIndex>
+  void stopSignal();
 
   bool IRAM_ATTR getNextBitToSend();
   void loadPacket(std::vector<uint8_t>, int);
@@ -58,8 +62,10 @@ struct SignalGenerator {
   };
 };
 
-extern SignalGenerator dccSignalGenerators[2];
+extern SignalGenerator dccSignal[2];
+void configureDCCSignalGenerators();
 void startDCCSignalGenerators();
+void stopDCCSignalGenerators();
 
 int16_t readCV(const uint16_t);
 bool writeProgCVByte(const uint16_t, const uint8_t);
@@ -67,7 +73,8 @@ bool writeProgCVBit(const uint16_t, const uint8_t, const bool);
 void writeOpsCVByte(const uint16_t, const uint16_t, const uint8_t);
 void writeOpsCVBit(const uint16_t, const uint16_t, const uint8_t, const bool);
 
-#define SIGNAL_GENERATOR_MAIN 0
-#define SIGNAL_GENERATOR_PROG 1
+#define DCC_SIGNAL_OPERATIONS 0
+#define DCC_SIGNAL_PROGRAMMING 1
+#define MAX_DCC_SIGNAL_GENERATORS 2
 
 #endif

@@ -18,7 +18,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// DEFINE PORT TO USE FOR ETHERNET COMMUNICATIONS INTERFACE
+// DEFINE PORT TO USE FOR JMRI WiFi INTERFACE
 //
 #define DCCPP_CLIENT_PORT 2560
 
@@ -32,14 +32,32 @@ COPYRIGHT (c) 2017 Mike Dunston
 //
 // DEFINE WHICH PINS ARE USED BY MAIN/PROG MOTOR SHIELDS
 //
-// MAIN TRACK SIGNAL ENABLED PIN
-#define SIGNAL_ENABLE_PIN_MAIN 25
-// PROG TRACK SIGNAL ENABLED PIN
-#define SIGNAL_ENABLE_PIN_PROG 23
-// MAIN TRACK DIRECTION PIN
-#define DIRECTION_MOTOR_CHANNEL_PIN_MAIN 19
-// PROG TRACK DIRECTION PIN
-#define DIRECTION_MOTOR_CHANNEL_PIN_PROG 18
+// MAIN TRACK MOTORBOARD NAME
+#define MOTORBOARD_NAME_MAIN "MAIN"
+// MAIN TRACK NOTORBOARD ENABLED PIN
+#define MOTORBOARD_ENABLE_PIN_MAIN 25
+// MAIN TRACK MOTORBOARD CURRENT SENSE ADC PIN
+#define MOTORBOARD_CURRENT_SENSE_MAIN ADC1_CHANNEL_2
+// MAIN TRACK MOTORBOARD MOTOR_BOARD_TYPE
+#define MOTORBOARD_TYPE_MAIN MOTOR_BOARD_TYPE::ARDUINO_SHIELD
+
+// PROG TRACK MOTORBOARD NAME
+#define MOTORBOARD_NAME_PROG "PROG"
+// PROG TRACK NOTORBOARD ENABLED PIN
+#define MOTORBOARD_ENABLE_PIN_PROG 23
+// PROG TRACK MOTORBOARD CURRENT SENSE ADC PIN
+#define MOTORBOARD_CURRENT_SENSE_PROG ADC1_CHANNEL_6
+// PROG TRACK MOTORBOARD MOTOR_BOARD_TYPE
+#define MOTORBOARD_TYPE_PROG MOTOR_BOARD_TYPE::ARDUINO_SHIELD
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// DEFINE WHICH PINS ARE USED FOR DCC SIGNAL GENERATION
+//
+// OPERATIONS TRACK DCC SIGNAL PIN
+#define DCC_SIGNAL_PIN_OPERATIONS 19
+// PROGRAMMING TRACK DCC SIGNAL PIN
+#define DCC_SIGNAL_PIN_PROGRAMMING 18
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -50,10 +68,16 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// DEFINE STATIC IP ADDRESS *OR* COMMENT OUT TO USE DHCP
+// DEFINE STATIC IP ADDRESS DETAILS OR LEAVE COMMENTED FOR DHCP
 //
 
-//#define IP_ADDRESS { 192, 168, 1, 200 }
+//#define WIFI_STATIC_IP_ADDRESS "192.168.0.115"
+//#define WIFI_STATIC_IP_GATEWAY "192.168.0.1"
+//#define WIFI_STATIC_IP_SUBNET "255.255.255.0"
+
+// WIFI_STATIC_IP_DNS is optional, if not defined the value below will be used
+// automatically. This is a Google provided DNS server.
+//#define WIFI_STATIC_IP_DNS "8.8.8.8"
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -71,11 +95,18 @@ COPYRIGHT (c) 2017 Mike Dunston
 //
 // BOTH OLED AND LCD SCREENS ARE SUPPORTED
 
+// If the ESP32 board does not use standard SDA/SCL pins as defined in pins_arduino.h
+// uncomment the next two lines and define the pins that need to be used instead
+//#define INFO_SCREEN_SDA_PIN SDA
+//#define INFO_SCREEN_SCL_PIN SCL
+
 // OLED SCREEN PARAMETERS
 //#define INFO_SCREEN_OLED true
+// OLED SUPPORTED CHIPSETS: SH1106, SH1306
 //#define OLED_CHIPSET SH1106
 //#define INFO_SCREEN_OLED_I2C_ADDRESS 0x3C
 //#define INFO_SCREEN_OLED_VERTICAL_FLIP false
+//#define INFO_SCREEN_OLED_LINES 5
 
 // LCD SCREEN PARAMETERS
 //#define INFO_SCREEN_LCD true

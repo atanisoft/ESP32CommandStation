@@ -16,14 +16,27 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 #include <ESPAsyncWebServer.h>
 
-class DCCPPWebServer {
+#include "InfoScreen.h"
+
+class DCCPPWebServer : public AsyncWebServer {
 public:
-  DCCPPWebServer(AsyncWebServer &);
+  DCCPPWebServer();
+  void begin() {
+    AsyncWebServer::begin();
+    #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
+      InfoScreen::printf(0, INFO_SCREEN_WS_CLIENTS_LINE, F("WS Clients: 0"));
+    #endif
+  }
+  void broadcastToWS(const char *buf) {
+    webSocket.textAll(buf);
+  }
 private:
+  AsyncWebSocket webSocket;
   void handleESPInfo(AsyncWebServerRequest *);
   void handleProgrammer(AsyncWebServerRequest *);
   void handlePowerStatus(AsyncWebServerRequest *);
   void handleOutputs(AsyncWebServerRequest *);
   void handleTurnouts(AsyncWebServerRequest *);
   void handleSensors(AsyncWebServerRequest *);
+  void handleConfig(AsyncWebServerRequest *);
 };
