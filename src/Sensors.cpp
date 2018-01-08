@@ -239,7 +239,7 @@ void S88SensorManager::init() {
   pinMode(S88_CLOCK_PIN, OUTPUT);
   pinMode(S88_RESET_PIN, OUTPUT);
   pinMode(S88_LOAD_PIN, OUTPUT);
-  pinMode(S88_DATA_PIN, OUTPUT);
+  pinMode(S88_DATA_PIN, INPUT);
 
   log_i("Initializing S88 Sensor list");
   uint16_t sensorCount = configStore.getUShort("S88SensorCount", 0);
