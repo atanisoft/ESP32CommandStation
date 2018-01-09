@@ -89,6 +89,10 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     std::bind(&DCCPPWebServer::handleTurnouts, this, std::placeholders::_1));
   on("/sensors", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleSensors, this, std::placeholders::_1));
+#if defined(S88_ENABLED) && S88_ENABLED
+  on("/s88sensors", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
+    std::bind(&DCCPPWebServer::handleS88Sensors, this, std::placeholders::_1));
+#endif
   on("/config", HTTP_POST | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleConfig, this, std::placeholders::_1));
   webSocket.onEvent([](AsyncWebSocket * server, AsyncWebSocketClient * client,
@@ -176,7 +180,7 @@ void DCCPPWebServer::handlePowerStatus(AsyncWebServerRequest *request) {
  }
 
 void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse();
+  auto jsonResponse = new AsyncJsonResponse(true);
   if (request->method() == HTTP_GET) {
     JsonArray &array = jsonResponse->getRoot();
     OutputManager::getState(array);
@@ -200,7 +204,7 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
 }
 
 void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse();
+  auto jsonResponse = new AsyncJsonResponse(true);
   if (request->method() == HTTP_GET) {
     JsonArray &array = jsonResponse->getRoot();
     TurnoutManager::getState(array);
@@ -227,7 +231,7 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
 }
 
 void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse();
+  auto jsonResponse = new AsyncJsonResponse(true);
   if (request->method() == HTTP_GET) {
     JsonArray &array = jsonResponse->getRoot();
     SensorManager::getState(array);
@@ -235,16 +239,40 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
     uint16_t sensorID = request->arg(F("id")).toInt();
     uint8_t sensorPin = request->arg(F("pin")).toInt();
     bool sensorPullUp = request->arg(F("pullUp")).toInt() == 1;
-    SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp);
+    if(sensorPin == 0) {
+      jsonResponse->setCode(406);
+    } else {
+      SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp);
+    }
   } else if(request->method() == HTTP_DELETE) {
     uint16_t sensorID = request->arg(F("id")).toInt();
-    if(!SensorManager::remove(sensorID)) {
+    if(SensorManager::getSensorPin(sensorID) == 0) {
+      // attempt to delete S88
+      jsonResponse->setCode(406);
+    } else if(!SensorManager::remove(sensorID)) {
       jsonResponse->setCode(404);
     }
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
 }
+
+#if defined(S88_ENABLED) && S88_ENABLED
+void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
+  auto jsonResponse = new AsyncJsonResponse(true);
+  if(request->method() == HTTP_POST) {
+    uint8_t sensorIndex = request->arg(F("index")).toInt();
+    uint8_t sensorPinCount = request->arg(F("pinCount")).toInt();
+    bool sensorLogicInverted = request->arg(F("inverted")).toInt() == 1;
+    S88SensorManager::create(sensorIndex, sensorPinCount);
+  } else if(request->method() == HTTP_DELETE) {
+    uint8_t sensorIndex = request->arg(F("index")).toInt();
+    S88SensorManager::remove(sensorIndex);
+  }
+  jsonResponse->setLength();
+  request->send(jsonResponse);
+}
+#endif
 
 void DCCPPWebServer::handleConfig(AsyncWebServerRequest *request) {
   std::vector<String> arguments;

@@ -152,8 +152,19 @@ bool SensorManager::remove(const uint16_t id) {
   return false;
 }
 
-Sensor::Sensor(uint16_t sensorID, uint8_t pin, bool pullUp) : _sensorID(sensorID), _pin(pin), _pullUp(pullUp), _lastState(false) {
-  log_i("Sensor(%d) on pin %d created, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+uint8_t SensorManager::getSensorPin(const uint16_t id) {
+  for (const auto& sensor : sensors) {
+    if(sensor->getID() == id) {
+      return sensor->getPin();
+    }
+  }
+  return -1;
+}
+
+Sensor::Sensor(uint16_t sensorID, uint8_t pin, bool pullUp, bool announce) : _sensorID(sensorID), _pin(pin), _pullUp(pullUp), _lastState(false) {
+  if(announce) {
+    log_i("Sensor(%d) on pin %d created, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+  }
   if(_pullUp) {
     pinMode(_pin, INPUT_PULLUP);
   } else {
@@ -328,7 +339,7 @@ void S88SensorCommandAdapter::process(const std::vector<String> arguments) {
 }
 
 S88SensorGroup::S88SensorGroup(uint8_t index, uint8_t pinCount) : _index(index), _pinCount(pinCount) {
-  log_i("S88 SensorGroup %d created with %s inputs", _index, _pinCount);
+  log_i("S88 SensorGroup %d created with %d inputs", _index, _pinCount);
   for(int i = 0; i < pinCount; i++) {
     _sensors.push_back(new S88Sensor(index*16 + i, i));
     sensors.add(_sensors[i]);
@@ -340,6 +351,7 @@ void S88SensorGroup::show() {
   log_i("S88 SensorGroup(%d, %d):", _index, _pinCount);
   for (const auto& sensor : _sensors) {
     log_i("Input: %d :: %s", sensor->getIndex(), sensor->isActive() ? "ACTIVE" : "INACTIVE");
+    sensor->show();
   }
 }
 

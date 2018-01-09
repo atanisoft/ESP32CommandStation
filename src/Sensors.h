@@ -23,10 +23,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 class Sensor {
 public:
-  Sensor(uint16_t, uint8_t, bool=false);
+  Sensor(uint16_t, uint8_t, bool=false, bool=true);
   Sensor(uint16_t);
   void update(uint8_t, bool=false);
-  void store(uint16_t);
+  virtual void store(uint16_t);
   const uint16_t getID() {
     return _sensorID;
   }
@@ -39,9 +39,12 @@ public:
   const bool isActive() {
     return _lastState;
   }
-  void check();
+  virtual void check();
   void show();
 protected:
+  void set(bool state) {
+    _lastState = state;
+  }
   uint16_t _sensorID;
   uint8_t _pin;
   bool _pullUp;
@@ -57,6 +60,7 @@ public:
   static void getState(JsonArray &);
   static void createOrUpdate(const uint16_t, const uint8_t, const bool);
   static bool remove(const uint16_t);
+  static uint8_t getSensorPin(const uint16_t);
 };
 
 class SensorCommandAdapter : public DCCPPProtocolCommand {
@@ -70,14 +74,14 @@ public:
 #if defined(S88_ENABLED) && S88_ENABLED
 class S88Sensor : public Sensor {
 public:
-  S88Sensor(uint16_t id, uint8_t index) : Sensor(id, 0, true), _index(index) {
-
+  S88Sensor(uint16_t id, uint8_t index) : Sensor(id, 0, true, false), _index(index) {
+    log_i("S88Sensor(%d) created with index %d", id, _index);
   }
   void store(uint16_t) {}
   void check() {}
   void setState(bool state) {
-    if(_lastState != state) {
-      _lastState = state;
+    if(isActive() != state) {
+      set(state);
       show();
     }
   }

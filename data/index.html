@@ -352,6 +352,16 @@
 		<div id="dialogSensorPullUp" class="toggle toggle-dark"></div>
 	</form>
 </div>
+<div id="dialog-s88sensorEditor">
+	<form>
+		<label for="dialogS88SensorIndex">S88 Index:</label>
+		<input type="number" value="0" min="0" max="16" name="dialogS88SensorIndex" id="dialogS88SensorIndex" class="text ui-widget-content ui-corner-all" />
+		<label for="dialogS88SensorPinCount">Pin Count:</label>
+		<input type="number" value="8" min="8" max="16" name="dialogS88SensorPinCount" id="dialogS88SensorPinCount" class="text ui-widget-content ui-corner-all" />
+		<label for="dialogS88SensorInverted">Inverted Logic:</label>
+		<div id="dialogS88SensorInverted" class="toggle toggle-dark"></div>
+	</form>
+</div>
 <script type="text/javascript">
 	var dialogLocoTargetObject;
 	var locoData = new HashMap();
@@ -597,6 +607,39 @@
 				}
 			}
 		});
+		$('#dialog-s88sensorEditor').dialog({
+			autoOpen:false,
+			modal:true,
+			buttons: {
+				'Save': {
+					text: 'Save',
+					click: function() {
+						var sensorIndex = $('#dialogS88SensorIndex').val();
+						var sensorPinCount = $('#dialogS88SensorPinCount').val();
+						var sensorInverted = $('#dialogS88SensorInverted').data('toggles').active;
+						console.log('creating/updating S88 sensor: ' + sensorIndex + ', pinCount: ' + sensorPinCount + ', inverted: ' + sensorInverted)
+						$.post('/s88sensors', { 'index': sensorIndex, 'pinCount': sensorPinCount, 'inverted': sensorInverted});
+						$('#sensors').DataTable().draw();
+						$(this).dialog('close');
+					},
+					class: 'smaller-button ui-button ui-corner-all ui-widget'
+				},
+				'Cancel': {
+					text: 'Cancel',
+					click: function() {
+						$(this).dialog('close');
+					},
+					class: 'smaller-button ui-button ui-corner-all ui-widget'
+				}
+			}
+		});
+		$('#dialogS88SensorInverted').toggles({
+			text:{
+				on:'Inverted',
+				off:'Normal'
+			},
+			width:100}
+		);
 
 		$('#top-tabs').tabs({
 			beforeActivate: function(event, ui) {
@@ -743,7 +786,7 @@
 				url:'/sensors',
 				dataSrc: ''
 			},
-			'columns': [ { data: 'id' }, { data: 'pin' }, { data: 'pullup' }, { data: 'state' } ],
+			'columns': [ { data: 'id' }, { data: 'pin' }, { data: 'pullUp' }, { data: 'active' } ],
 			'paging':false,
 			'info':false,
 			'searching':false,
@@ -761,6 +804,16 @@
 						$('#dialogSensorPin').val("");
 						$('#dialogSensorPullUp').toggles(false);
 						$('#dialog-sensorEditor').dialog('open')
+					},
+					className: 'smaller-button ui-button ui-corner-all ui-widget',
+				},
+				{
+					text: 'Add S88 Group',
+					action: function ( e, dt, node, config ) {
+						$('#dialogS88SensorIndex').val("0");
+						$('#dialogS88SensorPinCount').val("8");
+						$('#dialogS88SensorInverted').toggles(false);
+						$('#dialog-s88sensorEditor').dialog('open')
 					},
 					className: 'smaller-button ui-button ui-corner-all ui-widget',
 				},
@@ -802,7 +855,7 @@
 				url:'/outputs',
 				dataSrc: ''
 			},
-			'columns': [ { data: 'id' }, { data: 'pin' }, { data: 'inverted' }, { data: 'state' } ],
+			'columns': [ { data: 'id' }, { data: 'pin' }, { data: 'flags' }, { data: 'active' } ],
 			'paging':false,
 			'info':false,
 			'searching':false,
