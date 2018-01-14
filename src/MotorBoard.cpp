@@ -15,9 +15,6 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include <Arduino.h>
-#include <functional>
-#include <StringArray.h>
 #include "DCCppESP32.h"
 #include "MotorBoard.h"
 

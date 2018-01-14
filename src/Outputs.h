@@ -58,6 +58,7 @@ class OutputManager {
     static void showStatus();
     static void createOrUpdate(const uint16_t, const uint8_t, const uint8_t);
     static bool remove(const uint16_t);
+    static bool isPinUsed(const uint8_t);
 };
 
 class OutputCommandAdapter : public DCCPPProtocolCommand {

@@ -38,8 +38,8 @@ private:
   void handleOutputs(AsyncWebServerRequest *);
   void handleTurnouts(AsyncWebServerRequest *);
   void handleSensors(AsyncWebServerRequest *);
+  void handleConfig(AsyncWebServerRequest *);
 #if defined(S88_ENABLED) && S88_ENABLED
   void handleS88Sensors(AsyncWebServerRequest *);
 #endif
-  void handleConfig(AsyncWebServerRequest *);
 };

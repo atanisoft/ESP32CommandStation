@@ -18,19 +18,18 @@ COPYRIGHT (c) 2017 Mike Dunston
 #ifndef _SENSORS_H_
 #define _SENSORS_H_
 
-#include <ArduinoJson.h>
-#include "DCCppProtocol.h"
+#include "DCCppESP32.h"
 
 class Sensor {
 public:
-  Sensor(uint16_t, uint8_t, bool=false, bool=true);
+  Sensor(uint16_t, int8_t, bool=false, bool=true);
   Sensor(uint16_t);
   void update(uint8_t, bool=false);
   virtual void store(uint16_t);
   const uint16_t getID() {
     return _sensorID;
   }
-  const uint8_t getPin() {
+  const int8_t getPin() {
     return _pin;
   }
   const bool isPullUp() {
@@ -43,10 +42,22 @@ public:
   void show();
 protected:
   void set(bool state) {
-    _lastState = state;
+    if(_lastState != state) {
+      _lastState = state;
+      log_i("Sensor: %d :: %s", _sensorID, _lastState ? "ACTIVE" : "INACTIVE");
+      if(state) {
+        wifiInterface.printf(F("<Q %d>"), _sensorID);
+      } else {
+        wifiInterface.printf(F("<q %d>"), _sensorID);
+      }
+    }
   }
+  void setID(uint16_t id) {
+    _sensorID = id;
+  }
+private:
   uint16_t _sensorID;
-  uint8_t _pin;
+  int8_t _pin;
   bool _pullUp;
   bool _lastState;
 };
@@ -61,6 +72,7 @@ public:
   static void createOrUpdate(const uint16_t, const uint8_t, const bool);
   static bool remove(const uint16_t);
   static uint8_t getSensorPin(const uint16_t);
+  static bool isPinUsed(const uint8_t);
 };
 
 class SensorCommandAdapter : public DCCPPProtocolCommand {
@@ -70,63 +82,5 @@ public:
     return "S";
   }
 };
-
-#if defined(S88_ENABLED) && S88_ENABLED
-class S88Sensor : public Sensor {
-public:
-  S88Sensor(uint16_t id, uint8_t index) : Sensor(id, 0, true, false), _index(index) {
-    log_i("S88Sensor(%d) created with index %d", id, _index);
-  }
-  void store(uint16_t) {}
-  void check() {}
-  void setState(bool state) {
-    if(isActive() != state) {
-      set(state);
-      show();
-    }
-  }
-  const uint8_t getIndex() {
-    return _index;
-  }
-private:
-  const uint8_t _index;
-};
-
-class S88SensorGroup {
-public:
-  S88SensorGroup(uint8_t, uint8_t=16);
-  void store(uint16_t);
-  void show();
-  const uint8_t getIndex() {
-    return _index;
-  }
-  const uint8_t getPinCount() {
-    return _pinCount;
-  }
-  void read();
-private:
-  const uint8_t _index;
-  const uint8_t _pinCount;
-  std::vector<S88Sensor *> _sensors;
-};
-
-class S88SensorManager {
-public:
-  static void init();
-  static void clear();
-  static uint8_t store();
-  static void check();
-  static bool create(const uint8_t, const uint8_t);
-  static bool remove(const uint8_t);
-};
-
-class S88SensorCommandAdapter : public DCCPPProtocolCommand {
-public:
-  void process(const std::vector<String>);
-  String getID() {
-    return "U";
-  }
-};
-#endif
 
 #endif

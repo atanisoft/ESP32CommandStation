@@ -16,8 +16,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include <functional>
-#include <StringArray.h>
 #include "Turnouts.h"
 
 /**********************************************************************

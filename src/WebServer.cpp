@@ -17,16 +17,26 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "DCCppESP32.h"
 #include <ESPAsyncWebServer.h>
-#include <ArduinoJson.h>
 #include <AsyncJson.h>
-#include <StringArray.h>
 
 #include "WebServer.h"
 #include "MotorBoard.h"
 #include "Outputs.h"
 #include "Turnouts.h"
 #include "Sensors.h"
+#include "S88Sensors.h"
 #include "index_html.h"
+
+enum HTTP_STATUS_CODES {
+  STATUS_OK = 200,
+  STATUS_NOT_MODIFIED = 304,
+  STATUS_NOT_FOUND = 404,
+  STATUS_NOT_ALLOWED = 405,
+  STATUS_NOT_ACCEPTABLE = 406,
+  STATUS_CONFLICT = 409,
+  STATUS_PRECONDITION_FAILED = 412,
+  STATUS_SERVER_ERROR = 500
+};
 
 class WebSocketClient {
 public:
@@ -71,14 +81,26 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     [](AsyncWebServerRequest *request) {
       const char * htmlBuildTime = __DATE__ " " __TIME__;
       if (request->header("If-Modified-Since").equals(htmlBuildTime)) {
-        request->send(304);
+        request->send(STATUS_NOT_MODIFIED);
       } else {
-        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", indexHtmlGz, indexHtmlGz_size);
+        AsyncWebServerResponse *response = request->beginResponse_P(STATUS_OK, "text/html", indexHtmlGz, indexHtmlGz_size);
         response->addHeader("Content-Encoding", "gzip");
         response->addHeader("Last-Modified", htmlBuildTime);
         request->send(response);
       }
     });
+  on("/features", HTTP_GET, [](AsyncWebServerRequest *request) {
+    auto jsonResponse = new AsyncJsonResponse();
+    JsonObject &root = jsonResponse->getRoot();
+#if defined(S88_ENABLED) && S88_ENABLED
+    root[F("s88")] = "true";
+#else
+    root[F("s88")] = "false";
+#endif
+    jsonResponse->setCode(STATUS_OK);
+    jsonResponse->setLength();
+   	request->send(jsonResponse);
+  });
   on("/programmer", HTTP_GET | HTTP_POST,
     std::bind(&DCCPPWebServer::handleProgrammer, this, std::placeholders::_1));
   on("/powerStatus", HTTP_GET,
@@ -87,10 +109,10 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     std::bind(&DCCPPWebServer::handleOutputs, this, std::placeholders::_1));
   on("/turnouts", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleTurnouts, this, std::placeholders::_1));
-  on("/sensors", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
+  on("/sensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleSensors, this, std::placeholders::_1));
 #if defined(S88_ENABLED) && S88_ENABLED
-  on("/s88sensors", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
+  on("/s88sensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleS88Sensors, this, std::placeholders::_1));
 #endif
   on("/config", HTTP_POST | HTTP_DELETE,
@@ -132,7 +154,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
 	// new programmer request
 	if (request->method() == HTTP_GET) {
 		if (request->arg("target") == "true") {
-			jsonResponse->setCode(405);
+			jsonResponse->setCode(STATUS_NOT_ALLOWED);
 		} else {
       uint16_t cvNumber = request->arg(F("cv")).toInt();
       int16_t cvValue = readCV(cvNumber);
@@ -140,9 +162,9 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
 			node[F("cv")] = cvNumber;
       node[F("value")] = cvValue;
       if(cvValue < 0) {
-        jsonResponse->setCode(500);
+        jsonResponse->setCode(STATUS_SERVER_ERROR);
       } else {
-        jsonResponse->setCode(200);
+        jsonResponse->setCode(STATUS_OK);
      }
 		}
   } else if(request->method() == HTTP_POST) {
@@ -152,7 +174,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
       } else {
         writeOpsCVByte(request->arg(F("loco")).toInt(), request->arg(F("cv")).toInt(), request->arg(F("value")).toInt());
       }
-			jsonResponse->setCode(200);
+			jsonResponse->setCode(STATUS_OK);
 		} else {
       bool writeSuccess = false;
       if(request->hasArg("bit")) {
@@ -161,9 +183,9 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
         writeSuccess = writeProgCVByte(request->arg(F("cv")).toInt(), request->arg(F("value")).toInt());
       }
       if(writeSuccess) {
-        jsonResponse->setCode(200);
+        jsonResponse->setCode(STATUS_OK);
       } else {
-        jsonResponse->setCode(500);
+        jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
 		}
   }
@@ -188,11 +210,20 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
     uint16_t outputID = request->arg(F("id")).toInt();
     uint8_t pin = request->arg(F("pin")).toInt();
     bool inverted = request->arg(F("inverted")).toInt() == 1;
-    OutputManager::createOrUpdate(outputID, pin, inverted);
+    if(!SensorManager::isPinUsed(pin) &&
+       !OutputManager::isPinUsed(pin)
+ #if defined(S88_ENABLED) && S88_ENABLED
+       && !S88BusManager::isPinUsed(pin)
+#endif
+      ) {
+      OutputManager::createOrUpdate(outputID, pin, inverted);
+    } else {
+      jsonResponse->setCode(STATUS_CONFLICT);
+    }
   } else if(request->method() == HTTP_DELETE) {
     uint16_t outputID = request->arg(F("id")).toInt();
     if(!OutputManager::remove(outputID)) {
-      jsonResponse->setCode(404);
+      jsonResponse->setCode(STATUS_NOT_FOUND);
     }
   } else if(request->method() == HTTP_PUT) {
    uint16_t outputID = request->arg(F("id")).toInt();
@@ -213,13 +244,13 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
     uint16_t turnoutAddress = request->arg(F("address")).toInt();
     uint8_t turnoutSubAddress = request->arg(F("subAddress")).toInt();
     if(!TurnoutManager::create(turnoutID, turnoutAddress, turnoutSubAddress)) {
-      jsonResponse->setCode(406);
+      jsonResponse->setCode(STATUS_NOT_ACCEPTABLE);
       jsonResponse->getRoot()[F("message")] = F("Duplicate ID");
     }
   } else if(request->method() == HTTP_DELETE) {
     uint16_t turnoutID = request->arg(F("id")).toInt();
     if(!TurnoutManager::remove(turnoutID)) {
-      jsonResponse->setCode(404);
+      jsonResponse->setCode(STATUS_NOT_FOUND);
     }
   } else if(request->method() == HTTP_PUT) {
     uint16_t turnoutID = request->arg(F("id")).toInt();
@@ -239,40 +270,30 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
     uint16_t sensorID = request->arg(F("id")).toInt();
     uint8_t sensorPin = request->arg(F("pin")).toInt();
     bool sensorPullUp = request->arg(F("pullUp")).toInt() == 1;
-    if(sensorPin == 0) {
-      jsonResponse->setCode(406);
-    } else {
+    if(sensorPin <= 0) {
+      jsonResponse->setCode(STATUS_NOT_ACCEPTABLE);
+    } else if(!SensorManager::isPinUsed(sensorPin) &&
+              !OutputManager::isPinUsed(sensorPin)
+#if defined(S88_ENABLED) && S88_ENABLED
+              && !S88BusManager::isPinUsed(sensorPin)
+#endif
+              ) {
       SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp);
+    } else {
+      jsonResponse->setCode(STATUS_CONFLICT);
     }
   } else if(request->method() == HTTP_DELETE) {
     uint16_t sensorID = request->arg(F("id")).toInt();
-    if(SensorManager::getSensorPin(sensorID) == 0) {
+    if(SensorManager::getSensorPin(sensorID) < 0) {
       // attempt to delete S88
-      jsonResponse->setCode(406);
+      jsonResponse->setCode(STATUS_NOT_ALLOWED);
     } else if(!SensorManager::remove(sensorID)) {
-      jsonResponse->setCode(404);
+      jsonResponse->setCode(STATUS_NOT_FOUND);
     }
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
 }
-
-#if defined(S88_ENABLED) && S88_ENABLED
-void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse(true);
-  if(request->method() == HTTP_POST) {
-    uint8_t sensorIndex = request->arg(F("index")).toInt();
-    uint8_t sensorPinCount = request->arg(F("pinCount")).toInt();
-    bool sensorLogicInverted = request->arg(F("inverted")).toInt() == 1;
-    S88SensorManager::create(sensorIndex, sensorPinCount);
-  } else if(request->method() == HTTP_DELETE) {
-    uint8_t sensorIndex = request->arg(F("index")).toInt();
-    S88SensorManager::remove(sensorIndex);
-  }
-  jsonResponse->setLength();
-  request->send(jsonResponse);
-}
-#endif
 
 void DCCPPWebServer::handleConfig(AsyncWebServerRequest *request) {
   std::vector<String> arguments;
@@ -282,3 +303,24 @@ void DCCPPWebServer::handleConfig(AsyncWebServerRequest *request) {
     DCCPPProtocolHandler::getCommandHandler("e")->process(arguments);
   }
 }
+
+#if defined(S88_ENABLED) && S88_ENABLED
+void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
+  auto jsonResponse = new AsyncJsonResponse(true);
+  if(request->method() == HTTP_GET) {
+    JsonArray &array = jsonResponse->getRoot();
+    S88BusManager::getState(array);
+  } else if(request->method() == HTTP_POST) {
+    uint8_t sensorBus = request->arg(F("bus")).toInt();
+    uint8_t sensorDataPin = request->arg(F("dataPin")).toInt();
+    uint8_t sensorIDBase = request->arg(F("sensorIDBase")).toInt();
+    uint8_t sensorPinCount = request->arg(F("sensorCount")).toInt();
+    S88BusManager::createOrUpdateBus(sensorBus, sensorDataPin, sensorIDBase, sensorPinCount);
+  } else if(request->method() == HTTP_DELETE) {
+    uint8_t sensorBus = request->arg(F("bus")).toInt();
+    S88BusManager::removeBus(sensorBus);
+  }
+  jsonResponse->setLength();
+  request->send(jsonResponse);
+}
+#endif

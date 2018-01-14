@@ -15,11 +15,6 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include <Arduino.h>
-#include <functional>
-#include <StringArray.h>
-#include <esp32-hal-log.h>
-
 #include "DCCppESP32.h"
 #include "Outputs.h"
 
@@ -173,6 +168,15 @@ bool OutputManager::remove(const uint16_t id) {
   if(outputToRemove != NULL) {
     outputs.remove(outputToRemove);
     return true;
+  }
+  return false;
+}
+
+bool OutputManager::isPinUsed(const uint8_t pin) {
+  for (const auto& output : outputs) {
+    if(output->getPin() == pin) {
+      return true;
+    }
   }
   return false;
 }

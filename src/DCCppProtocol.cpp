@@ -23,12 +23,13 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Turnouts.h"
 #include "Outputs.h"
 #include "Sensors.h"
+#include "S88Sensors.h"
 
 LinkedList<DCCPPProtocolCommand *> registeredCommands([](DCCPPProtocolCommand *command) {delete command; });
 
 // <e> command handler, this command will clear all stored configuration data
-// on the ESP32. All Turnouts, Outputs and Sensors will need to be reconfigured
-// after sending this command.
+// on the ESP32. All Turnouts, Outputs, Sensors and S88 Sensors (if enabled)
+// will need to be reconfigured after sending this command.
 class ConfigErase : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
@@ -36,6 +37,9 @@ public:
     configStore.clear();
     TurnoutManager::clear();
     SensorManager::clear();
+#if defined(S88_ENABLED) && S88_ENABLED
+    S88BusManager::clear();
+#endif
     OutputManager::clear();
     wifiInterface.printf(F("<O>"));
     startDCCSignalGenerators();
@@ -46,15 +50,24 @@ public:
 };
 
 // <E> command handler, this command stores all currently defined Turnouts,
-// Sensors and Outputs into the ESP32 for use on subsequent startups.
+// Sensors, S88 Sensors (if enabled) and  Outputs into the ESP32 for use on
+// subsequent startups.
 class ConfigStore : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
     stopDCCSignalGenerators();
+#if defined(S88_ENABLED) && S88_ENABLED
+    wifiInterface.printf(F("<e %d %d %d %d>"),
+      TurnoutManager::store(),
+      SensorManager::store(),
+      OutputManager::store(),
+      S88BusManager::store());
+#else
     wifiInterface.printf(F("<e %d %d %d>"),
       TurnoutManager::store(),
       SensorManager::store(),
       OutputManager::store());
+#endif
     startDCCSignalGenerators();
   }
   String getID() {
@@ -200,8 +213,9 @@ void DCCPPProtocolHandler::init() {
   registerCommand(new OutputCommandAdapter());
   registerCommand(new TurnoutCommandAdapter());
   registerCommand(new SensorCommandAdapter());
-#if S88_ENABLED
-  registerCommand(new S88SensorCommandAdapter());
+#if defined(S88_ENABLED) && S88_ENABLED
+  registerCommand(new S88CommandAdapter());
+  registerCommand(new S88BusCommandAdapter());
 #endif
 }
 

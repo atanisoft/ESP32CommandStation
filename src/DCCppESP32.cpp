@@ -152,6 +152,7 @@ present in DCCppESP32.cpp in the setup() method.
 #include "Outputs.h"
 #include "Turnouts.h"
 #include "Sensors.h"
+#include "S88Sensors.h"
 #include "SignalGenerator.h"
 
 const char * buildTime = __DATE__ " " __TIME__;
@@ -185,7 +186,7 @@ void setup() {
 	TurnoutManager::init();
 	SensorManager::init();
 #if defined(S88_ENABLED) && S88_ENABLED
-	S88SensorManager::init();
+	S88BusManager::init();
 #endif
 	configureDCCSignalGenerators();
 	log_i("DCC++ READY!");
@@ -197,7 +198,7 @@ void loop() {
 	MotorBoardManager::check();
 	SensorManager::check();
 	#if defined(S88_ENABLED) && S88_ENABLED
-		S88SensorManager::check();
+	S88BusManager::update();
 	#endif
 	LocomotiveManager::update();
 }

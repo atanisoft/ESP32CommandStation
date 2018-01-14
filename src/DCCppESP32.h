@@ -19,7 +19,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 // RELEASE VERSION
 /////////////////////////////////////////////////////////////////////////////////////
 
-#define VERSION "1.0.7"
+#define VERSION "1.0.8"
 
 /////////////////////////////////////////////////////////////////////////////////////
 // PERFORMANCE CONFIGURATION
@@ -29,7 +29,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #define MAX_DCCPP_CLIENTS 10
 
 /////////////////////////////////////////////////////////////////////////////////////
-// S88 Timing values
+// S88 Timing values (in microseconds)
 /////////////////////////////////////////////////////////////////////////////////////
 #define S88_SENSOR_LOAD_PRE_CLOCK_TIME 50
 #define S88_SENSOR_LOAD_POST_RESET_TIME 50
@@ -66,6 +66,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <algorithm>
 #include <functional>
 #include <StringArray.h>
+#include <ArduinoJson.h>
 #include <esp32-hal-log.h>
 
 #include "Config.h"
