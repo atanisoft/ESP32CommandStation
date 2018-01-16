@@ -3,7 +3,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>DCC++</title>
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 	<script src="https://cdn.rawgit.com/jbloemendal/jquery-simple-websocket/v1.0.0/jquery.simple.websocket.js"></script>
 	<script src="https://cdn.rawgit.com/Mikhus/canvas-gauges/master/gauge.min.js"></script>
@@ -397,12 +397,8 @@
 			<input type="number" value="0" min="0" max="40" name="dialogS88SensorDataPin" id="dialogS88SensorDataPin" class="text ui-widget-content ui-corner-all" />
 		</div>
 		<div class="row">
-			<label for="dialogS88SensorBaseIDCount">Sensor ID Base:</label>
-		<input type="number" value="200" min="200" max="10240" name="dialogS88SensorBaseIDCount" id="dialogS88SensorBaseIDCount" class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
 			<label for="dialogS88SensorCount">Sensor Count:</label>
-			<input type="number" value="0" min="0" max="516" name="dialogS88SensorCount" id="dialogS88SensorCount" class="text ui-widget-content ui-corner-all" />
+			<input type="number" value="0" min="0" max="512" name="dialogS88SensorCount" id="dialogS88SensorCount" class="text ui-widget-content ui-corner-all" />
 		</div>
 	</form>
 </div>
@@ -660,11 +656,10 @@
 					click: function() {
 						var sensorBus = $('#dialogS88SensorBus').val();
 						var sensorDataPin = $('#dialogS88SensorDataPin').val();
-						var sensorIDBase = $('#dialogS88SensorBaseIDCount').val();
 						var sensorCount = $('#dialogS88SensorCount').val();
-						console.log('creating/updating S88 sensor: ' + sensorBus + ', dataPin:' + sensorDataPin + ', sensorIDBase: ' + sensorIDBase + ', sensorCount: ' + sensorCount)
-						$.post('/s88sensors', { 'bus': sensorBus, 'dataPin': sensorDataPin, 'sensorIDBase' : sensorIDBase, 'sensorCount': sensorCount});
-						$('#88sensors').DataTable().draw();
+						console.log('creating/updating S88 sensor: ' + sensorBus + ', dataPin:' + sensorDataPin + ', sensorCount: ' + sensorCount)
+						$.post('/s88sensors', { 'bus': sensorBus, 'dataPin': sensorDataPin, 'sensorCount': sensorCount});
+						$('#s88sensors').DataTable().draw();
 						$(this).dialog('close');
 					},
 					class: 'smaller-button ui-button ui-corner-all ui-widget'
@@ -759,7 +754,7 @@
 				{
 					text: 'Add',
 					action: function ( e, dt, node, config ) {
-						$('#dialogTurnoutID').val("");
+						$('#dialogTurnoutID').val("" + $('#turnouts').DataTable().data().count());
 						$('#dialogTurnoutAddress').val("");
 						$('#dialogTurnoutSubAddress').val("");
 						$('#dialog-turnoutEditor').dialog('open')
@@ -790,6 +785,7 @@
 								url: '/turnouts?id=' + selectedRows[0]['id'],
 								method: 'DELETE'
 							});
+              $('#turnouts').DataTable().draw();
 						} else {
 							alert("No turnout selected");
 						}
@@ -838,7 +834,7 @@
 				{
 					text: 'Add',
 					action: function ( e, dt, node, config ) {
-						$('#dialogSensorID').val("");
+						$('#dialogSensorID').val("" + $('#sensors').DataTable().data().count();
 						$('#dialogSensorPin').val("");
 						$('#dialogSensorPullUp').toggles(false);
 						$('#dialog-sensorEditor').dialog('open')
@@ -874,6 +870,7 @@
 									url: '/sensors?id=' + selectedRows[0]['id'],
 									method: 'DELETE'
 								});
+                $('#sensors').DataTable().draw();
 							} else {
 								alert("S88 Sensors can only be deleted from the S88 sensor tab");
 							}
@@ -929,9 +926,8 @@
 				{
 					text: 'Add',
 					action: function ( e, dt, node, config ) {
-						$('#dialogS88SensorBus').val("0");
+						$('#dialogS88SensorBus').val("" + $('#s88sensors').DataTable().data().count());
 						$('#dialogS88SensorDataPin').val("0");
-						$('#dialogS88SensorBaseIDCount').val("200");
 						$('#dialogS88SensorCount').val("16");
 						$('#dialog-s88sensorEditor').dialog('open')
 					},
@@ -944,7 +940,6 @@
 						if(selectedRows.length > 0) {
 							$('#dialogS88SensorBus').val(selectedRows[0]['id']);
 							$('#dialogS88SensorDataPin').val(selectedRows[0]['dataPin']);
-							$('#dialogS88SensorBaseIDCount').val(selectedRows[0]['sensorIDBase']);
 							$('#dialogS88SensorCount').val(selectedRows[0]['sensorCount']);
 							$('#dialog-s88sensorEditor').dialog('open')
 						} else {
@@ -962,6 +957,7 @@
 								url: '/s88sensors?id=' + selectedRows[0]['id'],
 								method: 'DELETE'
 							});
+              $('#s88sensors').DataTable().draw();
 						} else {
 							alert("No Sensor selected");
 						}
@@ -991,7 +987,7 @@
 				{
 					text: 'Add',
 					action: function ( e, dt, node, config ) {
-						$('#dialogOutputID').val("");
+						$('#dialogOutputID').val("" + $('#outputs').DataTable().data().count());
 						$('#dialogOutputPin').val("");
 						$('#dialogOutputInverted').toggles(false);
 						$('#dialog-outputEditor').dialog('open')
@@ -1022,6 +1018,7 @@
 								url: '/outputs?id=' + selectedRows[0]['id'],
 								method: 'DELETE'
 							});
+              $('#outputs').DataTable().draw();
 						} else {
 							alert("No Output selected");
 						}

@@ -24,28 +24,26 @@ DCC++ESP32 BASE STATION supports multiple S88 Sensor busses.
 
 To have the base station monitor an S88 sensor, first define/edit/delete an S88
 Sensor Bus using the following variations on the "S88" command:
-  <S88 ID DATAPIN SENSORIDBASE> : Creates an S88 Sensor Bus with the specified
-                                  ID, DATA PIN, SENSOR ID BASE.
+  <S88 ID DATAPIN COUNT> : Creates an S88 Sensor Bus with the specified
+                           ID, DATA PIN, SENSOR COUNT.
         returns: <O> if successful and <X> if unsuccessful.
-  <S88 ID>                      : Deletes definition of S88 Sensor Bus ID and all
-                                associated S88 Sensors on the bus.
+  <S88 ID>               : Deletes definition of S88 Sensor Bus ID and all
+                           associated S88 Sensors on the bus.
         returns: <O> if successful and <X> if unsuccessful.
-  <S88>                         : Lists all S88 Sensor Busses and state of sensors.
+  <S88>                  : Lists all S88 Sensor Busses and state of sensors.
         returns: <S88 ID DATAPIN> for each S88 Sensor Bus or <X>
         if no busses have been defined
 Note: S88 Sensor Busses will create individual sensors that report via <S> but
 they can not be edited/deleted via <S> commands. Attempts to do that will result
 in an <X> being returned.
 
-To define individual sensors on the S88 Sensor Bus use these commands:
-  <S88Bus ID COUNT FLAG>         : Creates or removes COUNT S88 Sensors on S88
-                                   Bus ID based on FLAG.
-                                  When FLAG is 1 Sensors are added to the bus,
-                                  when omitted or 0 they will be removed.
-        returns: <O> if successful and <X> if unsuccessful.
+S88 Sensors are reported in the same manner as generic Sensors:
+  <Q ID>     - for activation of S88 Sensor ID.
+  <q ID>     - for deactivation of S88 Sensor ID.
+
 **********************************************************************/
 
-#define DEFAULT_S88_SENSOR_ID_BASE 200
+#define S88_SENSOR_ID_OFFSET 512
 
 extern LinkedList<Sensor *> sensors;
 LinkedList<S88SensorBus *> s88SensorBus([](S88SensorBus *sensorBus) {
@@ -114,7 +112,7 @@ void S88BusManager::update() {
   }
 }
 
-bool S88BusManager::createOrUpdateBus(const uint8_t id, const uint8_t dataPin, const uint16_t sensorIDBase, const uint16_t sensorCount) {
+bool S88BusManager::createOrUpdateBus(const uint8_t id, const uint8_t dataPin, const uint16_t sensorCount) {
   // check for duplicate data pin
   for (const auto& sensorBus : s88SensorBus) {
     if(sensorBus->getID() != id && sensorBus->getDataPin() == dataPin) {
@@ -126,15 +124,11 @@ bool S88BusManager::createOrUpdateBus(const uint8_t id, const uint8_t dataPin, c
   // check for existing bus to be updated
   for (const auto& sensorBus : s88SensorBus) {
     if(sensorBus->getID() == id) {
-      sensorBus->update(dataPin, sensorIDBase, sensorCount);
+      sensorBus->update(dataPin, sensorCount);
       return true;
     }
   }
-  S88SensorBus *bus = new S88SensorBus(id, dataPin, sensorIDBase);
-  s88SensorBus.add(bus);
-  if(sensorCount) {
-    bus->addSensors(sensorCount);
-  }
+  s88SensorBus.add(new S88SensorBus(id, dataPin, sensorCount));
   return true;
 }
 
@@ -148,26 +142,6 @@ bool S88BusManager::removeBus(const uint8_t id) {
   if(sensorBusToRemove != NULL) {
     s88SensorBus.remove(sensorBusToRemove);
     return true;
-  }
-  return false;
-}
-
-bool S88BusManager::addSensors(const uint8_t busID, const uint16_t count) {
-  for (const auto& sensorBus : s88SensorBus) {
-    if(sensorBus->getID() == busID) {
-      sensorBus->addSensors(count);
-      return true;
-    }
-  }
-  return false;
-}
-
-bool S88BusManager::removeSensors(const uint8_t busID, const uint16_t count) {
-  for (const auto& sensorBus : s88SensorBus) {
-    if(sensorBus->getID() == busID) {
-      sensorBus->removeSensors(count);
-      return true;
-    }
   }
   return false;
 }
@@ -192,12 +166,14 @@ bool S88BusManager::isPinUsed(const uint8_t pin) {
   return false;
 }
 
-S88SensorBus::S88SensorBus(const uint8_t id, const uint8_t dataPin,
-  const uint16_t sensorIDBase) :
-  _id(id), _dataPin(dataPin), _sensorIDBase(sensorIDBase), _lastSensorID(sensorIDBase) {
-  log_i("S88SensorBus(%d) created using data pin %d and sensor ID start %d",
-    _id, _dataPin, _sensorIDBase);
+S88SensorBus::S88SensorBus(const uint8_t id, const uint8_t dataPin, const uint16_t sensorCount) :
+  _id(id), _dataPin(dataPin), _sensorIDBase((id+1) * S88_SENSOR_ID_OFFSET), _lastSensorID((id+1) * S88_SENSOR_ID_OFFSET) {
+  log_i("S88SensorBus(%d) created on pin %d with %d sensors starting at id %d",
+    _id, _dataPin, sensorCount, _sensorIDBase);
   pinMode(_dataPin, INPUT);
+  if(sensorCount > 0) {
+    addSensors(sensorCount);
+  }
 }
 
 S88SensorBus::S88SensorBus(const uint16_t index) {
@@ -207,7 +183,7 @@ S88SensorBus::S88SensorBus(const uint16_t index) {
   String sensorIDBaseKey = sensorIDKey + String("_b");
   _id = configStore.getUShort(sensorIDKey.c_str(), index);
   _dataPin = configStore.getUChar(dataPinKey.c_str(), 0);
-  _sensorIDBase = configStore.getUShort(sensorIDBaseKey.c_str(), DEFAULT_S88_SENSOR_ID_BASE + (index * 512));
+  _sensorIDBase = _id * S88_SENSOR_ID_OFFSET;
   _lastSensorID = _sensorIDBase;
   uint16_t sensorCount = configStore.getUShort(sensorCountKey.c_str(), 0);
   for(uint16_t id = 0; id < sensorCount; id++) {
@@ -215,9 +191,8 @@ S88SensorBus::S88SensorBus(const uint16_t index) {
   }
 }
 
-void S88SensorBus::update(const uint8_t dataPin, const uint16_t sensorIDBase, const uint16_t sensorCount) {
+void S88SensorBus::update(const uint8_t dataPin, const uint16_t sensorCount) {
   _dataPin = dataPin;
-  _sensorIDBase = sensorIDBase;
   _lastSensorID = _sensorIDBase;
   pinMode(_dataPin, INPUT);
   for (const auto& sensor : _sensors) {
@@ -228,8 +203,8 @@ void S88SensorBus::update(const uint8_t dataPin, const uint16_t sensorIDBase, co
   } else if(sensorCount > 0) {
     addSensors(sensorCount - _sensors.size());
   }
-  log_i("S88SensorBus(%d) updated to use data pin %d and sensor ID start %d, updating %d sensors",
-    _id, _dataPin, _sensorIDBase, _sensors.size());
+  log_i("S88SensorBus(%d) updated to use data pin %d, updating %d sensors",
+    _id, _dataPin, _sensors.size());
   show();
 }
 
@@ -237,11 +212,9 @@ void S88SensorBus::store(const uint16_t index) {
   String sensorIDKey = String("S88_") + String(index);
   String dataPinKey = sensorIDKey + String("_p");
   String sensorCountKey = sensorIDKey + String("_s");
-  String sensorIDBaseKey = sensorIDKey + String("_b");
   configStore.putUShort(sensorIDKey.c_str(), _id);
   configStore.putUChar(dataPinKey.c_str(), _dataPin);
   configStore.putUShort(sensorCountKey.c_str(), _sensors.size());
-  configStore.putUShort(sensorIDBaseKey.c_str(), _sensorIDBase);
 }
 
 void S88SensorBus::addSensors(int16_t sensorCount) {
@@ -288,7 +261,7 @@ void S88SensorBus::readNext() {
 }
 
 void S88SensorBus::show() {
-  wifiInterface.printf(F("<S88 %d %d %d>"), _id, _dataPin, _sensorIDBase);
+  wifiInterface.printf(F("<S88 %d %d %d>"), _id, _dataPin, _sensors.size());
   log_i("S88 Bus(%d, %d, %d, %d):", _id, _dataPin, _sensorIDBase, _sensors.size());
   for (const auto& sensor : _sensors) {
     log_i("Input: %d :: %s", sensor->getIndex(), sensor->isActive() ? "ACTIVE" : "INACTIVE");
@@ -296,7 +269,7 @@ void S88SensorBus::show() {
   }
 }
 
-void S88CommandAdapter::process(const std::vector<String> arguments) {
+void S88BusCommandAdapter::process(const std::vector<String> arguments) {
   if(arguments.empty()) {
     // list all sensor groups
     for (const auto& sensorBus : s88SensorBus) {
@@ -312,21 +285,6 @@ void S88CommandAdapter::process(const std::vector<String> arguments) {
     } else {
       wifiInterface.printf(F("<X>"));
     }
-  }
-}
-
-void S88BusCommandAdapter::process(const std::vector<String> arguments) {
-  if (arguments.size() == 2 && S88BusManager::removeSensors(arguments[0].toInt(), arguments[1].toInt())) {
-    // remove sensor bus sensors
-    wifiInterface.printf(F("<O>"));
-  } else if (arguments.size() == 3 && arguments[2].toInt() && S88BusManager::addSensors(arguments[0].toInt(), arguments[1].toInt())) {
-    // create sensor bus sensors
-    wifiInterface.printf(F("<O>"));
-  } else if (arguments.size() == 3 && arguments[2].toInt() == 0 && S88BusManager::removeSensors(arguments[0].toInt(), arguments[1].toInt())) {
-    // remove sensor bus sensors
-    wifiInterface.printf(F("<O>"));
-  } else {
-    wifiInterface.printf(F("<X>"));
   }
 }
 

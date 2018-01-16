@@ -311,13 +311,15 @@ void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
     JsonArray &array = jsonResponse->getRoot();
     S88BusManager::getState(array);
   } else if(request->method() == HTTP_POST) {
-    uint8_t sensorBus = request->arg(F("bus")).toInt();
-    uint8_t sensorDataPin = request->arg(F("dataPin")).toInt();
-    uint8_t sensorIDBase = request->arg(F("sensorIDBase")).toInt();
-    uint8_t sensorPinCount = request->arg(F("sensorCount")).toInt();
-    S88BusManager::createOrUpdateBus(sensorBus, sensorDataPin, sensorIDBase, sensorPinCount);
+    if(!S88BusManager::createOrUpdateBus(
+      request->arg(F("bus")).toInt(),
+      request->arg(F("dataPin")).toInt(),
+      request->arg(F("sensorCount")).toInt())) {
+      // duplicate pin/id
+      jsonResponse->setCode(STATUS_NOT_ALLOWED);
+    }
   } else if(request->method() == HTTP_DELETE) {
-    uint8_t sensorBus = request->arg(F("bus")).toInt();
+    uint8_t sensorBus = request->arg(F("id")).toInt();
     S88BusManager::removeBus(sensorBus);
   }
   jsonResponse->setLength();

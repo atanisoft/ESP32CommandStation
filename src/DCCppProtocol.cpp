@@ -214,7 +214,6 @@ void DCCPPProtocolHandler::init() {
   registerCommand(new TurnoutCommandAdapter());
   registerCommand(new SensorCommandAdapter());
 #if defined(S88_ENABLED) && S88_ENABLED
-  registerCommand(new S88CommandAdapter());
   registerCommand(new S88BusCommandAdapter());
 #endif
 }

@@ -54,20 +54,6 @@ where
   PULLUP: 1=use internal pull-up resistor for PIN, 0=don't use internal pull-up
           resistor for PIN
 
-To have the base station monitor an S88 sensor, first define/edit/delete an S88
-SensorGroup using the following variations on the "S88" command:
-  <S88 ID PINCOUNT INVERTED>: Creates an S88 sensor group with the defined
-                              number of pins.
-        returns: <O> if successful and <X> if unsuccessful.
-  <S88 ID>:                   Deletes definition of S88 Sensor Group ID
-        returns: <O> if successful and <X> if unsuccessful.
-  <S88>:                      Lists all S88 Sensor Groups and state of sensors.
-        returns: <S88 ID PINCOUNT INVERTED> for each S88 Sensor Group or <X>
-        if no sensors defined
-Note: S88 Sensor Groups will create individual sensors that report via <S> but
-they can not be edited/deleted via <S> commands. Attempts to do that will result
-in an <X> being returned.
-
 Once all sensors have been properly defined, use the <E> command to store their
 definitions to the ESP32. If you later make edits/additions/deletions to the
 sensor definitions, you must invoke the <E> command if you want those new
@@ -108,7 +94,9 @@ void SensorManager::clear() {
 uint16_t SensorManager::store() {
   uint16_t sensorStoredCount = 0;
   for (const auto& sensor : sensors) {
-    sensor->store(sensorStoredCount++);
+    if(sensor->getPin() > 0) {
+      sensor->store(sensorStoredCount++);
+    }
   }
   configStore.putUShort("SensorCount", sensorStoredCount);
   return sensorStoredCount;

@@ -43,7 +43,7 @@ class S88SensorBus {
 public:
   S88SensorBus(const uint8_t, const uint8_t, const uint16_t);
   S88SensorBus(const uint16_t);
-  void update(const uint8_t, const uint16_t, const uint16_t);
+  void update(const uint8_t, const uint16_t);
   void store(uint16_t);
   void addSensors(int16_t);
   void removeSensors(int16_t);
@@ -83,27 +83,17 @@ public:
   static void clear();
   static uint8_t store();
   static void update();
-  static bool createOrUpdateBus(const uint8_t, const uint8_t, const uint16_t, const uint16_t=0);
+  static bool createOrUpdateBus(const uint8_t, const uint8_t, const uint16_t);
   static bool removeBus(const uint8_t);
-  static bool addSensors(const uint8_t, const uint16_t);
-  static bool removeSensors(const uint8_t, const uint16_t);
   static void getState(JsonArray &);
   static bool isPinUsed(const uint8_t);
-};
-
-class S88CommandAdapter : public DCCPPProtocolCommand {
-public:
-  void process(const std::vector<String>);
-  String getID() {
-    return "S88";
-  }
 };
 
 class S88BusCommandAdapter : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String>);
   String getID() {
-    return "S88Bus";
+    return "S88";
   }
 };
 
