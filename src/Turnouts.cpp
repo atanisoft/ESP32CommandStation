@@ -117,7 +117,11 @@ void TurnoutManager::getState(JsonArray & array) {
     turnoutJson[F("id")] = turnout->getID();
     turnoutJson[F("address")] = turnout->getAddress();
     turnoutJson[F("subAddress")] = turnout->getSubAddress();
-    turnoutJson[F("state")] = turnout->isThrown();
+    if(turnout->isThrown()) {
+      turnoutJson[F("state")] = "Thrown";
+    } else {
+      turnoutJson[F("state")] = "Closed";
+    }
   }
 }
 

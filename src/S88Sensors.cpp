@@ -167,7 +167,7 @@ bool S88BusManager::isPinUsed(const uint8_t pin) {
 }
 
 S88SensorBus::S88SensorBus(const uint8_t id, const uint8_t dataPin, const uint16_t sensorCount) :
-  _id(id), _dataPin(dataPin), _sensorIDBase((id+1) * S88_SENSOR_ID_OFFSET), _lastSensorID((id+1) * S88_SENSOR_ID_OFFSET) {
+  _id(id), _dataPin(dataPin), _sensorIDBase((id * S88_SENSOR_ID_OFFSET) + S88_FIRST_SENSOR), _lastSensorID((id * S88_SENSOR_ID_OFFSET) + S88_FIRST_SENSOR) {
   log_i("S88SensorBus(%d) created on pin %d with %d sensors starting at id %d",
     _id, _dataPin, sensorCount, _sensorIDBase);
   pinMode(_dataPin, INPUT);
@@ -180,14 +180,16 @@ S88SensorBus::S88SensorBus(const uint16_t index) {
   String sensorIDKey = String("S88_") + String(index);
   String dataPinKey = sensorIDKey + String("_p");
   String sensorCountKey = sensorIDKey + String("_s");
-  String sensorIDBaseKey = sensorIDKey + String("_b");
   _id = configStore.getUShort(sensorIDKey.c_str(), index);
   _dataPin = configStore.getUChar(dataPinKey.c_str(), 0);
-  _sensorIDBase = _id * S88_SENSOR_ID_OFFSET;
+  _sensorIDBase = (_id * S88_SENSOR_ID_OFFSET) + S88_FIRST_SENSOR;
   _lastSensorID = _sensorIDBase;
   uint16_t sensorCount = configStore.getUShort(sensorCountKey.c_str(), 0);
   for(uint16_t id = 0; id < sensorCount; id++) {
     _sensors.push_back(new S88Sensor(_sensorIDBase + id, id));
+  }
+  for (const auto& sensor : _sensors) {
+    sensors.add(sensor);
   }
 }
 

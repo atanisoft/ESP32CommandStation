@@ -241,7 +241,7 @@
 					<div class="col-auto"><p><button id="btnConsoleClear" class="smaller-button">Clear Console</button></p></div>
 				</div>
 				<div class="row">
-					<div class="col-auto"><button id="btnPersistConfig" class="smaller-button">Persist Config</button></div>
+					<div class="col-auto"><button id="btnPersistConfig" class="smaller-button">Save Config</button></div>
 					<div class="col-auto"><button id="btnClearConfig" class="smaller-button">Clear Config</button></div>
 				</div>
 			</div>
@@ -288,7 +288,7 @@
 						<tr>
 							<th>ID</th>
 							<th>Pin</th>
-							<th>Inverted</th>
+							<th>Flags</th>
 							<th>State</th>
 						</tr>
 					</thead>
@@ -367,6 +367,14 @@
 		<div class="row">
 			<label for="dialogOutputInverted">Inverted:</label>
 			<div id="dialogOutputInverted" class="toggle toggle-dark"></div>
+		</div>
+    <div class="row">
+			<label for="dialogOutputRestore">Startup State:</label>
+			<div id="dialogOutputRestore" class="toggle toggle-dark"></div>
+		</div>
+    <div class="row" id="dialogOutputDefaultRow">
+			<label for="dialogOutputDefault">Default State:</label>
+			<div id="dialogOutputDefault" class="toggle toggle-dark"></div>
 		</div>
 	</form>
 </div>
@@ -588,6 +596,28 @@
 			},
 			width:100}
 		);
+		$('#dialogOutputRestore').toggles({
+			text:{
+				on:'Force Set',
+				off:'Last State'
+			},
+			width:100}
+		);
+		$('#dialogOutputRestore').on('toggle', function(e, active) {
+			if(active) {
+				$('#dialogOutputDefaultRow').show();
+			} else {
+				$('#dialogOutputDefaultRow').hide();
+			}
+		});
+		$('#dialogOutputDefault').toggles({
+			text:{
+				on:'Active',
+				off:'Inactive'
+			},
+			width:100}
+		);
+		$('#dialogOutputDefaultRow').hide();
 		$('#dialog-outputEditor').dialog({
 			autoOpen:false,
 			modal:true,
@@ -598,8 +628,10 @@
 						var outputID = $('#dialogOutputID').val();
 						var outputPin = $('#dialogOutputPin').val();
 						var outputInverted = $('#dialogOutputInverted').data('toggles').active;
+            var outputRestoreState = $('#dialogOutputRestore').data('toggles').active;
+            var outputDefaultState = $('#dialogOutputDefault').data('toggles').active;
 						console.log('creating/updating output: ' + outputID + ', pin: ' + outputPin + ', inverted: ' + outputInverted)
-						$.post('/outputs', { 'id': outputID, 'pin': outputPin, 'inverted': outputInverted});
+						$.post('/outputs', { 'id': outputID, 'pin': outputPin, 'inverted': outputInverted, 'forceState' : outputRestoreState, 'defaultState' : outputDefaultState});
 						$('#outputs').DataTable().draw();
 						$(this).dialog('close');
 					},
@@ -793,7 +825,7 @@
 					className: 'smaller-button ui-button ui-corner-all ui-widget',
 				},
 				{
-					text: 'Throw',
+					text: 'Throw/Close',
 					action: function ( e, dt, node, config ) {
 						var selectedRows = dt.rows( { selected: true } ).data();
 						if(selectedRows.length > 0) {
@@ -801,7 +833,7 @@
 								url: '/turnouts',
 								data: {
 									'id': selectedRows[0]['id'],
-									'state': selectedRows[0]['state'] == 'Normal'
+									'state': selectedRows[0]['state'] == 'Closed'
 								},
 								method: 'PUT'
 							});
@@ -990,6 +1022,8 @@
 						$('#dialogOutputID').val("" + $('#outputs').DataTable().data().count());
 						$('#dialogOutputPin').val("");
 						$('#dialogOutputInverted').toggles(false);
+						$('#dialogOutputRestore').toggles(false);
+						$('#dialogOutputDefault').toggles(false);
 						$('#dialog-outputEditor').dialog('open')
 					},
 					className: 'smaller-button ui-button ui-corner-all ui-widget',
@@ -1001,7 +1035,9 @@
 						if(selectedRows.length > 0) {
 							$('#dialogOutputID').val(selectedRows[0]['id']);
 							$('#dialogOutputPin').val(selectedRows[0]['pin']);
-							$('#dialogOutputInverted').toggles(selectedRows[0]['inverted'] == 'true');
+							$('#dialogOutputInverted').toggles(selectedRows[0]['flags'].includes('activeLow'));
+							$('#dialogOutputRestore').toggles(!selectedRows[0]['flags'].includes('restoreState'));
+							$('#dialogOutputDefault').toggles(selectedRows[0]['flags'].includes('force(on)'));
 							$('#dialog-outputEditor').dialog('open')
 						} else {
 							alert("No Output selected");

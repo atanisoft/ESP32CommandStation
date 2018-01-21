@@ -104,6 +104,11 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define S88_RESET_PIN 16
 //#define S88_LOAD_PIN 27
 
+// S88 sensors are dynamically assigned based on the BUS ID * 512 + S88_FIRST_SENSOR
+// This define allows shifting the S88 Sensors to start at a default value, you
+// can start them at zero or as below 512 (default).
+//#define S88_FIRST_SENSOR 512
+
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // DEFINE INFO SCREEN Parameters

@@ -67,9 +67,9 @@ where
                     1 = state of pin set on power-up, or when first created, to
                         either ACTIVE of INACTIVE depending on IFLAG, bit 2.
 
-    IFLAG, bit 2:   0 = state of pin set to INACTIVE uponm power-up or when
+    IFLAG, bit 2:   0 = state of pin set to INACTIVE upon power-up or when
                         first created.
-                    1 = state of pin set to ACTIVE uponm power-up or when
+                    1 = state of pin set to ACTIVE upon power-up or when
                         first created.
 
 Once all outputs have been properly defined, use the <E> command to store their
@@ -95,10 +95,6 @@ or GUI program.
 
 **********************************************************************/
 LinkedList<Output *> outputs([](Output *output) {delete output; });
-
-const uint8_t OUTPUT_IFLAG_INVERT = 0;
-const uint8_t OUTPUT_IFLAG_RESTORE_STATE = 1;
-const uint8_t OUTPUT_IFLAG_FORCE_STATE = 2;
 
 void OutputManager::init() {
   log_i("Initializing outputs");
@@ -138,8 +134,27 @@ void OutputManager::getState(JsonArray & array) {
     JsonObject &outputJson = array.createNestedObject();
     outputJson[F("id")] = output->getID();
     outputJson[F("pin")] = output->getPin();
-    outputJson[F("flags")] = output->getFlags();
-    outputJson[F("active")] = output->isActive();
+    String flagsString = "";
+    if(bitRead(output->getFlags(), OUTPUT_IFLAG_INVERT)) {
+      flagsString += "activeLow";
+    } else {
+      flagsString += "activeHigh";
+    }
+    if(bitRead(output->getFlags(), OUTPUT_IFLAG_RESTORE_STATE)) {
+      if(bitRead(output->getFlags(), OUTPUT_IFLAG_FORCE_STATE)) {
+        flagsString += ",force(on)";
+      } else {
+        flagsString += ",force(off)";
+      }
+    } else {
+      flagsString += ",restoreState";
+    }
+    outputJson[F("flags")] = flagsString;
+    if(output->isActive()) {
+      outputJson[F("active")] = "On";
+    } else {
+      outputJson[F("active")] = "Off";
+    }
   }
 }
 
@@ -190,10 +205,10 @@ Output::Output(uint16_t id, uint8_t pin, uint8_t flags) : _id(id), _pin(pin), _f
   }
   if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",forceState(on)";
+      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",forceState(off)";
+      flagsString += ",force(off)";
       set(false, false);
     }
   } else {
@@ -219,10 +234,10 @@ Output::Output(uint16_t index) {
   }
   if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",forceState(on)";
+      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",forceState(off)";
+      flagsString += ",force(off)";
       set(false, false);
     }
   } else {
@@ -261,10 +276,10 @@ void Output::update(uint8_t pin, uint8_t flags) {
     set(false, false);
   } else {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",forceState(on)";
+      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",forceState(off)";
+      flagsString += ",force(off)";
       set(false, false);
     }
   }
