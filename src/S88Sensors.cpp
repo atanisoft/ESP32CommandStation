@@ -42,9 +42,7 @@ S88 Sensors are reported in the same manner as generic Sensors:
   <q ID>     - for deactivation of S88 Sensor ID.
 
 **********************************************************************/
-
-#define S88_SENSOR_ID_OFFSET 512
-
+#if defined(S88_ENABLED) && S88_ENABLED
 extern LinkedList<Sensor *> sensors;
 LinkedList<S88SensorBus *> s88SensorBus([](S88SensorBus *sensorBus) {
   sensorBus->removeSensors(-1);
@@ -155,15 +153,6 @@ void S88BusManager::getState(JsonArray &array) {
     sensorJson[F("sensorCount")] = sensorBus->getSensorCount();
     sensorJson[F("state")] = sensorBus->getStateString();
   }
-}
-
-bool S88BusManager::isPinUsed(const uint8_t pin) {
-  for (const auto& sensorBus : s88SensorBus) {
-    if(sensorBus->getDataPin() == pin) {
-      return true;
-    }
-  }
-  return false;
 }
 
 S88SensorBus::S88SensorBus(const uint8_t id, const uint8_t dataPin, const uint16_t sensorCount) :
@@ -293,3 +282,4 @@ void S88BusCommandAdapter::process(const std::vector<String> arguments) {
 S88Sensor::S88Sensor(uint16_t id, uint16_t index) : Sensor(id, -1, false, false), _index(index) {
   log_i("S88Sensor(%d) created with index %d", id, _index);
 }
+#endif

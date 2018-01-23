@@ -250,9 +250,10 @@
 					<thead>
 						<tr>
 							<th>ID</th>
-							<th>Address</th>
+							<th>DCC Address</th>
 							<th>Sub Address</th>
 							<th>State</th>
+							<th>Actions</th>
 						</tr>
 					</thead>
 				</table>
@@ -265,6 +266,7 @@
 							<th>Pin</th>
 							<th>Pullup</th>
 							<th>State</th>
+							<th>Actions</th>
 						</tr>
 					</thead>
 				</table>
@@ -278,6 +280,7 @@
 							<th>Sensor ID Base</th>
 							<th>Sensor Count</th>
 							<th>State</th>
+							<th>Actions</th>
 						</tr>
 					</thead>
 				</table>
@@ -290,6 +293,7 @@
 							<th>Pin</th>
 							<th>Flags</th>
 							<th>State</th>
+							<th>Actions</th>
 						</tr>
 					</thead>
 				</table>
@@ -335,22 +339,22 @@
 <div id="dialog-locoNumber">
 	<form>
 		<label for="locoNumber">Locomotive Number</label>
-		<input type="text" name="locoNumber" id="dialogLocoNumber" class="text ui-widget-content ui-corner-all" />
+		<input type="number" name="locoNumber" id="dialogLocoNumber" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" />
 	</form>
 </div>
 <div id="dialog-turnoutEditor">
 	<form>
 		<div class="row">
 			<label for="turnoutID">Turnout ID:</label>
-			<input type="text" name="turnoutID" id="dialogTurnoutID" class="text ui-widget-content ui-corner-all" />
+			<input type="number" name="turnoutID" id="dialogTurnoutID" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" />
 		</div>
 		<div class="row">
 			<label for="turnoutAddress">Address:</label>
-			<input type="text" name="turnoutAddress" id="dialogTurnoutAddress" class="text ui-widget-content ui-corner-all" />
+			<input type="number" name="turnoutAddress" id="dialogTurnoutAddress" value="1" min="1" max="2044" class="text ui-widget-content ui-corner-all" />
 		</div>
 		<div class="row">
 			<label for="turnoutSubAddress">Sub Address:</label>
-			<input type="text" name="turnoutSubAddress" id="dialogTurnoutSubAddress" class="text ui-widget-content ui-corner-all" />
+			<input type="number" name="turnoutSubAddress" id="dialogTurnoutSubAddress" value="0" min="0" max="8" class="text ui-widget-content ui-corner-all" />
 		</div>
 	</form>
 </div>
@@ -358,21 +362,21 @@
 	<form>
 		<div class="row">
 			<label for="dialogOutputID">Output ID:</label>
-			<input type="text" name="dialogOutputID" id="dialogOutputID" class="text ui-widget-content ui-corner-all" />
+			<input type="number" name="dialogOutputID" id="dialogOutputID" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" />
 		</div>
 		<div class="row">
 			<label for="dialogOutputPin">Pin:</label>
-			<input type="text" name="dialogOutputPin" id="dialogOutputPin" class="text ui-widget-content ui-corner-all" />
+			<input type="number" name="dialogOutputPin" id="dialogOutputPin" value="0" min="0" max="40" class="text ui-widget-content ui-corner-all" />
 		</div>
 		<div class="row">
 			<label for="dialogOutputInverted">Inverted:</label>
 			<div id="dialogOutputInverted" class="toggle toggle-dark"></div>
 		</div>
-    <div class="row">
+		<div class="row">
 			<label for="dialogOutputRestore">Startup State:</label>
 			<div id="dialogOutputRestore" class="toggle toggle-dark"></div>
 		</div>
-    <div class="row" id="dialogOutputDefaultRow">
+		<div class="row" id="dialogOutputDefaultRow">
 			<label for="dialogOutputDefault">Default State:</label>
 			<div id="dialogOutputDefault" class="toggle toggle-dark"></div>
 		</div>
@@ -382,11 +386,11 @@
 	<form>
 		<div class="row">
 			<label for="dialogSensorID">Sensor ID:</label>
-			<input type="text" name="dialogSensorID" id="dialogSensorID" class="text ui-widget-content ui-corner-all" />
+			<input type="number" name="dialogSensorID" id="dialogSensorID" value="0" min="0" max="65535"class="text ui-widget-content ui-corner-all" />
 		</div>
 		<div class="row">
 			<label for="dialogSensorPin">Pin:</label>
-			<input type="text" name="dialogSensorPin" id="dialogSensorPin" class="text ui-widget-content ui-corner-all" />
+			<input type="number" name="dialogSensorPin" id="dialogSensorPin" value="0" min="0" max="40" class="text ui-widget-content ui-corner-all" />
 		</div>
 		<div class="row">
 			<label for="dialogSensorPullUp">Pull Up:</label>
@@ -628,9 +632,8 @@
 						var outputID = $('#dialogOutputID').val();
 						var outputPin = $('#dialogOutputPin').val();
 						var outputInverted = $('#dialogOutputInverted').data('toggles').active;
-            var outputRestoreState = $('#dialogOutputRestore').data('toggles').active;
-            var outputDefaultState = $('#dialogOutputDefault').data('toggles').active;
-						console.log('creating/updating output: ' + outputID + ', pin: ' + outputPin + ', inverted: ' + outputInverted)
+						var outputRestoreState = $('#dialogOutputRestore').data('toggles').active;
+						var outputDefaultState = $('#dialogOutputDefault').data('toggles').active;
 						$.post('/outputs', { 'id': outputID, 'pin': outputPin, 'inverted': outputInverted, 'forceState' : outputRestoreState, 'defaultState' : outputDefaultState});
 						$('#outputs').DataTable().draw();
 						$(this).dialog('close');
@@ -771,8 +774,23 @@
 				url:'/turnouts',
 				dataSrc: ''
 			},
-			'columns': [ { data: 'id',}, { data: 'address' }, { data: 'subAddress' }, { data: 'state' }],
-			'select': { style: 'single' },
+			'columns': [
+				{ data: 'id',},
+				{ data: 'address' },
+				{ data: 'subAddress' },
+				{ data: 'state' },
+				{ render: function(data, type, row, meta) {
+						var cellText = "<button id='turnout-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
+						cellText += "<button id='turnout-" + row.id + "-edit-" + row.address + "-" + row.subAddress + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
+						if(row.state === 'Closed') {
+							cellText += "<button id='turnout-" + row.id + "-throw' class='smaller-button ui-button ui-corner-all ui-widget'>Throw</button>";
+						} else {
+							cellText += "<button id='turnout-" + row.id + "-close' class='smaller-button ui-button ui-corner-all ui-widget'>Close</button>";
+						}
+						return cellText;
+					}
+				}
+			],
 			'paging':false,
 			'info':false,
 			'searching':false,
@@ -784,75 +802,59 @@
 			'ordering': false,
 			'buttons': [
 				{
-					text: 'Add',
+					text: 'Create',
 					action: function ( e, dt, node, config ) {
 						$('#dialogTurnoutID').val("" + $('#turnouts').DataTable().data().count());
-						$('#dialogTurnoutAddress').val("");
-						$('#dialogTurnoutSubAddress').val("");
+						$('#dialogTurnoutAddress').val("0");
+						$('#dialogTurnoutSubAddress').val("0");
 						$('#dialog-turnoutEditor').dialog('open')
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Edit',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							$('#dialogTurnoutID').val(selectedRows[0]['id']);
-							$('#dialogTurnoutAddress').val(selectedRows[0]['address']);
-							$('#dialogTurnoutSubAddress').val(selectedRows[0]['subAddress']);
-							$('#dialog-turnoutEditor').dialog('open')
-						} else {
-							alert("No turnout selected");
-						}
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Delete',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							$.ajax({
-								url: '/turnouts?id=' + selectedRows[0]['id'],
-								method: 'DELETE'
-							});
-              $('#turnouts').DataTable().draw();
-						} else {
-							alert("No turnout selected");
-						}
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Throw/Close',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							$.ajax({
-								url: '/turnouts',
-								data: {
-									'id': selectedRows[0]['id'],
-									'state': selectedRows[0]['state'] == 'Closed'
-								},
-								method: 'PUT'
-							});
-						} else {
-							alert("No turnout selected");
-						}
 					},
 					className: 'smaller-button ui-button ui-corner-all ui-widget',
 				}
 			]
 		} );
+		$('#turnouts').on('draw.dt', function() {
+			$('#turnouts tr [id^=turnout-]').each(function(index) {
+				$(this).button();
+				$(this).click(function() {
+					var turnoutIdParts = $(this).attr('id').split('-');
+					if(turnoutIdParts[2] === 'delete') {
+						$.ajax({
+							url: '/turnouts?id=' + turnoutIdParts[1],
+							method: 'DELETE'
+						});
+					} else if(turnoutIdParts[2] === 'edit') {
+						$('#dialogTurnoutID').val(turnoutIdParts[1]);
+						$('#dialogTurnoutAddress').val(turnoutIdParts[3]);
+						$('#dialogTurnoutSubAddress').val(turnoutIdParts[4]);
+						$('#dialog-turnoutEditor').dialog('open')
+					} else {
+						$.ajax({
+							url: '/turnouts',
+							data: { 'id': turnoutIdParts[1] },
+							method: 'PUT'
+						});
+					}
+					$('#turnouts').DataTable().draw();
+				});
+			});
+		});
 		$('#sensors').DataTable( {
 			'dom': 'tiB',
 			'ajax': {
 				url:'/sensors',
 				dataSrc: ''
 			},
-			'columns': [ { data: 'id' }, { data: 'pin' }, { data: 'pullUp' }, { data: 'active' } ],
-			'select': { style: 'single' },
+			'columns': [
+				{ data: 'id' },
+				{ data: 'pin' },
+				{ data: 'pullUp' },
+				{ data: 'active' },
+				{ render: function(data, type, row, meta) {
+						return "<button id='sensor-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button><button id='sensor-" + row.id + "-edit-" + row.pin + "-" + row.pullUp + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
+					}
+				}
+			],
 			'paging':false,
 			'info':false,
 			'searching':false,
@@ -864,67 +866,48 @@
 			'ordering': false,
 			buttons: [
 				{
-					text: 'Add',
+					text: 'Create',
 					action: function ( e, dt, node, config ) {
 						$('#dialogSensorID').val("" + $('#sensors').DataTable().data().count());
-						$('#dialogSensorPin').val("");
+						$('#dialogSensorPin').val("0");
 						$('#dialogSensorPullUp').toggles(false);
 						$('#dialog-sensorEditor').dialog('open')
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Edit',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							if(selectedRows[0]['pin'] > 0) {
-								$('#dialogSensorID').val(selectedRows[0]['id']);
-								$('#dialogSensorPin').val(selectedRows[0]['pin']);
-								$('#dialogSensorPullUp').toggles(selectedRows[0]['pullUp'] == 'true');
-								$('#dialog-sensorEditor').dialog('open')
-							} else {
-								alert("S88 Sensors can only be modified from the S88 sensor tab");
-							}
-						} else {
-							alert("No Sensor selected");
-						}
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Delete',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							if(selectedRows[0]['pin'] > 0) {
-								$.ajax({
-									url: '/sensors?id=' + selectedRows[0]['id'],
-									method: 'DELETE'
-								});
-                $('#sensors').DataTable().draw();
-							} else {
-								alert("S88 Sensors can only be deleted from the S88 sensor tab");
-							}
-						} else {
-							alert("No Sensor selected");
-						}
 					},
 					className: 'smaller-button ui-button ui-corner-all ui-widget',
 				}
 			]
 		} );
+		$('#sensors').on('draw.dt', function() {
+			$('#sensors tr [id^=sensor-]').each(function(index) {
+				$(this).button();
+				$(this).click(function() {
+					var sensorIdParts = $(this).attr('id').split('-');
+					if(sensorIdParts[2] === 'delete') {
+						$.ajax({
+							url: '/sensors?id=' + sensorIdParts[1],
+							method: 'DELETE'
+						});
+					} else if(sensorIdParts[2] === 'edit') {
+						$('#dialogSensorID').val(sensorIdParts[1]);
+						$('#dialogSensorPin').val(sensorIdParts[3]);
+						$('#dialogSensorPullUp').toggles(sensorIdParts[4] == 'true');
+						$('#dialog-sensorEditor').dialog('open')
+					}
+					$('#sensors').DataTable().draw();
+				});
+			});
+		});
 		$('#s88sensors').DataTable( {
 			'dom': 'tiB',
-      'ajax': {
-        url:'/s88sensors',
-        dataSrc: ''
-      },
+			'ajax': {
+				url:'/s88sensors',
+				dataSrc: ''
+			},
 			'columns': [
 				{ data: 'id' },
-        { data: 'dataPin' },
-        { data: 'sensorIDBase' },
-        { data: 'sensorCount' },
+				{ data: 'sensorIDBase' },
+				{ data: 'dataPin' },
+				{ data: 'sensorCount' },
 				{ data: 'state',
 					render: function(data, type, row, meta) {
 						var result = '';
@@ -943,9 +926,12 @@
 						}
 						return result;
 					}
-			 	}
+				},
+				{ render: function(data, type, row, meta) {
+						return "<button id='s88sensor-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button><button id='s88sensor-" + row.id + "-edit-" + row.dataPin + "-" + row.sensorCount + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
+					}
+				}
 			],
-			'select': { style: 'single' },
 			'paging':false,
 			'info':false,
 			'searching':false,
@@ -956,7 +942,7 @@
 			'ordering': false,
 			buttons: [
 				{
-					text: 'Add',
+					text: 'Create',
 					action: function ( e, dt, node, config ) {
 						$('#dialogS88SensorBus').val("" + $('#s88sensors').DataTable().data().count());
 						$('#dialogS88SensorDataPin').val("0");
@@ -964,48 +950,52 @@
 						$('#dialog-s88sensorEditor').dialog('open')
 					},
 					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Edit',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							$('#dialogS88SensorBus').val(selectedRows[0]['id']);
-							$('#dialogS88SensorDataPin').val(selectedRows[0]['dataPin']);
-							$('#dialogS88SensorCount').val(selectedRows[0]['sensorCount']);
-							$('#dialog-s88sensorEditor').dialog('open')
-						} else {
-							alert("No Sensor selected");
-						}
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Delete',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							$.ajax({
-								url: '/s88sensors?id=' + selectedRows[0]['id'],
-								method: 'DELETE'
-							});
-              $('#s88sensors').DataTable().draw();
-						} else {
-							alert("No Sensor selected");
-						}
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
 				}
 			]
 		} );
+		$('#s88sensors').on('draw.dt', function() {
+			$('#s88sensors tr [id^=s88sensor-]').each(function(index) {
+				$(this).button();
+				$(this).click(function() {
+					var sensorIdParts = $(this).attr('id').split('-');
+					if(sensorIdParts[2] === 'delete') {
+						$.ajax({
+							url: '/s88sensors?id=' + sensorIdParts[1],
+							method: 'DELETE'
+						});
+					} else if(sensorIdParts[2] === 'edit') {
+						$('#dialogS88SensorBus').val(sensorIdParts[1]);
+						$('#dialogS88SensorDataPin').val(sensorIdParts[3]);
+						$('#dialogS88SensorCount').toggles(sensorIdParts[4] == 'true');
+						$('#dialog-s88sensorEditor').dialog('open')
+					}
+					$('#s88sensors').DataTable().draw();
+				});
+			});
+		});
 		$('#outputs').DataTable( {
 			'dom': 'tiB',
 			'ajax': {
 				url:'/outputs',
 				dataSrc: ''
 			},
-			'columns': [ { data: 'id' }, { data: 'pin' }, { data: 'flags' }, { data: 'active' } ],
-			'select': { style: 'single' },
+			'columns': [
+				{ data: 'id' },
+				{ data: 'pin' },
+				{ data: 'flags' },
+				{ data: 'active' },
+				{ render: function(data, type, row, meta) {
+						var cellText = "<button id='output-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
+						cellText += "<button id='output-" + row.id + "-edit-" + row.pin + "-" + row.flags + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
+						if(row.active === 'Off') {
+							cellText += "<button id='output-" + row.id + "-activate' class='smaller-button ui-button ui-corner-all ui-widget'>Activate</button>";
+						} else {
+							cellText += "<button id='output-" + row.id + "-deactivate' class='smaller-button ui-button ui-corner-all ui-widget'>Deactivate</button>";
+						}
+						return cellText;
+					}
+				}
+			],
 			'paging':false,
 			'info':false,
 			'searching':false,
@@ -1017,71 +1007,46 @@
 			'ordering': false,
 			buttons: [
 				{
-					text: 'Add',
+					text: 'Create',
 					action: function ( e, dt, node, config ) {
 						$('#dialogOutputID').val("" + $('#outputs').DataTable().data().count());
-						$('#dialogOutputPin').val("");
+						$('#dialogOutputPin').val("0");
 						$('#dialogOutputInverted').toggles(false);
 						$('#dialogOutputRestore').toggles(false);
 						$('#dialogOutputDefault').toggles(false);
 						$('#dialog-outputEditor').dialog('open')
 					},
 					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Edit',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							$('#dialogOutputID').val(selectedRows[0]['id']);
-							$('#dialogOutputPin').val(selectedRows[0]['pin']);
-							$('#dialogOutputInverted').toggles(selectedRows[0]['flags'].includes('activeLow'));
-							$('#dialogOutputRestore').toggles(!selectedRows[0]['flags'].includes('restoreState'));
-							$('#dialogOutputDefault').toggles(selectedRows[0]['flags'].includes('force(on)'));
-							$('#dialog-outputEditor').dialog('open')
-						} else {
-							alert("No Output selected");
-						}
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Delete',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							$.ajax({
-								url: '/outputs?id=' + selectedRows[0]['id'],
-								method: 'DELETE'
-							});
-              $('#outputs').DataTable().draw();
-						} else {
-							alert("No Output selected");
-						}
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				},
-				{
-					text: 'Toggle',
-					action: function ( e, dt, node, config ) {
-						var selectedRows = dt.rows( { selected: true } ).data();
-						if(selectedRows.length > 0) {
-							$.ajax({
-								url: '/outputs',
-								data: {
-									'id': selectedRows[0]['id'],
-									'state': selectedRows[0]['state'] == 'Off'
-								},
-								method: 'PUT'
-							});
-						} else {
-							alert("No Output selected");
-						}
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
 				}
 			]
 		} );
+		$('#outputs').on('draw.dt', function() {
+			$('#outputs tr [id^=output-]').each(function(index) {
+				$(this).button();
+				$(this).click(function() {
+					var outputIdParts = $(this).attr('id').split('-');
+					if(outputIdParts[2] === 'delete') {
+						$.ajax({
+							url: '/outputs?id=' + outputIdParts[1],
+							method: 'DELETE'
+						});
+					} else if(outputIdParts[2] === 'edit') {
+						$('#dialogOutputID').val(outputIdParts[1]);
+						$('#dialogOutputPin').val(outputIdParts[3]);
+						$('#dialogOutputInverted').toggles(outputIdParts[4].includes('activeLow'));
+						$('#dialogOutputRestore').toggles(outputIdParts[4].includes('force'));
+						$('#dialogOutputDefault').toggles(outputIdParts[4].includes('force(on)'));
+						$('#dialog-outputEditor').dialog('open')
+					} else {
+						$.ajax({
+							url: '/outputs?id=' + outputIdParts[1],
+							method: 'PUT'
+						});
+					}
+					$('#outputs').DataTable().draw();
+				});
+			});
+		});
 		$('#powerDistrictStatus').DataTable( {
 			'ajax': {
 				url:'/powerStatus',

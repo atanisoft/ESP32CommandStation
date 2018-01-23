@@ -153,15 +153,6 @@ uint8_t SensorManager::getSensorPin(const uint16_t id) {
   return -1;
 }
 
-bool SensorManager::isPinUsed(const uint8_t pin) {
-  for (const auto& sensor : sensors) {
-    if(sensor->getPin() == pin) {
-      return true;
-    }
-  }
-  return false;
-}
-
 Sensor::Sensor(uint16_t sensorID, int8_t pin, bool pullUp, bool announce) : _sensorID(sensorID), _pin(pin), _pullUp(pullUp), _lastState(false) {
   if(announce) {
     log_i("Sensor(%d) on pin %d created, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");

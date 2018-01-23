@@ -129,6 +129,16 @@ bool OutputManager::set(uint16_t id, bool active) {
   return false;
 }
 
+bool OutputManager::toggle(uint16_t id) {
+  for (const auto& output : outputs) {
+    if(output->getID() == id) {
+      output->set(!output->isActive());
+      return true;
+    }
+  }
+  return false;
+}
+
 void OutputManager::getState(JsonArray & array) {
   for (const auto& output : outputs) {
     JsonObject &outputJson = array.createNestedObject();
@@ -168,6 +178,7 @@ void OutputManager::createOrUpdate(const uint16_t id, const uint8_t pin, const u
   for (const auto& output : outputs) {
     if(output->getID() == id) {
       output->update(pin, flags);
+      return;
     }
   }
   outputs.add(new Output(id, pin, flags));
@@ -183,15 +194,6 @@ bool OutputManager::remove(const uint16_t id) {
   if(outputToRemove != NULL) {
     outputs.remove(outputToRemove);
     return true;
-  }
-  return false;
-}
-
-bool OutputManager::isPinUsed(const uint8_t pin) {
-  for (const auto& output : outputs) {
-    if(output->getPin() == pin) {
-      return true;
-    }
   }
   return false;
 }

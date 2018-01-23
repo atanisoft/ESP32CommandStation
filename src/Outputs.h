@@ -54,11 +54,11 @@ class OutputManager {
     static void clear();
     static uint16_t store();
     static bool set(uint16_t, bool=false);
+    static bool toggle(uint16_t);
     static void getState(JsonArray &);
     static void showStatus();
     static void createOrUpdate(const uint16_t, const uint8_t, const uint8_t);
     static bool remove(const uint16_t);
-    static bool isPinUsed(const uint8_t);
 };
 
 class OutputCommandAdapter : public DCCPPProtocolCommand {

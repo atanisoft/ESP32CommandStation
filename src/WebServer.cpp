@@ -212,36 +212,23 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
     bool inverted = request->arg(F("inverted")) == "true";
     bool forceState = request->arg(F("forceState")) == "true";
     bool defaultState = request->arg(F("defaultState")) == "true";
-    if(!SensorManager::isPinUsed(pin) &&
-       !OutputManager::isPinUsed(pin)
-#if defined(S88_ENABLED) && S88_ENABLED
-       && !S88BusManager::isPinUsed(pin)
-#endif
-      ) {
-      uint8_t outputFlags = 0;
-      if(inverted) {
-        bitSet(outputFlags, OUTPUT_IFLAG_INVERT);
-      }
-      if(forceState) {
-        bitSet(outputFlags, OUTPUT_IFLAG_RESTORE_STATE);
-        if(defaultState) {
-          bitSet(outputFlags, OUTPUT_IFLAG_FORCE_STATE);
-        }
-      }
-      OutputManager::createOrUpdate(outputID, pin, outputFlags);
-    } else {
-      jsonResponse->setCode(STATUS_CONFLICT);
-      jsonResponse->getRoot()[F("message")] = F("Pin is already in use");
+    uint8_t outputFlags = 0;
+    if(inverted) {
+      bitSet(outputFlags, OUTPUT_IFLAG_INVERT);
     }
+    if(forceState) {
+      bitSet(outputFlags, OUTPUT_IFLAG_RESTORE_STATE);
+      if(defaultState) {
+        bitSet(outputFlags, OUTPUT_IFLAG_FORCE_STATE);
+      }
+    }
+    OutputManager::createOrUpdate(outputID, pin, outputFlags);
   } else if(request->method() == HTTP_DELETE) {
-    uint16_t outputID = request->arg(F("id")).toInt();
-    if(!OutputManager::remove(outputID)) {
+    if(!OutputManager::remove(request->arg(F("id")).toInt())) {
       jsonResponse->setCode(STATUS_NOT_FOUND);
     }
   } else if(request->method() == HTTP_PUT) {
-   uint16_t outputID = request->arg(F("id")).toInt();
-   bool state = request->arg(F("state")) == "true";
-   OutputManager::set(outputID, state);
+   OutputManager::toggle(request->arg(F("id")).toInt());
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
@@ -256,10 +243,7 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
     uint16_t turnoutID = request->arg(F("id")).toInt();
     uint16_t turnoutAddress = request->arg(F("address")).toInt();
     uint8_t turnoutSubAddress = request->arg(F("subAddress")).toInt();
-    if(!TurnoutManager::create(turnoutID, turnoutAddress, turnoutSubAddress)) {
-      jsonResponse->setCode(STATUS_NOT_ACCEPTABLE);
-      jsonResponse->getRoot()[F("message")] = F("Duplicate ID");
-    }
+    TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress);
   } else if(request->method() == HTTP_DELETE) {
     uint16_t turnoutID = request->arg(F("id")).toInt();
     if(!TurnoutManager::remove(turnoutID)) {
@@ -267,8 +251,7 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
     }
   } else if(request->method() == HTTP_PUT) {
     uint16_t turnoutID = request->arg(F("id")).toInt();
-    bool state = request->arg(F("state")) == "true";
-    TurnoutManager::set(turnoutID, state);
+    TurnoutManager::toggle(turnoutID);
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
@@ -285,15 +268,8 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
     bool sensorPullUp = request->arg(F("pullUp")) == "true";
     if(sensorPin <= 0) {
       jsonResponse->setCode(STATUS_NOT_ACCEPTABLE);
-    } else if(!SensorManager::isPinUsed(sensorPin) &&
-              !OutputManager::isPinUsed(sensorPin)
-#if defined(S88_ENABLED) && S88_ENABLED
-              && !S88BusManager::isPinUsed(sensorPin)
-#endif
-              ) {
-      SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp);
     } else {
-      jsonResponse->setCode(STATUS_CONFLICT);
+      SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp);
     }
   } else if(request->method() == HTTP_DELETE) {
     uint16_t sensorID = request->arg(F("id")).toInt();

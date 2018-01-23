@@ -72,7 +72,6 @@ public:
   static void createOrUpdate(const uint16_t, const uint8_t, const bool);
   static bool remove(const uint16_t);
   static uint8_t getSensorPin(const uint16_t);
-  static bool isPinUsed(const uint8_t);
 };
 
 class SensorCommandAdapter : public DCCPPProtocolCommand {

@@ -86,7 +86,6 @@ public:
   static bool createOrUpdateBus(const uint8_t, const uint8_t, const uint16_t);
   static bool removeBus(const uint8_t);
   static void getState(JsonArray &);
-  static bool isPinUsed(const uint8_t);
 };
 
 class S88BusCommandAdapter : public DCCPPProtocolCommand {

@@ -111,6 +111,20 @@ bool TurnoutManager::set(uint16_t turnoutID, bool thrown) {
   return found;
 }
 
+bool TurnoutManager::toggle(uint16_t turnoutID) {
+  bool found = false;
+  for (const auto& turnout : turnouts) {
+    if(turnout->getID() == turnoutID) {
+      turnout->set(!turnout->isThrown());
+      found = true;
+    }
+  }
+  if(!found) {
+    log_w("Unable to locate turnout with ID %d", turnoutID);
+  }
+  return found;
+}
+
 void TurnoutManager::getState(JsonArray & array) {
   for (const auto& turnout : turnouts) {
     JsonObject &turnoutJson = array.createNestedObject();
@@ -131,14 +145,14 @@ void TurnoutManager::showStatus() {
   }
 }
 
-bool TurnoutManager::create(const uint16_t id, const uint16_t address, const uint8_t subAddress) {
+void TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const uint8_t subAddress) {
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == id) {
-      return false;
+      turnout->update(address, subAddress);
+      return;
     }
   }
   turnouts.add(new Turnout(id, address, subAddress));
-  return true;
 }
 
 bool TurnoutManager::remove(const uint16_t id) {
@@ -171,6 +185,12 @@ Turnout::Turnout(uint16_t index) {
   log_i("Turnout(%d, %d, %d)", _turnoutID, _address, _subAddress);
 }
 
+void Turnout::update(uint16_t address, uint8_t subAddress) {
+   _address = address;
+   _subAddress = subAddress;
+  log_i("Turnout %d updated to address %d/%d", _turnoutID, _address, _subAddress);
+}
+
 void Turnout::store(uint16_t index) {
   String turnoutIDKey = String("T_") + String(index);
   String turnoutAddrKey = turnoutIDKey + String("_a");
@@ -190,6 +210,7 @@ void Turnout::set(bool thrown) {
   args.push_back(String(_thrown));
   DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   wifiInterface.printf(F("<H %d %d>"), _turnoutID, _thrown);
+  log_i("Turnout(%d) %s", _turnoutID, _thrown ? "Thrown" : "Closed");
 }
 
 void Turnout::showStatus() {
@@ -207,8 +228,9 @@ void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
       wifiInterface.printf(F("<O>"));
     } else if (arguments.size() == 2 && TurnoutManager::set(turnoutID, arguments[1].toInt() == 1)) {
       // throw turnout
-    } else if (arguments.size() == 3 && TurnoutManager::create(turnoutID, arguments[1].toInt(), arguments[2].toInt())) {
-      // create turnout
+    } else if (arguments.size() == 3) {
+      // create/update turnout
+      TurnoutManager::createOrUpdate(turnoutID, arguments[1].toInt(), arguments[2].toInt());
       wifiInterface.printf(F("<O>"));
     } else {
       wifiInterface.printf(F("<X>"));

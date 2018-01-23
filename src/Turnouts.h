@@ -24,6 +24,7 @@ class Turnout {
 public:
   Turnout(uint16_t, uint16_t, uint8_t, bool=false);
   Turnout(uint16_t);
+  void update(uint16_t, uint8_t);
   void set(bool=false);
   void store(uint16_t);
   const uint16_t getID() {
@@ -52,9 +53,10 @@ public:
   static void clear();
   static uint16_t store();
   static bool set(uint16_t, bool=false);
+  static bool toggle(uint16_t);
   static void getState(JsonArray &);
   static void showStatus();
-  static bool create(const uint16_t, const uint16_t, const uint8_t);
+  static void createOrUpdate(const uint16_t, const uint16_t, const uint8_t);
   static bool remove(const uint16_t);
 };
 
