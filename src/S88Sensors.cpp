@@ -43,6 +43,11 @@ S88 Sensors are reported in the same manner as generic Sensors:
 
 **********************************************************************/
 #if defined(S88_ENABLED) && S88_ENABLED
+
+#ifndef S88_FIRST_SENSOR
+#define S88_FIRST_SENSOR S88_MAX_SENSORS_PER_BUS
+#endif
+
 extern LinkedList<Sensor *> sensors;
 LinkedList<S88SensorBus *> s88SensorBus([](S88SensorBus *sensorBus) {
   sensorBus->removeSensors(-1);
