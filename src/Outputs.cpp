@@ -259,6 +259,7 @@ Output::Output(uint16_t index) {
 void Output::set(bool active, bool announce) {
   _active = active;
   digitalWrite(_pin, _active);
+  log_i("Output(%d) set to %s", _id, _active ? "ON" : "OFF");
   if(announce) {
     wifiInterface.printf(F("<Y %d %d>"), _id, _active);
   }
