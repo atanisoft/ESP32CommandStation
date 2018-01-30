@@ -46,6 +46,13 @@ bool InfoScreen::_enabled;
 
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
 String infoScreenLines[INFO_SCREEN_OLED_LINES];
+void redrawOLED() {
+  oledDisplay.clear();
+  for(int line = 0; line < INFO_SCREEN_OLED_LINES; line++) {
+    oledDisplay.drawString(0, line * Monospaced_plain_10[1], infoScreenLines[line]);
+  }
+  oledDisplay.display();
+}
 #endif
 
 void InfoScreen::init() {
@@ -108,11 +115,7 @@ void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...
   if(_enabled) {
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
     infoScreenLines[row] = infoScreenLines[row].substring(0, col) + buf + infoScreenLines[row].substring(col + strlen(buf));
-    oledDisplay.clear();
-    for(int line = 0; line < INFO_SCREEN_OLED_LINES; line++) {
-      oledDisplay.drawString(0, line * Monospaced_plain_10[1], infoScreenLines[line]);
-    }
-    oledDisplay.display();
+    redrawOLED();
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
     if(row <= INFO_SCREEN_LCD_LINES) {
       lcdDisplay.setCursor(col, row);
@@ -133,15 +136,63 @@ void InfoScreen::printf(int col, int row, const char *format, ...) {
   if(_enabled) {
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
     infoScreenLines[row] = infoScreenLines[row].substring(0, col) + buf + infoScreenLines[row].substring(col + strlen(buf));
-    oledDisplay.clear();
-    for(int line = 0; line < INFO_SCREEN_OLED_LINES; line++) {
-      oledDisplay.drawString(0, line * Monospaced_plain_10[1], infoScreenLines[line]);
-    }
-    oledDisplay.display();
+    redrawOLED();
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
     if(row <= INFO_SCREEN_LCD_LINES) {
       lcdDisplay.setCursor(col, row);
       lcdDisplay.print(buf);
+    }
+#endif
+  } else {
+    Serial.println(buf);
+  }
+}
+
+void InfoScreen::replaceLine(int row, const __FlashStringHelper *format, ...) {
+  char buf[512] = {0};
+  va_list args;
+  va_start(args, format);
+  vsnprintf_P(buf, sizeof(buf), (const char *)format, args);
+  va_end(args);
+  if(_enabled) {
+#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+    infoScreenLines[row] = buf;
+    redrawOLED();
+#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+    if(row <= INFO_SCREEN_LCD_LINES) {
+      lcdDisplay.setCursor(0, row);
+      lcdDisplay.print(buf);
+      if(strlen(buf) < INFO_SCREEN_LCD_COLUMNS) {
+        for(int space = strlen(buf); space < INFO_SCREEN_LCD_COLUMNS; space++) {
+          lcdDisplay.print(" ");
+        }
+      }
+    }
+#endif
+  } else {
+    Serial.println(buf);
+  }
+}
+
+void InfoScreen::replaceLine(int row, const char *format, ...) {
+  char buf[512] = {0};
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buf, sizeof(buf), (const char *)format, args);
+  va_end(args);
+  if(_enabled) {
+#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+    infoScreenLines[row] = buf;
+    redrawOLED();
+#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+    if(row <= INFO_SCREEN_LCD_LINES) {
+      lcdDisplay.setCursor(0, row);
+      lcdDisplay.print(buf);
+      if(strlen(buf) < INFO_SCREEN_LCD_COLUMNS) {
+        for(int space = strlen(buf); space < INFO_SCREEN_LCD_COLUMNS; space++) {
+          lcdDisplay.print(" ");
+        }
+      }
     }
 #endif
   } else {
@@ -164,17 +215,13 @@ void InfoScreen::update() {
     // update the status line details every half second
     if(millis() - _lastUpdate >= 450) {
       _lastUpdate = millis();
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
-      // clear the line so we don't have artifacts
-      infoScreenLines[INFO_SCREEN_ROTATING_STATUS_LINE] = "";
-#endif
       switch(_rotatingStatusIndex) {
         case 0: // free heap
-          printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap: %d"),
+          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap: %d"),
             ESP.getFreeHeap());
           break;
         case 1: // locomotive count
-          printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("Active Locos: %03d"),
+          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Active Locos: %03d"),
             LocomotiveManager::getActiveLocoCount());
           break;
         case 2: // motor shield
@@ -182,14 +229,14 @@ void InfoScreen::update() {
           auto board = MotorBoardManager::getBoardByName(MotorBoardManager::getBoardNames()[_motorboardIndex]);
           if(board != NULL && (board->isOn() || board->isOverCurrent())) {
             if(board->isOverCurrent()) {
-              printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Fault (%2.2f A)"),
+              replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Fault (%2.2f A)"),
                 board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
             } else if(board->isOn()) {
-              printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Normal (%2.2f A)"),
+              replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Normal (%2.2f A)"),
                 board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
             }
           } else if(board != NULL) {
-            printf(0, INFO_SCREEN_ROTATING_STATUS_LINE, F("%s: Off"),
+            replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s: Off"),
               board->getName().c_str());
           }
           break;

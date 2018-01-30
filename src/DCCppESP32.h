@@ -37,6 +37,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #define S88_SENSOR_CLOCK_PRE_RESET_TIME 50
 #define S88_SENSOR_RESET_PULSE_TIME 50
 #define S88_SENSOR_READ_TIME 25
+#define S88_MAX_SENSORS_PER_BUS 512
 
 /////////////////////////////////////////////////////////////////////////////////////
 // SET WHETHER TO SHOW PACKETS - DIAGNOSTIC MODE ONLY

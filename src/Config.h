@@ -104,10 +104,11 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define S88_RESET_PIN 16
 //#define S88_LOAD_PIN 27
 
-// S88 sensors are dynamically assigned based on the BUS ID * 512 + S88_FIRST_SENSOR
+// S88 sensors are dynamically assigned based on the BUS ID * S88_MAX_SENSORS_PER_BUS + S88_FIRST_SENSOR
 // This define allows shifting the S88 Sensors to start at a default value, you
-// can start them at zero or as below 512 (default).
-//#define S88_FIRST_SENSOR 512
+// can start them at zero or as below S88_MAX_SENSORS_PER_BUS (default).
+// S88_MAX_SENSORS_PER_BUS is defined as 512.
+//#define S88_FIRST_SENSOR S88_MAX_SENSORS_PER_BUS
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -130,8 +131,8 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 // LCD SCREEN PARAMETERS
 //#define INFO_SCREEN_LCD true
-//#define INFO_SCREEN_LCD_I2C_ADDRESS 0x3F
-//#define INFO_SCREEN_LCD_LINES 2
+//#define INFO_SCREEN_LCD_I2C_ADDRESS 0x27
+//#define INFO_SCREEN_LCD_LINES 4
 //#define INFO_SCREEN_LCD_COLUMNS 20
 
 /////////////////////////////////////////////////////////////////////////////////////

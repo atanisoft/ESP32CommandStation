@@ -44,8 +44,10 @@ class InfoScreen {
   public:
     static void init();
     static void clear();
-    static void printf(int col, int row, const __FlashStringHelper *format, ...);
-    static void printf(int col, int row, const char *format, ...);
+    static void printf(int, int, const __FlashStringHelper *, ...);
+    static void printf(int, int, const char *, ...);
+    static void replaceLine(int, const __FlashStringHelper *, ...);
+    static void replaceLine(int, const char *, ...);
     static void update();
   private:
     static bool _enabled;

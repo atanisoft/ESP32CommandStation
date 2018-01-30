@@ -36,7 +36,7 @@ WiFiInterface::WiFiInterface() {
 }
 
 void WiFiInterface::begin() {
-  InfoScreen::printf(0, INFO_SCREEN_IP_ADDR_LINE, F("IP:Pending"));
+  InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("IP:Pending"));
 #if defined(WIFI_STATIC_IP_ADDRESS) && defined(WIFI_STATIC_IP_GATEWAY) && defined(WIFI_STATIC_IP_SUBNET)
   IPAddress staticIP, gatewayIP, subnetMask, dnsServer;
   staticIP.fromString(WIFI_STATIC_IP_ADDRESS);

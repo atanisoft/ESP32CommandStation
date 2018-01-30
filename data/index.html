@@ -13,14 +13,12 @@
 	<script src="https://cdn.datatables.net/1.10.16/js/dataTables.jqueryui.min.js"></script>
 	<script src="https://cdn.rawgit.com/flesler/hashmap/master/hashmap.js"></script>
 	<script src="https://cdn.rawgit.com/furf/jquery-ui-touch-punch/master/jquery.ui.touch-punch.min.js"></script>
-	<script src="https://cdn.datatables.net/select/1.2.3/js/dataTables.select.min.js"></script>
 	<script src="https://cdn.datatables.net/buttons/1.4.2/js/dataTables.buttons.min.js"></script>
 	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/vader/jquery-ui.css">
 	<link rel="stylesheet" href="https://cdn.rawgit.com/simontabor/jquery-toggles/master/css/toggles.css">
 	<link rel="stylesheet" href="https://cdn.rawgit.com/simontabor/jquery-toggles/master/css/themes/toggles-dark.css">
 	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
-	<link rel="stylesheet" href="https://cdn.rawgit.com/twbs/bootstrap/v4.0.0-alpha.6/dist/css/bootstrap-grid.css">
-	<link rel="stylesheet" href="https://cdn.datatables.net/select/1.2.3/css/select.dataTables.min.css">
+	<link rel="stylesheet" href="https://cdn.rawgit.com/twbs/bootstrap/v4.0.0/dist/css/bootstrap-grid.css">
 	<link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.4.2/css/buttons.jqueryui.min.css">
 	<style>
 		.clockdate {font-family:Arial,Helvetica,sans-serif;font-size:13px;text-align:center;text-shadow:0 0 5px #008B8B;color:#00CCFF;display:block;}
@@ -77,8 +75,8 @@
 						data-title="DCC++"
 						data-color-title="#FFFFFF"
 						data-min-value="0"
-						data-max-value="130"
-						data-major-ticks='["0","10","20","30","40","50","60","70","80","90","100","110","120","130"]'
+						data-max-value="128"
+						data-major-ticks='["0","10","20","30","40","50","60","70","80","90","100","110","120","128"]'
 						data-minor-ticks="10"
 						data-stroke-ticks="true"
 						data-units="Speed"
@@ -94,7 +92,7 @@
 						data-color-major-ticks="#00CCFF"
 						data-color-minor-ticks="#00CCFF"
 						data-color-numbers="#00CCFF"
-						data-highlights='[{"from":100, "to": 126, "color": "#FF0000"}]'>
+						data-highlights='[{"from":100, "to": 128, "color": "#FF0000"}]'>
 					</canvas>
 				</div>
 				<div class="col">
@@ -338,79 +336,91 @@
 </div>
 <div id="dialog-locoNumber">
 	<form>
-		<label for="locoNumber">Locomotive Number</label>
-		<input type="number" name="locoNumber" id="dialogLocoNumber" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" />
+		<div class="fluid-container">
+			<div class="row">
+				<div class="col-auto"><label for="locoNumber">Locomotive Number</label></div>
+				<div class="col-auto"><input type="number" name="locoNumber" id="dialogLocoNumber" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+		</div>
 	</form>
 </div>
 <div id="dialog-turnoutEditor">
 	<form>
-		<div class="row">
-			<label for="turnoutID">Turnout ID:</label>
-			<input type="number" name="turnoutID" id="dialogTurnoutID" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
-			<label for="turnoutAddress">Address:</label>
-			<input type="number" name="turnoutAddress" id="dialogTurnoutAddress" value="1" min="1" max="2044" class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
-			<label for="turnoutSubAddress">Sub Address:</label>
-			<input type="number" name="turnoutSubAddress" id="dialogTurnoutSubAddress" value="0" min="0" max="8" class="text ui-widget-content ui-corner-all" />
+		<div class="fluid-container">
+			<div class="row">
+				<div class="col-auto"><label for="turnoutID">Turnout ID:</label></div>
+				<div class="col-auto"><input type="number" name="turnoutID" id="dialogTurnoutID" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="turnoutAddress">Address:</label></div>
+				<div class="col-auto"><input type="number" name="turnoutAddress" id="dialogTurnoutAddress" value="1" min="1" max="2044" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="turnoutSubAddress">Sub Address:</label></div>
+				<div class="col-auto"><input type="number" name="turnoutSubAddress" id="dialogTurnoutSubAddress" value="0" min="0" max="8" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
 		</div>
 	</form>
 </div>
 <div id="dialog-outputEditor">
 	<form>
-		<div class="row">
-			<label for="dialogOutputID">Output ID:</label>
-			<input type="number" name="dialogOutputID" id="dialogOutputID" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
-			<label for="dialogOutputPin">Pin:</label>
-			<input type="number" name="dialogOutputPin" id="dialogOutputPin" value="0" min="0" max="40" class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
-			<label for="dialogOutputInverted">Inverted:</label>
-			<div id="dialogOutputInverted" class="toggle toggle-dark"></div>
-		</div>
-		<div class="row">
-			<label for="dialogOutputRestore">Startup State:</label>
-			<div id="dialogOutputRestore" class="toggle toggle-dark"></div>
-		</div>
-		<div class="row" id="dialogOutputDefaultRow">
-			<label for="dialogOutputDefault">Default State:</label>
-			<div id="dialogOutputDefault" class="toggle toggle-dark"></div>
+		<div class="fluid-container">
+			<div class="row">
+				<div class="col-auto"><label for="dialogOutputID">Output ID:</label></div>
+				<div class="col-auto"><input type="number" name="dialogOutputID" id="dialogOutputID" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="dialogOutputPin">Pin:</label></div>
+				<div class="col-auto"><input type="number" name="dialogOutputPin" id="dialogOutputPin" value="0" min="0" max="40" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="dialogOutputInverted">Inverted:</label></div>
+				<div class="col-auto"><div id="dialogOutputInverted" class="toggle toggle-dark"></div></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="dialogOutputRestore">Startup State:</label></div>
+				<div class="col-auto"><div id="dialogOutputRestore" class="toggle toggle-dark"></div></div>
+			</div>
+			<div class="row" id="dialogOutputDefaultRow">
+				<div class="col-auto"><label for="dialogOutputDefault">Default State:</label></div>
+				<div class="col-auto"><div id="dialogOutputDefault" class="toggle toggle-dark"></div></div>
+			</div>
 		</div>
 	</form>
 </div>
 <div id="dialog-sensorEditor">
 	<form>
-		<div class="row">
-			<label for="dialogSensorID">Sensor ID:</label>
-			<input type="number" name="dialogSensorID" id="dialogSensorID" value="0" min="0" max="65535"class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
-			<label for="dialogSensorPin">Pin:</label>
-			<input type="number" name="dialogSensorPin" id="dialogSensorPin" value="0" min="0" max="40" class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
-			<label for="dialogSensorPullUp">Pull Up:</label>
-			<div id="dialogSensorPullUp" class="toggle toggle-dark"></div>
+		<div class="fluid-container">
+			<div class="row">
+				<div class="col-auto"><label for="dialogSensorID">Sensor ID:</label></div>
+				<div class="col-auto"><input type="number" name="dialogSensorID" id="dialogSensorID" value="0" min="0" max="65535"class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="dialogSensorPin">Pin:</label></div>
+				<div class="col-auto"><input type="number" name="dialogSensorPin" id="dialogSensorPin" value="0" min="0" max="40" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="dialogSensorPullUp">Pull Up:</label></div>
+				<div class="col-auto"><div id="dialogSensorPullUp" class="toggle toggle-dark"></div></div>
+			</div>
 		</div>
 	</form>
 </div>
 <div id="dialog-s88sensorEditor">
 	<form>
-		<div class="row">
-			<label for="dialogS88SensorBus">S88 Bus:</label>
-			<input type="number" value="0" min="0" max="16" name="dialogS88SensorBus" id="dialogS88SensorBus" class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
-			<label for="dialogS88SensorDataPin">Data Pin:</label>
-			<input type="number" value="0" min="0" max="40" name="dialogS88SensorDataPin" id="dialogS88SensorDataPin" class="text ui-widget-content ui-corner-all" />
-		</div>
-		<div class="row">
-			<label for="dialogS88SensorCount">Sensor Count:</label>
-			<input type="number" value="0" min="0" max="512" name="dialogS88SensorCount" id="dialogS88SensorCount" class="text ui-widget-content ui-corner-all" />
+		<div class="fluid-container">
+			<div class="row">
+				<div class="col-auto"><label for="dialogS88SensorBus">S88 Bus:</label></div>
+				<div class="col-auto"><input type="number" value="0" min="0" max="16" name="dialogS88SensorBus" id="dialogS88SensorBus" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="dialogS88SensorDataPin">Data Pin:</label></div>
+				<div class="col-auto"><input type="number" value="0" min="0" max="40" name="dialogS88SensorDataPin" id="dialogS88SensorDataPin" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
+			<div class="row">
+				<div class="col-auto"><label for="dialogS88SensorCount">Sensor Count:</label></div>
+				<div class="col-auto"><input type="number" value="0" min="0" max="512" name="dialogS88SensorCount" id="dialogS88SensorCount" class="text ui-widget-content ui-corner-all" /></div>
+			</div>
 		</div>
 	</form>
 </div>
@@ -550,6 +560,7 @@
 		$('#dialog-locoNumber').dialog({
 			autoOpen:false,
 			modal:true,
+			resize:'auto',
 			buttons: {
 				'Ok': {
 					text: 'Ok',
@@ -571,6 +582,7 @@
 		$('#dialog-turnoutEditor').dialog({
 			autoOpen:false,
 			modal:true,
+			resize:'auto',
 			buttons: {
 				'Save': {
 					text: 'Save',
@@ -625,6 +637,7 @@
 		$('#dialog-outputEditor').dialog({
 			autoOpen:false,
 			modal:true,
+			resize:'auto',
 			buttons: {
 				'Save': {
 					text: 'Save',
@@ -659,6 +672,7 @@
 		$('#dialog-sensorEditor').dialog({
 			autoOpen:false,
 			modal:true,
+			resize:'auto',
 			buttons: {
 				'Save': {
 					text: 'Save',
@@ -685,6 +699,7 @@
 		$('#dialog-s88sensorEditor').dialog({
 			autoOpen:false,
 			modal:true,
+			resize:'auto',
 			buttons: {
 				'Save': {
 					text: 'Save',
@@ -715,7 +730,14 @@
 			},
 			width:100}
 		);
-		$('#top-tabs').tabs();
+		$('#top-tabs').tabs({
+			activate: function(event, ui) {
+				if(ui.newPanel.attr('id') == 'tab-top-1') {
+					$('#powerDistrictStatus').DataTable().draw();
+					$('#dcc-tabs').tabs('option', 'active', 0);
+				}
+			}
+		});
 		$('#dcc-tabs').tabs({
 			beforeActivate: function(event, ui) {
 				if(ui.newPanel.attr('id') == 'dcc-tab-0') {
@@ -1074,12 +1096,12 @@
 		}, 20000 );
 		$('#throttleSpeedRange').slider({
 			min:0,
-			max:126,
+			max:128,
 			orientation:'vertical',
-			animate:true
-		});
-		$('#throttleSpeedRange').on('slide', function(event, ui) {
-			setLocoSpeedSlider(ui.value);
+			animate:true,
+			slide: function(event, ui) {
+				setLocoSpeedSlider(ui.value);
+			}
 		});
 		$('#btnPersistConfig').button();
 		$('#btnConsoleClear').button();

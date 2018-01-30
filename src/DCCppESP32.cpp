@@ -169,7 +169,7 @@ void setup() {
 	configStore.begin("DCCpp");
 
 	InfoScreen::init();
-	InfoScreen::printf(0, INFO_SCREEN_STATION_INFO_LINE, F("DCC++ESP: v%s"), VERSION);
+	InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, F("DCC++ESP: v%s"), VERSION);
 #if INFO_SCREEN_STATION_INFO_LINE == INFO_SCREEN_IP_ADDR_LINE
 	delay(250);
 #endif
@@ -179,7 +179,7 @@ void setup() {
   MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_PROG,
 		MOTORBOARD_ENABLE_PIN_PROG, MOTORBOARD_TYPE_PROG, MOTORBOARD_NAME_PROG);
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
-	InfoScreen::printf(0, INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
+	InfoScreen::replaceLine(INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
 #endif
 	DCCPPProtocolHandler::init();
 	OutputManager::init();

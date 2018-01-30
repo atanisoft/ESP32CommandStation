@@ -24,7 +24,7 @@ public:
   void begin() {
     AsyncWebServer::begin();
     #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
-      InfoScreen::printf(0, INFO_SCREEN_WS_CLIENTS_LINE, F("WS Clients: 0"));
+      InfoScreen::replaceLine(INFO_SCREEN_WS_CLIENTS_LINE, F("WS Clients: 0"));
     #endif
   }
   void broadcastToWS(const char *buf) {
