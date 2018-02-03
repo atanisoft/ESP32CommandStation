@@ -15,6 +15,7 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 #include <ESPAsyncWebServer.h>
+#include <ESPmDNS.h>
 
 #include "InfoScreen.h"
 
@@ -22,6 +23,7 @@ class DCCPPWebServer : public AsyncWebServer {
 public:
   DCCPPWebServer();
   void begin() {
+    MDNS.addService("http", "tcp", 80);
     AsyncWebServer::begin();
     #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
       InfoScreen::replaceLine(INFO_SCREEN_WS_CLIENTS_LINE, F("WS Clients: 0"));
