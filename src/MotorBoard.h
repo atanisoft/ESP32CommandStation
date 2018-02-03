@@ -60,8 +60,8 @@ private:
 	const adc1_channel_t _senseChannel;
 	const uint8_t _enablePin;
 	const uint32_t _maxMilliAmps;
-	const uint16_t _triggerValue;
-	uint16_t _current;
+	const uint32_t _triggerValue;
+	uint32_t _current;
 	uint32_t _lastCheckTime;
 	bool _state;
 	bool _triggered;

@@ -312,7 +312,7 @@ const uint8_t CVSampleCount = 250;
 
 int16_t readCV(const uint16_t cv) {
   const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps()) * 60;
+  const uint16_t milliAmpAck = (4096 * 60 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps());
   uint8_t readCVBitPacket[4] = { (uint8_t)(0x78 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
   uint8_t verifyCVBitPacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
   int16_t cvValue = 0;
@@ -353,7 +353,7 @@ int16_t readCV(const uint16_t cv) {
 
 bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
   const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps()) * 60;
+  const uint16_t milliAmpAck = (4096 * 60 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps());
   const uint8_t maxWriteAttempts = 5;
   uint8_t writeCVBytePacket[4] = { (uint8_t)(0x7C + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), cvValue, 0x00};
   uint8_t verifyCVBytePacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), cvValue, 0x00};
@@ -386,7 +386,7 @@ bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
 
 bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
   const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps()) * 60;
+  const uint16_t milliAmpAck = (4096 * 60 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps());
   const uint8_t maxWriteAttempts = 5;
   uint8_t writeCVBitPacket[4] = { (uint8_t)(0x78 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), (uint8_t)(0xF0 + bit + value * 8), 0x00};
   uint8_t verifyCVBitPacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), (uint8_t)(0xB0 + bit + value * 8), 0x00};

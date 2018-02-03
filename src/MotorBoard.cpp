@@ -28,10 +28,10 @@ LinkedList<GenericMotorBoard *> motorBoards([](GenericMotorBoard *board) {delete
 GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enablePin,
   uint16_t triggerMilliAmps, uint32_t maxMilliAmps, String name) :
   _name(name), _senseChannel(senseChannel), _enablePin(enablePin),
-  _maxMilliAmps(maxMilliAmps), _triggerValue(4096 / maxMilliAmps * triggerMilliAmps),
+  _maxMilliAmps(maxMilliAmps), _triggerValue(4096 * triggerMilliAmps / maxMilliAmps),
   _current(0), _state(false), _triggered(false), _triggerClearedCountdown(0),
   _triggerRecurrenceCount(0) {
-  adc1_config_channel_atten(senseChannel, ADC_ATTEN_DB_0);
+  adc1_config_channel_atten(_senseChannel, ADC_ATTEN_DB_0);
   pinMode(enablePin, OUTPUT);
   log_i("[%s] Configuring motor board [ADC1 Channel: %d, currentLimit: %d, enablePin: %d]",
     _name.c_str(), _senseChannel, _triggerValue, _enablePin);
