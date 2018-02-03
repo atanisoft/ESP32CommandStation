@@ -18,6 +18,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "DCCppESP32.h"
 #include <ESPAsyncWebServer.h>
 #include <AsyncJson.h>
+#include <ESPmDNS.h>
 
 #include "WebServer.h"
 #include "MotorBoard.h"
@@ -76,6 +77,7 @@ private:
 LinkedList<WebSocketClient *> webSocketClients([](WebSocketClient *client) {delete client;});
 
 DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
+  MDNS.addService("http", "tcp", 80);
   rewrite("/", "/index.html");
   on("/index.html", HTTP_GET,
     [](AsyncWebServerRequest *request) {

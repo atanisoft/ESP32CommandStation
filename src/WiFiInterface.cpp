@@ -68,9 +68,13 @@ void WiFiInterface::begin() {
     ESP.restart();
   }
   InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
+
+  MDNS.begin(HOSTNAME);
+
   DCCppServer.setNoDelay(true);
   DCCppServer.begin();
   dccppWebServer.begin();
+  MDNS.addService("dccpp", "tcp", DCCPP_CLIENT_PORT);
 }
 
 void WiFiInterface::update() {
