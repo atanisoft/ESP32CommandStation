@@ -261,7 +261,7 @@ void Output::set(bool active, bool announce) {
   digitalWrite(_pin, _active);
   log_i("Output(%d) set to %s", _id, _active ? "ON" : "OFF");
   if(announce) {
-    wifiInterface.printf(F("<Y %d %d>"), _id, _active);
+    wifiInterface.printf(F("<Y %d %d>"), _id, !_active);
   }
 }
 
@@ -302,7 +302,7 @@ void Output::store(uint16_t index) {
 }
 
 void Output::showStatus() {
-  wifiInterface.printf(F("<Y %d %d %d %d>"), _id, _pin, _flags, _active);
+  wifiInterface.printf(F("<Y %d %d %d %d>"), _id, _pin, _flags, !_active);
 }
 
 void OutputCommandAdapter::process(const std::vector<String> arguments) {

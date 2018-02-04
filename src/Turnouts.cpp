@@ -209,7 +209,7 @@ void Turnout::set(bool thrown) {
   args.push_back(String(_subAddress));
   args.push_back(String(_thrown));
   DCCPPProtocolHandler::getCommandHandler("a")->process(args);
-  wifiInterface.printf(F("<H %d %d>"), _turnoutID, _thrown);
+  wifiInterface.printf(F("<H %d %d>"), _turnoutID, !_thrown);
   log_i("Turnout(%d) %s", _turnoutID, _thrown ? "Thrown" : "Closed");
 }
 
