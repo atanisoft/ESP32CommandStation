@@ -74,7 +74,7 @@ void WiFiInterface::begin() {
   DCCppServer.setNoDelay(true);
   DCCppServer.begin();
   dccppWebServer.begin();
-  MDNS.addService("dccpp", "tcp", DCCPP_CLIENT_PORT);
+  MDNS.addService("_dccpp", "_tcp", DCCPP_CLIENT_PORT);
 }
 
 void WiFiInterface::update() {
