@@ -53,7 +53,7 @@ public:
 		return _maxMilliAmps;
 	}
 	float getCurrentDraw() {
-		return (float)(_current * (4096.0f / _maxMilliAmps));
+		return (float)((_current * _maxMilliAmps) / 4096.0f);
 	}
 private:
 	const String _name;
