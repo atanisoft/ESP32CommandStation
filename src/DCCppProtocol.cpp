@@ -17,8 +17,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "DCCppESP32.h"
 
-#include "MotorBoard.h"
-#include "SignalGenerator.h"
 #include "Locomotive.h"
 #include "Turnouts.h"
 #include "Outputs.h"

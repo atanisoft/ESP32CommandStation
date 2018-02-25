@@ -61,10 +61,11 @@ private:
 
 class LocomotiveManager {
 public:
-  static void update();
   static void processThrottle(const std::vector<String> arguments);
   static void processFunction(const std::vector<String> arguments);
   static void showStatus();
+  static void update();
+  static void emergencyStop();
   static uint8_t getActiveLocoCount() {
     return _locos.length();
   }

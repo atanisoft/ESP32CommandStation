@@ -18,7 +18,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "DCCppESP32.h"
 
 #include "Locomotive.h"
-#include "SignalGenerator.h"
 
 LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete loco; });
 
@@ -106,5 +105,12 @@ void LocomotiveManager::update() {
     if(millis() > loco->getLastUpdate() + 50) {
       loco->sendLocoUpdate();
     }
+	}
+}
+
+void LocomotiveManager::emergencyStop() {
+  for (const auto& loco : _locos) {
+    loco->setSpeed(-1);
+    loco->sendLocoUpdate();
 	}
 }

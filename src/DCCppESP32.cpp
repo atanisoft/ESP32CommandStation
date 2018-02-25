@@ -147,7 +147,6 @@ present in DCCppESP32.cpp in the setup() method.
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include "MotorBoard.h"
 #include "Locomotive.h"
 #include "Outputs.h"
 #include "Turnouts.h"

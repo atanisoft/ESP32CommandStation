@@ -16,7 +16,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include "MotorBoard.h"
 #include "Locomotive.h"
 
 #ifndef INFO_SCREEN_SDA_PIN

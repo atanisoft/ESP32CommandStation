@@ -20,9 +20,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
 
-#include "SignalGenerator.h"
-#include "MotorBoard.h"
-
 // Define constants for DCC Signal pattern
 
 // this controls the timer tick frequency
@@ -295,6 +292,7 @@ uint64_t sampleADCChannel(adc1_channel_t channel, uint8_t sampleCount) {
   int successfulReads = 0;
   for(uint8_t sampleReadCount = 0; sampleReadCount < sampleCount; sampleReadCount++) {
     int reading = adc1_get_raw(channel);
+    log_d("ADC(%d) sample %d/%d: %d", channel, sampleReadCount+1, sampleCount, reading);
     if(reading > 0) {
       current += reading;
       successfulReads++;
@@ -304,6 +302,7 @@ uint64_t sampleADCChannel(adc1_channel_t channel, uint8_t sampleCount) {
   if(successfulReads) {
     current /= successfulReads;
   }
+  log_d("ADC(%d) average: %d", current);
   return current;
 }
 
