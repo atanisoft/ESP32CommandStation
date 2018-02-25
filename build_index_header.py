@@ -37,7 +37,7 @@ def build_index_html_h(source, target, env):
         f.write("};\n")
         f.write("#endif\n")
 
-env.AddPreAction('$BUILD_DIR/src/WebServer.o', build_index_html_h)
+env.AddPreAction('$BUILD_DIR/src/WebServer.cpp.o', build_index_html_h)
 env.Append(
     CPPPATH = [
         "$BUILD_DIR"
