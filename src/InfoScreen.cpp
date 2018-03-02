@@ -63,12 +63,12 @@ void InfoScreen::init() {
   }
   Wire.begin(INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
   
-  #if defined(INFO_SCREEN_RST_PIN)
-    pinMode(INFO_SCREEN_RST_PIN, OUTPUT);
-    digitalWrite(INFO_SCREEN_RST_PIN, LOW);
-    delay(50);
-    digitalWrite(INFO_SCREEN_RST_PIN, HIGH);
-  #endif
+#if defined(INFO_SCREEN_RESET_PIN)
+  pinMode(INFO_SCREEN_RESET_PIN, OUTPUT);
+  digitalWrite(INFO_SCREEN_RESET_PIN, LOW);
+  delay(50);
+  digitalWrite(INFO_SCREEN_RESET_PIN, HIGH);
+#endif
   
   // Check that we can find the OLED screen by its address before attempting
   // to use/configure it.
