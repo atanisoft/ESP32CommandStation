@@ -117,11 +117,13 @@ COPYRIGHT (c) 2017 Mike Dunston
 // BOTH OLED AND LCD SCREENS ARE SUPPORTED
 
 // If the ESP32 board does not use standard SDA/SCL pins as defined in pins_arduino.h
-// uncomment the next two lines and define the pins that need to be used instead.  If your
-// board is Heltec, uncomment the INFO_SCREEN_RST_PIN and apply the necessary address (i.e. 15)
+// uncomment the next two lines and define the pins that need to be used instead.
 //#define INFO_SCREEN_SDA_PIN SDA
 //#define INFO_SCREEN_SCL_PIN SCL
-//#define INFO_SCREEN_RST_PIN RST
+
+// If your board is a Heltec variant, uncomment the following line to enable the
+// OLED reset support for this board.
+//#define INFO_SCREEN_RESET_PIN 15
 
 // OLED SCREEN PARAMETERS
 //#define INFO_SCREEN_OLED true
