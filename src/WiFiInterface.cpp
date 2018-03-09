@@ -51,7 +51,10 @@ void WiFiInterface::begin() {
 #endif
 
   log_i("Connecting to WiFi: %s", wifiSSID.c_str());
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
   WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
+  WiFi.setHostname( HOSTNAME );
   log_i("Waiting for WiFi to connect");
   if(WiFi.waitForConnectResult() == WL_NO_SSID_AVAIL) {
     log_i("WiFI connect failed, restarting");

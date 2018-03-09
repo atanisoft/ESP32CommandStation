@@ -119,7 +119,11 @@ DCC++ESP32 BASE STATION in split into multiple modules, each with its own header
 
 	Sensor:           contains methods to monitor and report on the status of
 										optionally-defined sensors connected to various pins on the
-										ESP32.
+										ESP3
+	
+	Detector:         contains methods to monitor and report on the status of
+										optionally-defined detectors connected by wifi to the
+										ESP32
 
 	SignalGenerator:  contains methods to generate the DCC signal for PROGRAMMING
 										and OPERATIONS tracks, additional methods are present for
@@ -154,6 +158,7 @@ present in DCCppESP32.cpp in the setup() method.
 #include "Sensors.h"
 #include "S88Sensors.h"
 #include "SignalGenerator.h"
+#include "Detectors.h"
 
 const char * buildTime = __DATE__ " " __TIME__;
 Preferences configStore;
@@ -185,6 +190,7 @@ void setup() {
 	OutputManager::init();
 	TurnoutManager::init();
 	SensorManager::init();
+	DetectorManager::init();
 #if defined(S88_ENABLED) && S88_ENABLED
 	S88BusManager::init();
 #endif
@@ -201,4 +207,5 @@ void loop() {
 	S88BusManager::update();
 	#endif
 	LocomotiveManager::update();
+	DetectorManager::check();
 }

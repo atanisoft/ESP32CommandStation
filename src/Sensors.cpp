@@ -17,6 +17,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "DCCppESP32.h"
 #include "Sensors.h"
+#include "Detectors.h"
 
 /**********************************************************************
 
@@ -94,7 +95,7 @@ void SensorManager::clear() {
 uint16_t SensorManager::store() {
   uint16_t sensorStoredCount = 0;
   for (const auto& sensor : sensors) {
-    if(sensor->getPin() > 0) {
+    if(sensor->getPin() >= 0) {
       sensor->store(sensorStoredCount++);
     }
   }
@@ -213,6 +214,8 @@ void SensorCommandAdapter::process(const std::vector<String> arguments) {
     for (const auto& sensor : sensors) {
       sensor->show();
     }
+    DetectorManager::show();
+
   } else {
     uint16_t sensorID = arguments[0].toInt();
     if (arguments.size() == 1 && SensorManager::remove(sensorID)) {
