@@ -319,21 +319,17 @@ void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
 }
 #endif
 
-void DCCPPWebServer::handleRemoteSensors(AsyncWebServerRequest *) {
+void DCCPPWebServer::handleRemoteSensors(AsyncWebServerRequest *request) {
   auto jsonResponse = new AsyncJsonResponse(true);
   if(request->method() == HTTP_GET) {
     JsonArray &array = jsonResponse->getRoot();
     RemoteSensorManager::getState(array);
   } else if(request->method() == HTTP_POST) {
-    if(!RemoteSensorManager::createOrUpdateBus(
-      request->arg(F("id")).toInt(),
-      request->arg(F("value")).toInt()) {
-      // invalid request
-      jsonResponse->setCode(STATUS_NOT_ALLOWED);
-    }
+    RemoteSensorManager::createOrUpdate(request->arg(F("id")).toInt(),
+      request->arg(F("value")).toInt());
   } else if(request->method() == HTTP_DELETE) {
     uint8_t id = request->arg(F("id")).toInt();
-    RemoteSensorManager::delete(id);
+    RemoteSensorManager::remove(id);
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
