@@ -190,7 +190,9 @@ void setup() {
 	OutputManager::init();
 	TurnoutManager::init();
 	SensorManager::init();
+#if defined(DETECTORS_ENABLED) && DETECTORS_ENABLED
 	DetectorManager::init();
+#endif
 #if defined(S88_ENABLED) && S88_ENABLED
 	S88BusManager::init();
 #endif
@@ -207,5 +209,8 @@ void loop() {
 	S88BusManager::update();
 	#endif
 	LocomotiveManager::update();
+	#if defined(DETECTORS_ENABLED) && DETECTORS_ENABLED
 	DetectorManager::check();
+	#endif
+
 }
