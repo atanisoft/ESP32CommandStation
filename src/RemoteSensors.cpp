@@ -123,11 +123,12 @@ bool RemoteSensorManager::remove(const uint16_t id) {
 }
 
 void RemoteSensorManager::getState(JsonArray &array) {
-  for (const auto& sensors : remoteSensors) {
+  for (const auto& sensor : remoteSensors) {
     JsonObject &sensorJson = array.createNestedObject();
     sensorJson[F("id")] = sensor->getRawID();
     sensorJson[F("value")] = sensor->getSensorValue();
     sensorJson[F("active")] = sensor->isActive();
+    sensorJson[F("lastUpdate")] = sensor->getLastUpdate();
   }
 }
 

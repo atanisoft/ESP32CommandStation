@@ -37,12 +37,15 @@ public:
     _lastUpdate = millis();
     set(_value != 0);
   }
+  const uint32_t getLastUpdate() {
+    return _lastUpdate;
+  }
   virtual void check();
   void showSensor();
 private:
   uint16_t _rawID;
   uint16_t _value;
-  unsigned long _lastUpdate = 0;
+  uint32_t _lastUpdate;
 };
 
 class RemoteSensorManager {
