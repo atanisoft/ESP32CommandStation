@@ -141,8 +141,12 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-//Enable the use of external WiFi detectors
+// Remote Sensors are enabled by default, the following parameters can be used
+// to control their behavior.
 
-//#define DETECTORS_ENABLED true
+//#define SCAN_REMOTE_SENSORS_ON_STARTUP true
+//#define REMOTE_SENSORS_PREFIX "sensor"
+//#define REMOTE_SENSORS_DECAY 60000
+//#define REMOTE_SENSORS_FIRST_SENSOR 100
 
 /////////////////////////////////////////////////////////////////////////////////////

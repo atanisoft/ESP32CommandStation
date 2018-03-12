@@ -119,10 +119,10 @@ DCC++ESP32 BASE STATION in split into multiple modules, each with its own header
 
 	Sensor:           contains methods to monitor and report on the status of
 										optionally-defined sensors connected to various pins on the
-										ESP3
-	
-	Detector:         contains methods to monitor and report on the status of
-										optionally-defined detectors connected by wifi to the
+										ESP32
+
+	RemoteSensors:    contains methods to monitor and report on the status of
+										optionally-defined remote sensors connected by wifi to the
 										ESP32
 
 	SignalGenerator:  contains methods to generate the DCC signal for PROGRAMMING
@@ -157,7 +157,7 @@ present in DCCppESP32.cpp in the setup() method.
 #include "Sensors.h"
 #include "S88Sensors.h"
 #include "SignalGenerator.h"
-#include "Detectors.h"
+#include "RemoteSensors.h"
 
 const char * buildTime = __DATE__ " " __TIME__;
 Preferences configStore;
@@ -189,12 +189,10 @@ void setup() {
 	OutputManager::init();
 	TurnoutManager::init();
 	SensorManager::init();
-#if defined(DETECTORS_ENABLED) && DETECTORS_ENABLED
-	DetectorManager::init();
-#endif
 #if defined(S88_ENABLED) && S88_ENABLED
 	S88BusManager::init();
 #endif
+	RemoteSensorManager::init();
 	configureDCCSignalGenerators();
 	log_i("DCC++ READY!");
 }
@@ -204,12 +202,8 @@ void loop() {
 	InfoScreen::update();
 	MotorBoardManager::check();
 	SensorManager::check();
-	#if defined(S88_ENABLED) && S88_ENABLED
+#if defined(S88_ENABLED) && S88_ENABLED
 	S88BusManager::update();
-	#endif
+#endif
 	LocomotiveManager::update();
-	#if defined(DETECTORS_ENABLED) && DETECTORS_ENABLED
-	DetectorManager::check();
-	#endif
-
 }

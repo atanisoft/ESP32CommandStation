@@ -23,7 +23,9 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Outputs.h"
 #include "Turnouts.h"
 #include "Sensors.h"
+#include "Locomotive.h"
 #include "S88Sensors.h"
+#include "RemoteSensors.h"
 #include "index_html.h"
 
 enum HTTP_STATUS_CODES {
@@ -98,7 +100,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
 #endif
     jsonResponse->setCode(STATUS_OK);
     jsonResponse->setLength();
-   	request->send(jsonResponse);
+    request->send(jsonResponse);
   });
   on("/programmer", HTTP_GET | HTTP_POST,
     std::bind(&DCCPPWebServer::handleProgrammer, this, std::placeholders::_1));
@@ -114,6 +116,8 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
   on("/s88sensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleS88Sensors, this, std::placeholders::_1));
 #endif
+  on("/remoteSensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
+    std::bind(&DCCPPWebServer::handleRemoteSensors, this, std::placeholders::_1));
   on("/config", HTTP_POST | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleConfig, this, std::placeholders::_1));
   webSocket.onEvent([](AsyncWebSocket * server, AsyncWebSocketClient * client,
@@ -314,3 +318,23 @@ void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
   request->send(jsonResponse);
 }
 #endif
+
+void DCCPPWebServer::handleRemoteSensors(AsyncWebServerRequest *) {
+  auto jsonResponse = new AsyncJsonResponse(true);
+  if(request->method() == HTTP_GET) {
+    JsonArray &array = jsonResponse->getRoot();
+    RemoteSensorManager::getState(array);
+  } else if(request->method() == HTTP_POST) {
+    if(!RemoteSensorManager::createOrUpdateBus(
+      request->arg(F("id")).toInt(),
+      request->arg(F("value")).toInt()) {
+      // invalid request
+      jsonResponse->setCode(STATUS_NOT_ALLOWED);
+    }
+  } else if(request->method() == HTTP_DELETE) {
+    uint8_t id = request->arg(F("id")).toInt();
+    RemoteSensorManager::delete(id);
+  }
+  jsonResponse->setLength();
+  request->send(jsonResponse);
+}

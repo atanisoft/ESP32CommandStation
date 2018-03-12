@@ -44,4 +44,5 @@ private:
 #if defined(S88_ENABLED) && S88_ENABLED
   void handleS88Sensors(AsyncWebServerRequest *);
 #endif
+  void handleRemoteSensors(AsyncWebServerRequest *);
 };

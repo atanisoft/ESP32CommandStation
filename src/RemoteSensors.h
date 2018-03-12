@@ -1,7 +1,8 @@
 /**********************************************************************
 DCC++ BASE STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2018 Mike Dunston
+COPYRIGHT (c) 2018 Dan Worth
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,47 +18,47 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #ifndef _DETECTORS_H_
 #define _DETECTORS_H_
-#define _MAX_BLOCK  50
-#define _MAX_TRAIN  10
-#define _BLOCK_TIMEOUT  60000
-#define _PREFIX "block"
 
 #include <ArduinoJson.h>
 #include "DCCppProtocol.h"
+#include "Sensors.h"
 
-class Detector {
+class RemoteSensor : public Sensor {
 public:
-  const int getTrain() {
-    return _trainID;      // 0 for empty, -1 for unused
+  RemoteSensor(uint16_t, uint16_t=0);
+  const uint16_t getRawID() {
+    return _rawID;
   }
-  void setTrain(int);
-  bool check();
+  const uint16_t getSensorValue() {
+    return _value;
+  }
+  void setSensorValue(const uint16_t value) {
+    _value = value;
+    _lastUpdate = millis();
+    set(_value != 0);
+  }
+  virtual void check();
+  void showSensor();
 private:
-  int _trainID = -1;
-  int _prevTrain = -1;
-  unsigned long _lastOccupied = 0;
+  uint16_t _rawID;
+  uint16_t _value;
+  unsigned long _lastUpdate = 0;
 };
 
-
-class DetectorManager {
+class RemoteSensorManager {
 public:
   static void init();
   static void show();
-  static void check();
-  static uint8_t getMaxBlock() {
-    return _maxBlock;
-  }
-  static void setMaxBlock(uint8_t);
-
-private:
-  static uint8_t _maxBlock;
+  static void createOrUpdate(const uint16_t, const uint16_t);
+  static bool remove(const uint16_t);
+  static void getState(JsonArray &);
 };
 
-class DetectorCommandAdapter : public DCCPPProtocolCommand {
+class RemoteSensorsCommandAdapter : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String>);
   String getID() {
-    return "D";
+    return "RS";
   }
 };
 
