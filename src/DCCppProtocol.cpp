@@ -22,6 +22,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Outputs.h"
 #include "Sensors.h"
 #include "S88Sensors.h"
+#include "Detectors.h"
 
 LinkedList<DCCPPProtocolCommand *> registeredCommands([](DCCPPProtocolCommand *command) {delete command; });
 
@@ -211,6 +212,9 @@ void DCCPPProtocolHandler::init() {
   registerCommand(new OutputCommandAdapter());
   registerCommand(new TurnoutCommandAdapter());
   registerCommand(new SensorCommandAdapter());
+#if defined(DETECTORS_ENABLED) && DETECTORS_ENABLED
+  registerCommand(new DetectorCommandAdapter());
+#endif
 #if defined(S88_ENABLED) && S88_ENABLED
   registerCommand(new S88BusCommandAdapter());
 #endif
