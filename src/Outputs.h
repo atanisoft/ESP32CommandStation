@@ -57,7 +57,7 @@ class OutputManager {
     static bool toggle(uint16_t);
     static void getState(JsonArray &);
     static void showStatus();
-    static void createOrUpdate(const uint16_t, const uint8_t, const uint8_t);
+    static bool createOrUpdate(const uint16_t, const uint8_t, const uint8_t);
     static bool remove(const uint16_t);
 };
 

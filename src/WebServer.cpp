@@ -225,7 +225,9 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
         bitSet(outputFlags, OUTPUT_IFLAG_FORCE_STATE);
       }
     }
-    OutputManager::createOrUpdate(outputID, pin, outputFlags);
+    if(!OutputManager::createOrUpdate(outputID, pin, outputFlags)) {
+      jsonResponse->setCode(STATUS_NOT_ALLOWED);
+    }
   } else if(request->method() == HTTP_DELETE) {
     if(!OutputManager::remove(request->arg(F("id")).toInt())) {
       jsonResponse->setCode(STATUS_NOT_FOUND);
@@ -269,10 +271,8 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
     uint16_t sensorID = request->arg(F("id")).toInt();
     uint8_t sensorPin = request->arg(F("pin")).toInt();
     bool sensorPullUp = request->arg(F("pullUp")) == "true";
-    if(sensorPin <= 0) {
-      jsonResponse->setCode(STATUS_NOT_ACCEPTABLE);
-    } else {
-      SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp);
+    if(!SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp)) {
+      jsonResponse->setCode(STATUS_NOT_ALLOWED);
     }
   } else if(request->method() == HTTP_DELETE) {
     uint16_t sensorID = request->arg(F("id")).toInt();

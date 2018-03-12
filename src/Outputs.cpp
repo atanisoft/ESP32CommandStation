@@ -174,14 +174,18 @@ void OutputManager::showStatus() {
   }
 }
 
-void OutputManager::createOrUpdate(const uint16_t id, const uint8_t pin, const uint8_t flags) {
+bool OutputManager::createOrUpdate(const uint16_t id, const uint8_t pin, const uint8_t flags) {
   for (const auto& output : outputs) {
     if(output->getID() == id) {
       output->update(pin, flags);
-      return;
+      return true;
     }
   }
+  if(std::find(restrictedPins.begin(), restrictedPins.end(), pin) != restrictedPins.end()) {
+    return false;
+  }
   outputs.add(new Output(id, pin, flags));
+  return true;
 }
 
 bool OutputManager::remove(const uint16_t id) {

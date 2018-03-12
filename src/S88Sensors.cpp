@@ -131,6 +131,9 @@ bool S88BusManager::createOrUpdateBus(const uint8_t id, const uint8_t dataPin, c
       return true;
     }
   }
+  if(std::find(restrictedPins.begin(), restrictedPins.end(), dataPin) != restrictedPins.end()) {
+    return false;
+  }
   s88SensorBus.add(new S88SensorBus(id, dataPin, sensorCount));
   return true;
 }

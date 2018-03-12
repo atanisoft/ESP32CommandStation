@@ -163,9 +163,25 @@ const char * buildTime = __DATE__ " " __TIME__;
 Preferences configStore;
 WiFiInterface wifiInterface;
 
+std::vector<uint8_t> restrictedPins;
+
 void setup() {
 	Serial.begin(115200L);
 	log_i("DCC++ ESP starting up");
+#ifndef ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
+  restrictedPins.push_back(0);
+  restrictedPins.push_back(2);
+  restrictedPins.push_back(5);
+  restrictedPins.push_back(6);
+  restrictedPins.push_back(7);
+  restrictedPins.push_back(8);
+  restrictedPins.push_back(9);
+  restrictedPins.push_back(10);
+  restrictedPins.push_back(11);
+  restrictedPins.push_back(12);
+  restrictedPins.push_back(15);
+#endif
+
 	// set up ADC1 here since we use it for all motor boards
 	adc1_config_width(ADC_WIDTH_BIT_12);
 

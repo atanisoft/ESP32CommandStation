@@ -150,3 +150,19 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define REMOTE_SENSORS_FIRST_SENSOR 100
 
 /////////////////////////////////////////////////////////////////////////////////////
+//
+// The following pins are considered reserved pins by Espressif and should not
+// be used by applications:
+// GPIO6, GPIO7, GPIO8, GPIO9, GPIO10, GPIO11, GPIO12 -- used by flash
+// GPIO0, GPIO2, GPIO5, GPIO12, GPIO15 -- used as bootstrap pins
+//
+// details of these usages can be found in section 2.2 of:
+// https://www.espressif.com/sites/default/files/documentation/esp-wroom-32_datasheet_en.pdf
+//
+// uncomment the following define to allow these pins to be used for sensors or
+// outputs.
+
+//#define ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
+
+
+/////////////////////////////////////////////////////////////////////////////////////

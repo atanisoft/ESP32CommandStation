@@ -69,7 +69,7 @@ public:
   static uint16_t store();
   static void check();
   static void getState(JsonArray &);
-  static void createOrUpdate(const uint16_t, const uint8_t, const bool);
+  static bool createOrUpdate(const uint16_t, const uint8_t, const bool);
   static bool remove(const uint16_t);
   static uint8_t getSensorPin(const uint16_t);
 };

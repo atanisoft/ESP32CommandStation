@@ -79,3 +79,4 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 extern Preferences configStore;
 extern WiFiInterface wifiInterface;
+extern std::vector<uint8_t> restrictedPins;

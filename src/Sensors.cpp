@@ -118,15 +118,19 @@ void SensorManager::getState(JsonArray & array) {
   }
 }
 
-void SensorManager::createOrUpdate(const uint16_t id, const uint8_t pin, const bool pullUp) {
+bool SensorManager::createOrUpdate(const uint16_t id, const uint8_t pin, const bool pullUp) {
   // check for duplicate ID or PIN
   for (const auto& sensor : sensors) {
     if(sensor->getID() == id) {
       sensor->update(pin, pullUp);
-      return;
+      return true;
     }
   }
+  if(std::find(restrictedPins.begin(), restrictedPins.end(), pin) != restrictedPins.end()) {
+    return false;
+  }
   sensors.add(new Sensor(id, pin, pullUp));
+  return true;
 }
 
 bool SensorManager::remove(const uint16_t id) {
