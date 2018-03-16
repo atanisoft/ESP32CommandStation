@@ -73,22 +73,22 @@ void GenericMotorBoard::check() {
     _lastCheckTime = millis();
 		_current = adc1_get_raw(_senseChannel);
 		if(_current >= _triggerValue && isOn()) {
-      log_i("[%s] Overcurrent detected %2.2f mA", _name.c_str(), getCurrentDraw());
+      log_i("[%s] Overcurrent detected %2.2f mA (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
 			powerOff(true, true);
 			_triggered = true;
       _triggerClearedCountdown = motorBoardCheckFaultCountdownInterval;
       _triggerRecurrenceCount = 0;
     } else if(_current >= _triggerValue && _triggered) {
       _triggerRecurrenceCount++;
-      log_i("[%s] Overcurrent persists (%d ms) %2.2f mA", _name.c_str(), _triggerRecurrenceCount * motorBoardCheckInterval, getCurrentDraw());
+      log_i("[%s] Overcurrent persists (%d ms) %2.2f mA (raw: %d)", _name.c_str(), _triggerRecurrenceCount * motorBoardCheckInterval, getCurrentDraw(), _current);
 		} else if(_current < _triggerValue && _triggered) {
       _triggerClearedCountdown--;
       if(_triggerClearedCountdown == 0) {
-        log_i("[%s] Overcurrent cleared, enabling", _name.c_str());
+        log_i("[%s] Overcurrent cleared %2.2f mA, enabling (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
   			powerOn();
   			_triggered=false;
       } else {
-        log_i("[%s] Overcurrent cleared, %d ms before re-enable", _name.c_str(), _triggerClearedCountdown * motorBoardCheckInterval);
+        log_i("[%s] Overcurrent cleared %2.2f mA, %d ms before re-enable (raw: %d)", _name.c_str(), _triggerClearedCountdown * motorBoardCheckInterval, getCurrentDraw(), _current);
       }
     }
 	}
