@@ -17,6 +17,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "DCCppESP32.h"
 
+#ifndef ADC_CURRENT_ATTENUATION
+#define ADC_CURRENT_ATTENUATION ADC_ATTEN_DB_11
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 
 const uint16_t motorBoardCheckInterval = 250;
@@ -30,7 +34,7 @@ GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enable
   _maxMilliAmps(maxMilliAmps), _triggerValue(4096 * triggerMilliAmps / maxMilliAmps),
   _current(0), _state(false), _triggered(false), _triggerClearedCountdown(0),
   _triggerRecurrenceCount(0) {
-  adc1_config_channel_atten(_senseChannel, ADC_ATTEN_DB_NUM);
+  adc1_config_channel_atten(_senseChannel, ADC_CURRENT_ATTENUATION);
   pinMode(enablePin, OUTPUT);
   log_i("[%s] Configuring motor board [ADC1 Channel: %d, currentLimit: %d, enablePin: %d]",
     _name.c_str(), _senseChannel, _triggerValue, _enablePin);

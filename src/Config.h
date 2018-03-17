@@ -73,12 +73,14 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// DEFINE THE CURRENT SENSE ATTENUATION.  Default is 11, you may select 6 or 0
-// depending on your setup
+// DEFINE THE CURRENT SENSE ATTENUATION. THIS IS USED BY THE ADC SYSTEM TO SCALE
+// THE CURRENT SENSE VALUES BASED ON THE MOTOR SHIELD.
 //
-#define ADC_ATTEN_DB_NUM ADC_ATTEN_DB_11
-//#define ADC_ATTEN_DB_NUM ADC_ATTEN_DB_6
-//#define ADC_ATTEN_DB_NUM ADC_ATTEN_DB_0
+// SUPPORTED VALUES: ADC_ATTEN_DB_11, ADC_ATTEN_DB_6, ADC_ATTEN_DB_2_5, ADC_ATTEN_DB_0
+//
+// IF LEFT UNDEFINED ADC_ATTEN_DB_11 WILL BE USED.
+
+//#define ADC_CURRENT_ATTENUATION ADC_ATTEN_DB_11
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
