@@ -101,7 +101,7 @@ GenericMotorBoard * MotorBoardManager::registerBoard(adc1_channel_t sensePin, ui
       board = new GenericMotorBoard(sensePin, enablePin, 980, 2000, name);
       break;
     case POLOLU:
-      board = new GenericMotorBoard(sensePin, enablePin, 2550, 3000, name);
+      board = new GenericMotorBoard(sensePin, enablePin, 2750, 3000, name);
       break;
     case BTS7960B_5A:
       board = new GenericMotorBoard(sensePin, enablePin, 5000, 43000, name);
