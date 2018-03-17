@@ -73,6 +73,15 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
+// DEFINE THE CURRENT SENSE ATTENUATION.  Default is 11, you may select 6 or 0
+// depending on your setup
+//
+#define ADC_ATTEN_DB_NUM ADC_ATTEN_DB_11
+//#define ADC_ATTEN_DB_NUM ADC_ATTEN_DB_6
+//#define ADC_ATTEN_DB_NUM ADC_ATTEN_DB_0
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // DEFINE WiFi Parameters
 //
 #define WIFI_SSID ""
