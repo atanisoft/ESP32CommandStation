@@ -52,7 +52,7 @@ class RemoteSensorManager {
 public:
   static void init();
   static void show();
-  static void createOrUpdate(const uint16_t, const uint16_t);
+  static void createOrUpdate(const uint16_t, const uint16_t=0);
   static bool remove(const uint16_t);
   static void getState(JsonArray &);
 };

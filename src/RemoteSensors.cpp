@@ -85,7 +85,7 @@ void RemoteSensorManager::init() {
     if(WiFi.SSID(i).startsWith(REMOTE_SENSORS_PREFIX)) {
       const uint16_t sensorID = String(WiFi.SSID(i)).substring(REMOTE_SENSOR_PREFIX_LEN).toInt();
       log_i("Found RemoteSensor(%d): %s", sensorID, WiFi.SSID(i).c_str());
-      createOrUpdate(sensorsID);
+      createOrUpdate(sensorID);
     }
   }
 #else
@@ -94,7 +94,7 @@ void RemoteSensorManager::init() {
 }
 
 void RemoteSensorManager::createOrUpdate(const uint16_t id, const uint16_t value) {
-  // check for duplicate ID or PIN
+  // check for duplicate ID
   for (const auto& sensor : remoteSensors) {
     if(sensor->getRawID() == id) {
       sensor->setSensorValue(value);
@@ -110,7 +110,7 @@ bool RemoteSensorManager::remove(const uint16_t id) {
   RemoteSensor *sensorToRemove = NULL;
   // check for duplicate ID or PIN
   for (const auto& sensor : remoteSensors) {
-    if(sensor->getID() == id) {
+    if(sensor->getRawID() == id) {
       sensorToRemove = sensor;
     }
   }
@@ -132,6 +132,16 @@ void RemoteSensorManager::getState(JsonArray &array) {
   }
 }
 
+void RemoteSensorManager::show() {
+  if(remoteSensors.isEmpty()) {
+    wifiInterface.printf(F("<X>"));
+  } else {
+    for (const auto& sensor : remoteSensors) {
+      sensor->showSensor();
+    }
+  }
+}
+
 RemoteSensor::RemoteSensor(uint16_t id, uint16_t value) :
   Sensor(id + REMOTE_SENSORS_FIRST_SENSOR, -1, false, false), _rawID(id) {
   setSensorValue(value);
@@ -146,19 +156,13 @@ void RemoteSensor::check() {
 }
 
 void RemoteSensor::showSensor() {
-  wifiInterface.printf(F("<RS %d %d>"), getID(), _value);
+  wifiInterface.printf(F("<RS %d %d>"), getRawID(), _value);
 }
 
 void RemoteSensorsCommandAdapter::process(const std::vector<String> arguments) {
   if(arguments.empty()) {
     // list all sensors
-    if(remoteSensors.isEmpty() == 0) {
-      wifiInterface.printf(F("<X>"));
-    } else {
-      for (const auto& sensor : remoteSensors) {
-        sensor->showSensor();
-      }
-    }
+    RemoteSensorManager::show();
   } else {
     uint16_t sensorID = arguments[0].toInt();
     if (arguments.size() == 1 && RemoteSensorManager::remove(sensorID)) {
