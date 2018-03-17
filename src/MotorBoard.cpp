@@ -97,9 +97,11 @@ void GenericMotorBoard::check() {
 GenericMotorBoard * MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin, MOTOR_BOARD_TYPE type, String name) {
   GenericMotorBoard *board;
   switch(type) {
-    case POLOLU:
     case ARDUINO_SHIELD:
       board = new GenericMotorBoard(sensePin, enablePin, 980, 2000, name);
+      break;
+    case POLOLU:
+      board = new GenericMotorBoard(sensePin, enablePin, 2550, 3000, name);
       break;
     case BTS7960B_5A:
       board = new GenericMotorBoard(sensePin, enablePin, 5000, 43000, name);
