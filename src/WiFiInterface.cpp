@@ -54,7 +54,7 @@ void WiFiInterface::begin() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
-  WiFi.setHostname( HOSTNAME );
+  WiFi.setHostname(HOSTNAME);
   log_i("Waiting for WiFi to connect");
   if(WiFi.waitForConnectResult() == WL_NO_SSID_AVAIL) {
     log_i("WiFI connect failed, restarting");
@@ -77,7 +77,7 @@ void WiFiInterface::begin() {
   DCCppServer.setNoDelay(true);
   DCCppServer.begin();
   dccppWebServer.begin();
-  MDNS.addService("_dccpp", "_tcp", DCCPP_CLIENT_PORT);
+  MDNS.addService("dccpp", "tcp", DCCPP_CLIENT_PORT);
 }
 
 void WiFiInterface::update() {
@@ -88,7 +88,7 @@ void WiFiInterface::update() {
 					DCCppClients[i].stop();
 				}
 				DCCppClients[i] = DCCppServer.available();
-				continue;
+				break;
 			}
 		}
 		DCCppServer.available().stop();
