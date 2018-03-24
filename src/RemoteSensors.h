@@ -19,9 +19,7 @@ COPYRIGHT (c) 2018 Dan Worth
 #ifndef _DETECTORS_H_
 #define _DETECTORS_H_
 
-#include <ArduinoJson.h>
-#include "DCCppProtocol.h"
-#include "Sensors.h"
+#include "DCCppESP32.h"
 
 class RemoteSensor : public Sensor {
 public:

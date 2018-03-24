@@ -107,14 +107,14 @@ void RemoteSensorManager::createOrUpdate(const uint16_t id, const uint16_t value
 }
 
 bool RemoteSensorManager::remove(const uint16_t id) {
-  RemoteSensor *sensorToRemove = NULL;
+  RemoteSensor *sensorToRemove = nullptr;
   // check for duplicate ID or PIN
   for (const auto& sensor : remoteSensors) {
     if(sensor->getRawID() == id) {
       sensorToRemove = sensor;
     }
   }
-  if(sensorToRemove != NULL) {
+  if(sensorToRemove != nullptr) {
     remoteSensors.remove(sensorToRemove);
     sensors.remove(sensorToRemove);
     return true;
@@ -146,11 +146,12 @@ RemoteSensor::RemoteSensor(uint16_t id, uint16_t value) :
   Sensor(id + REMOTE_SENSORS_FIRST_SENSOR, -1, false, false), _rawID(id) {
   setSensorValue(value);
   log_i("RemoteSensor(%d) created with Sensor(%d), active: %s, value: %d",
-    _rawID, getID(), isActive() ? "true" : "false", value);
+    getRawID(), getID(), isActive() ? "true" : "false", value);
 }
 
 void RemoteSensor::check() {
   if(isActive() && millis() > _lastUpdate + REMOTE_SENSORS_DECAY) {
+    log_i("RemoteSensor(%d) expired, deactivating", getRawID());
     setSensorValue(0);
   }
 }

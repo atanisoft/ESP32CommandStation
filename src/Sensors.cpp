@@ -134,14 +134,14 @@ bool SensorManager::createOrUpdate(const uint16_t id, const uint8_t pin, const b
 }
 
 bool SensorManager::remove(const uint16_t id) {
-  Sensor *sensorToRemove = NULL;
+  Sensor *sensorToRemove = nullptr;
   // check for duplicate ID or PIN
   for (const auto& sensor : sensors) {
     if(sensor->getID() == id) {
       sensorToRemove = sensor;
     }
   }
-  if(sensorToRemove != NULL) {
+  if(sensorToRemove != nullptr) {
     sensors.remove(sensorToRemove);
     return true;
   }

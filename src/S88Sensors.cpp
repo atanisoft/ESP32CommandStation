@@ -139,13 +139,13 @@ bool S88BusManager::createOrUpdateBus(const uint8_t id, const uint8_t dataPin, c
 }
 
 bool S88BusManager::removeBus(const uint8_t id) {
-  S88SensorBus *sensorBusToRemove = NULL;
+  S88SensorBus *sensorBusToRemove = nullptr;
   for (const auto& sensorBus : s88SensorBus) {
     if(sensorBus->getID() == id) {
       sensorBusToRemove = sensorBus;
     }
   }
-  if(sensorBusToRemove != NULL) {
+  if(sensorBusToRemove != nullptr) {
     s88SensorBus.remove(sensorBusToRemove);
     return true;
   }

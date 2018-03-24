@@ -61,14 +61,14 @@ void InfoScreen::init() {
     infoScreenLines[i] = "";
   }
   Wire.begin(INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
-  
+
 #if defined(INFO_SCREEN_RESET_PIN)
   pinMode(INFO_SCREEN_RESET_PIN, OUTPUT);
   digitalWrite(INFO_SCREEN_RESET_PIN, LOW);
   delay(50);
   digitalWrite(INFO_SCREEN_RESET_PIN, HIGH);
 #endif
-  
+
   // Check that we can find the OLED screen by its address before attempting
   // to use/configure it.
   Wire.beginTransmission(INFO_SCREEN_OLED_I2C_ADDRESS);
@@ -234,7 +234,7 @@ void InfoScreen::update() {
         case 2: // motor shield
           ++_motorboardIndex %= MotorBoardManager::getMotorBoardCount();
           auto board = MotorBoardManager::getBoardByName(MotorBoardManager::getBoardNames()[_motorboardIndex]);
-          if(board != NULL && (board->isOn() || board->isOverCurrent())) {
+          if(board != nullptr && (board->isOn() || board->isOverCurrent())) {
             if(board->isOverCurrent()) {
               replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Fault (%2.2f A)"),
                 board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
@@ -242,7 +242,7 @@ void InfoScreen::update() {
               replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Normal (%2.2f A)"),
                 board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
             }
-          } else if(board != NULL) {
+          } else if(board != nullptr) {
             replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s: Off"),
               board->getName().c_str());
           }

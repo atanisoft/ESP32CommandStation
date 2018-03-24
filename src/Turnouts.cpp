@@ -156,13 +156,13 @@ void TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, c
 }
 
 bool TurnoutManager::remove(const uint16_t id) {
-  Turnout *turnoutToRemoved = NULL;
+  Turnout *turnoutToRemoved = nullptr;
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == id) {
       turnoutToRemoved = turnout;
     }
   }
-  if(turnoutToRemoved != NULL) {
+  if(turnoutToRemoved != nullptr) {
     turnouts.remove(turnoutToRemoved);
     return true;
   }

@@ -189,13 +189,13 @@ bool OutputManager::createOrUpdate(const uint16_t id, const uint8_t pin, const u
 }
 
 bool OutputManager::remove(const uint16_t id) {
-  Output *outputToRemove = NULL;
+  Output *outputToRemove = nullptr;
   for (const auto& output : outputs) {
     if(output->getID() == id) {
       outputToRemove = output;
     }
   }
-  if(outputToRemove != NULL) {
+  if(outputToRemove != nullptr) {
     outputs.remove(outputToRemove);
     return true;
   }

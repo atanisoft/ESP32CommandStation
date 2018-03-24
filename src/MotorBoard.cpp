@@ -124,7 +124,7 @@ GenericMotorBoard *MotorBoardManager::getBoardByName(String name) {
       return board;
     }
 	}
-  return NULL;
+  return nullptr;
 }
 
 void MotorBoardManager::check() {
