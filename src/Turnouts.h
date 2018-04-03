@@ -20,9 +20,16 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <ArduinoJson.h>
 #include "DCCppProtocol.h"
 
+enum TurnoutOrientation {
+  LEFT=0,
+  RIGHT=1,
+  Y=2,
+  MULTI=3
+};
+
 class Turnout {
 public:
-  Turnout(uint16_t, uint16_t, uint8_t, bool=false);
+  Turnout(uint16_t, uint16_t, uint8_t, bool=false, TurnoutOrientation=LEFT);
   Turnout(uint16_t);
   void update(uint16_t, uint8_t);
   void set(bool=false);
@@ -40,11 +47,18 @@ public:
     return _thrown;
   }
   void showStatus();
+  const TurnoutOrientation getOrientation() {
+    return _orientation;
+  }
+  void setOrientation(const TurnoutOrientation orientation) {
+    _orientation = orientation;
+  }
 private:
   uint16_t _turnoutID;
   uint16_t _address;
   uint8_t _subAddress;
   bool _thrown;
+  TurnoutOrientation _orientation;
 };
 
 class TurnoutManager {

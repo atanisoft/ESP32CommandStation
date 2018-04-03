@@ -169,7 +169,10 @@ bool TurnoutManager::remove(const uint16_t id) {
   return false;
 }
 
-Turnout::Turnout(uint16_t turnoutID, uint16_t address, uint8_t subAddress, bool thrown) : _turnoutID(turnoutID), _address(address), _subAddress(subAddress), _thrown(thrown) {
+Turnout::Turnout(uint16_t turnoutID, uint16_t address, uint8_t subAddress,
+  bool thrown, TurnoutOrientation orientation) : _turnoutID(turnoutID),
+  _address(address), _subAddress(subAddress), _thrown(thrown),
+  _orientation(orientation) {
   log_i("Turnout %d created using address %d/%d", turnoutID, address, subAddress);
 }
 
@@ -178,10 +181,12 @@ Turnout::Turnout(uint16_t index) {
   String turnoutAddrKey = turnoutIDKey + String("_a");
   String turnoutSubAddrKey = turnoutIDKey + String("_s");
   String turnoutStateKey = turnoutIDKey + String("_st");
+  String turnoutOrientationKey = turnoutIDKey + String("_o");
   _turnoutID = configStore.getUShort(turnoutIDKey.c_str(), index);
   _address = configStore.getUShort(turnoutAddrKey.c_str(), 0);
   _subAddress = configStore.getUChar(turnoutSubAddrKey.c_str(), 0);
   _thrown = configStore.getBool(turnoutStateKey.c_str(), false);
+  _orientation = (TurnoutOrientation)configStore.getUChar(turnoutOrientationKey.c_str(), TurnoutOrientation::LEFT);
   log_i("Turnout(%d, %d, %d)", _turnoutID, _address, _subAddress);
 }
 
@@ -196,10 +201,12 @@ void Turnout::store(uint16_t index) {
   String turnoutAddrKey = turnoutIDKey + String("_a");
   String turnoutSubAddrKey = turnoutIDKey + String("_s");
   String turnoutStateKey = turnoutIDKey + String("_st");
+  String turnoutOrientationKey = turnoutIDKey + String("_o");
   configStore.putUShort(turnoutIDKey.c_str(), _turnoutID);
   configStore.putUShort(turnoutAddrKey.c_str(), _address);
   configStore.putUChar(turnoutSubAddrKey.c_str(), _subAddress);
-  configStore.putBool(turnoutStateKey.c_str(), _thrown);
+  configStore.putBool(turnoutOrientationKey.c_str(), _orientation);
+  configStore.putUChar()
 }
 
 void Turnout::set(bool thrown) {
