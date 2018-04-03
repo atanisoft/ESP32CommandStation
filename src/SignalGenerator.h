@@ -33,15 +33,15 @@ struct Packet {
 }; // Packet
 
 struct SignalGenerator {
-  template<int timerIndex>
+  template<int signalGenerator>
   void configureSignal(String, uint8_t, uint16_t);
-  template<int timerIndex>
+  template<int signalGenerator>
   void startSignal();
-  template<int timerIndex>
+  template<int signalGenerator>
   void stopSignal();
 
   bool IRAM_ATTR getNextBitToSend();
-  void loadPacket(std::vector<uint8_t>, int);
+  void loadPacket(std::vector<uint8_t>, int, bool=false);
   void waitForQueueEmpty();
   bool isQueueEmpty();
 
@@ -60,12 +60,14 @@ struct SignalGenerator {
     0, // number of repeats
     0 // current bit
   };
+  portMUX_TYPE _sendQueueMUX = portMUX_INITIALIZER_UNLOCKED;
 };
 
 extern SignalGenerator dccSignal[2];
 void configureDCCSignalGenerators();
 void startDCCSignalGenerators();
 void stopDCCSignalGenerators();
+void sendDCCEmergencyStop();
 
 int16_t readCV(const uint16_t);
 bool writeProgCVByte(const uint16_t, const uint8_t);

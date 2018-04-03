@@ -37,8 +37,14 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 SignalGenerator dccSignal[MAX_DCC_SIGNAL_GENERATORS];
 
+// S-9.2 baseline packet (idle)
 uint8_t idlePacket[] = {0xFF, 0x00};
+// S-9.2 baseline packet (decoder reset)
 uint8_t resetPacket[] = {0x00, 0x00};
+// S-9.2 baseline packet (eStop, direction bit ignored)
+uint8_t eStopPacket[] = {0x00, 0x41};
+
+void loadBytePacket(SignalGenerator &, uint8_t *, uint8_t, uint8_t, bool=false);
 
 void configureDCCSignalGenerators() {
   dccSignal[DCC_SIGNAL_OPERATIONS].configureSignal<DCC_SIGNAL_OPERATIONS>("OPS",
@@ -57,7 +63,12 @@ void stopDCCSignalGenerators() {
   dccSignal[DCC_SIGNAL_PROGRAMMING].stopSignal<DCC_SIGNAL_PROGRAMMING>();
 }
 
-void loadBytePacket(SignalGenerator &signalGenerator, uint8_t *data, uint8_t length, uint8_t repeatCount) {
+void sendDCCEmergencyStop() {
+  loadBytePacket(dccSignal[DCC_SIGNAL_OPERATIONS], eStopPacket, 2, 0, true);
+  loadBytePacket(dccSignal[DCC_SIGNAL_PROGRAMMING], eStopPacket, 2, 0, true);
+}
+
+void loadBytePacket(SignalGenerator &signalGenerator, uint8_t *data, uint8_t length, uint8_t repeatCount, bool drainToSendQueue) {
   std::vector<uint8_t> packet;
   for(int i = 0; i < length; i++) {
     packet.push_back(data[i]);
@@ -69,7 +80,7 @@ bool IRAM_ATTR SignalGenerator::getNextBitToSend() {
   const uint8_t bitMask[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
   bool result = false;
   // if we are processing a packet, check if we have sent all bits or repeats
-  if(_currentPacket != NULL) {
+  if(_currentPacket != nullptr) {
     if(_currentPacket->currentBit == _currentPacket->numberOfBits) {
       if(_currentPacket->numberOfRepeats > 0) {
         _currentPacket->numberOfRepeats--;
@@ -79,33 +90,46 @@ bool IRAM_ATTR SignalGenerator::getNextBitToSend() {
         if(_currentPacket != &_idlePacket) {
           _availablePackets.push(_currentPacket);
         }
-        _currentPacket = NULL;
+        _currentPacket = nullptr;
       }
     }
   }
   // if we don't have a packet, check if we have any to send otherwise
   // queue up an idle packet
-  if (_currentPacket == NULL) {
-    if(!_toSend.empty()) {
+  if (_currentPacket == nullptr) {
+    portENTER_CRITICAL_ISR(&_sendQueueMUX);
+    if(!isQueueEmpty()) {
       _currentPacket = _toSend.front();
       _toSend.pop();
     } else {
       _currentPacket = &_idlePacket;
       _currentPacket->currentBit = 0;
     }
+    portEXIT_CRITICAL_ISR(&_sendQueueMUX);
   }
   // if we have a packet to send, get the next bit from the packet
-  if(_currentPacket != NULL) {
+  if(_currentPacket != nullptr) {
     result = _currentPacket->buffer[_currentPacket->currentBit / 8] & bitMask[_currentPacket->currentBit % 8];
     _currentPacket->currentBit++;
   }
   return result;
 }
 
-void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats) {
-  #if DEBUG_SIGNAL_GENERATOR
-    log_v("[%s] Preparing DCC Packet containing %d bytes, %d repeats [%d in queue]", _name.c_str(), data.size(), numberOfRepeats, _toSend.size());
-  #endif
+void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats, bool drainToSendQueue) {
+#if DEBUG_SIGNAL_GENERATOR
+  log_v("[%s] Preparing DCC Packet containing %d bytes, %d repeats [%d in queue]", _name.c_str(), data.size(), numberOfRepeats, _toSend.size());
+#endif
+  if(drainToSendQueue) {
+    portENTER_CRITICAL(&_sendQueueMUX);
+    while(!isQueueEmpty()) {
+      // pull the first packet from the pending to send queue
+      Packet *packet = _toSend.front();
+      _toSend.pop();
+      // make that packet available for re-use
+      _availablePackets.push(packet);
+    }
+    portEXIT_CRITICAL(&_sendQueueMUX);
+  }
   while(_availablePackets.empty()) {
     delay(2);
   }
@@ -160,37 +184,39 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats)
   log_v("[%s] <* %s / %d / %d>\n", _name.c_str(), packetHex.c_str(),
     packet->numberOfBits, packet->numberOfRepeats);
 #endif
+  portENTER_CRITICAL(&_sendQueueMUX);
   _toSend.push(packet);
+  portEXIT_CRITICAL(&_sendQueueMUX);
 }
 
-template<int timerIndex>
+template<int signalGenerator>
 void IRAM_ATTR signalGeneratorPulseTimer(void)
 {
-  auto& signalGenerator = dccSignal[timerIndex];
-  if(signalGenerator.getNextBitToSend()) {
-    timerAlarmWrite(signalGenerator._pulseTimer, DCC_ONE_BIT_PULSE_DURATION, false);
-    timerAlarmWrite(signalGenerator._fullCycleTimer, DCC_ONE_BIT_TOTAL_DURATION, true);
+  auto& generator = dccSignal[signalGenerator];
+  if(generator.getNextBitToSend()) {
+    timerAlarmWrite(generator._pulseTimer, DCC_ONE_BIT_PULSE_DURATION, false);
+    timerAlarmWrite(generator._fullCycleTimer, DCC_ONE_BIT_TOTAL_DURATION, true);
   } else {
-    timerAlarmWrite(signalGenerator._pulseTimer, DCC_ZERO_BIT_PULSE_DURATION, false);
-    timerAlarmWrite(signalGenerator._fullCycleTimer, DCC_ZERO_BIT_TOTAL_DURATION, true);
+    timerAlarmWrite(generator._pulseTimer, DCC_ZERO_BIT_PULSE_DURATION, false);
+    timerAlarmWrite(generator._fullCycleTimer, DCC_ZERO_BIT_TOTAL_DURATION, true);
   }
-  timerWrite(signalGenerator._pulseTimer, 0);
-  timerAlarmEnable(signalGenerator._pulseTimer);
-  digitalWrite(signalGenerator._directionPin, HIGH);
+  timerWrite(generator._pulseTimer, 0);
+  timerAlarmEnable(generator._pulseTimer);
+  digitalWrite(generator._directionPin, HIGH);
 }
 
-template<int timerIndex>
+template<int signalGenerator>
 void IRAM_ATTR signalGeneratorDirectionTimer()
 {
-  auto& signalGenerator = dccSignal[timerIndex];
-  digitalWrite(signalGenerator._directionPin, LOW);
+  auto& generator = dccSignal[signalGenerator];
+  digitalWrite(generator._directionPin, LOW);
 }
 
-template<int timerIndex>
+template<int signalGenerator>
 void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_t maxPackets) {
   _name = name;
   _directionPin = directionPin;
-  _currentPacket = NULL;
+  _currentPacket = nullptr;
 
   // create packets for this signal generator up front, they will be reused until
   // the base station is shutdown
@@ -202,82 +228,87 @@ void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_
   pinMode(_directionPin, INPUT);
   digitalWrite(_directionPin, LOW);
   pinMode(_directionPin, OUTPUT);
-  startSignal<timerIndex>();
+  startSignal<signalGenerator>();
 }
 
-template<int timerIndex>
+template<int signalGenerator>
 void SignalGenerator::startSignal() {
   // inject the required reset and idle packets into the queue
   // this is required as part of S-9.2.4 section A
   // at least 20 reset packets and 10 idle packets must be sent upon initialization
   // of the base station to force decoders to exit service mode.
   log_i("[%s] Adding reset packet to packet queue", _name.c_str());
-  loadBytePacket(dccSignal[timerIndex], resetPacket, 2, 20);
+  loadBytePacket(dccSignal[signalGenerator], resetPacket, 2, 20);
   log_i("[%s] Adding idle packet to packet queue", _name.c_str());
-  loadBytePacket(dccSignal[timerIndex], idlePacket, 2, 10);
+  loadBytePacket(dccSignal[signalGenerator], idlePacket, 2, 10);
 
-  log_i("[%s] Configuring Timer(%d) for generating DCC Signal (Full Wave)", _name.c_str(), 2 * timerIndex);
-  _fullCycleTimer = timerBegin(2 * timerIndex, DCC_TIMER_PRESCALE, true);
-  log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), 2 * timerIndex);
-  timerAttachInterrupt(_fullCycleTimer, &signalGeneratorPulseTimer<timerIndex>, true);
-  log_i("[%s] Configuring alarm on Timer(%d) to %dus", _name.c_str(), 2 * timerIndex, DCC_ONE_BIT_TOTAL_DURATION);
+  log_i("[%s] Configuring Timer(%d) for generating DCC Signal (Full Wave)", _name.c_str(), 2 * signalGenerator);
+  _fullCycleTimer = timerBegin(2 * signalGenerator, DCC_TIMER_PRESCALE, true);
+  log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), 2 * signalGenerator);
+  timerAttachInterrupt(_fullCycleTimer, &signalGeneratorPulseTimer<signalGenerator>, true);
+  log_i("[%s] Configuring alarm on Timer(%d) to %dus", _name.c_str(), 2 * signalGenerator, DCC_ONE_BIT_TOTAL_DURATION);
   timerAlarmWrite(_fullCycleTimer, DCC_ONE_BIT_TOTAL_DURATION, true);
-  log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), 2 * timerIndex);
+  log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), 2 * signalGenerator);
   timerWrite(_fullCycleTimer, 0);
 
-  log_i("[%s] Configuring Timer(%d) for generating DCC Signal (Half Wave)", _name.c_str(), 2 * timerIndex + 1);
-  _pulseTimer = timerBegin(2*timerIndex + 1, DCC_TIMER_PRESCALE, true);
-  log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), 2 * timerIndex + 1);
-  timerAttachInterrupt(_pulseTimer, &signalGeneratorDirectionTimer<timerIndex>, true);
-  log_i("[%s] Configuring alarm on Timer(%d) to %dus", _name.c_str(), 2 * timerIndex + 1, DCC_ONE_BIT_TOTAL_DURATION / 2);
+  log_i("[%s] Configuring Timer(%d) for generating DCC Signal (Half Wave)", _name.c_str(), 2 * signalGenerator + 1);
+  _pulseTimer = timerBegin(2 * signalGenerator + 1, DCC_TIMER_PRESCALE, true);
+  log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), 2 * signalGenerator + 1);
+  timerAttachInterrupt(_pulseTimer, &signalGeneratorDirectionTimer<signalGenerator>, true);
+  log_i("[%s] Configuring alarm on Timer(%d) to %dus", _name.c_str(), 2 * signalGenerator + 1, DCC_ONE_BIT_TOTAL_DURATION / 2);
   timerAlarmWrite(_pulseTimer, DCC_ONE_BIT_PULSE_DURATION, false);
-  log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), 2 * timerIndex + 1);
+  log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), 2 * signalGenerator + 1);
   timerWrite(_pulseTimer, 0);
 
-  log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), 2 * timerIndex);
+  log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), 2 * signalGenerator);
   timerAlarmEnable(_fullCycleTimer);
-  log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), 2 * timerIndex + 1);
+  log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), 2 * signalGenerator + 1);
   timerAlarmEnable(_pulseTimer);
 }
 
-template<int timerIndex>
+template<int signalGenerator>
 void SignalGenerator::stopSignal() {
-  log_i("[%s] Shutting down Timer(%d) (Full Wave)", _name.c_str(), 2 * timerIndex);
+  // prevent ISR from getting another packet while we are shutting down
+  portENTER_CRITICAL(&_sendQueueMUX);
+
+  log_i("[%s] Shutting down Timer(%d) (Full Wave)", _name.c_str(), 2 * signalGenerator);
   timerStop(_fullCycleTimer);
   timerAlarmDisable(_fullCycleTimer);
   timerDetachInterrupt(_fullCycleTimer);
   timerEnd(_fullCycleTimer);
 
-  log_i("[%s] Shutting down Timer(%d) (Half Wave)", _name.c_str(), 2 * timerIndex + 1);
+  log_i("[%s] Shutting down Timer(%d) (Half Wave)", _name.c_str(), 2 * signalGenerator + 1);
   timerStop(_pulseTimer);
   timerAlarmDisable(_pulseTimer);
   timerDetachInterrupt(_pulseTimer);
   timerEnd(_pulseTimer);
 
-  // give enough time for any timer ISR calls to complete before draining
-  // the packet queue and returning
+  // give enough time for any timer ISR calls to complete before proceeding
   delay(250);
 
   // if we have a current packet being processed move it to the available
   // queue if it is not the pre-canned idle packet.
-  if(_currentPacket != NULL && _currentPacket != &_idlePacket) {
+  if(_currentPacket != nullptr && _currentPacket != &_idlePacket) {
+    // make sure the packet is zeroed before pushing it back to the queue
+    memset(_currentPacket, 0, sizeof(Packet));
     _availablePackets.push(_currentPacket);
-    _currentPacket = NULL;
+    _currentPacket = nullptr;
   }
 
   // drain any remaining packets that were not sent back into the available
   // to use packets.
-  while(!_toSend.empty()) {
+  while(!isQueueEmpty()) {
     _currentPacket = _toSend.front();
     _toSend.pop();
     // make sure the packet is zeroed before pushing it back to the queue
     memset(_currentPacket, 0, sizeof(Packet));
     _availablePackets.push(_currentPacket);
   }
+  portEXIT_CRITICAL(&_sendQueueMUX);
 }
 
 void SignalGenerator::waitForQueueEmpty() {
-  while(!_toSend.empty()) {
+  while(!isQueueEmpty()) {
     log_i("[%s] Waiting for %d packets to send...", _name.c_str(), _toSend.size());
     delay(10);
   }
