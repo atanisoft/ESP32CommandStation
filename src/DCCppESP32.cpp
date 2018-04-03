@@ -209,6 +209,7 @@ void setup() {
 	S88BusManager::init();
 #endif
 	RemoteSensorManager::init();
+  LocomotiveManager::init();
 	configureDCCSignalGenerators();
 	log_i("DCC++ READY!");
 }

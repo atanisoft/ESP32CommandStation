@@ -18,13 +18,14 @@ COPYRIGHT (c) 2017 Mike Dunston
 #ifndef _LOCOMOTIVE_H_
 #define _LOCOMOTIVE_H_
 
-#include <functional>
-#include <StringArray.h>
-#include "DCCppProtocol.h"
+#include "DCCppESP32.h"
+
+#define MAX_LOCOMOTIVE_FUNCTIONS 29
+#define MAX_LOCOMOTIVE_FUNCTION_PACKETS 5
 
 class Locomotive {
 public:
-  Locomotive(uint8_t registerNumber);
+  Locomotive(uint8_t);
   uint8_t getRegister() {
     return _registerNumber;
   }
@@ -49,26 +50,60 @@ public:
   uint32_t getLastUpdate() {
     return _lastUpdate;
   }
+  void setIdle() {
+    setSpeed(0);
+  }
+  void setIdleOnStartup(bool value=false) {
+    _idleOnStartup = value;
+  }
+  bool isIdleOnStartup() {
+    return _idleOnStartup;
+  }
+  void setDefaultOnThrottles(bool value=false) {
+    _defaultOnThrottles = value;
+  }
+  bool isDefaultOnThrottles() {
+    return _defaultOnThrottles;
+  }
   void sendLocoUpdate();
   void showStatus();
+  void toJson(JsonObject &, bool=false);
+  void setFunction(uint8_t funcID, bool state=false) {
+    _functionState[funcID] = state;
+    _functionsChanged = true;
+  }
 private:
+  void createFunctionPackets();
   uint8_t _registerNumber;
   uint16_t _locoNumber;
   int8_t _speed;
   bool _direction;
   uint32_t _lastUpdate;
+  bool _idleOnStartup;
+  bool _defaultOnThrottles;
+  bool _functionsChanged;
+  bool _functionState[MAX_LOCOMOTIVE_FUNCTIONS];
+  std::vector<uint8_t> _functionPackets[MAX_LOCOMOTIVE_FUNCTION_PACKETS];
 };
 
 class LocomotiveManager {
 public:
-  static void processThrottle(const std::vector<String> arguments);
-  static void processFunction(const std::vector<String> arguments);
+  // gets or creates a new locomotive to be managed
+  static Locomotive *getLocomotive(const uint16_t);
+  // removes a locomotive from management, sends speed zero before removal
+  static void removeLocomotive(const uint16_t);
+  static void processThrottle(const std::vector<String>);
+  static void processFunction(const std::vector<String>);
   static void showStatus();
   static void update();
   static void emergencyStop();
   static uint8_t getActiveLocoCount() {
     return _locos.length();
   }
+  static void init();
+  static uint16_t store();
+  static void getDefaultLocos(JsonArray &);
+  static void getActiveLocos(JsonArray &);
 private:
   static LinkedList<Locomotive *> _locos;
 };
@@ -86,7 +121,7 @@ public:
   }
 };
 
-// <f {LOCO} {BYTE} []{BYTE2}]> command handler, this command converts a
+// <f {LOCO} {BYTE} [{BYTE2}]> command handler, this command converts a
 // locomotive function update into a compatible DCC function control packet.
 class FunctionCommandAdapter : public DCCPPProtocolCommand {
 public:

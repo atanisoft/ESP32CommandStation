@@ -56,16 +56,18 @@ public:
   void process(const std::vector<String> arguments) {
     stopDCCSignalGenerators();
 #if defined(S88_ENABLED) && S88_ENABLED
-    wifiInterface.printf(F("<e %d %d %d %d>"),
+    wifiInterface.printf(F("<e %d %d %d %d %d>"),
       TurnoutManager::store(),
       SensorManager::store(),
       OutputManager::store(),
-      S88BusManager::store());
+      S88BusManager::store(),
+      LocomotiveManager::store());
 #else
-    wifiInterface.printf(F("<e %d %d %d>"),
+    wifiInterface.printf(F("<e %d %d %d 0 %d>"),
       TurnoutManager::store(),
       SensorManager::store(),
-      OutputManager::store());
+      OutputManager::store(),
+      LocomotiveManager::store());
 #endif
     startDCCSignalGenerators();
   }
@@ -148,7 +150,7 @@ public:
 class WriteCVByteOpsCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    writeOpsCVByte(arguments[1].toInt(),
+    writeOpsCVByte(arguments[0].toInt(),
       arguments[1].toInt(),
       arguments[2].toInt());
   }
@@ -164,7 +166,7 @@ public:
 class WriteCVBitOpsCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    writeOpsCVBit(arguments[1].toInt(),
+    writeOpsCVBit(arguments[0].toInt(),
       arguments[1].toInt(),
       arguments[2].toInt(),
       arguments[3].toInt() == 1);
@@ -269,5 +271,5 @@ DCCPPProtocolCommand *DCCPPProtocolHandler::getCommandHandler(const String id) {
       return command;
     }
   }
-  return NULL;
+  return nullptr;
 }

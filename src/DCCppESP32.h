@@ -76,6 +76,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "DCCppProtocol.h"
 #include "SignalGenerator.h"
 #include "MotorBoard.h"
+#include "Sensors.h"
 
 extern Preferences configStore;
 extern WiFiInterface wifiInterface;
