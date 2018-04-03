@@ -31,6 +31,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 enum HTTP_STATUS_CODES {
   STATUS_OK = 200,
   STATUS_NOT_MODIFIED = 304,
+  STATUS_BAD_REQUEST = 400,
   STATUS_NOT_FOUND = 404,
   STATUS_NOT_ALLOWED = 405,
   STATUS_NOT_ACCEPTABLE = 406,
@@ -98,6 +99,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
 #else
     root[F("s88")] = "false";
 #endif
+    LocomotiveManager::getDefaultLocos(root.createNestedArray("locos"));
     jsonResponse->setCode(STATUS_OK);
     jsonResponse->setLength();
     request->send(jsonResponse);
@@ -120,22 +122,24 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     std::bind(&DCCPPWebServer::handleRemoteSensors, this, std::placeholders::_1));
   on("/config", HTTP_POST | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleConfig, this, std::placeholders::_1));
+  on("/locomotive", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
+    std::bind(&DCCPPWebServer::handleLocomotive, this, std::placeholders::_1));
   webSocket.onEvent([](AsyncWebSocket * server, AsyncWebSocketClient * client,
       AwsEventType type, void * arg, uint8_t *data, size_t len) {
     if (type == WS_EVT_CONNECT) {
       webSocketClients.add(new WebSocketClient(client->id()));
-      client->printf("DCC++ESP v%s. READY!", VERSION);
+      client->printf("DCC++ESP32 v%s. READY!", VERSION);
   #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
       InfoScreen::printf(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
   #endif
     } else if (type == WS_EVT_DISCONNECT) {
-      WebSocketClient *toRemove = NULL;
+      WebSocketClient *toRemove = nullptr;
       for (const auto& clientNode : webSocketClients) {
         if(clientNode->getID() == client->id()) {
           toRemove = clientNode;
         }
       }
-      if(toRemove != NULL) {
+      if(toRemove != nullptr) {
         webSocketClients.remove(toRemove);
       }
   #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
@@ -277,7 +281,7 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
   } else if(request->method() == HTTP_DELETE) {
     uint16_t sensorID = request->arg(F("id")).toInt();
     if(SensorManager::getSensorPin(sensorID) < 0) {
-      // attempt to delete S88
+      // attempt to delete S88/RemoteSensor
       jsonResponse->setCode(STATUS_NOT_ALLOWED);
     } else if(!SensorManager::remove(sensorID)) {
       jsonResponse->setCode(STATUS_NOT_FOUND);
@@ -311,8 +315,7 @@ void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
       jsonResponse->setCode(STATUS_NOT_ALLOWED);
     }
   } else if(request->method() == HTTP_DELETE) {
-    uint8_t sensorBus = request->arg(F("id")).toInt();
-    S88BusManager::removeBus(sensorBus);
+    S88BusManager::removeBus(request->arg(F("id")).toInt());
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
@@ -328,8 +331,80 @@ void DCCPPWebServer::handleRemoteSensors(AsyncWebServerRequest *request) {
     RemoteSensorManager::createOrUpdate(request->arg(F("id")).toInt(),
       request->arg(F("value")).toInt());
   } else if(request->method() == HTTP_DELETE) {
-    uint8_t id = request->arg(F("id")).toInt();
-    RemoteSensorManager::remove(id);
+    RemoteSensorManager::remove(request->arg(F("id")).toInt());
+  }
+  jsonResponse->setLength();
+  request->send(jsonResponse);
+}
+
+void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
+  // method - url pattern - meaning
+  // ANY /locomotive/estop - send emergency stop to all locomotives
+  // GET /locomotive/roster - roster
+  // GET /locomotive/roster/<loco> - get roster entry
+  // PUT /locomotive/roster/<loco> - update roster entry
+  // POST /locomotive/roster/<loco> - create roster entry
+  // DELETE /locomotive/roster/<loco> - delete roster entry
+  // GET /locomotive - get active locomotives
+  // POST /locomotive?loco=<loco> - add locomotive to active management
+  // GET /locomotive?loco=<loco> - get locomotive state
+  // PUT /locomotive?loco=<loco>&speed=<speed>&dir=[FWD|REV]&fX=[true|false] - Update locomotive state, fX is short for function X where X is 0-28.
+  // DELETE /locomotive/<loco> - removes locomotive from active management
+  //
+  // roster supports sorting/filtering/ordering based on
+  // https://datatables.net/manual/server-side
+  auto jsonResponse = new AsyncJsonResponse(true);
+  jsonResponse->setCode(STATUS_OK);
+  const String url = request->url();
+  // check if we have an eStop command, we don't care how this gets sent to the
+  // base station (method) so check it first
+  if(url.endsWith("/estop")) {
+    LocomotiveManager::emergencyStop();
+  } else if(url.indexOf("/roster") > 0) {
+    // TODO: ROSTER commands
+  } else {
+    // Since it is not an eStop or roster command we need to check the request
+    // method and ensure it contains the required arguments otherwise the
+    // request should be rejected
+    if(request->method() == HTTP_GET && !request->hasArg("loco")) {
+      // get all active locomotives
+      LocomotiveManager::getActiveLocos(jsonResponse->getRoot());
+    } else if (request->hasArg("loco")) {
+      auto loco = LocomotiveManager::getLocomotive(request->arg("loco").toInt());
+      if(request->method() == HTTP_PUT || request->method() == HTTP_POST) {
+        // Creation / Update of active locomotive
+        bool needUpdate = false;
+        if(request->hasArg("idle") && request->arg("idle").equalsIgnoreCase("true")) {
+          loco->setIdle();
+          needUpdate = true;
+        }
+        if(request->hasArg("dir")) {
+          loco->setDirection(request->arg("dir").equalsIgnoreCase("fwd"));
+          needUpdate = true;
+        }
+        if(request->hasArg("speed")) {
+          loco->setSpeed(request->arg("speed").toInt());
+          needUpdate = true;
+        }
+        for(uint8_t funcID = 0; funcID <=28 ; funcID++) {
+          String fArg = "f" + String(funcID);
+          if(request->hasArg(fArg.c_str())) {
+            bool state = request->arg(fArg.c_str()).equalsIgnoreCase("true");
+            loco->setFunction(funcID, state);
+          }
+        }
+        if(needUpdate) {
+          loco->sendLocoUpdate();
+        }
+      } else if(request->method() == HTTP_DELETE) {
+        // Removal of an active locomotive
+        LocomotiveManager::removeLocomotive(request->arg("loco").toInt());
+      }
+      loco->toJson(((JsonArray &)jsonResponse->getRoot()).createNestedObject());
+    } else {
+      // missing arg or unknown request
+      jsonResponse->setCode(STATUS_BAD_REQUEST);
+    }
   }
   jsonResponse->setLength();
   request->send(jsonResponse);

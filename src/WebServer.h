@@ -23,7 +23,7 @@ class DCCPPWebServer : public AsyncWebServer {
 public:
   DCCPPWebServer();
   void begin() {
-    MDNS.addService("_http", "_tcp", 80);
+    MDNS.addService("http", "tcp", 80);
     AsyncWebServer::begin();
     #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
       InfoScreen::replaceLine(INFO_SCREEN_WS_CLIENTS_LINE, F("WS Clients: 0"));
@@ -41,6 +41,7 @@ private:
   void handleTurnouts(AsyncWebServerRequest *);
   void handleSensors(AsyncWebServerRequest *);
   void handleConfig(AsyncWebServerRequest *);
+  void handleLocomotive(AsyncWebServerRequest *);
 #if defined(S88_ENABLED) && S88_ENABLED
   void handleS88Sensors(AsyncWebServerRequest *);
 #endif
