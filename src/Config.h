@@ -177,3 +177,15 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 
 /////////////////////////////////////////////////////////////////////////////////////
+//
+// The HC12 is a radio receiver that was previously used by some throttles to
+// wirelessly send packet data to the base station. Uncomment the define below
+// to enable this functionality.
+
+//#define HC12_RADIO_ENABLED true
+//#define HC12_RADIO_BAUD 19200
+//#define HC12_UART_NUM 1
+//#define HC12_RX_PIN 9
+//#define HC12_TX_PIN 10
+
+/////////////////////////////////////////////////////////////////////////////////////

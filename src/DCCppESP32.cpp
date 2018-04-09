@@ -158,6 +158,7 @@ present in DCCppESP32.cpp in the setup() method.
 #include "S88Sensors.h"
 #include "SignalGenerator.h"
 #include "RemoteSensors.h"
+#include "HC12Interface.h"
 
 const char * buildTime = __DATE__ " " __TIME__;
 Preferences configStore;
@@ -210,6 +211,9 @@ void setup() {
 #endif
 	RemoteSensorManager::init();
   LocomotiveManager::init();
+#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+  HC12Interface::init();
+#endif
 	configureDCCSignalGenerators();
 	log_i("DCC++ READY!");
 }
@@ -223,4 +227,7 @@ void loop() {
 	S88BusManager::update();
 #endif
 	LocomotiveManager::update();
+#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+  HC12Interface::update();
+#endif
 }

@@ -22,6 +22,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <ESPAsyncWebServer.h>
 #include <IPAddress.h>
 #include "WebServer.h"
+#include "HC12Interface.h"
 
 DCCPPWebServer dccppWebServer;
 
@@ -137,6 +138,9 @@ void WiFiInterface::send(const char *buf) {
     }
   }
   dccppWebServer.broadcastToWS(buf);
+#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+  HC12Interface::send(buf);
+#endif
 }
 
 void WiFiInterface::printf(const __FlashStringHelper *fmt, ...) {
