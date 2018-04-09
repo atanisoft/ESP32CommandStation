@@ -205,8 +205,8 @@ void Turnout::store(uint16_t index) {
   configStore.putUShort(turnoutIDKey.c_str(), _turnoutID);
   configStore.putUShort(turnoutAddrKey.c_str(), _address);
   configStore.putUChar(turnoutSubAddrKey.c_str(), _subAddress);
-  configStore.putBool(turnoutOrientationKey.c_str(), _orientation);
-  configStore.putUChar()
+  configStore.putBool(turnoutStateKey.c_str(), _thrown);
+  configStore.putUChar(turnoutOrientationKey.c_str(), _orientation);
 }
 
 void Turnout::set(bool thrown) {
