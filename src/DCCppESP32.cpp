@@ -159,6 +159,7 @@ present in DCCppESP32.cpp in the setup() method.
 #include "SignalGenerator.h"
 #include "RemoteSensors.h"
 #include "HC12Interface.h"
+#include "NextionInterface.h"
 
 const char * buildTime = __DATE__ " " __TIME__;
 Preferences configStore;
@@ -214,6 +215,9 @@ void setup() {
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
   HC12Interface::init();
 #endif
+#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+  NextionInterface::init();
+#endif
 	configureDCCSignalGenerators();
 	log_i("DCC++ READY!");
 }
@@ -229,5 +233,8 @@ void loop() {
 	LocomotiveManager::update();
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
   HC12Interface::update();
+#endif
+#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+  NextionInterface::update();
 #endif
 }

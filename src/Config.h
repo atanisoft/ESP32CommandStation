@@ -189,3 +189,14 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define HC12_TX_PIN 10
 
 /////////////////////////////////////////////////////////////////////////////////////
+//
+// The Nextion is an interface to the base station that provides a connected
+// throttle, turnout control, programming track and general base station status.
+
+//#define NEXTION_ENABLED true
+//#define NEXTION_UART_NUM 2
+//#define NEXTION_UART_BAUD 115200
+//#define NEXTION_RX_PIN 12
+//#define NEXTION_TX_PIN 13
+
+/////////////////////////////////////////////////////////////////////////////////////
