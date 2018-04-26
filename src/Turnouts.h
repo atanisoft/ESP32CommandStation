@@ -22,9 +22,9 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 enum TurnoutOrientation {
   LEFT=0,
-  RIGHT=1,
-  Y=2,
-  MULTI=3
+  RIGHT=2,
+  Y=4,
+  MULTI=8
 };
 
 class Turnout {
@@ -72,6 +72,7 @@ public:
   static void showStatus();
   static void createOrUpdate(const uint16_t, const uint16_t, const uint8_t);
   static bool remove(const uint16_t);
+  static Turnout *getTurnout(const uint16_t);
 };
 
 class TurnoutCommandAdapter : public DCCPPProtocolCommand {

@@ -169,6 +169,16 @@ bool TurnoutManager::remove(const uint16_t id) {
   return false;
 }
 
+Turnout *TurnoutManager::getTurnout(const uint16_t id) {
+  Turnout *retval = nullptr;
+  for (const auto& turnout : turnouts) {
+    if(turnout->getID() == id) {
+      retval = turnout;
+    }
+  }
+  return retval;
+}
+
 Turnout::Turnout(uint16_t turnoutID, uint16_t address, uint8_t subAddress,
   bool thrown, TurnoutOrientation orientation) : _turnoutID(turnoutID),
   _address(address), _subAddress(subAddress), _thrown(thrown),
