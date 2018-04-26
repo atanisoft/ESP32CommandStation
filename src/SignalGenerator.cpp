@@ -35,6 +35,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 // number of microseconds for each half of the DCC signal for a one
 #define DCC_ONE_BIT_PULSE_DURATION 58
 
+// number of samples to take when monitoring current after a CV verify
+// (bit or byte) has been sent
+const uint8_t CVSampleCount = 250;
+
 SignalGenerator dccSignal[MAX_DCC_SIGNAL_GENERATORS];
 
 // S-9.2 baseline packet (idle)
@@ -318,31 +322,9 @@ bool SignalGenerator::isQueueEmpty() {
   return _toSend.empty();
 }
 
-uint64_t sampleADCChannel(adc1_channel_t channel, uint8_t sampleCount) {
-  uint64_t current = 0;
-  int successfulReads = 0;
-  for(uint8_t sampleReadCount = 0; sampleReadCount < sampleCount; sampleReadCount++) {
-    int reading = adc1_get_raw(channel);
-    log_d("ADC(%d) sample %d/%d: %d", channel, sampleReadCount+1, sampleCount, reading);
-    if(reading > 0) {
-      current += reading;
-      successfulReads++;
-    }
-    delay(2);
-  }
-  if(successfulReads) {
-    current /= successfulReads;
-  }
-  log_d("ADC(%d) average: %d", current);
-  return current;
-}
-
-// number of analogRead samples to take when monitoring current after a CV verify (bit or byte) has been sent
-const uint8_t CVSampleCount = 250;
-
 int16_t readCV(const uint16_t cv) {
-  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 * 60 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps());
+  const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
+  const uint16_t milliAmpAck = (4096 * 60 / motorBoard->getMaxMilliAmps());
   uint8_t readCVBitPacket[4] = { (uint8_t)(0x78 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
   uint8_t verifyCVBitPacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
   int16_t cvValue = 0;
@@ -355,7 +337,7 @@ int16_t readCV(const uint16_t cv) {
     loadBytePacket(signalGenerator, resetPacket, 2, 3);
     loadBytePacket(signalGenerator, readCVBitPacket, 3, 5);
     signalGenerator.waitForQueueEmpty();
-    if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
+    if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
       log_d("[PROG] CV %d, bit [%d/7] ON", cv, bit);
       bitWrite(cvValue, bit, 1);
     } else {
@@ -370,7 +352,7 @@ int16_t readCV(const uint16_t cv) {
   loadBytePacket(signalGenerator, verifyCVBitPacket, 3, 5);
   signalGenerator.waitForQueueEmpty();
   bool verified = false;
-  if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
+  if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
     verified = true;
     log_d("[PROG] CV %d, verified", cv);
   }
@@ -382,8 +364,8 @@ int16_t readCV(const uint16_t cv) {
 }
 
 bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
-  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 * 60 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps());
+  const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
+  const uint16_t milliAmpAck = (4096 * 60 / motorBoard->getMaxMilliAmps());
   const uint8_t maxWriteAttempts = 5;
   uint8_t writeCVBytePacket[4] = { (uint8_t)(0x7C + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), cvValue, 0x00};
   uint8_t verifyCVBytePacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), cvValue, 0x00};
@@ -396,12 +378,12 @@ bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
     loadBytePacket(signalGenerator, writeCVBytePacket, 3, 4);
     signalGenerator.waitForQueueEmpty();
     // verify that the decoder received the write byte packet and sent an ACK
-    if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
+    if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
       loadBytePacket(signalGenerator, resetPacket, 2, 3);
       loadBytePacket(signalGenerator, verifyCVBytePacket, 3, 5);
       signalGenerator.waitForQueueEmpty();
       // check that decoder sends an ACK for the verify operation
-      if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
+      if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
         writeVerified = true;
         log_d("[PROG] CV %d write value %d verified.", cv, cvValue);
       }
@@ -415,8 +397,8 @@ bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
 }
 
 bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
-  const adc1_channel_t adcChannel = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getADC1Channel();
-  const uint16_t milliAmpAck = (4096 * 60 / MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->getMaxMilliAmps());
+  const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
+  const uint16_t milliAmpAck = (4096 * 60 / motorBoard->getMaxMilliAmps());
   const uint8_t maxWriteAttempts = 5;
   uint8_t writeCVBitPacket[4] = { (uint8_t)(0x78 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), (uint8_t)(0xF0 + bit + value * 8), 0x00};
   uint8_t verifyCVBitPacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), (uint8_t)(0xB0 + bit + value * 8), 0x00};
@@ -429,12 +411,12 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
     loadBytePacket(signalGenerator, writeCVBitPacket, 3, 4);
     signalGenerator.waitForQueueEmpty();
     // verify that the decoder received the write byte packet and sent an ACK
-    if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
+    if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
       loadBytePacket(signalGenerator, resetPacket, 2, 3);
       loadBytePacket(signalGenerator, verifyCVBitPacket, 3, 5);
       signalGenerator.waitForQueueEmpty();
       // check that decoder sends an ACK for the verify operation
-      if(sampleADCChannel(adcChannel, CVSampleCount) > milliAmpAck) {
+      if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
         writeVerified = true;
         log_d("[PROG %d/%d] CV %d write bit %d verified.", attempt, maxWriteAttempts, cv, bit);
       }
@@ -447,13 +429,13 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
   return writeVerified;
 }
 
-void writeOpsCVByte(const uint16_t locoNumber, const uint16_t cv, const uint8_t cvValue) {
+void writeOpsCVByte(const uint16_t locoAddress, const uint16_t cv, const uint8_t cvValue) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_OPERATIONS];
-  log_d("[OPS] Updating CV %d to %d for loco %d", cv, cvValue, locoNumber);
-  if(locoNumber > 127) {
+  log_d("[OPS] Updating CV %d to %d for loco %d", cv, cvValue, locoAddress);
+  if(locoAddress > 127) {
     uint8_t writeCVBytePacket[] = {
-      (uint8_t)(0xC0 | highByte(locoNumber)),
-      lowByte(locoNumber),
+      (uint8_t)(0xC0 | highByte(locoAddress)),
+      lowByte(locoAddress),
       (uint8_t)(0xEC + (highByte(cv - 1) & 0x03)),
       lowByte(cv - 1),
       cvValue,
@@ -461,7 +443,7 @@ void writeOpsCVByte(const uint16_t locoNumber, const uint16_t cv, const uint8_t 
     loadBytePacket(signalGenerator, writeCVBytePacket, 5, 4);
   } else {
     uint8_t writeCVBytePacket[] = {
-      lowByte(locoNumber),
+      lowByte(locoAddress),
       (uint8_t)(0xEC + (highByte(cv - 1) & 0x03)),
       lowByte(cv - 1),
       cvValue,
@@ -470,13 +452,13 @@ void writeOpsCVByte(const uint16_t locoNumber, const uint16_t cv, const uint8_t 
   }
 }
 
-void writeOpsCVBit(const uint16_t locoNumber, const uint16_t cv, const uint8_t bit, const bool value) {
+void writeOpsCVBit(const uint16_t locoAddress, const uint16_t cv, const uint8_t bit, const bool value) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_OPERATIONS];
-  log_d("[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value, locoNumber);
-  if(locoNumber > 127) {
+  log_d("[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value, locoAddress);
+  if(locoAddress > 127) {
     uint8_t writeCVBitPacket[] = {
-      (uint8_t)(0xC0 | highByte(locoNumber)),
-      lowByte(locoNumber),
+      (uint8_t)(0xC0 | highByte(locoAddress)),
+      lowByte(locoAddress),
       (uint8_t)(0xE8 + (highByte(cv - 1) & 0x03)),
       lowByte(cv - 1),
       (uint8_t)(0xF0 + bit + value * 8),
@@ -484,7 +466,7 @@ void writeOpsCVBit(const uint16_t locoNumber, const uint16_t cv, const uint8_t b
     loadBytePacket(signalGenerator, writeCVBitPacket, 5, 4);
   } else {
     uint8_t writeCVBitPacket[] = {
-      lowByte(locoNumber),
+      lowByte(locoAddress),
       (uint8_t)(0xE8 + (highByte(cv - 1) & 0x03)),
       lowByte(cv - 1),
       (uint8_t)(0xF0 + bit + value * 8),

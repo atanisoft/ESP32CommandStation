@@ -22,6 +22,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <vector>
 #include <queue>
 #include <stack>
+#include <driver/adc.h>
 
 #define MAX_BYTES_IN_PACKET 10
 

@@ -23,6 +23,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 ///////////////////////////////////////////////////////////////////////////////
 
+const uint8_t motorBoardADCSampleCount = 50;
 const uint16_t motorBoardCheckInterval = 250;
 const uint16_t motorBoardCheckFaultCountdownInterval = 40;
 
@@ -75,7 +76,7 @@ void GenericMotorBoard::check() {
 	// if we have exceeded the CURRENT_SAMPLE_TIME we need to check if we are over/under current.
 	if(millis() - _lastCheckTime > motorBoardCheckInterval) {
     _lastCheckTime = millis();
-		_current = adc1_get_raw(_senseChannel);
+		_current = captureSample(motorBoardADCSampleCount);
 		if(_current >= _triggerValue && isOn()) {
       log_i("[%s] Overcurrent detected %2.2f mA (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
 			powerOff(true, true);
@@ -96,6 +97,25 @@ void GenericMotorBoard::check() {
       }
     }
 	}
+}
+
+uint64_t GenericMotorBoard::captureSample(uint8_t sampleCount) {
+  uint64_t averageReading = 0;
+  int successfulReads = 0;
+  for(uint8_t sampleReadCount = 0; sampleReadCount < sampleCount; sampleReadCount++) {
+    int reading = adc1_get_raw(_senseChannel);
+    log_d("ADC(%d) sample %d/%d: %d", _senseChannel, sampleReadCount+1, sampleCount, reading);
+    if(reading > 0) {
+      averageReading += reading;
+      successfulReads++;
+    }
+    delay(2);
+  }
+  if(successfulReads) {
+    averageReading /= successfulReads;
+  }
+  log_d("ADC(%d) average: %d", averageReading);
+  return averageReading;
 }
 
 GenericMotorBoard * MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin, MOTOR_BOARD_TYPE type, String name) {
