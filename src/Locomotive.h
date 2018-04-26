@@ -29,16 +29,16 @@ public:
   uint8_t getRegister() {
     return _registerNumber;
   }
-  void setLocoNumber(uint16_t locoNumber) {
-    _locoNumber = locoNumber;
+  void setLocoAddress(uint16_t locoAddress) {
+    _locoAddress = locoAddress;
   }
-  uint16_t getLocoNumber() {
-    return _locoNumber;
+  uint16_t getLocoAddress() {
+    return _locoAddress;
   }
   void setSpeed(int8_t speed) {
     _speed = speed;
   }
-  int8_t setSpeed() {
+  int8_t getSpeed() {
     return _speed;
   }
   void setDirection(bool forward) {
@@ -75,7 +75,7 @@ public:
 private:
   void createFunctionPackets();
   uint8_t _registerNumber;
-  uint16_t _locoNumber;
+  uint16_t _locoAddress;
   int8_t _speed;
   bool _direction;
   uint32_t _lastUpdate;
@@ -102,6 +102,7 @@ public:
   }
   static void init();
   static uint16_t store();
+  static std::vector<Locomotive *> getDefaultLocos();
   static void getDefaultLocos(JsonArray &);
   static void getActiveLocos(JsonArray &);
 private:

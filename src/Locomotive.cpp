@@ -22,7 +22,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete loco; });
 
 Locomotive::Locomotive(uint8_t registerNumber) :
-  _registerNumber(registerNumber), _locoNumber(0), _speed(0), _direction(0),
+  _registerNumber(registerNumber), _locoAddress(0), _speed(0), _direction(0),
   _lastUpdate(0), _idleOnStartup(false), _defaultOnThrottles(false), _functionsChanged(false) {
   for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
     _functionState[funcID] = false;
@@ -31,10 +31,10 @@ Locomotive::Locomotive(uint8_t registerNumber) :
 
 void Locomotive::sendLocoUpdate() {
   std::vector<uint8_t> packetBuffer;
-  if(_locoNumber > 127) {
-    packetBuffer.push_back((uint8_t)(0xC0 | highByte(_locoNumber)));
+  if(_locoAddress > 127) {
+    packetBuffer.push_back((uint8_t)(0xC0 | highByte(_locoAddress)));
   }
-  packetBuffer.push_back(lowByte(_locoNumber));
+  packetBuffer.push_back(lowByte(_locoAddress));
   // S-9.2.1 Advanced Operations instruction
   // using 128 speed steps
   packetBuffer.push_back(0x3F);
@@ -57,12 +57,12 @@ void Locomotive::sendLocoUpdate() {
 
 void Locomotive::showStatus() {
   log_i("Loco(%d) locoNumber: %d, speed: %d, direction: %s",
-    _registerNumber, _locoNumber, _speed, _direction ? "FWD" : "REV");
+    _registerNumber, _locoAddress, _speed, _direction ? "FWD" : "REV");
   wifiInterface.printf(F("<T %d %d %d>"), _registerNumber, _speed, _direction);
 }
 
 void Locomotive::toJson(JsonObject &jsonObject, bool basic) {
-  jsonObject[F("address")] = _locoNumber;
+  jsonObject[F("address")] = _locoAddress;
   if(!basic) {
     jsonObject[F("speed")] = _speed;
     jsonObject[F("dir")] = _direction ? "FWD" : "REV";
@@ -75,11 +75,11 @@ void Locomotive::createFunctionPackets() {
   // seed functions packets with locomotive numbers
   for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
     _functionPackets[functionPacket].clear();
-    if(_locoNumber > 127) {
+    if(_locoAddress > 127) {
       // convert train number into a two-byte address
-      _functionPackets[functionPacket].push_back((uint8_t)(0xC0 | highByte(_locoNumber)));
+      _functionPackets[functionPacket].push_back((uint8_t)(0xC0 | highByte(_locoAddress)));
     }
-    _functionPackets[functionPacket].push_back(lowByte(_locoNumber));
+    _functionPackets[functionPacket].push_back(lowByte(_locoAddress));
   }
 
   uint8_t packetByte[2] = {0x80, 0x00};
@@ -156,7 +156,7 @@ void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
     instance = new Locomotive(registerNumber);
     _locos.add(instance);
   }
-  instance->setLocoNumber(arguments[1].toInt());
+  instance->setLocoAddress(arguments[1].toInt());
   instance->setSpeed(arguments[2].toInt());
   instance->setDirection(arguments[3].toInt() == 1);
   instance->sendLocoUpdate();
@@ -166,9 +166,9 @@ void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
 // This method decodes the incoming function packet(s) to update the stored
 // functinon states. Loco update will be sent afterwards.
 void LocomotiveManager::processFunction(const std::vector<String> arguments) {
-  int locoNumber = arguments[0].toInt();
+  int locoAddress = arguments[0].toInt();
   int functionByte = arguments[1].toInt();
-  auto loco = getLocomotive(locoNumber);
+  auto loco = getLocomotive(locoAddress);
   // check this is a request for functions F13-F28
   if(arguments.size() > 2) {
     int secondaryFunctionByte = arguments[2].toInt();
@@ -225,25 +225,25 @@ void LocomotiveManager::emergencyStop() {
   sendDCCEmergencyStop();
 }
 
-Locomotive *LocomotiveManager::getLocomotive(const uint16_t locoNumber) {
+Locomotive *LocomotiveManager::getLocomotive(const uint16_t locoAddress) {
   Locomotive *instance = nullptr;
   for (const auto& loco : _locos) {
-    if(loco->getLocoNumber() == locoNumber) {
+    if(loco->getLocoAddress() == locoAddress) {
       instance = loco;
     }
 	}
   if(instance == nullptr) {
     instance = new Locomotive(_locos.length());
-    instance->setLocoNumber(locoNumber);
+    instance->setLocoAddress(locoAddress);
     _locos.add(instance);
   }
   return instance;
 }
 
-void LocomotiveManager::removeLocomotive(const uint16_t locoNumber) {
+void LocomotiveManager::removeLocomotive(const uint16_t locoAddress) {
   Locomotive *locoToRemove = nullptr;
   for (const auto& loco : _locos) {
-    if(loco->getLocoNumber() == locoNumber) {
+    if(loco->getLocoAddress() == locoAddress) {
       locoToRemove = loco;
     }
   }
@@ -261,6 +261,16 @@ void LocomotiveManager::init() {
 uint16_t LocomotiveManager::store() {
   // TODO: persist roster to storage
   return 0;
+}
+
+std::vector<Locomotive *> LocomotiveManager::getDefaultLocos() {
+  std::vector<Locomotive *> retval;
+  for (const auto& loco : _locos) {
+    if(loco->isDefaultOnThrottles()) {
+      retval.push_back(loco);
+    }
+  }
+  return retval;
 }
 
 void LocomotiveManager::getDefaultLocos(JsonArray &array) {
