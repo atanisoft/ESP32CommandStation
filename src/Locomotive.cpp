@@ -263,11 +263,13 @@ uint16_t LocomotiveManager::store() {
   return 0;
 }
 
-std::vector<Locomotive *> LocomotiveManager::getDefaultLocos() {
+std::vector<Locomotive *> LocomotiveManager::getDefaultLocos(const int8_t maxCount) {
   std::vector<Locomotive *> retval;
   for (const auto& loco : _locos) {
     if(loco->isDefaultOnThrottles()) {
-      retval.push_back(loco);
+      if(maxCount < 0 || (maxCount > 0 && retval.size() < maxCount)) {
+        retval.push_back(loco);
+      }
     }
   }
   return retval;

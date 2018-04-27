@@ -102,7 +102,7 @@ public:
   }
   static void init();
   static uint16_t store();
-  static std::vector<Locomotive *> getDefaultLocos();
+  static std::vector<Locomotive *> getDefaultLocos(const int8_t=-1);
   static void getDefaultLocos(JsonArray &);
   static void getActiveLocos(JsonArray &);
 private:
