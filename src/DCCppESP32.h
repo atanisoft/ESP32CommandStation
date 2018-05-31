@@ -62,6 +62,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 // WARNING: Enabling this can cause the ESP32 to crash due to Serial buffer overflow
 #define DEBUG_SIGNAL_GENERATOR 0
 
+// set to zero to disable diagnostic logging of packets in the ADC Sampling code
+// WARNING: Enabling this can cause the ESP32 to crash due to Serial buffer overflow
+#define DEBUG_ADC_SAMPLING 0
+
 #include <Arduino.h>
 #include <Preferences.h>
 #include <algorithm>

@@ -104,7 +104,9 @@ uint64_t GenericMotorBoard::captureSample(uint8_t sampleCount) {
   int successfulReads = 0;
   for(uint8_t sampleReadCount = 0; sampleReadCount < sampleCount; sampleReadCount++) {
     int reading = adc1_get_raw(_senseChannel);
+#if DEBUG_ADC_SAMPLING == 1
     log_d("ADC(%d) sample %d/%d: %d", _senseChannel, sampleReadCount+1, sampleCount, reading);
+#endif
     if(reading > 0) {
       averageReading += reading;
       successfulReads++;
@@ -114,7 +116,9 @@ uint64_t GenericMotorBoard::captureSample(uint8_t sampleCount) {
   if(successfulReads) {
     averageReading /= successfulReads;
   }
+#if DEBUG_ADC_SAMPLING == 1
   log_d("ADC(%d) average: %d", averageReading);
+#endif
   return averageReading;
 }
 
