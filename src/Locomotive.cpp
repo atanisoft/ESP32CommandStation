@@ -23,7 +23,7 @@ LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete 
 
 Locomotive::Locomotive(uint8_t registerNumber) :
   _registerNumber(registerNumber), _locoAddress(0), _speed(0), _direction(0),
-  _lastUpdate(0), _idleOnStartup(false), _defaultOnThrottles(false), _functionsChanged(false) {
+  _lastUpdate(0), _idleOnStartup(false), _defaultOnThrottles(false), _functionsChanged(true) {
   for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
     _functionState[funcID] = false;
   }
@@ -49,7 +49,7 @@ void Locomotive::sendLocoUpdate() {
     _functionsChanged = false;
     createFunctionPackets();
   }
-  for(uint8_t functionPacket = 0; functionPacket < 5; functionPacket++) {
+  for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
     dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(_functionPackets[functionPacket], 0);
   }
   _lastUpdate = millis();

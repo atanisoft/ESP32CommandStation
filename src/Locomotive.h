@@ -72,6 +72,9 @@ public:
     _functionState[funcID] = state;
     _functionsChanged = true;
   }
+  bool isFunctionEnabled(uint8_t funcID) {
+    return _functionState[funcID];
+  }
 private:
   void createFunctionPackets();
   uint8_t _registerNumber;
