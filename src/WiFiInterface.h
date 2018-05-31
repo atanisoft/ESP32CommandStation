@@ -27,7 +27,7 @@ public:
 	void update();
 	void showConfiguration();
 	void showInitInfo();
-	void send(const char *buf);
+	void send(const String &);
 	void printf(const __FlashStringHelper *fmt, ...);
 };
 

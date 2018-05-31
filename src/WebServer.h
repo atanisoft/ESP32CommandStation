@@ -25,11 +25,11 @@ public:
   void begin() {
     MDNS.addService("http", "tcp", 80);
     AsyncWebServer::begin();
-    #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
-      InfoScreen::replaceLine(INFO_SCREEN_WS_CLIENTS_LINE, F("WS Clients: 0"));
-    #endif
+#if INFO_SCREEN_WS_CLIENTS_LINE >= 0
+    InfoScreen::replaceLine(INFO_SCREEN_WS_CLIENTS_LINE, F("WS Clients: 0"));
+#endif
   }
-  void broadcastToWS(const char *buf) {
+  void broadcastToWS(const String &buf) {
     webSocket.textAll(buf);
   }
 private:

@@ -40,40 +40,15 @@ enum HTTP_STATUS_CODES {
   STATUS_SERVER_ERROR = 500
 };
 
-class WebSocketClient {
+class WebSocketClient : public DCCPPProtocolConsumer {
 public:
   WebSocketClient(int clientID) : _id(clientID) {
-    buffer.reserve(128);
   }
   int getID() {
     return _id;
   }
-  void appendData(uint8_t * data, size_t len) {
-    for(int i = 0; i < len; i++) {
-      buffer.emplace_back(data[i]);
-    }
-    auto s = buffer.begin();
-    auto consumed = buffer.begin();
-    for(; s != buffer.end();) {
-      s = std::find(s, buffer.end(), '<');
-      auto e = std::find(s, buffer.end(), '>');
-      if(s != buffer.end() && e != buffer.end()) {
-        // discard the <
-        s++;
-        // discard the >
-        *e = 0;
-        String str(reinterpret_cast<char*>(&*s));
-        wifiInterface.printf(F("<%s>"), str.c_str());
-        DCCPPProtocolHandler::process(std::move(str));
-        consumed = e;
-      }
-      s = e;
-    }
-    buffer.erase(buffer.begin(), consumed); // drop everything we used from the buffer.
-  }
 private:
   uint32_t _id;
-  std::vector<uint8_t> buffer;
 };
 LinkedList<WebSocketClient *> webSocketClients([](WebSocketClient *client) {delete client;});
 
@@ -148,7 +123,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     } else if (type == WS_EVT_DATA) {
       for (const auto& clientNode : webSocketClients) {
         if(clientNode->getID() == client->id()) {
-          clientNode->appendData(data, len);
+          clientNode->feed(data, len);
         }
       }
     }
@@ -341,15 +316,15 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
   // method - url pattern - meaning
   // ANY /locomotive/estop - send emergency stop to all locomotives
   // GET /locomotive/roster - roster
-  // GET /locomotive/roster/<loco> - get roster entry
-  // PUT /locomotive/roster/<loco> - update roster entry
-  // POST /locomotive/roster/<loco> - create roster entry
-  // DELETE /locomotive/roster/<loco> - delete roster entry
+  // GET /locomotive/roster?addr=<addr> - get roster entry
+  // PUT /locomotive/roster?addr=<addr> - update roster entry
+  // POST /locomotive/roster?addr=<addr> - create roster entry
+  // DELETE /locomotive/roster?addr=<addr> - delete roster entry
   // GET /locomotive - get active locomotives
-  // POST /locomotive?loco=<loco> - add locomotive to active management
-  // GET /locomotive?loco=<loco> - get locomotive state
-  // PUT /locomotive?loco=<loco>&speed=<speed>&dir=[FWD|REV]&fX=[true|false] - Update locomotive state, fX is short for function X where X is 0-28.
-  // DELETE /locomotive/<loco> - removes locomotive from active management
+  // POST /locomotive?addr=<addr> - add locomotive to active management
+  // GET /locomotive?addr=<addr> - get locomotive state
+  // PUT /locomotive?addr=<addr>&speed=<speed>&dir=[FWD|REV]&fX=[true|false] - Update locomotive state, fX is short for function X where X is 0-28.
+  // DELETE /locomotive?addr=<addr> - removes locomotive from active management
   //
   // roster supports sorting/filtering/ordering based on
   // https://datatables.net/manual/server-side
@@ -366,11 +341,11 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
     // Since it is not an eStop or roster command we need to check the request
     // method and ensure it contains the required arguments otherwise the
     // request should be rejected
-    if(request->method() == HTTP_GET && !request->hasArg("loco")) {
+    if(request->method() == HTTP_GET && !request->hasArg("addr")) {
       // get all active locomotives
       LocomotiveManager::getActiveLocos(jsonResponse->getRoot());
-    } else if (request->hasArg("loco")) {
-      auto loco = LocomotiveManager::getLocomotive(request->arg("loco").toInt());
+    } else if (request->hasArg("addr")) {
+      auto loco = LocomotiveManager::getLocomotive(request->arg("addr").toInt());
       if(request->method() == HTTP_PUT || request->method() == HTTP_POST) {
         // Creation / Update of active locomotive
         bool needUpdate = false;
@@ -398,7 +373,7 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
         }
       } else if(request->method() == HTTP_DELETE) {
         // Removal of an active locomotive
-        LocomotiveManager::removeLocomotive(request->arg("loco").toInt());
+        LocomotiveManager::removeLocomotive(request->arg("addr").toInt());
       }
       loco->toJson(((JsonArray &)jsonResponse->getRoot()).createNestedObject());
     } else {

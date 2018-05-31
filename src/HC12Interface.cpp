@@ -32,40 +32,16 @@ COPYRIGHT (c) 2018 Mike Dunston
 #endif
 
 HardwareSerial hc12Serial(HC12_UART_NUM);
-std::vector<uint8_t> hc12Buffer;
+DCCPPProtocolConsumer hc12Consumer(hc12Serial);
 
 void HC12Interface::init() {
   hc12Serial.begin(HC12_RADIO_BAUD, SERIAL_8N1, HC12_RX_PIN, HC12_TX_PIN);
 }
 
 void HC12Interface::update() {
-  if(hc12Serial.available()) {
-    auto len = hc12Serial.available();
-    auto read_dest = hc12Buffer.insert(hc12Buffer.end(), len + 1, 0);
-    auto added = hc12Serial.readBytes(&*read_dest, len);
-    hc12Buffer.erase(read_dest + added, hc12Buffer.end());
-    auto s = hc12Buffer.begin();
-    auto consumed = hc12Buffer.begin();
-    for(; s != hc12Buffer.end();) {
-      s = std::find(s, hc12Buffer.end(), '<');
-      auto e = std::find(s, hc12Buffer.end(), '>');
-      if(s != hc12Buffer.end() && e != hc12Buffer.end()) {
-        // discard the <
-        s++;
-        // discard the >
-        *e = 0;
-        String str(reinterpret_cast<char*>(&*s));
-        wifiInterface.printf(F("<%s>"), str.c_str());
-        log_d("Command: <%s>", str.c_str());
-        DCCPPProtocolHandler::process(std::move(str));
-        consumed = e;
-      }
-      s = e;
-    }
-    hc12Buffer.erase(hc12Buffer.begin(), consumed); // drop everything we used from the buffer.
-  }
+  hc12Consumer.update();
 }
 
-void HC12Interface::send(const char *buf) {
+void HC12Interface::send(const String &buf) {
   hc12Serial.print(buf);
 }

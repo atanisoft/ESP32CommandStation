@@ -220,7 +220,7 @@ void DCCPPProtocolHandler::init() {
   registerCommand(new RemoteSensorsCommandAdapter());
 }
 
-void DCCPPProtocolHandler::process(const String commandString) {
+void DCCPPProtocolHandler::process(const String &commandString) {
   std::vector<String> parts;
   if(commandString.indexOf(' ') > 0) {
     int index = 0;
@@ -265,11 +265,56 @@ void DCCPPProtocolHandler::registerCommand(DCCPPProtocolCommand *cmd) {
   registeredCommands.add(cmd);
 }
 
-DCCPPProtocolCommand *DCCPPProtocolHandler::getCommandHandler(const String id) {
+DCCPPProtocolCommand *DCCPPProtocolHandler::getCommandHandler(const String &id) {
   for (const auto& command : registeredCommands) {
     if(command->getID() == id) {
       return command;
     }
   }
   return nullptr;
+}
+
+DCCPPProtocolConsumer::DCCPPProtocolConsumer() : _stream(Serial) {
+  _buffer.reserve(256);
+}
+
+DCCPPProtocolConsumer::DCCPPProtocolConsumer(Stream &stream) : _stream(stream) {
+  _buffer.reserve(256);
+}
+
+void DCCPPProtocolConsumer::update() {
+  if (_stream.available()) {
+    auto len = _stream.available();
+    auto read_dest = _buffer.insert(_buffer.end(), len + 1, 0);
+    auto added = _stream.readBytes(&*read_dest, len);
+    _buffer.erase(read_dest + added, _buffer.end());
+    processData();
+  }
+}
+
+void DCCPPProtocolConsumer::feed(uint8_t *data, size_t len) {
+  for(int i = 0; i < len; i++) {
+    _buffer.emplace_back(data[i]);
+  }
+  processData();
+}
+
+void DCCPPProtocolConsumer::processData() {
+  auto s = _buffer.begin();
+  auto consumed = _buffer.begin();
+  for(; s != _buffer.end();) {
+    s = std::find(s, _buffer.end(), '<');
+    auto e = std::find(s, _buffer.end(), '>');
+    if(s != _buffer.end() && e != _buffer.end()) {
+      // discard the <
+      s++;
+      // discard the >
+      *e = 0;
+      String str(reinterpret_cast<char*>(&*s));
+      DCCPPProtocolHandler::process(std::move(str));
+      consumed = e;
+    }
+    s = e;
+  }
+  _buffer.erase(_buffer.begin(), consumed); // drop everything we used from the buffer.
 }

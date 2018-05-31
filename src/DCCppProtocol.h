@@ -20,6 +20,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include <vector>
 #include <WString.h>
+#include <Stream.h>
 
 // Class definition for a single protocol command
 class DCCPPProtocolCommand {
@@ -32,9 +33,24 @@ public:
 class DCCPPProtocolHandler {
 public:
   static void init();
-  static void process(const String);
+  static void process(const String &);
   static void registerCommand(DCCPPProtocolCommand *);
-  static DCCPPProtocolCommand *getCommandHandler(const String);
+  static DCCPPProtocolCommand *getCommandHandler(const String &);
+};
+
+class DCCPPProtocolConsumer {
+public:
+  DCCPPProtocolConsumer();
+  DCCPPProtocolConsumer(Stream &);
+  void feed(uint8_t *, size_t);
+  void update();
+  Stream &getStream() {
+    return _stream;
+  }
+private:
+  void processData();
+  Stream &_stream;
+  std::vector<uint8_t> _buffer;
 };
 
 #endif
