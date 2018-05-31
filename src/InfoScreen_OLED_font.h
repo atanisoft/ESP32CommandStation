@@ -18,7 +18,7 @@ using Monospace, plain, 10 and library version >= 3.0. If you have an OLED
 display larger than 128x64 a larger font can be generated using the above
 webpage and embedded here.
 */
-const char Monospaced_plain_10[] PROGMEM = {
+const uint8_t Monospaced_plain_10[] PROGMEM = {
 	0x06, // Width: 6
 	0x0D, // Height: 13
 	0x20, // First Char: 32
