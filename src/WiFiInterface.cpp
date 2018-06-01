@@ -82,7 +82,11 @@ void WiFiInterface::begin() {
 		log_i("WiFI connect failed, restarting");
 		ESP.restart();
 	}
-	InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
+#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+  InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
+#else
+  InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
+#endif
 
 	MDNS.begin(HOSTNAME);
 

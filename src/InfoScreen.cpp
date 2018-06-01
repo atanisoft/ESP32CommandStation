@@ -210,7 +210,6 @@ void InfoScreen::replaceLine(int row, const char *format, ...) {
 void InfoScreen::update() {
   static uint8_t _rotatingStatusIndex = 0;
   static uint8_t _motorboardIndex = 0;
-  static uint8_t _dccIndex = 0;
   static uint32_t _lastRotation = millis();
   static uint32_t _lastUpdate = millis();
   if(_enabled) {
@@ -219,16 +218,16 @@ void InfoScreen::update() {
       _lastRotation = millis();
       ++_rotatingStatusIndex %= 3;
     }
-    // update the status line details every half second
-    if(millis() - _lastUpdate >= 450) {
+    // update the status line details every second
+    if(millis() - _lastUpdate >= 950) {
       _lastUpdate = millis();
       switch(_rotatingStatusIndex) {
         case 0: // free heap
-          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap: %d"),
+          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap:%d"),
             ESP.getFreeHeap());
           break;
         case 1: // locomotive count
-          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Active Locos: %03d"),
+          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Active Locos:%3d"),
             LocomotiveManager::getActiveLocoCount());
           break;
         case 2: // motor shield
@@ -236,14 +235,24 @@ void InfoScreen::update() {
           auto board = MotorBoardManager::getBoardByName(MotorBoardManager::getBoardNames()[_motorboardIndex]);
           if(board != nullptr && (board->isOn() || board->isOverCurrent())) {
             if(board->isOverCurrent()) {
+#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+              replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:%2.2fA"),
+                board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+#else
               replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Fault (%2.2f A)"),
                 board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+#endif
             } else if(board->isOn()) {
+#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+              replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:%2.2fA"),
+                board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+#else
               replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Normal (%2.2f A)"),
                 board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+#endif
             }
           } else if(board != nullptr) {
-            replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s: Off"),
+            replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Off"),
               board->getName().c_str());
           }
           break;
