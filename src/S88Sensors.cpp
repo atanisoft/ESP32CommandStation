@@ -63,6 +63,7 @@ void S88BusManager::init() {
   log_i("Initializing S88 SensorBus list");
   uint16_t s88BusCount = configStore.getUShort("S88BusCount", 0);
   log_i("Found %d S88 Busses", s88BusCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %d S88 Bus"), s88BusCount);
   for(int index = 0; index < s88BusCount; index++) {
     s88SensorBus.add(new S88SensorBus(index));
   }
@@ -182,6 +183,7 @@ S88SensorBus::S88SensorBus(const uint16_t index) {
   _sensorIDBase = (_id * S88_MAX_SENSORS_PER_BUS) + S88_FIRST_SENSOR;
   _lastSensorID = _sensorIDBase;
   uint16_t sensorCount = configStore.getUShort(sensorCountKey.c_str(), 0);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("S88(%d) %d sensors"), _id, sensorCount);
   for(uint16_t id = 0; id < sensorCount; id++) {
     _sensors.push_back(new S88Sensor(_sensorIDBase + id, id));
   }

@@ -81,6 +81,7 @@ void SensorManager::init() {
   log_i("Initializing sensors list");
   uint16_t sensorCount = configStore.getUShort("SensorCount", 0);
   log_i("Found %d sensors", sensorCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %d Sensors"), sensorCount);
   for(int index = 0; index < sensorCount; index++) {
     sensors.add(new Sensor(index));
   }

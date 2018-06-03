@@ -192,8 +192,9 @@ void setup() {
 
 	InfoScreen::init();
 	InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, F("DCC++ESP: v%s"), VERSION);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Starting Up"));
 #if INFO_SCREEN_STATION_INFO_LINE == INFO_SCREEN_IP_ADDR_LINE
-	delay(250);
+	delay(500);
 #endif
 	wifiInterface.begin();
   MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_MAIN,
@@ -220,6 +221,7 @@ void setup() {
 #endif
 	configureDCCSignalGenerators();
 	log_i("DCC++ READY!");
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("DCC++ READY!"));
 }
 
 void loop() {

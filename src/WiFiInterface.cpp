@@ -24,15 +24,9 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "WebServer.h"
 #include "HC12Interface.h"
 
-DCCPPWebServer dccppWebServer;
-
-const String wifiSSID = WIFI_SSID;
-const String wifiPassword = WIFI_PASSWORD;
-
 class WiFiClientWrapper : public DCCPPProtocolConsumer {
 public:
-  WiFiClientWrapper(WiFiClient client) : _client(client), DCCPPProtocolConsumer(_client) {
-
+  WiFiClientWrapper(WiFiClient client) : DCCPPProtocolConsumer(client), _client(client) {
   }
   void stop() {
     _client.stop();
@@ -41,8 +35,13 @@ private:
   WiFiClient _client;
 };
 
+const String wifiSSID = WIFI_SSID;
+const String wifiPassword = WIFI_PASSWORD;
+
+DCCPPWebServer dccppWebServer;
 WiFiServer DCCppServer(DCCPP_CLIENT_PORT);
 LinkedList<WiFiClientWrapper *> DCCppClients([](WiFiClientWrapper *consumer) {consumer->stop(); delete consumer; });
+bool wifiConnected = false;
 
 WiFiInterface::WiFiInterface() {
 }
@@ -61,39 +60,50 @@ void WiFiInterface::begin() {
 #endif
 	WiFi.config(staticIP, gatewayIP, subnetMask, dnsServer);
 #endif
-
-	log_i("Connecting to WiFi: %s", wifiSSID.c_str());
-	WiFi.mode(WIFI_STA);
-	WiFi.disconnect();
-	WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
-	WiFi.setHostname(HOSTNAME);
-	log_i("Waiting for WiFi to connect");
-	if(WiFi.waitForConnectResult() == WL_NO_SSID_AVAIL) {
-		log_i("WiFI connect failed, restarting");
-		ESP.restart();
-	}
-	uint8_t wifiConnectAttempts = 250;
-	while(WiFi.status() != WL_CONNECTED && wifiConnectAttempts-- > 0) {
-		log_i("WiFi status: %d", WiFi.status());
-		delay(250);
-	}
-	if(WiFi.status() != WL_CONNECTED) {
-		InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
-		log_i("WiFI connect failed, restarting");
-		ESP.restart();
-	}
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  WiFi.onEvent([](system_event_id_t event) {
+    if(wifiConnected) {
+      return;
+    }
+    wifiConnected = true;
 #if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
-  InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
+    InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
 #else
-  InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
+    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
 #endif
 
-	MDNS.begin(HOSTNAME);
+    MDNS.begin(HOSTNAME);
 
-	DCCppServer.setNoDelay(true);
-	DCCppServer.begin();
-	dccppWebServer.begin();
-	MDNS.addService("dccpp", "tcp", DCCPP_CLIENT_PORT);
+    DCCppServer.setNoDelay(true);
+    DCCppServer.begin();
+    dccppWebServer.begin();
+    MDNS.addService("dccpp", "tcp", DCCPP_CLIENT_PORT);
+  }, SYSTEM_EVENT_STA_GOT_IP);
+  WiFi.onEvent([](system_event_id_t event) {
+    wifiConnected = false;
+#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+    InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, "Disconnected");
+#else
+    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, "Disconnected");
+#endif
+  }, SYSTEM_EVENT_STA_LOST_IP);
+
+	log_i("Connecting to WiFi: %s", wifiSSID.c_str());
+  WiFi.setHostname(HOSTNAME);
+	WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
+	log_i("Waiting for WiFi to connect");
+  if(WiFi.waitForConnectResult() == WL_NO_SSID_AVAIL) {
+#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+		InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Failed, NO AP"));
+#else
+    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("NO AP Found"));
+#endif
+		log_i("WiFI connect failed, restarting");
+		ESP.restart();
+	}
 }
 
 void WiFiInterface::update() {

@@ -100,6 +100,7 @@ void OutputManager::init() {
   log_i("Initializing outputs");
   uint16_t outputCount = configStore.getUShort("OutputCount", 0);
   log_i("Found %d outputs", outputCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Outputs"), outputCount);
   for(int index = 0; index < outputCount; index++) {
     outputs.add(new Output(index));
   }

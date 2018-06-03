@@ -78,6 +78,7 @@ void TurnoutManager::init() {
   log_i("Initializing turnout list");
   uint16_t turnoutCount = configStore.getUShort("TurnoutCount", 0);
   log_i("Found %d turnouts", turnoutCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %d Turnouts"), turnoutCount);
   for(int index = 0; index < turnoutCount; index++) {
     turnouts.add(new Turnout(index));
   }
