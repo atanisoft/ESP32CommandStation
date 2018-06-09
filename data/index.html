@@ -766,6 +766,7 @@
 			activate: function(event, ui) {
 				if(ui.newPanel.attr('id') == 'tab-top-1') {
 					$('#powerDistrictStatus').DataTable().draw();
+          $('#locomotives').DataTable().draw();
 					$('#dcc-tabs').tabs('option', 'active', 0);
 				}
 			}
