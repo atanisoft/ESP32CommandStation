@@ -210,7 +210,8 @@
 				<li><a href="#dcc-tab-2">Sensors</a></li>
 				<li><a href="#dcc-tab-3">Sensors (S88)</a></li>
 				<li><a href="#dcc-tab-4">Outputs</a></li>
-				<li><a href="#dcc-tab-5">Programmer</a></li>
+				<li><a href="#dcc-tab-5">Locomotive Roster</a></li>
+				<li><a href="#dcc-tab-6">Programmer</a></li>
 			</ul>
 			<div id="dcc-tab-0">
 				<div class="row">
@@ -228,6 +229,25 @@
 								</tr>
 							</thead>
 						</table>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-auto">Active Locomotives</div>
+				</div>
+				<div class="row">
+					<div class="col center">
+						<div class="col center">
+							<table id="locomotives" class="display" cellspacing="0" width="100%">
+								<thead>
+									<tr>
+										<th>Address</th>
+										<th>Speed</th>
+										<th>Direction</th>
+										<th>Actions</th>
+									</tr>
+								</thead>
+							</table>
+						</div>
 					</div>
 				</div>
 				<div class="row">
@@ -297,6 +317,18 @@
 				</table>
 			</div>
 			<div id="dcc-tab-5">
+				<table id="locoRoster" class="display" cellspacing="0" width="100%">
+					<thead>
+						<tr>
+							<th>Address</th>
+							<th>Type</th>
+							<th>Description</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+				</table>
+			</div>
+			<div id="dcc-tab-6">
 				<div class="row">
 					<div class="col-1"><label for="progTarget">Track:</label></div>
 					<div class="col-auto"><div id="progTarget" class="toggle toggle-dark"></div></div>
@@ -742,6 +774,7 @@
 			beforeActivate: function(event, ui) {
 				if(ui.newPanel.attr('id') == 'dcc-tab-0') {
 					$('#powerDistrictStatus').DataTable().draw();
+          $('#locomotives').DataTable().draw();
 				} else if(ui.newPanel.attr('id') == 'dcc-tab-1') {
 					$('#turnouts').DataTable().draw();
 				} else if(ui.newPanel.attr('id') == 'dcc-tab-2') {
@@ -1085,12 +1118,127 @@
 			'deferLoading':9,
 			'ordering': false
 		} );
+		$('#locomotives').DataTable( {
+			'ajax': {
+				url:'/locomotive',
+				dataSrc: ''
+			},
+			'columns': [ { data: 'address' }, { data: 'speed' }, { data: 'dir' },
+				{ render: function(data, type, row, meta) {
+						var cellText = "<button id='loco-" + row.address + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
+						cellText += "<button id='loco-" + row.address + "-stopspan' class='smaller-button ui-button ui-corner-all ui-widget'>Stop</button>";
+						return cellText;
+					}
+				} ],
+			'paging':false,
+			'info':false,
+			'searching':false,
+			'serverSide':true,
+			'jQueryUI':true,
+			'deferRender':true,
+			'serverSide':true,
+			'deferLoading':9,
+			'ordering': false
+		} );
+		$('#locomotives').on('draw.dt', function() {
+			$('#locomotives tr [id^=loco-]').each(function(index) {
+				$(this).button();
+				$(this).click(function() {
+					var locoIdParts = $(this).attr('id').split('-');
+					if(locoIdParts[2] === 'delete') {
+						$.ajax({
+							url: '/locomotive?addr=' + locoIdParts[1],
+							method: 'DELETE'
+						});
+					} else if(locoIdParts[2] === 'stop') {
+						$.ajax({
+							url: '/locomotive?speed=0&addr=' + locoIdParts[1],
+							method: 'PUT'
+						});
+					}
+					$('#locomotives').DataTable().draw();
+				});
+			});
+		});
+		$('#locoRoster').DataTable( {
+			'dom': 'tiB',
+			'ajax': {
+				url:'/locomotive/roster',
+				dataSrc: ''
+			},
+			'columns': [ { data: 'address' }, { data: 'type' }, { data: 'description' },
+				{ render: function(data, type, row, meta) {
+						var cellText = "<button id='roster-" + row.address + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
+						if(row.idleOnStartup == 'true') {
+							cellText += "<button id='roster-" + row.address + "-idle-enable' class='smaller-button ui-button ui-corner-all ui-widget'>Enable Idle</button>";
+						} else {
+							cellText += "<button id='roster-" + row.address + "-idle-disable' class='smaller-button ui-button ui-corner-all ui-widget'>Disable Idle</button>";
+						}
+						if(row.defaultOnThrottles == 'true') {
+							cellText += "<button id='roster-" + row.address + "-default-enable' class='smaller-button ui-button ui-corner-all ui-widget'>Default On Throttles</button>";
+						} else {
+							cellText += "<button id='roster-" + row.address + "-default-disable' class='smaller-button ui-button ui-corner-all ui-widget'>Remove From Throttles</button>";
+						}
+						return cellText;
+					}
+				} ],
+			'paging':false,
+			'info':false,
+			'searching':false,
+			'serverSide':true,
+			'jQueryUI':true,
+			'deferRender':true,
+			'serverSide':true,
+			'deferLoading':9,
+			'ordering': false,
+			buttons: [
+				{
+					text: 'Create',
+					action: function ( e, dt, node, config ) {
+						$('#dialogS88SensorBus').val("" + $('#s88sensors').DataTable().data().count());
+						$('#dialogS88SensorDataPin').val("0");
+						$('#dialogS88SensorCount').val("16");
+						$('#dialog-s88sensorEditor').dialog('open')
+					},
+					className: 'smaller-button ui-button ui-corner-all ui-widget',
+				}
+			]
+		} );
+		$('#locoRoster').on('draw.dt', function() {
+			$('#locoRoster tr [id^=roster-]').each(function(index) {
+				$(this).button();
+				$(this).click(function() {
+					var locoIdParts = $(this).attr('id').split('-');
+					if(locoIdParts[2] === 'delete') {
+						$.ajax({
+							url: '/locomotive/roster?addr=' + locoIdParts[1],
+							method: 'DELETE'
+						});
+					} else if(locoIdParts[2] === 'idle') {
+						$.ajax({
+							url: '/locomotive/roster?addr=' + locoIdParts[1] + '&idleOnStartup=' + locoIdParts[3] == 'enable',
+							method: 'PUT'
+						});
+					} else if(locoIdParts[2] === 'default') {
+						$.ajax({
+							url: '/locomotive/roster?addr=' + locoIdParts[1] + '&defaultOnThrottles=' + locoIdParts[3] == 'enable',
+							method: 'PUT'
+						});
+					}
+					$('#locomotives').DataTable().draw();
+				});
+			});
+		});
 		setInterval( function () {
 			if ($('#top-tabs').tabs('option', 'active') == 1) {
-				var tabTableSelectors = ['#powerDistrictStatus', '#turnouts', '#sensors', '#s88sensors', '#outputs'];
+				var tabTableSelectors = ['#powerDistrictStatus', '#turnouts', '#sensors', '#s88sensors', '#outputs', '#locoRoster', '#prog'];
 				var selector = tabTableSelectors[$('#dcc-tabs').tabs('option', 'active')];
-				if(selector != '#s88sensors') {
+				if(selector != '#s88sensors' && selector != '#prog') {
 					$(tabTableSelectors[$('#dcc-tabs').tabs('option', 'active')]).DataTable().draw();
+					if(selector == '#powerDistrictStatus') {
+						// if we are on the status tab we need to refresh the active locomotives as well
+						$('#locomotives').DataTable().draw();
+					}
 				}
 			}
 		}, 20000 );
@@ -1388,7 +1536,6 @@
 				} else {
 					setInterval( function () {
 						if ($('#top-tabs').tabs('option', 'active') == 1 && $('#dcc-tabs').tabs('option', 'active') == 3) {
-							var tabTableSelectors = ['#powerDistrictStatus', '#turnouts', '#sensors', '#s88sensors', '#outputs'];
 							$('#s88sensors').DataTable().draw();
 						}
 					}, 2500 );
