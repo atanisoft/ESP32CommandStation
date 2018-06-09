@@ -36,6 +36,11 @@ public:
     return _locoAddress;
   }
   void setSpeed(int8_t speed) {
+    if(speed < 0) {
+      speed = 0;
+    } else if(speed > 128) {
+      speed = 128;
+    }
     _speed = speed;
   }
   int8_t getSpeed() {
