@@ -22,7 +22,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete loco; });
 
 Locomotive::Locomotive(uint8_t registerNumber) :
-  _registerNumber(registerNumber), _locoAddress(0), _speed(0), _direction(0),
+  _registerNumber(registerNumber), _locoAddress(0), _speed(0), _direction(true),
   _lastUpdate(0), _idleOnStartup(false), _defaultOnThrottles(false), _functionsChanged(true) {
   for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
     _functionState[funcID] = false;
@@ -256,6 +256,9 @@ void LocomotiveManager::removeLocomotive(const uint16_t locoAddress) {
 
 void LocomotiveManager::init() {
   // TODO: load roster from storage and add any idle by default locos
+  //getLocomotive(1234)->setDefaultOnThrottles(true);
+  //getLocomotive(5678)->setDefaultOnThrottles(true);
+  //getLocomotive(9012)->setDefaultOnThrottles(true);
 }
 
 uint16_t LocomotiveManager::store() {
