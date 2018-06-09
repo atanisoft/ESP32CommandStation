@@ -16,7 +16,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include "Locomotive.h"
 
 #ifndef INFO_SCREEN_SDA_PIN
 #define INFO_SCREEN_SDA_PIN SDA
@@ -134,11 +133,11 @@ void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...
   }
 }
 
-void InfoScreen::printf(int col, int row, const char *format, ...) {
+void InfoScreen::printf(int col, int row, const String &format, ...) {
   char buf[512] = {0};
   va_list args;
   va_start(args, format);
-  vsnprintf(buf, sizeof(buf), (const char *)format, args);
+  vsnprintf(buf, sizeof(buf), format.c_str(), args);
   va_end(args);
   if(_enabled) {
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
@@ -181,11 +180,11 @@ void InfoScreen::replaceLine(int row, const __FlashStringHelper *format, ...) {
   }
 }
 
-void InfoScreen::replaceLine(int row, const char *format, ...) {
+void InfoScreen::replaceLine(int row, const String &format, ...) {
   char buf[512] = {0};
   va_list args;
   va_start(args, format);
-  vsnprintf(buf, sizeof(buf), (const char *)format, args);
+  vsnprintf(buf, sizeof(buf), format.c_str(), args);
   va_end(args);
   if(_enabled) {
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED

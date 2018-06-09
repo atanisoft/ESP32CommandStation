@@ -15,9 +15,9 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef _INFOSCREEN_H_
-#define _INFOSCREEN_H_
+#pragma once
 
+#include <WString.h>
 #include "Config.h"
 
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
@@ -45,12 +45,10 @@ class InfoScreen {
     static void init();
     static void clear();
     static void printf(int, int, const __FlashStringHelper *, ...);
-    static void printf(int, int, const char *, ...);
+    static void printf(int, int, const String &, ...);
     static void replaceLine(int, const __FlashStringHelper *, ...);
-    static void replaceLine(int, const char *, ...);
+    static void replaceLine(int, const String &, ...);
     static void update();
   private:
     static bool _enabled;
 };
-
-#endif
