@@ -124,6 +124,7 @@ void NextionAddressPage::displayPage() {
 NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(nextion, THROTTLE_PAGE, "2"),
   _activeLoco(0),
   _activeFunctionGroup(0),
+  _locoNumbers {0, 0, 0},
   _locomotives {nullptr, nullptr, nullptr},
   _locoButtons {
     NextionButton(nextion, THROTTLE_PAGE, 14, "l0"),
@@ -296,13 +297,14 @@ void NextionThrottlePage::toggleFunction(const NextionButton *button) {
 }
 
 void NextionThrottlePage::changeLocoAddress(uint32_t newAddress) {
+  _locoNumbers[_activeLoco] = newAddress;
   _locomotives[_activeLoco] = LocomotiveManager::getLocomotive(newAddress);
   refreshLocomotiveDetails();
 }
 
 uint32_t NextionThrottlePage::getCurrentLocoAddress() {
   if(_locomotives[_activeLoco] != nullptr) {
-    return _locomotives[_activeLoco]->getLocoAddress();
+    return _locoNumbers[_activeLoco];
   }
   return 0;
 }
@@ -328,6 +330,16 @@ void NextionThrottlePage::setLocoSpeed(uint8_t speed) {
   refreshLocomotiveDetails();
 }
 
+void NextionThrottlePage::invalidateLocomotive(uint32_t address) {
+  for(int index = 0; index < 3; index++) {
+    if(_locoNumbers[index] == address) {
+      _locoNumbers[index] = 0;
+      _locomotives[index] = nullptr;
+    }
+  }
+  refreshLocomotiveDetails();
+}
+
 void NextionThrottlePage::init() {
   uint8_t index = 0;
   for(auto loco : LocomotiveManager::getDefaultLocos(3)) {
@@ -347,7 +359,9 @@ void NextionThrottlePage::displayPage() {
 void NextionThrottlePage::refreshLocomotiveDetails() {
   for(int index = 0; index < 3; index++) {
     if(_locomotives[index] != nullptr) {
-      _locoButtons[index].setTextAsNumber(_locomotives[index]->getLocoAddress());
+      _locoButtons[index].setTextAsNumber(_locoNumbers[index]);
+    } else {
+      _locoButtons[index].setText("");
     }
   }
   if(_locomotives[_activeLoco] != nullptr) {

@@ -26,6 +26,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "RemoteSensors.h"
 #include "index_html.h"
 
+#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+#include "NextionInterface.h"
+#endif
+
 enum HTTP_STATUS_CODES {
   STATUS_OK = 200,
   STATUS_NOT_MODIFIED = 304,
@@ -372,6 +376,9 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
       } else if(request->method() == HTTP_DELETE) {
         // Removal of an active locomotive
         LocomotiveManager::removeLocomotive(request->arg("addr").toInt());
+#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+        static_cast<NextionThrottlePage *>(nextionPages[THROTTLE_PAGE])->invalidateLocomotive(request->arg("addr").toInt());
+#endif
       }
       loco->toJson(((JsonArray &)jsonResponse->getRoot()).createNestedObject());
     } else {

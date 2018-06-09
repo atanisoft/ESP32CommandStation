@@ -134,6 +134,7 @@ public:
   virtual void refresh() {
     refreshLocomotiveDetails();
   }
+  void invalidateLocomotive(uint32_t address);
 protected:
   virtual void init();
   virtual void displayPage();
@@ -144,6 +145,7 @@ private:
   void refreshPowerButtons();
   uint8_t _activeLoco;
   uint8_t _activeFunctionGroup;
+  uint32_t _locoNumbers[3];
   Locomotive *_locomotives[3];
   NextionButton _locoButtons[3];
   NextionButton _fgroupButtons[3];
@@ -161,3 +163,5 @@ private:
   NextionSlider _speedSlider;
   NextionNumber _speedNumber;
 };
+
+extern DCCPPNextionPage *nextionPages[MAX_PAGES];
