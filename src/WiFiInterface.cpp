@@ -50,6 +50,7 @@ WiFiInterface::WiFiInterface() {
 }
 
 void WiFiInterface::begin() {
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init WiFI"));
 	InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("IP:Pending"));
 #if defined(WIFI_STATIC_IP_ADDRESS) && defined(WIFI_STATIC_IP_GATEWAY) && defined(WIFI_STATIC_IP_SUBNET)
 	IPAddress staticIP, gatewayIP, subnetMask, dnsServer;
@@ -92,6 +93,7 @@ void WiFiInterface::begin() {
 #endif
   }, SYSTEM_EVENT_STA_LOST_IP);
 
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Connecting to AP"));
 	log_i("Connecting to WiFi: %s", wifiSSID.c_str());
   WiFi.setHostname(HOSTNAME);
 	WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
