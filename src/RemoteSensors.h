@@ -16,14 +16,16 @@ COPYRIGHT (c) 2018 Dan Worth
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef _DETECTORS_H_
-#define _DETECTORS_H_
+#pragma once
 
-#include "DCCppESP32.h"
+#include <ArduinoJson.h>
+#include "Sensors.h"
+#include "DCCppProtocol.h"
 
 class RemoteSensor : public Sensor {
 public:
   RemoteSensor(uint16_t, uint16_t=0);
+  virtual ~RemoteSensor() {}
   const uint16_t getRawID() {
     return _rawID;
   }
@@ -62,5 +64,3 @@ public:
     return "RS";
   }
 };
-
-#endif

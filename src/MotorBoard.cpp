@@ -124,7 +124,7 @@ uint64_t GenericMotorBoard::captureSample(uint8_t sampleCount) {
 
 GenericMotorBoard * MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin, MOTOR_BOARD_TYPE type, String name) {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s Init"), name.c_str());
-  GenericMotorBoard *board;
+  GenericMotorBoard *board = nullptr;
   switch(type) {
     case ARDUINO_SHIELD:
       board = new GenericMotorBoard(sensePin, enablePin, 980, 2000, name);
@@ -238,6 +238,16 @@ void MotorBoardManager::getState(JsonArray &array) {
     }
     board[F("usage")] = motorBoard->getCurrentDraw();
  	}
+}
+
+bool MotorBoardManager::isTrackPowerOn() {
+  bool state = false;
+  for (const auto& motorBoard : motorBoards) {
+    if(motorBoard->isOn()) {
+      state = true;
+    }
+  }
+  return state;
 }
 
 void CurrentDrawCommand::process(const std::vector<String> arguments) {

@@ -15,8 +15,7 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef _OUTPUTS_H_
-#define _OUTPUTS_H_
+#pragma once
 
 #include <ArduinoJson.h>
 #include "DCCppProtocol.h"
@@ -72,5 +71,3 @@ public:
 const uint8_t OUTPUT_IFLAG_INVERT = 0;
 const uint8_t OUTPUT_IFLAG_RESTORE_STATE = 1;
 const uint8_t OUTPUT_IFLAG_FORCE_STATE = 2;
-
-#endif

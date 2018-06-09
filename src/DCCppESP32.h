@@ -81,7 +81,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "SignalGenerator.h"
 #include "MotorBoard.h"
 #include "Sensors.h"
+#include "Locomotive.h"
 
 extern Preferences configStore;
-extern WiFiInterface wifiInterface;
 extern std::vector<uint8_t> restrictedPins;

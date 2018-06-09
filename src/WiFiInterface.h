@@ -15,8 +15,7 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef _WIFI_INTERFACE_H_
-#define _WIFI_INTERFACE_H_
+#pragma once
 
 #include <ESPAsyncWebServer.h>
 
@@ -31,4 +30,4 @@ public:
 	void printf(const __FlashStringHelper *fmt, ...);
 };
 
-#endif
+extern WiFiInterface wifiInterface;

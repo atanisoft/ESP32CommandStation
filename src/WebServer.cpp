@@ -22,8 +22,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "WebServer.h"
 #include "Outputs.h"
 #include "Turnouts.h"
-#include "Sensors.h"
-#include "Locomotive.h"
 #include "S88Sensors.h"
 #include "RemoteSensors.h"
 #include "index_html.h"

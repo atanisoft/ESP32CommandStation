@@ -14,8 +14,7 @@ COPYRIGHT (c) 2017 Mike Dunston
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
-#ifndef _TURNOUTS_H_
-#define _TURNOUTS_H_
+#pragma once
 
 #include <ArduinoJson.h>
 #include "DCCppProtocol.h"
@@ -31,6 +30,7 @@ class Turnout {
 public:
   Turnout(uint16_t, uint16_t, uint8_t, bool=false, TurnoutOrientation=LEFT);
   Turnout(uint16_t);
+  virtual ~Turnout() {}
   void update(uint16_t, uint8_t);
   void set(bool=false);
   void store(uint16_t);
@@ -90,5 +90,3 @@ public:
     return "a";
   }
 };
-
-#endif

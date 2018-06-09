@@ -22,7 +22,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <ESPAsyncWebServer.h>
 #include <IPAddress.h>
 #include "WebServer.h"
+
+#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
 #include "HC12Interface.h"
+#endif
 
 class WiFiClientWrapper : public DCCPPProtocolConsumer {
 public:

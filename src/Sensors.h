@@ -15,15 +15,18 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef _SENSORS_H_
-#define _SENSORS_H_
+#pragma once
 
-#include "DCCppESP32.h"
+#include <ArduinoJson.h>
+#include <esp32-hal-log.h>
+#include "DCCppProtocol.h"
+#include "WiFiInterface.h"
 
 class Sensor {
 public:
   Sensor(uint16_t, int8_t, bool=false, bool=true);
   Sensor(uint16_t);
+  virtual ~Sensor() {}
   void update(uint8_t, bool=false);
   virtual void store(uint16_t);
   const uint16_t getID() {
@@ -81,5 +84,3 @@ public:
     return "S";
   }
 };
-
-#endif

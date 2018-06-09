@@ -14,8 +14,7 @@ COPYRIGHT (c) 2017 Mike Dunston
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
-#ifndef _SIGNALGENERATOR_H_
-#define _SIGNALGENERATOR_H_
+#pragma once
 
 #include <Arduino.h>
 #include <driver/timer.h>
@@ -79,5 +78,3 @@ void writeOpsCVBit(const uint16_t, const uint16_t, const uint8_t, const bool);
 #define DCC_SIGNAL_OPERATIONS 0
 #define DCC_SIGNAL_PROGRAMMING 1
 #define MAX_DCC_SIGNAL_GENERATORS 2
-
-#endif

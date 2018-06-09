@@ -15,8 +15,7 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef _LOCOMOTIVE_H_
-#define _LOCOMOTIVE_H_
+#pragma once
 
 #include "DCCppESP32.h"
 
@@ -26,6 +25,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 class Locomotive {
 public:
   Locomotive(uint8_t);
+  virtual ~Locomotive() {}
   uint8_t getRegister() {
     return _registerNumber;
   }
@@ -136,4 +136,3 @@ public:
     return "f";
   }
 };
-#endif

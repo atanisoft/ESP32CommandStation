@@ -15,8 +15,7 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef _MOTORBOARD_H_
-#define _MOTORBOARD_H_
+#pragma once
 
 #include <vector>
 #include <ArduinoJson.h>
@@ -84,6 +83,7 @@ public:
 	static int getLastRead(const String);
 	static void showStatus();
 	static void getState(JsonArray &);
+  static bool isTrackPowerOn();
 };
 
 class CurrentDrawCommand : public DCCPPProtocolCommand {
@@ -109,5 +109,3 @@ public:
     return "0";
   }
 };
-
-#endif

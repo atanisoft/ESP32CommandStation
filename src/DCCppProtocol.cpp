@@ -17,10 +17,8 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "DCCppESP32.h"
 
-#include "Locomotive.h"
 #include "Turnouts.h"
 #include "Outputs.h"
-#include "Sensors.h"
 #include "S88Sensors.h"
 #include "RemoteSensors.h"
 

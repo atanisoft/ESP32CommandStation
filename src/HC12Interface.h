@@ -15,9 +15,9 @@ COPYRIGHT (c) 2018 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
+#pragma once
 
-#ifndef _DCCPP_HC12_H_
-#define _DCCPP_HC12_H_
+#include <WString.h>
 
 class HC12Interface {
 public:
@@ -25,5 +25,3 @@ public:
   static void update();
   static void send(const String &buf);
 };
-
-#endif

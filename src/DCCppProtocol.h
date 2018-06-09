@@ -15,8 +15,7 @@ COPYRIGHT (c) 2017 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef _DCCPP_PROTOCOL_H_
-#define _DCCPP_PROTOCOL_H_
+#pragma once
 
 #include <vector>
 #include <WString.h>
@@ -25,6 +24,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 // Class definition for a single protocol command
 class DCCPPProtocolCommand {
 public:
+  virtual ~DCCPPProtocolCommand() {}
   virtual void process(const std::vector<String>) = 0;
   virtual String getID() = 0;
 };
@@ -52,5 +52,3 @@ private:
   Stream &_stream;
   std::vector<uint8_t> _buffer;
 };
-
-#endif
