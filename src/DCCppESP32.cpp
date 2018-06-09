@@ -196,6 +196,9 @@ void setup() {
 #if INFO_SCREEN_STATION_INFO_LINE == INFO_SCREEN_IP_ADDR_LINE
 	delay(500);
 #endif
+#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+  NextionInterface::init();
+#endif
 	wifiInterface.begin();
   MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_MAIN,
 		MOTORBOARD_ENABLE_PIN_MAIN, MOTORBOARD_TYPE_MAIN, MOTORBOARD_NAME_MAIN);
@@ -215,9 +218,6 @@ void setup() {
   LocomotiveManager::init();
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
   HC12Interface::init();
-#endif
-#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
-  NextionInterface::init();
 #endif
 	configureDCCSignalGenerators();
 	log_i("DCC++ READY!");
