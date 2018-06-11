@@ -35,7 +35,12 @@ COPYRIGHT (c) 2018 Mike Dunston
 #if defined(NEXTION_ENABLED) && NEXTION_ENABLED
 
 HardwareSerial nextionSerial(NEXTION_UART_NUM);
+// if using UART2 we need to turn off flushing as it corrupts the stream
+#if NEXTION_UART_NUM == 2
+Nextion nextion(nextionSerial, false);
+#else
 Nextion nextion(nextionSerial);
+#endif
 bool NextionInterface::_initializing;
 uint64_t NextionInterface::_startupTransitionTimer;
 
