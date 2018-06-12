@@ -17,8 +17,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "DCCppESP32.h"
 
-#include "Locomotive.h"
-
 LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete loco; });
 
 Locomotive::Locomotive(uint8_t registerNumber) :
