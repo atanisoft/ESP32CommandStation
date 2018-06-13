@@ -52,18 +52,7 @@ public:
   DCCPPNextionPage(Nextion &nextion, uint8_t pageID, const char *pageName) :
     NextionPage(nextion, pageID, 0, pageName), _pageInitialized(false) {
   }
-  void display() {
-    String cmd = String("page ") + String(m_name);
-    m_nextion.sendCommand((char *)cmd.c_str());
-    if(!m_nextion.checkCommandComplete()) {
-      log_e("switching to page %s was not successful.", m_name);
-    }
-    if(!_pageInitialized) {
-      init();
-      _pageInitialized = true;
-    }
-    displayPage();
-  }
+  void display();
   virtual void refresh() = 0;
 protected:
   // One time page initialization

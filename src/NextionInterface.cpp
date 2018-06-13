@@ -58,6 +58,25 @@ DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   nullptr
 };
 
+void DCCPPNextionPage::display() {
+#if NEXTION_UART_NUM == 2
+  // manual flush since we are on UART2
+  while(nextionSerial.available()) {
+    nextionSerial.read();
+  }
+#endif
+  String cmd = String("page ") + String(m_name);
+  m_nextion.sendCommand((char *)cmd.c_str());
+  if(!m_nextion.checkCommandComplete()) {
+    log_e("switching to page %s was not successful.", m_name);
+  }
+  if(!_pageInitialized) {
+    init();
+    _pageInitialized = true;
+  }
+  displayPage();
+}
+
 NextionAddressPage::NextionAddressPage(Nextion &nextion) :
   DCCPPNextionPage(nextion, ADDRESS_PAGE, "1"),
   _buttons {
