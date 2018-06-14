@@ -1039,11 +1039,11 @@
 				{ data: 'id' },
 				{ data: 'pin' },
 				{ data: 'flags' },
-				{ data: 'active' },
+				{ data: 'state' },
 				{ render: function(data, type, row, meta) {
 						var cellText = "<button id='output-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
 						cellText += "<button id='output-" + row.id + "-edit-" + row.pin + "-" + row.flags + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
-						if(row.active === 'Off') {
+						if(row.state === 'Off') {
 							cellText += "<button id='output-" + row.id + "-activate' class='smaller-button ui-button ui-corner-all ui-widget'>Activate</button>";
 						} else {
 							cellText += "<button id='output-" + row.id + "-deactivate' class='smaller-button ui-button ui-corner-all ui-widget'>Deactivate</button>";
