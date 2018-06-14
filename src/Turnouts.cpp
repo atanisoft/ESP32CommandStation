@@ -76,25 +76,36 @@ LinkedList<Turnout *> turnouts([](Turnout *turnout) {delete turnout; });
 
 void TurnoutManager::init() {
   log_i("Initializing turnout list");
-  uint16_t turnoutCount = configStore.getUShort("TurnoutCount", 0);
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = configStore.load("Turnouts.json", jsonBuffer);
+  JsonVariant count = root[F("count")];
+  uint16_t turnoutCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d turnouts", turnoutCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %d Turnouts"), turnoutCount);
-  for(int index = 0; index < turnoutCount; index++) {
-    turnouts.add(new Turnout(index));
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Turnouts"), turnoutCount);
+  if(turnoutCount > 0) {
+    for(auto turnout : root.get<JsonArray>(F("turnouts"))) {
+      turnouts.add(new Turnout(turnout.as<JsonObject &>()));
+    }
   }
 }
 
 void TurnoutManager::clear() {
-  configStore.putUShort("TurnoutCount", 0);
   turnouts.free();
+  store();
 }
 
 uint16_t TurnoutManager::store() {
+
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  JsonArray &array = root.createNestedArray("turnouts");
   uint16_t turnoutStoredCount = 0;
   for (const auto& turnout : turnouts) {
-    turnout->store(turnoutStoredCount++);
+    turnout->toJson(array.createNestedObject());
+    turnoutStoredCount++;
   }
-  configStore.putUShort("TurnoutCount", turnoutStoredCount);
+  root[F("count")] = turnoutStoredCount;
+  configStore.store("Turnouts.json", root);
   return turnoutStoredCount;
 }
 
@@ -128,15 +139,8 @@ bool TurnoutManager::toggle(uint16_t turnoutID) {
 
 void TurnoutManager::getState(JsonArray & array) {
   for (const auto& turnout : turnouts) {
-    JsonObject &turnoutJson = array.createNestedObject();
-    turnoutJson[F("id")] = turnout->getID();
-    turnoutJson[F("address")] = turnout->getAddress();
-    turnoutJson[F("subAddress")] = turnout->getSubAddress();
-    if(turnout->isThrown()) {
-      turnoutJson[F("state")] = "Thrown";
-    } else {
-      turnoutJson[F("state")] = "Closed";
-    }
+    JsonObject &json = array.createNestedObject();
+    turnout->toJson(json, true);
   }
 }
 
@@ -187,17 +191,12 @@ Turnout::Turnout(uint16_t turnoutID, uint16_t address, uint8_t subAddress,
   log_i("Turnout %d created using address %d/%d", turnoutID, address, subAddress);
 }
 
-Turnout::Turnout(uint16_t index) {
-  String turnoutIDKey = String("T_") + String(index);
-  String turnoutAddrKey = turnoutIDKey + String("_a");
-  String turnoutSubAddrKey = turnoutIDKey + String("_s");
-  String turnoutStateKey = turnoutIDKey + String("_st");
-  String turnoutOrientationKey = turnoutIDKey + String("_o");
-  _turnoutID = configStore.getUShort(turnoutIDKey.c_str(), index);
-  _address = configStore.getUShort(turnoutAddrKey.c_str(), 0);
-  _subAddress = configStore.getUChar(turnoutSubAddrKey.c_str(), 0);
-  _thrown = configStore.getBool(turnoutStateKey.c_str(), false);
-  _orientation = (TurnoutOrientation)configStore.getUChar(turnoutOrientationKey.c_str(), TurnoutOrientation::LEFT);
+Turnout::Turnout(JsonObject &json) {
+  _turnoutID = json.get<int>(F("id"));
+  _address = json.get<int>(F("address"));
+  _subAddress = json.get<int>(F("subAddress"));
+  _thrown = json.get<bool>(F("state"));
+  _orientation = (TurnoutOrientation)json.get<int>(F("orientation"));
   log_i("Turnout(%d, %d, %d)", _turnoutID, _address, _subAddress);
 }
 
@@ -207,17 +206,20 @@ void Turnout::update(uint16_t address, uint8_t subAddress) {
   log_i("Turnout %d updated to address %d/%d", _turnoutID, _address, _subAddress);
 }
 
-void Turnout::store(uint16_t index) {
-  String turnoutIDKey = String("T_") + String(index);
-  String turnoutAddrKey = turnoutIDKey + String("_a");
-  String turnoutSubAddrKey = turnoutIDKey + String("_s");
-  String turnoutStateKey = turnoutIDKey + String("_st");
-  String turnoutOrientationKey = turnoutIDKey + String("_o");
-  configStore.putUShort(turnoutIDKey.c_str(), _turnoutID);
-  configStore.putUShort(turnoutAddrKey.c_str(), _address);
-  configStore.putUChar(turnoutSubAddrKey.c_str(), _subAddress);
-  configStore.putBool(turnoutStateKey.c_str(), _thrown);
-  configStore.putUChar(turnoutOrientationKey.c_str(), _orientation);
+void Turnout::toJson(JsonObject &json, bool readableStrings) {
+  json[F("id")] = _turnoutID;
+  json[F("address")] = _address;
+  json[F("subAddress")] = _subAddress;
+  if(readableStrings) {
+    if(_thrown) {
+      json[F("state")] = "Thrown";
+    } else {
+      json[F("state")] = "Closed";
+    }
+  } else {
+    json[F("state")] = _thrown;
+  }
+  json[F("orientation")] = _orientation;
 }
 
 void Turnout::set(bool thrown) {

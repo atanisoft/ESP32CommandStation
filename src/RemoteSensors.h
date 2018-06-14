@@ -42,6 +42,7 @@ public:
   }
   virtual void check();
   void showSensor();
+  virtual void toJson(JsonObject &, bool=false);
 private:
   uint16_t _rawID;
   uint16_t _value;

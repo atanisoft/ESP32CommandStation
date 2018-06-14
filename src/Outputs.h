@@ -17,16 +17,21 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #pragma once
 
+#include <Arduino.h>
 #include <ArduinoJson.h>
 #include "DCCppProtocol.h"
+
+const uint8_t OUTPUT_IFLAG_INVERT = 0;
+const uint8_t OUTPUT_IFLAG_RESTORE_STATE = 1;
+const uint8_t OUTPUT_IFLAG_FORCE_STATE = 2;
 
 class Output {
 public:
   Output(uint16_t, uint8_t, uint8_t);
-  Output(uint16_t);
+  Output(JsonObject &);
   void set(bool=false, bool=true);
   void update(uint8_t, uint8_t);
-  void store(uint16_t);
+  void toJson(JsonObject &, bool=false);
   const uint16_t getID() {
     return _id;
   }
@@ -40,6 +45,24 @@ public:
     return _active;
   }
   void showStatus();
+  const String getFlagsAsString() {
+    String flagsString = "";
+    if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
+      flagsString += "activeLow";
+    } else {
+      flagsString += "activeHigh";
+    }
+    if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
+      if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
+        flagsString += ",force(on)";
+      } else {
+        flagsString += ",force(off)";
+      }
+    } else {
+      flagsString += ",restoreState";
+    }
+    return flagsString;
+  }
 private:
   uint16_t _id;
   uint8_t _pin;
@@ -67,7 +90,3 @@ public:
     return "Z";
   }
 };
-
-const uint8_t OUTPUT_IFLAG_INVERT = 0;
-const uint8_t OUTPUT_IFLAG_RESTORE_STATE = 1;
-const uint8_t OUTPUT_IFLAG_FORCE_STATE = 2;

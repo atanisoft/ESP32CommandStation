@@ -73,8 +73,13 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <StringArray.h>
 #include <ArduinoJson.h>
 #include <esp32-hal-log.h>
+#include <SPI.h>
+#include <FS.h>
+#include <SD.h>
+#include <SPIFFS.h>
 
 #include "Config.h"
+#include "ConfigurationManager.h"
 #include "WiFiInterface.h"
 #include "InfoScreen.h"
 #include "DCCppProtocol.h"
@@ -82,6 +87,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "MotorBoard.h"
 #include "Sensors.h"
 #include "Locomotive.h"
+#include "Outputs.h"
 
-extern Preferences configStore;
 extern std::vector<uint8_t> restrictedPins;

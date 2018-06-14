@@ -29,11 +29,11 @@ enum TurnoutOrientation {
 class Turnout {
 public:
   Turnout(uint16_t, uint16_t, uint8_t, bool=false, TurnoutOrientation=LEFT);
-  Turnout(uint16_t);
+  Turnout(JsonObject &);
   virtual ~Turnout() {}
   void update(uint16_t, uint8_t);
   void set(bool=false);
-  void store(uint16_t);
+  void toJson(JsonObject &, bool=false);
   const uint16_t getID() {
     return _turnoutID;
   }

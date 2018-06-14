@@ -196,7 +196,19 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define NEXTION_ENABLED true
 //#define NEXTION_UART_NUM 2
 //#define NEXTION_UART_BAUD 115200
-//#define NEXTION_RX_PIN 12
-//#define NEXTION_TX_PIN 13
+//#define NEXTION_RX_PIN 14
+//#define NEXTION_TX_PIN 27
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// Define the pins for an SD Card Module. This is used as part of the Locomotive
+// Roster and dynamic configuration support.
+//
+
+//#define SD_CARD_ENABLED true
+//#define SD_CARD_CS_PIN 5
+//#define SD_CARD_MOSI_PIN 13
+//#define SD_CARD_MISO_PIN 12
+//#define SD_CARD_CLK_PIN 14
 
 /////////////////////////////////////////////////////////////////////////////////////

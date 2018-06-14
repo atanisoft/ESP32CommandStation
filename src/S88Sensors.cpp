@@ -61,25 +61,35 @@ void S88BusManager::init() {
   pinMode(S88_LOAD_PIN, OUTPUT);
 
   log_i("Initializing S88 SensorBus list");
-  uint16_t s88BusCount = configStore.getUShort("S88BusCount", 0);
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = configStore.load("S88.json", jsonBuffer);
+  JsonVariant count = root[F("count")];
+  uint16_t s88BusCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d S88 Busses", s88BusCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %d S88 Bus"), s88BusCount);
-  for(int index = 0; index < s88BusCount; index++) {
-    s88SensorBus.add(new S88SensorBus(index));
+  if(s88BusCount > 0) {
+    for(auto bus : root.get<JsonArray>(F("buses"))) {
+      s88SensorBus.add(new S88SensorBus(bus.as<JsonObject &>()));
+    }
   }
 }
 
 void S88BusManager::clear() {
-  configStore.putUShort("S88BusCount", 0);
   s88SensorBus.free();
+  store();
 }
 
 uint8_t S88BusManager::store() {
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  JsonArray &array = root.createNestedArray("outputs");
   uint8_t sensorBusIndex = 0;
   for (const auto& bus : s88SensorBus) {
-    bus->store(sensorBusIndex++);
+    bus->toJson(array.createNestedObject());
+    sensorBusIndex++;
   }
-  configStore.putUShort("S88BusCount", sensorBusIndex);
+  root[F("count")] = outputStoredCount;
+  configStore.store("S88.json", root);
   return sensorBusIndex;
 }
 
@@ -156,11 +166,7 @@ bool S88BusManager::removeBus(const uint8_t id) {
 void S88BusManager::getState(JsonArray &array) {
   for (const auto& sensorBus : s88SensorBus) {
     JsonObject &sensorJson = array.createNestedObject();
-    sensorJson[F("id")] = sensorBus->getID();
-    sensorJson[F("dataPin")] = sensorBus->getDataPin();
-    sensorJson[F("sensorIDBase")] = sensorBus->getSensorIDBase();
-    sensorJson[F("sensorCount")] = sensorBus->getSensorCount();
-    sensorJson[F("state")] = sensorBus->getStateString();
+    sensorBus->toJson(sensorJson, true);
   }
 }
 
@@ -174,15 +180,12 @@ S88SensorBus::S88SensorBus(const uint8_t id, const uint8_t dataPin, const uint16
   }
 }
 
-S88SensorBus::S88SensorBus(const uint16_t index) {
-  String sensorIDKey = String("S88_") + String(index);
-  String dataPinKey = sensorIDKey + String("_p");
-  String sensorCountKey = sensorIDKey + String("_s");
-  _id = configStore.getUShort(sensorIDKey.c_str(), index);
-  _dataPin = configStore.getUChar(dataPinKey.c_str(), 0);
-  _sensorIDBase = (_id * S88_MAX_SENSORS_PER_BUS) + S88_FIRST_SENSOR;
-  _lastSensorID = _sensorIDBase;
-  uint16_t sensorCount = configStore.getUShort(sensorCountKey.c_str(), 0);
+S88SensorBus::S88SensorBus(JsonObject &json) {
+  _id = json[F("id")];
+  _dataPin = json[F("dataPin")];
+  _lastSensorID = _sensorIDBase = json[F("sensorIDBase")];
+  uint16_t sensorCount = json[F("sensorCount")];
+  sensorJson[F("state")] = sensorBus->getStateString();
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("S88(%d) %d sensors"), _id, sensorCount);
   for(uint16_t id = 0; id < sensorCount; id++) {
     _sensors.push_back(new S88Sensor(_sensorIDBase + id, id));
@@ -209,13 +212,14 @@ void S88SensorBus::update(const uint8_t dataPin, const uint16_t sensorCount) {
   show();
 }
 
-void S88SensorBus::store(const uint16_t index) {
-  String sensorIDKey = String("S88_") + String(index);
-  String dataPinKey = sensorIDKey + String("_p");
-  String sensorCountKey = sensorIDKey + String("_s");
-  configStore.putUShort(sensorIDKey.c_str(), _id);
-  configStore.putUChar(dataPinKey.c_str(), _dataPin);
-  configStore.putUShort(sensorCountKey.c_str(), _sensors.size());
+void S88SensorBus::toJson(JsonObject &json, bool includeState) {
+  json[F("id")] = _id;
+  json[F("dataPin")] = _dataPin
+  json[F("sensorIDBase")] = _sensorIDBase;
+  json[F("sensorCount")] = _sensors.size();
+  if(includeState) {
+    json[F("state")] = sensorBus->getStateString();
+  }
 }
 
 void S88SensorBus::addSensors(int16_t sensorCount) {
@@ -289,7 +293,7 @@ void S88BusCommandAdapter::process(const std::vector<String> arguments) {
   }
 }
 
-S88Sensor::S88Sensor(uint16_t id, uint16_t index) : Sensor(id, -1, false, false), _index(index) {
+S88Sensor::S88Sensor(uint16_t id, uint16_t index) : Sensor(id, NON_STORED_SENSOR_PIN, false, false), _index(index) {
   log_i("S88Sensor(%d) created with index %d", id, _index);
 }
 #endif

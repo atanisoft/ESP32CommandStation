@@ -16,7 +16,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include "Outputs.h"
 
 /**********************************************************************
 
@@ -98,25 +97,35 @@ LinkedList<Output *> outputs([](Output *output) {delete output; });
 
 void OutputManager::init() {
   log_i("Initializing outputs");
-  uint16_t outputCount = configStore.getUShort("OutputCount", 0);
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = configStore.load("Outputs.json", jsonBuffer);
+  JsonVariant count = root[F("count")];
+  uint16_t outputCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d outputs", outputCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Outputs"), outputCount);
-  for(int index = 0; index < outputCount; index++) {
-    outputs.add(new Output(index));
+  if(outputCount > 0) {
+    for(auto output : root.get<JsonArray>(F("outputs"))) {
+      outputs.add(new Output(output.as<JsonObject &>()));
+    }
   }
 }
 
 void OutputManager::clear() {
-  configStore.putUShort("OutputCount", 0);
   outputs.free();
+  store();
 }
 
 uint16_t OutputManager::store() {
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  JsonArray &array = root.createNestedArray("outputs");
   uint16_t outputStoredCount = 0;
   for (const auto& output : outputs) {
-    output->store(outputStoredCount++);
+    output->toJson(array.createNestedObject());
+    outputStoredCount++;
   }
-  configStore.putUShort("OutputCount", outputStoredCount);
+  root[F("count")] = outputStoredCount;
+  configStore.store("Outputs.json", root);
   return outputStoredCount;
 }
 
@@ -143,29 +152,7 @@ bool OutputManager::toggle(uint16_t id) {
 void OutputManager::getState(JsonArray & array) {
   for (const auto& output : outputs) {
     JsonObject &outputJson = array.createNestedObject();
-    outputJson[F("id")] = output->getID();
-    outputJson[F("pin")] = output->getPin();
-    String flagsString = "";
-    if(bitRead(output->getFlags(), OUTPUT_IFLAG_INVERT)) {
-      flagsString += "activeLow";
-    } else {
-      flagsString += "activeHigh";
-    }
-    if(bitRead(output->getFlags(), OUTPUT_IFLAG_RESTORE_STATE)) {
-      if(bitRead(output->getFlags(), OUTPUT_IFLAG_FORCE_STATE)) {
-        flagsString += ",force(on)";
-      } else {
-        flagsString += ",force(off)";
-      }
-    } else {
-      flagsString += ",restoreState";
-    }
-    outputJson[F("flags")] = flagsString;
-    if(output->isActive()) {
-      outputJson[F("active")] = "On";
-    } else {
-      outputJson[F("active")] = "Off";
-    }
+    output->toJson(outputJson, true);
   }
 }
 
@@ -204,60 +191,37 @@ bool OutputManager::remove(const uint16_t id) {
 }
 
 Output::Output(uint16_t id, uint8_t pin, uint8_t flags) : _id(id), _pin(pin), _flags(flags), _active(false) {
-  String flagsString = "";
-  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
-    flagsString += "activeLow";
-  } else {
-    flagsString += "activeHigh";
-  }
   if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",force(off)";
       set(false, false);
     }
   } else {
-    flagsString += ",restoreState";
     set(false, false);
   }
-  log_i("Output(%d) on pin %d created, flags: %s", _id, _pin, flagsString.c_str());
+  log_i("Output(%d) on pin %d created, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
-Output::Output(uint16_t index) {
-  String outputIDKey = String("O_") + String(index);
-  String outputPinKey = outputIDKey + String("_p");
-  String outputFlagsKey = outputIDKey + String("_f");
-  _id = configStore.getUShort(outputIDKey.c_str(), index);
-  _pin = configStore.getUChar(outputPinKey.c_str(), 0);
-  _flags = configStore.getUChar(outputFlagsKey.c_str(), 0);
-  String flagsString = "";
-  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
-    flagsString += "activeLow";
-  } else {
-    flagsString += "activeHigh";
-  }
+Output::Output(JsonObject &json) {
+  _id = json[F("id")];
+  _pin = json[F("pin")];
+  _flags = json[F("flags")];
   if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",force(off)";
       set(false, false);
     }
   } else {
-    String outputStateKey = outputIDKey + String("_s");
-    if(configStore.getBool(outputStateKey.c_str(), false)) {
-      flagsString += ",restoreState(on)";
+    if(json.get<bool>(F("state"))) {
       set(true, false);
     } else {
-      flagsString += ",restoreState(off)";
       set(false, false);
     }
   }
-  log_i("Output(%d) on pin %d loaded, flags: %s", _id, _pin, flagsString.c_str());
+  log_i("Output(%d) on pin %d loaded, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
@@ -273,37 +237,34 @@ void Output::set(bool active, bool announce) {
 void Output::update(uint8_t pin, uint8_t flags) {
   _pin = pin;
   _flags = flags;
-  String flagsString = "";
-  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
-    flagsString += "activeLow";
-  } else {
-    flagsString += "activeHigh";
-  }
   if(!bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
-    flagsString += ",restoreState";
     set(false, false);
   } else {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",force(off)";
       set(false, false);
     }
   }
-  log_i("Output(%d) on pin %d updated, flags: %s", _id, _pin, flagsString.c_str());
+  log_i("Output(%d) on pin %d updated, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
-void Output::store(uint16_t index) {
-  String outputIDKey = String("O_") + String(index);
-  String outputPinKey = outputIDKey + String("_p");
-  String outputFlagsKey = outputIDKey + String("_f");
-  String outputStateKey = outputIDKey + String("_s");
-  configStore.putUShort(outputIDKey.c_str(), _id);
-  configStore.putUChar(outputPinKey.c_str(), _pin);
-  configStore.putUChar(outputFlagsKey.c_str(), _flags);
-  configStore.putBool(outputStateKey.c_str(), _active);
+void Output::toJson(JsonObject &json, bool readableStrings) {
+  json[F("id")] = _id;
+  json[F("pin")] = _pin;
+  if(readableStrings) {
+    json[F("flags")] = getFlagsAsString();
+    if(isActive()) {
+      json[F("state")] = "On";
+    } else {
+      json[F("state")] = "Off";
+    }
+  } else {
+    json[F("flags")] = _flags;
+    json[F("state")] = _active;
+  }
+
 }
 
 void Output::showStatus() {

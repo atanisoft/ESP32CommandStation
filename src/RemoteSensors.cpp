@@ -127,11 +127,8 @@ bool RemoteSensorManager::remove(const uint16_t id) {
 
 void RemoteSensorManager::getState(JsonArray &array) {
   for (const auto& sensor : remoteSensors) {
-    JsonObject &sensorJson = array.createNestedObject();
-    sensorJson[F("id")] = sensor->getRawID();
-    sensorJson[F("value")] = sensor->getSensorValue();
-    sensorJson[F("active")] = sensor->isActive();
-    sensorJson[F("lastUpdate")] = sensor->getLastUpdate();
+    JsonObject &json = array.createNestedObject();
+    sensor->toJson(json);
   }
 }
 
@@ -146,7 +143,7 @@ void RemoteSensorManager::show() {
 }
 
 RemoteSensor::RemoteSensor(uint16_t id, uint16_t value) :
-  Sensor(id + REMOTE_SENSORS_FIRST_SENSOR, -1, false, false), _rawID(id) {
+  Sensor(id + REMOTE_SENSORS_FIRST_SENSOR, NON_STORED_SENSOR_PIN, false, false), _rawID(id) {
   setSensorValue(value);
   log_i("RemoteSensor(%d) created with Sensor(%d), active: %s, value: %d",
     getRawID(), getID(), isActive() ? "true" : "false", value);
@@ -161,6 +158,16 @@ void RemoteSensor::check() {
 
 void RemoteSensor::showSensor() {
   wifiInterface.printf(F("<RS %d %d>"), getRawID(), _value);
+}
+
+void RemoteSensor::toJson(JsonObject &json, bool includeState) {
+  json[F("id")] = getRawID();
+  json[F("value")] = getSensorValue();
+  json[F("active")] = isActive();
+  json[F("lastUpdate")] = getLastUpdate();
+  // for compatibility with sensors table
+  json[F("pin")] = getPin();
+  json[F("pullUp")] = isPullUp();
 }
 
 void RemoteSensorsCommandAdapter::process(const std::vector<String> arguments) {

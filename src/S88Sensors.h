@@ -26,7 +26,6 @@ class S88Sensor : public Sensor {
 public:
   S88Sensor(uint16_t, uint16_t);
   virtual ~S88Sensor() {}
-  void store(uint16_t) {}
   void check() {}
   void setState(bool state) {
     set(state);
@@ -44,9 +43,9 @@ private:
 class S88SensorBus {
 public:
   S88SensorBus(const uint8_t, const uint8_t, const uint16_t);
-  S88SensorBus(const uint16_t);
+  S88SensorBus(JsonObject &);
   void update(const uint8_t, const uint16_t);
-  void store(uint16_t);
+  void toJson(JsonObject &, bool=false);
   void addSensors(int16_t);
   void removeSensors(int16_t);
   String getStateString();

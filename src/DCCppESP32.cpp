@@ -162,7 +162,6 @@ present in DCCppESP32.cpp in the setup() method.
 #include "NextionInterface.h"
 
 const char * buildTime = __DATE__ " " __TIME__;
-Preferences configStore;
 WiFiInterface wifiInterface;
 
 std::vector<uint8_t> restrictedPins;
@@ -187,9 +186,6 @@ void setup() {
 	// set up ADC1 here since we use it for all motor boards
 	adc1_config_width(ADC_WIDTH_BIT_12);
 
-	// Initialize the Configuration storage
-	configStore.begin("DCCpp");
-
 	InfoScreen::init();
 	InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, F("DCC++ESP: v%s"), VERSION);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Starting Up"));
@@ -199,6 +195,7 @@ void setup() {
 #if defined(NEXTION_ENABLED) && NEXTION_ENABLED
   NextionInterface::init();
 #endif
+  configStore.init();
 	wifiInterface.begin();
   MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_MAIN,
 		MOTORBOARD_ENABLE_PIN_MAIN, MOTORBOARD_TYPE_MAIN, MOTORBOARD_NAME_MAIN);

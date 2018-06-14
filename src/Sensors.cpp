@@ -78,27 +78,37 @@ LinkedList<Sensor *> sensors([](Sensor *sensor) {delete sensor; });
 
 void SensorManager::init() {
   log_i("Initializing sensors list");
-  uint16_t sensorCount = configStore.getUShort("SensorCount", 0);
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = configStore.load("Sensors.json", jsonBuffer);
+  JsonVariant count = root[F("count")];
+  uint16_t sensorCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d sensors", sensorCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %d Sensors"), sensorCount);
-  for(int index = 0; index < sensorCount; index++) {
-    sensors.add(new Sensor(index));
+  if(sensorCount > 0) {
+    for(auto sensor : root.get<JsonArray>(F("sensors"))) {
+      sensors.add(new Sensor(sensor.as<JsonObject &>()));
+    }
   }
 }
 
 void SensorManager::clear() {
-  configStore.putUShort("SensorCount", 0);
   sensors.free();
+  store();
 }
 
 uint16_t SensorManager::store() {
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &root = jsonBuffer.createObject();
+  JsonArray &array = root.createNestedArray("sensors");
   uint16_t sensorStoredCount = 0;
   for (const auto& sensor : sensors) {
-    if(sensor->getPin() >= 0) {
-      sensor->store(sensorStoredCount++);
+    if(sensor->getPin() != NON_STORED_SENSOR_PIN) {
+      sensor->toJson(array.createNestedObject());
+      sensorStoredCount++;
     }
   }
-  configStore.putUShort("SensorCount", sensorStoredCount);
+  root[F("count")] = sensorStoredCount;
+  configStore.store("Sensors.json", root);
   return sensorStoredCount;
 }
 
@@ -111,10 +121,7 @@ void SensorManager::check() {
 void SensorManager::getState(JsonArray & array) {
   for (const auto& sensor : sensors) {
     JsonObject &sensorJson = array.createNestedObject();
-    sensorJson[F("id")] = sensor->getID();
-    sensorJson[F("pin")] = sensor->getPin();
-    sensorJson[F("pullUp")] = sensor->isPullUp();
-    sensorJson[F("active")] = sensor->isActive();
+    sensor->toJson(sensorJson, true);
   }
 }
 
@@ -168,13 +175,10 @@ Sensor::Sensor(uint16_t sensorID, int8_t pin, bool pullUp, bool announce) : _sen
   }
 }
 
-Sensor::Sensor(uint16_t index) : _lastState(false) {
-  String sensorIDKey = String("S_") + String(index);
-  String sensorPinKey = sensorIDKey + String("_p");
-  String sensorPullUpKey = sensorIDKey + String("_u");
-  _sensorID = configStore.getUShort(sensorIDKey.c_str(), index);
-  _pin = configStore.getUChar(sensorPinKey.c_str(), 0);
-  _pullUp = configStore.getBool(sensorPullUpKey.c_str(), false);
+Sensor::Sensor(JsonObject &json) : _lastState(false) {
+  _sensorID = json[F("id")];
+  _pin = json[F("pin")];
+  _pullUp = json[F("pullUp")];
   log_i("Sensor(%d) on pin %d loaded, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
   if(_pullUp) {
     pinMode(_pin, INPUT_PULLUP);
@@ -183,13 +187,13 @@ Sensor::Sensor(uint16_t index) : _lastState(false) {
   }
 }
 
-void Sensor::store(uint16_t index) {
-  String sensorIDKey = String("S_") + String(index);
-  String sensorPinKey = sensorIDKey + String("_p");
-  String sensorPullUpKey = sensorIDKey + String("_u");
-  configStore.putUShort(sensorIDKey.c_str(), _sensorID);
-  configStore.putUChar(sensorPinKey.c_str(), _pin);
-  configStore.putBool(sensorPullUpKey.c_str(), _pullUp);
+void Sensor::toJson(JsonObject &json, bool includeState) {
+  json[F("id")] = _sensorID;
+  json[F("pin")] = _pin;
+  json[F("pullUp")] = _pullUp;
+  if(includeState) {
+    json[F("active")] = _lastState;
+  }
 }
 
 void Sensor::update(uint8_t pin, bool pullUp) {

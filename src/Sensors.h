@@ -22,13 +22,15 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "DCCppProtocol.h"
 #include "WiFiInterface.h"
 
+const int8_t NON_STORED_SENSOR_PIN=-1;
+
 class Sensor {
 public:
   Sensor(uint16_t, int8_t, bool=false, bool=true);
-  Sensor(uint16_t);
+  Sensor(JsonObject &);
   virtual ~Sensor() {}
   void update(uint8_t, bool=false);
-  virtual void store(uint16_t);
+  virtual void toJson(JsonObject &, bool=false);
   const uint16_t getID() {
     return _sensorID;
   }
