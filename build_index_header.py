@@ -13,8 +13,8 @@ def build_index_html_h(source, target, env):
     gzLen = gzFile.tell()
     gzFile.seek(0, os.SEEK_SET)
     print 'Compressed index.html.gz file is %d bytes' % gzLen
-    with open('%s/index_html.h' % env.subst('$BUILD_DIR'), 'w') as f:
-        f.write("#ifndef _INDEX_HTML_GZ_H_\n#define _INDEX_HTML_GZ_H_\n")
+    with open('%s/src/index_html.h' % env.subst('$PROJECT_DIR'), 'w') as f:
+        f.write("#pragma once\n")
         f.write("const size_t indexHtmlGz_size = {};\n".format(gzLen))
         f.write("const uint8_t indexHtmlGz[] PROGMEM = {\n");
         while True:
@@ -35,11 +35,5 @@ def build_index_html_h(source, target, env):
                     "0x{:02X}, 0x{:02X}, 0x{:02X}, 0x{:02X},\n"
                     .format(*struct.unpack("BBBBBBBBBBBBBBBB", block)))
         f.write("};\n")
-        f.write("#endif\n")
 
 env.AddPreAction('$BUILD_DIR/src/WebServer.cpp.o', build_index_html_h)
-env.Append(
-    CPPPATH = [
-        "$BUILD_DIR"
-    ]
-)
