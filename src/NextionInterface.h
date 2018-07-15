@@ -19,6 +19,7 @@ COPYRIGHT (c) 2018 Mike Dunston
 #pragma once
 
 #include "Locomotive.h"
+#include "Turnouts.h"
 #include <HardwareSerial.h>
 #include <Nextion.h>
 #include <NextionPage.h>
@@ -36,8 +37,7 @@ private:
   static uint64_t _startupTransitionTimer;
 };
 
-enum NEXTION_PAGES
-{
+enum NEXTION_PAGES {
   TITLE_PAGE = 0,
   ADDRESS_PAGE = 1,
   THROTTLE_PAGE = 2,
@@ -49,89 +49,103 @@ enum NEXTION_PAGES
 
 class DCCPPNextionPage : public NextionPage {
 public:
-  DCCPPNextionPage(Nextion &nextion, uint8_t pageID, const char *pageName) :
-    NextionPage(nextion, pageID, 0, pageName), _pageInitialized(false) {
-  }
+  DCCPPNextionPage(Nextion &, uint8_t, const char *);
   void display();
-  virtual void refresh() = 0;
+  void refresh();
+  virtual void refreshPage() = 0;
+  void setTrackPower(bool=true);
+  void setPreviousPage(uint8_t pageID) {
+    _returnPageID = pageID;
+  }
+  void displayPreviousPage(bool=true);
+  void returnToPreviousPage() {
+    displayPreviousPage(false);
+  }
+  uint8_t getReturnPage() {
+    return _returnPageID;
+  }
 protected:
   // One time page initialization
   virtual void init() = 0;
 
   // Called anytime the page gets displayed, should be used for refresh of components etc.
   virtual void displayPage() = 0;
+
+  virtual void previousPageCallback(DCCPPNextionPage *previousPage) {}
 private:
+  NextionButton _onButton;
+  NextionButton _offButton;
+  NextionButton _stopButton;
   bool _pageInitialized;
+  uint8_t _returnPageID;
+  void refreshPowerButtons();
 };
 
 class NextionTitlePage : public DCCPPNextionPage {
 public:
   NextionTitlePage(Nextion &nextion) : DCCPPNextionPage(nextion, TITLE_PAGE, "0"),
     _versionText(nextion, TITLE_PAGE, 3, "Version") {}
-  virtual void refresh() {}
+  virtual void refreshPage() {}
 protected:
   virtual void init() {
     _versionText.setText(VERSION);
   }
-  virtual void displayPage() {};
+  virtual void displayPage() {}
 private:
   NextionText _versionText;
 };
 
-class NextionAddressPage : public DCCPPNextionPage {
+class NextionAddressPage : public DCCPPNextionPage
+{
 public:
-  NextionAddressPage(Nextion &nextion);
-  void setCurrentAddress(uint32_t address);
-  void setReturnPage(uint8_t pageID) {
-    _returnPageID = pageID;
+  NextionAddressPage(Nextion &);
+  void setCurrentAddress(uint32_t address) {
+    _address = address;
   }
-  uint8_t getReturnPage() {
-    return _returnPageID;
-  }
-  void addNumber(const NextionButton *button);
+  void addNumber(const NextionButton *);
+  void removeNumber(const NextionButton *);
   uint32_t getNewAddress() {
     return _newAddressString.toInt();
   }
-  virtual void refresh() {}
+  virtual void refreshPage() {}
 protected:
-  virtual void init() {};
+  virtual void init() {}
   virtual void displayPage();
 private:
   NextionButton _buttons[10];
   NextionButton _doneButton;
   NextionButton _abortButton;
+  NextionButton _eraseButton;
   NextionText _currentAddress;
-  NextionNumber _newAddress;
+  NextionText _newAddress;
   uint32_t _address;
-  uint8_t _returnPageID;
   String _newAddressString;
 };
 
 class NextionThrottlePage : public DCCPPNextionPage {
 public:
-  NextionThrottlePage(Nextion &nextion);
-  void activateLoco(const NextionButton *button);
-  void activateFunctionGroup(const NextionButton *button);
+  NextionThrottlePage(Nextion &);
+  void activateLoco(const NextionButton *);
+  void activateFunctionGroup(const NextionButton *);
   void setLocoDirection(bool direction);
-  void setTrackPower(bool on);
-  void toggleFunction(const NextionButton *button);
-  void changeLocoAddress(uint32_t newAddress);
+  void toggleFunction(const NextionButton *);
+  void changeLocoAddress(uint32_t);
   uint32_t getCurrentLocoAddress();
   void decreaseLocoSpeed();
   void increaseLocoSpeed();
   void setLocoSpeed(uint8_t speed);
-  virtual void refresh() {
+  virtual void refreshPage() {
     refreshLocomotiveDetails();
   }
-  void invalidateLocomotive(uint32_t address);
+  void invalidateLocomotive(uint32_t);
 protected:
   virtual void init();
   virtual void displayPage();
+  void previousPageCallback(DCCPPNextionPage *);
 private:
   void refreshLocomotiveDetails();
   void refreshFunctionButtons();
   void refreshLocomotiveDirection();
-  void refreshPowerButtons();
   uint8_t _activeLoco;
   uint8_t _activeFunctionGroup;
   uint32_t _locoNumbers[3];
@@ -140,9 +154,6 @@ private:
   NextionButton _fgroupButtons[3];
   NextionButton _fwdButton;
   NextionButton _revButton;
-  NextionButton _onButton;
-  NextionButton _offButton;
-  NextionButton _stopButton;
   NextionButton _functionButtons[10];
   NextionButton _locoAddress;
   NextionButton _routes;
@@ -150,7 +161,27 @@ private:
   NextionButton _downButton;
   NextionButton _upButton;
   NextionSlider _speedSlider;
-  NextionNumber _speedNumber;
+  NextionText _speedNumber;
+};
+
+class NextionTurnoutPage : public DCCPPNextionPage {
+public:
+  NextionTurnoutPage(Nextion &);
+  void toggleTurnout(const NextionButton *);
+  virtual void refreshPage() {}
+protected:
+  virtual void init() {}
+  virtual void displayPage();
+  void previousPageCallback(DCCPPNextionPage *);
+private:
+  NextionButton _turnoutButtons[15];
+  NextionButton _backButton;
+  NextionButton _prevButton;
+  NextionButton _nextButton;
+  NextionButton _addButton;
+  NextionButton _delButton;
+  NextionButton _routesButton;
+  NextionButton _toAddress[15];
 };
 
 extern DCCPPNextionPage *nextionPages[MAX_PAGES];

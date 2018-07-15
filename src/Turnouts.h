@@ -73,6 +73,7 @@ public:
   static void createOrUpdate(const uint16_t, const uint16_t, const uint8_t);
   static bool remove(const uint16_t);
   static Turnout *getTurnout(const uint16_t);
+  static uint16_t getTurnoutCount();
 };
 
 class TurnoutCommandAdapter : public DCCPPProtocolCommand {
