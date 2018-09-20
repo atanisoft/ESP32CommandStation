@@ -1,7 +1,7 @@
 /**********************************************************************
 DCC++ BASE STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017,2018 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -52,6 +52,12 @@ public:
   bool isDirectionForward() {
     return _direction;
   }
+  void setOrientationForward(bool forward) {
+    _orientation = forward;
+  }
+  bool isOrientationForward() {
+    return _orientation;
+  }
   uint32_t getLastUpdate() {
     return _lastUpdate;
   }
@@ -86,6 +92,7 @@ private:
   uint16_t _locoAddress;
   int8_t _speed;
   bool _direction;
+  bool _orientation;
   uint32_t _lastUpdate;
   bool _idleOnStartup;
   bool _defaultOnThrottles;
@@ -94,15 +101,40 @@ private:
   std::vector<uint8_t> _functionPackets[MAX_LOCOMOTIVE_FUNCTION_PACKETS];
 };
 
+class LocomotiveConsist : public Locomotive {
+public:
+  LocomotiveConsist(uint8_t address, bool decoderAssistedConsist=false) :
+    Locomotive(-1), _decoderAssisstedConsist(decoderAssistedConsist) {
+    setLocoAddress(address);
+  }
+  virtual ~LocomotiveConsist();
+  void showStatus();
+  void toJson(JsonObject &, bool=false);
+  bool isAddressInConsist(uint16_t);
+  void updateThrottle(uint16_t, int8_t, bool);
+  void addLocomotive(uint16_t, bool, uint8_t);
+  bool removeLocomotive(uint16_t);
+  void releaseLocomotives();
+  bool isDecoderAssistedConsist() {
+    return _decoderAssisstedConsist;
+  }
+private:
+  const bool _decoderAssisstedConsist;
+  std::vector<Locomotive *> _locos;
+};
+
 class LocomotiveManager {
 public:
   // gets or creates a new locomotive to be managed
-  static Locomotive *getLocomotive(const uint16_t);
+  static Locomotive *getLocomotive(const uint16_t, const bool=true);
   // removes a locomotive from management, sends speed zero before removal
   static void removeLocomotive(const uint16_t);
+  static bool removeLocomotiveConsist(const uint16_t);
   static void processThrottle(const std::vector<String>);
   static void processFunction(const std::vector<String>);
+  static void processConsistThrottle(const std::vector<String>);
   static void showStatus();
+  static void showConsistStatus();
   static void update();
   static void emergencyStop();
   static uint8_t getActiveLocoCount() {
@@ -113,8 +145,14 @@ public:
   static std::vector<Locomotive *> getDefaultLocos(const int8_t=-1);
   static void getDefaultLocos(JsonArray &);
   static void getActiveLocos(JsonArray &);
+  static bool isConsistAddress(uint16_t);
+  static bool isAddressInConsist(uint16_t);
+  static LocomotiveConsist *getConsistByID(uint8_t);
+  static LocomotiveConsist *getConsistForLoco(uint16_t);
+  static LocomotiveConsist *createLocomotiveConsist(int8_t);
 private:
   static LinkedList<Locomotive *> _locos;
+  static LinkedList<LocomotiveConsist *> _consists;
 };
 
 // <t {REGISTER} {LOCO} {SPEED} {DIRECTION}> command handler, this command
@@ -139,5 +177,19 @@ public:
   }
   String getID() {
     return "f";
+  }
+};
+
+// wrapper to handle the following command structures:
+// CREATE: <C {ID} {LEAD LOCO} {TRAIL LOCO}  [{OTHER LOCO}]>
+// DELETE: <C {ID} {LOCO}>
+// DELETE: <C {ID}>
+// QUERY : <C 0 {LOCO}>
+// SHOW  : <C>
+class ConsistCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String>);
+  String getID() {
+    return "C";
   }
 };

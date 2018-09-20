@@ -1,7 +1,7 @@
 /**********************************************************************
 DCC++ BASE STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017,2018 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -78,3 +78,36 @@ void writeOpsCVBit(const uint16_t, const uint16_t, const uint8_t, const bool);
 #define DCC_SIGNAL_OPERATIONS 0
 #define DCC_SIGNAL_PROGRAMMING 1
 #define MAX_DCC_SIGNAL_GENERATORS 2
+
+enum CV_NAMES {
+  CONSIST_ADDRESS=19,
+  CONSIST_FUNCTION_CONTROL_F1_F8=21,
+  CONSIST_FUNCTION_CONTROL_FL_F9_F12=22,
+  DECODER_CONFIG=29
+};
+
+const uint8_t CONSIST_ADDRESS_REVERSED_ORIENTATION = 0x80;
+const uint8_t CONSIST_ADDRESS_NO_ADDRESS = 0x00;
+
+enum CONSIST_FUNCTION_CONTROL_F1_F8_BITS {
+  F1_BIT=0,
+  F2_BIT=1,
+  F3_BIT=2,
+  F4_BIT=3,
+  F5_BIT=4,
+  F6_BIT=5,
+  F7_BIT=6,
+  F8_BIT=7
+};
+
+enum CONSIST_FUNCTION_CONTROL_FL_F9_F12_BITS {
+  FL_BIT=0,
+  F9_BIT=1,
+  F10_BIT=2,
+  F11_BIT=3,
+  F12_BIT=4
+};
+
+//#define CV_CONSIST_ADDRESS_NO_CONSIST_VALUE 0
+//#define CV_CONSIST_ADDRESS_REVERSED_ORIENTATION_VALUE 0x80
+//#define CV_CONSIST_FUNCTION_CONTROL_F1_F8_VALUE 255
