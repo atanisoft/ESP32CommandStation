@@ -102,6 +102,15 @@ void LocomotiveConsist::toJson(JsonObject &jsonObject, bool basic) {
   }
 }
 
+bool LocomotiveConsist::isAddressInConsist(uint16_t locoAddress) {
+  for (const auto& loco : _locos) {
+    if (loco->getLocoAddress() == locoAddress) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void LocomotiveConsist::updateThrottle(uint16_t locoAddress, int8_t speed, bool forward) {
   // only if the speed or direction is different than the last update should
   // we process any further
@@ -175,7 +184,6 @@ bool LocomotiveConsist::removeLocomotive(uint16_t locoAddress) {
       locoFound = true;
       break;
     }
-    index++;
   }
   if(locoFound) {
     _locos.erase(_locos.begin() + index);
@@ -187,6 +195,13 @@ bool LocomotiveConsist::removeLocomotive(uint16_t locoAddress) {
     }
   }
   return locoFound;
+}
+
+void LocomotiveConsist::releaseLocomotives() {
+  for(uint8_t index = 0; index < _locos.size(); index++) {
+    delete _locos[index];
+  }
+  _locos.clear();
 }
 
 void ConsistCommandAdapter::process(const std::vector<String> arguments) {
