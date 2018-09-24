@@ -118,6 +118,15 @@ public:
   bool isDecoderAssistedConsist() {
     return _decoderAssisstedConsist;
   }
+  void sendLocoUpdate() {
+    if (_decoderAssisstedConsist) {
+      Locomotive::sendLocoUpdate();
+    } else {
+      for (const auto& loco : _locos) {
+        loco->sendLocoUpdate();
+      }
+    }
+  }
 private:
   const bool _decoderAssisstedConsist;
   std::vector<Locomotive *> _locos;

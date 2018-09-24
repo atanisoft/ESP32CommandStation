@@ -25,7 +25,7 @@ command station consisting or decoder assisted consisting.
                                 locomotives with any OTHER locomotives in the
                                 middle.
         NOTE: If the LOCO number is NEGATIVE it will be treated as being in
-        reverse direction to the lead locomotives.
+        reverse direction.
         NOTE: To create a decoder assisted consist specify the ID as a negative
         value or as ZERO.
         returns: <O> if successful and <X> if unsuccessful.
@@ -52,6 +52,13 @@ OTHER  : 1234 (REV), 2456 (REV)
 When consist 10 moves in the FWD direction (in relation to lead loco) the
 following functions will be active:
 4567 FL
+8765 NONE
+1234 NONE
+2456 NONE
+
+When consist 10 moves in the REV direction (in relation to lead loco) the
+following functions will be active:
+4567 NONE
 8765 FR
 1234 NONE
 2456 NONE

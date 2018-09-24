@@ -273,24 +273,22 @@ DCCPPProtocolCommand *DCCPPProtocolHandler::getCommandHandler(const String &id) 
   return nullptr;
 }
 
-DCCPPProtocolConsumer::DCCPPProtocolConsumer() : _stream(Serial) {
+DCCPPProtocolConsumer::DCCPPProtocolConsumer() {
   _buffer.reserve(256);
 }
-
-DCCPPProtocolConsumer::DCCPPProtocolConsumer(Stream &stream) : _stream(stream) {
-  _buffer.reserve(256);
-}
-
+/*
 void DCCPPProtocolConsumer::update() {
+  log_d("[%s] checking for available data", getName().c_str());
   if (_stream.available()) {
     auto len = _stream.available();
+    log_d("[%s] consuming %d bytes", getName().c_str(), len);
     auto read_dest = _buffer.insert(_buffer.end(), len + 1, 0);
     auto added = _stream.readBytes(&*read_dest, len);
     _buffer.erase(read_dest + added, _buffer.end());
     processData();
   }
 }
-
+*/
 void DCCPPProtocolConsumer::feed(uint8_t *data, size_t len) {
   for(int i = 0; i < len; i++) {
     _buffer.emplace_back(data[i]);

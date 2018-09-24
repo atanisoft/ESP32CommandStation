@@ -41,14 +41,9 @@ public:
 class DCCPPProtocolConsumer {
 public:
   DCCPPProtocolConsumer();
-  DCCPPProtocolConsumer(Stream &);
   void feed(uint8_t *, size_t);
   void update();
-  Stream &getStream() {
-    return _stream;
-  }
 private:
   void processData();
-  Stream &_stream;
   std::vector<uint8_t> _buffer;
 };

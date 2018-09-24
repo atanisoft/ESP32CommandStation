@@ -44,13 +44,18 @@ enum HTTP_STATUS_CODES {
 
 class WebSocketClient : public DCCPPProtocolConsumer {
 public:
-  WebSocketClient(int clientID) : _id(clientID) {
+  WebSocketClient(int clientID, IPAddress remoteIP) : _id(clientID), _remoteIP(remoteIP) {
   }
+  virtual ~WebSocketClient() {}
   int getID() {
     return _id;
   }
+  String getName() {
+    return _remoteIP.toString() + "/" + String(_id);
+  }
 private:
   uint32_t _id;
+  IPAddress _remoteIP;
 };
 LinkedList<WebSocketClient *> webSocketClients([](WebSocketClient *client) {delete client;});
 
@@ -104,7 +109,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
   webSocket.onEvent([](AsyncWebSocket * server, AsyncWebSocketClient * client,
       AwsEventType type, void * arg, uint8_t *data, size_t len) {
     if (type == WS_EVT_CONNECT) {
-      webSocketClients.add(new WebSocketClient(client->id()));
+      webSocketClients.add(new WebSocketClient(client->id(), client->remoteIP()));
       client->printf("DCC++ESP32 v%s. READY!", VERSION);
   #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
       InfoScreen::printf(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());

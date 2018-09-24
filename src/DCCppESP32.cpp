@@ -168,6 +168,7 @@ std::vector<uint8_t> restrictedPins;
 
 void setup() {
 	Serial.begin(115200L);
+	Serial.setDebugOutput(true);
 	log_i("DCC++ ESP starting up");
 #ifndef ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
   restrictedPins.push_back(0);

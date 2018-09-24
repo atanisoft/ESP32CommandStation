@@ -29,10 +29,33 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 class WiFiClientWrapper : public DCCPPProtocolConsumer {
 public:
-  WiFiClientWrapper(WiFiClient client) : DCCPPProtocolConsumer(client), _client(client) {
+  WiFiClientWrapper(WiFiClient client) : _client(client) {
+    log_i("WiFiClient connected from %s", _client.remoteIP().toString().c_str());
+    _client.setNoDelay(true);
   }
+
+  virtual ~WiFiClientWrapper() {
+    stop();
+  }
+
   void stop() {
+    log_i("Disconnecting %s", _client.remoteIP().toString().c_str());
     _client.stop();
+  }
+
+  void update() {
+    uint8_t buf[128];
+    //log_d("[%s] checking for available data", _client.remoteIP().toString().c_str());
+    while (_client.available()) {
+      auto len = _client.available();
+      log_d("[%s] reading %d bytes", _client.remoteIP().toString().c_str(), len);
+      auto added = _client.readBytes(&buf[0], len < 128 ? len : 128);
+      feed(&buf[0], added);
+    }
+  }
+
+  WiFiClient getClient() {
+    return _client;
   }
 private:
   WiFiClient _client;
@@ -113,9 +136,13 @@ void WiFiInterface::begin() {
 
 void WiFiInterface::update() {
 	if (DCCppServer.hasClient()) {
-    DCCppClients.add(new WiFiClientWrapper(DCCppServer.available()));
+    WiFiClient client = DCCppServer.available();
+    if(client) {
+      DCCppClients.add(new WiFiClientWrapper(client));
+    }
   }
   for (const auto& client : DCCppClients) {
+    //log_d("Checking TCP/IP Client(%p/%s) for data", client, client->getClient().remoteIP().toString().c_str());
     client->update();
   }
 }
@@ -126,7 +153,7 @@ void WiFiInterface::showInitInfo() {
 
 void WiFiInterface::send(const String &buf) {
   for (const auto& client : DCCppClients) {
-    client->getStream().print(buf);
+    client->getClient().print(buf);
     delay(1);
   }
 	dccppWebServer.broadcastToWS(buf);

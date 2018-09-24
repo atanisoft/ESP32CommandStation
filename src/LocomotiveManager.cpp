@@ -119,6 +119,12 @@ void LocomotiveManager::update() {
       loco->sendLocoUpdate();
     }
 	}
+  for (const auto& loco : _consists) {
+    // if it has been more than 50ms we should send a loco update packet
+    if(millis() > loco->getLastUpdate() + 50) {
+      loco->sendLocoUpdate();
+    }
+	}
 }
 
 void LocomotiveManager::emergencyStop() {

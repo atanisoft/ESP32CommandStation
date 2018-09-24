@@ -42,11 +42,11 @@ const uint8_t CVSampleCount = 250;
 SignalGenerator dccSignal[MAX_DCC_SIGNAL_GENERATORS];
 
 // S-9.2 baseline packet (idle)
-uint8_t idlePacket[] = {0xFF, 0x00};
+DRAM_ATTR uint8_t idlePacket[] = {0xFF, 0x00};
 // S-9.2 baseline packet (decoder reset)
-uint8_t resetPacket[] = {0x00, 0x00};
+DRAM_ATTR uint8_t resetPacket[] = {0x00, 0x00};
 // S-9.2 baseline packet (eStop, direction bit ignored)
-uint8_t eStopPacket[] = {0x00, 0x41};
+DRAM_ATTR uint8_t eStopPacket[] = {0x00, 0x41};
 
 void loadBytePacket(SignalGenerator &, uint8_t *, uint8_t, uint8_t, bool=false);
 

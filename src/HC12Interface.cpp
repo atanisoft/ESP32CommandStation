@@ -32,14 +32,21 @@ COPYRIGHT (c) 2018 Mike Dunston
 #endif
 
 HardwareSerial hc12Serial(HC12_UART_NUM);
-DCCPPProtocolConsumer hc12Consumer(hc12Serial);
+DCCPPProtocolConsumer hc12Consumer;
 
 void HC12Interface::init() {
   hc12Serial.begin(HC12_RADIO_BAUD, SERIAL_8N1, HC12_RX_PIN, HC12_TX_PIN);
 }
 
 void HC12Interface::update() {
-  hc12Consumer.update();
+  uint8_t buf[128];
+  log_d("[hc12] checking for available data");
+  while (hc12Serial.available()) {
+    auto len = hc12Serial.available();
+    log_d("[hc12] consuming %d bytes", len);
+    auto added = hc12Serial.readBytes(&buf[0], len < 128 ? len : 128);
+    hc12Consumer.feed(&buf[0], added);
+  }
 }
 
 void HC12Interface::send(const String &buf) {
