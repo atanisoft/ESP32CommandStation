@@ -83,7 +83,7 @@ void SensorManager::init() {
   JsonVariant count = root[F("count")];
   uint16_t sensorCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d sensors", sensorCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %d Sensors"), sensorCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Sensors"), sensorCount);
   if(sensorCount > 0) {
     for(auto sensor : root.get<JsonArray>(F("sensors"))) {
       sensors.add(new Sensor(sensor.as<JsonObject &>()));

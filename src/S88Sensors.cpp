@@ -66,7 +66,7 @@ void S88BusManager::init() {
   JsonVariant count = root[F("count")];
   uint16_t s88BusCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d S88 Busses", s88BusCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %d S88 Bus"), s88BusCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d S88 Bus"), s88BusCount);
   if(s88BusCount > 0) {
     for(auto bus : root.get<JsonArray>(F("buses"))) {
       s88SensorBus.add(new S88SensorBus(bus.as<JsonObject &>()));
@@ -186,7 +186,7 @@ S88SensorBus::S88SensorBus(JsonObject &json) {
   _lastSensorID = _sensorIDBase = json[F("sensorIDBase")];
   uint16_t sensorCount = json[F("sensorCount")];
   sensorJson[F("state")] = sensorBus->getStateString();
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("S88(%d) %d sensors"), _id, sensorCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("S88(%d) %02d sensors"), _id, sensorCount);
   for(uint16_t id = 0; id < sensorCount; id++) {
     _sensors.push_back(new S88Sensor(_sensorIDBase + id, id));
   }
