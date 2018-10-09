@@ -1,7 +1,7 @@
 /**********************************************************************
 DCC++ BASE STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017,2018 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,7 +18,109 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "DCCppESP32.h"
 #include <Preferences.h>
 
+
+String JSON_NAME_NODE PROGMEM = "name";
+String JSON_STATE_NODE PROGMEM = "state";
+String JSON_USAGE_NODE PROGMEM = "usage";
+
+String JSON_COUNT_NODE PROGMEM = "count";
+
+String JSON_ADDRESS_NODE PROGMEM = "address";
+
+String JSON_SUB_ADDRESS_NODE PROGMEM = "subAddress";
+String JSON_SPEED_NODE PROGMEM = "speed";
+String JSON_DIRECTION_NODE PROGMEM = "dir";
+String JSON_ORIENTATION_NODE PROGMEM = "orientation";
+String JSON_DESCRIPTION_NODE PROGMEM = "description";
+String JSON_TYPE_NODE PROGMEM = "type";
+String JSON_IDLE_NODE PROGMEM = "idle";
+
+String JSON_IDLE_ON_STARTUP_NODE PROGMEM = "idleOnStartup";
+String JSON_DEFAULT_ON_THROTTLE_NODE PROGMEM = "defaultOnThrottles";
+
+String JSON_FUNCTIONS_NODE PROGMEM = "functions";
+String JSON_LOCOS_NODE PROGMEM = "locos";
+String JSON_LOCO_NODE PROGMEM = "loco";
+
+String JSON_CONSIST_NODE PROGMEM = "consist";
+String JSON_CONSISTS_NODE PROGMEM = "consists";
+String JSON_DECODER_ASSISTED_NODE PROGMEM = "decoderAssisted";
+
+String JSON_OUTPUTS_NODE PROGMEM = "outputs";
+String JSON_ID_NODE PROGMEM = "id";
+String JSON_PIN_NODE PROGMEM = "pin";
+String JSON_FLAGS_NODE PROGMEM = "flags";
+String JSON_INVERTED_NODE PROGMEM = "inverted";
+String JSON_FORCE_STATE_NODE PROGMEM = "forceState";
+String JSON_DEFAULT_STATE_NODE PROGMEM = "defaultState";
+
+String JSON_SENSORS_NODE PROGMEM = "sensors";
+String JSON_PULLUP_NODE PROGMEM = "pullUp";
+
+String JSON_TURNOUTS_NODE PROGMEM = "turnouts";
+
+String JSON_S88_NODE PROGMEM = "s88";
+String JSON_S88_SENSOR_BASE_NODE PROGMEM = "sensorIDBase";
+
+String JSON_PROG_ON_MAIN PROGMEM = "pom";
+String JSON_CV_NODE PROGMEM = "cv";
+String JSON_VALUE_NODE PROGMEM = "value";
+String JSON_CV_BIT_NODE PROGMEM = "bit";
+String JSON_IDENTIFY_NODE PROGMEM = "identify";
+String JSON_ADDRESS_MODE_NODE PROGMEM = "addressMode";
+String JSON_SPEED_TABLE_NODE PROGMEM = "speedTable";
+String JSON_DECODER_VERSION_NODE PROGMEM = "version";
+String JSON_DECODER_MANUFACTURER_NODE PROGMEM = "manufacturer";
+
+String JSON_CREATE_NODE PROGMEM = "create";
+
+String JSON_OVERALL_STATE_NODE PROGMEM = "overallState";
+
+String JSON_VALUE_FORWARD PROGMEM = "FWD";
+String JSON_VALUE_REVERSE PROGMEM = "REV";
+String JSON_VALUE_TRUE PROGMEM = "true";
+String JSON_VALUE_FALSE PROGMEM = "false";
+String JSON_VALUE_NORMAL PROGMEM = "Normal";
+String JSON_VALUE_OFF PROGMEM = "Off";
+String JSON_VALUE_ON PROGMEM = "On";
+String JSON_VALUE_FAULT PROGMEM = "Fault";
+String JSON_VALUE_THROWN PROGMEM = "Thrown";
+String JSON_VALUE_CLOSED PROGMEM = "Closed";
+String JSON_VALUE_LONG_ADDRESS PROGMEM = "Long Address";
+String JSON_VALUE_SHORT_ADDRESS PROGMEM = "Short Address";
+String JSON_VALUE_MOBILE_DECODER PROGMEM = "Mobile Decoder";
+String JSON_VALUE_STATIONARY_DECODER PROGMEM = "Stationary Decoder";
+
+
+String ROSTER_JSON_FILE PROGMEM = "roster.json";
+String CONSISTS_JSON_FILE PROGMEM = "consists.json";
+String OUTPUTS_JSON_FILE PROGMEM = "outputs.json";
+String S88_SENSORS_JSON_FILE PROGMEM = "s88.json";
+String SENSORS_JSON_FILE PROGMEM = "sensors.json";
+String TURNOUTS_JSON_FILE PROGMEM = "turnouts.json";
 ConfigurationManager configStore;
+
+StaticJsonBuffer<20480> jsonConfigBuffer;
+
+#if defined(SD_CARD_ENABLED) && SD_CARD_ENABLED
+  #if defined(SD_CARD_USE_FSPI) && SD_CARD_USE_FSPI
+    SPIClass configSPI(FSPI);
+    #define SD_CARD_MOSI_PIN 8
+    #define SD_CARD_MISO_PIN 7
+    #define SD_CARD_CLK_PIN 6
+  #else
+    #define configSPI SPI
+    #if !defined(SD_CARD_MOSI_PIN)
+      #define SD_CARD_MOSI_PIN MOSI
+    #endif
+    #if !defined(SD_CARD_MISO_PIN)
+      #define SD_CARD_MISO_PIN MISO
+    #endif
+    #if !defined(SD_CARD_CLK_PIN)
+      #define SD_CARD_CLK_PIN SCK
+    #endif
+  #endif
+#endif
 
 ConfigurationManager::ConfigurationManager() :
 #if defined(SD_CARD_ENABLED) && SD_CARD_ENABLED
@@ -41,38 +143,66 @@ ConfigurationManager::~ConfigurationManager() {
 void ConfigurationManager::init() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Loading Config"));
 #if defined(SD_CARD_ENABLED) && SD_CARD_ENABLED
-  SPI.begin(SD_CARD_CLK_PIN, SD_CARD_MISO_PIN, SD_CARD_MOSI_PIN, SD_CARD_CS_PIN);
-  SD.begin(SD_CARD_CS_PIN);
+  configSPI.begin(SD_CARD_CLK_PIN, SD_CARD_MISO_PIN, SD_CARD_MOSI_PIN, SD_CARD_SS_PIN);
+  SD.begin(SD_CARD_SS_PIN, configSPI);
   if(SD.cardType() == CARD_NONE) {
     log_w("SD Card not found, switching to SPIFFS storage");
     _fs = SPIFFS;
     _usingSpiffs = true;
   }
-#else
-  if(!SPIFFS.begin()) {
+#endif
+  if(_usingSpiffs && !SPIFFS.begin()) {
     log_i("SPIFFS mount failed, formatting SPIFFS and retrying");
     SPIFFS.begin(true);
   }
-#endif
   _fs.mkdir("/DCCppESP32");
 }
 
 void ConfigurationManager::clear() {
 }
 
-JsonObject &ConfigurationManager::load(const String &name, DynamicJsonBuffer &jsonBuffer) {
+JsonObject &ConfigurationManager::load(const String &name) {
+  log_i("Loading /DCCppESP32/%s using %s", name.c_str(), _usingSpiffs ? "SPIFFS" : "SD");
+  bool restartDCC = false;
+  if(_usingSpiffs && isDCCSignalEnabled()) {
+    stopDCCSignalGenerators();
+    restartDCC = true;
+  }
   File configFile = _fs.open("/DCCppESP32/" + name, FILE_READ);
-  JsonObject &root = jsonBuffer.parseObject(configFile);
+  jsonConfigBuffer.clear();
+  JsonObject &root = jsonConfigBuffer.parseObject(configFile);
   configFile.close();
+  if(restartDCC) {
+    startDCCSignalGenerators();
+  }
   return root;
 }
 
 void ConfigurationManager::store(const String &name, const JsonObject &json) {
+  log_i("Storing /DCCppESP32/%s using %s", name.c_str(), _usingSpiffs ? "SPIFFS" : "SD");
+  bool restartDCC = false;
+  if(_usingSpiffs && isDCCSignalEnabled()) {
+    stopDCCSignalGenerators();
+    restartDCC = true;
+  }
   File configFile = _fs.open("/DCCppESP32/" + name, FILE_WRITE);
   if(!configFile) {
     log_e("Failed to open /DCCppESP32/%s", name.c_str());
+    if(restartDCC) {
+      startDCCSignalGenerators();
+    }
     return;
   }
   json.printTo(configFile);
   configFile.close();
+  if(restartDCC) {
+    startDCCSignalGenerators();
+  }
+}
+
+JsonObject &ConfigurationManager::createRootNode(bool clearBuffer) {
+  if(clearBuffer) {
+    jsonConfigBuffer.clear();
+  }
+  return jsonConfigBuffer.createObject();
 }

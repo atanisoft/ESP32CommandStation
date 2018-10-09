@@ -76,14 +76,13 @@ LinkedList<Turnout *> turnouts([](Turnout *turnout) {delete turnout; });
 
 void TurnoutManager::init() {
   log_i("Initializing turnout list");
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = configStore.load("Turnouts.json", jsonBuffer);
-  JsonVariant count = root[F("count")];
+  JsonObject &root = configStore.load(TURNOUTS_JSON_FILE);
+  JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t turnoutCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d turnouts", turnoutCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Turnouts"), turnoutCount);
   if(turnoutCount > 0) {
-    for(auto turnout : root.get<JsonArray>(F("turnouts"))) {
+    for(auto turnout : root.get<JsonArray>(JSON_TURNOUTS_NODE)) {
       turnouts.add(new Turnout(turnout.as<JsonObject &>()));
     }
   }
@@ -95,17 +94,15 @@ void TurnoutManager::clear() {
 }
 
 uint16_t TurnoutManager::store() {
-
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();
-  JsonArray &array = root.createNestedArray("turnouts");
+  JsonObject &root = configStore.createRootNode();
+  JsonArray &array = root.createNestedArray(JSON_TURNOUTS_NODE);
   uint16_t turnoutStoredCount = 0;
   for (const auto& turnout : turnouts) {
     turnout->toJson(array.createNestedObject());
     turnoutStoredCount++;
   }
-  root[F("count")] = turnoutStoredCount;
-  configStore.store("Turnouts.json", root);
+  root[JSON_COUNT_NODE] = turnoutStoredCount;
+  configStore.store(TURNOUTS_JSON_FILE, root);
   return turnoutStoredCount;
 }
 
@@ -196,11 +193,11 @@ Turnout::Turnout(uint16_t turnoutID, uint16_t address, uint8_t subAddress,
 }
 
 Turnout::Turnout(JsonObject &json) {
-  _turnoutID = json.get<int>(F("id"));
-  _address = json.get<int>(F("address"));
-  _subAddress = json.get<int>(F("subAddress"));
-  _thrown = json.get<bool>(F("state"));
-  _orientation = (TurnoutOrientation)json.get<int>(F("orientation"));
+  _turnoutID = json.get<int>(JSON_ID_NODE);
+  _address = json.get<int>(JSON_ADDRESS_NODE);
+  _subAddress = json.get<int>(JSON_SUB_ADDRESS_NODE);
+  _thrown = json.get<bool>(JSON_STATE_NODE);
+  _orientation = (TurnoutOrientation)json.get<int>(JSON_ORIENTATION_NODE);
   log_i("Turnout(%d, %d, %d)", _turnoutID, _address, _subAddress);
 }
 
@@ -211,19 +208,19 @@ void Turnout::update(uint16_t address, uint8_t subAddress) {
 }
 
 void Turnout::toJson(JsonObject &json, bool readableStrings) {
-  json[F("id")] = _turnoutID;
-  json[F("address")] = _address;
-  json[F("subAddress")] = _subAddress;
+  json[JSON_ID_NODE] = _turnoutID;
+  json[JSON_ADDRESS_NODE] = _address;
+  json[JSON_SUB_ADDRESS_NODE] = _subAddress;
   if(readableStrings) {
     if(_thrown) {
-      json[F("state")] = "Thrown";
+      json[JSON_STATE_NODE] = JSON_VALUE_THROWN;
     } else {
-      json[F("state")] = "Closed";
+      json[JSON_STATE_NODE] = JSON_VALUE_CLOSED;
     }
   } else {
-    json[F("state")] = _thrown;
+    json[JSON_STATE_NODE] = _thrown;
   }
-  json[F("orientation")] = _orientation;
+  json[JSON_ORIENTATION_NODE] = _orientation;
 }
 
 void Turnout::set(bool thrown) {
@@ -234,7 +231,7 @@ void Turnout::set(bool thrown) {
   args.push_back(String(_thrown));
   DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   wifiInterface.printf(F("<H %d %d>"), _turnoutID, !_thrown);
-  log_i("Turnout(%d) %s", _turnoutID, _thrown ? "Thrown" : "Closed");
+  log_i("Turnout(%d) %s", _turnoutID, _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
 }
 
 void Turnout::showStatus() {
@@ -249,15 +246,15 @@ void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
     uint16_t turnoutID = arguments[0].toInt();
     if (arguments.size() == 1 && TurnoutManager::remove(turnoutID)) {
       // delete turnout
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else if (arguments.size() == 2 && TurnoutManager::set(turnoutID, arguments[1].toInt() == 1)) {
       // throw turnout
     } else if (arguments.size() == 3) {
       // create/update turnout
       TurnoutManager::createOrUpdate(turnoutID, arguments[1].toInt(), arguments[2].toInt());
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else {
-      wifiInterface.printf(F("<X>"));
+      wifiInterface.send(COMMAND_FAILED_RESPONSE);
     }
   }
 }

@@ -134,7 +134,7 @@ void RemoteSensorManager::getState(JsonArray &array) {
 
 void RemoteSensorManager::show() {
   if(remoteSensors.isEmpty()) {
-    wifiInterface.printf(F("<X>"));
+    wifiInterface.send(COMMAND_FAILED_RESPONSE);
   } else {
     for (const auto& sensor : remoteSensors) {
       sensor->showSensor();
@@ -163,7 +163,7 @@ void RemoteSensor::showSensor() {
 void RemoteSensor::toJson(JsonObject &json, bool includeState) {
   json[F("id")] = getRawID();
   json[F("value")] = getSensorValue();
-  json[F("active")] = isActive();
+  json[F("state")] = isActive();
   json[F("lastUpdate")] = getLastUpdate();
   // for compatibility with sensors table
   json[F("pin")] = getPin();
@@ -178,13 +178,13 @@ void RemoteSensorsCommandAdapter::process(const std::vector<String> arguments) {
     uint16_t sensorID = arguments[0].toInt();
     if (arguments.size() == 1 && RemoteSensorManager::remove(sensorID)) {
       // delete remote sensor
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else if (arguments.size() == 2) {
       // create/update remote sensor
       RemoteSensorManager::createOrUpdate(sensorID, arguments[1].toInt());
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else {
-      wifiInterface.printf(F("<X>"));
+      wifiInterface.send(COMMAND_FAILED_RESPONSE);
     }
   }
 }

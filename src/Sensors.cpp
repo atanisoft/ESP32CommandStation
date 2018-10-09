@@ -78,14 +78,13 @@ LinkedList<Sensor *> sensors([](Sensor *sensor) {delete sensor; });
 
 void SensorManager::init() {
   log_i("Initializing sensors list");
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = configStore.load("Sensors.json", jsonBuffer);
-  JsonVariant count = root[F("count")];
+  JsonObject &root = configStore.load(SENSORS_JSON_FILE);
+  JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t sensorCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d sensors", sensorCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Sensors"), sensorCount);
   if(sensorCount > 0) {
-    for(auto sensor : root.get<JsonArray>(F("sensors"))) {
+    for(auto sensor : root.get<JsonArray>(JSON_SENSORS_NODE)) {
       sensors.add(new Sensor(sensor.as<JsonObject &>()));
     }
   }
@@ -97,9 +96,8 @@ void SensorManager::clear() {
 }
 
 uint16_t SensorManager::store() {
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();
-  JsonArray &array = root.createNestedArray("sensors");
+  JsonObject &root = configStore.createRootNode();
+  JsonArray &array = root.createNestedArray(JSON_SENSORS_NODE);
   uint16_t sensorStoredCount = 0;
   for (const auto& sensor : sensors) {
     if(sensor->getPin() != NON_STORED_SENSOR_PIN) {
@@ -107,8 +105,8 @@ uint16_t SensorManager::store() {
       sensorStoredCount++;
     }
   }
-  root[F("count")] = sensorStoredCount;
-  configStore.store("Sensors.json", root);
+  root[JSON_COUNT_NODE] = sensorStoredCount;
+  configStore.store(SENSORS_JSON_FILE, root);
   return sensorStoredCount;
 }
 
@@ -176,9 +174,9 @@ Sensor::Sensor(uint16_t sensorID, int8_t pin, bool pullUp, bool announce) : _sen
 }
 
 Sensor::Sensor(JsonObject &json) : _lastState(false) {
-  _sensorID = json[F("id")];
-  _pin = json[F("pin")];
-  _pullUp = json[F("pullUp")];
+  _sensorID = json[JSON_ID_NODE];
+  _pin = json[JSON_PIN_NODE];
+  _pullUp = json[JSON_PULLUP_NODE];
   log_i("Sensor(%d) on pin %d loaded, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
   if(_pullUp) {
     pinMode(_pin, INPUT_PULLUP);
@@ -188,11 +186,11 @@ Sensor::Sensor(JsonObject &json) : _lastState(false) {
 }
 
 void Sensor::toJson(JsonObject &json, bool includeState) {
-  json[F("id")] = _sensorID;
-  json[F("pin")] = _pin;
-  json[F("pullUp")] = _pullUp;
+  json[JSON_ID_NODE] = _sensorID;
+  json[JSON_PIN_NODE] = _pin;
+  json[JSON_PULLUP_NODE] = _pullUp;
   if(includeState) {
-    json[F("active")] = _lastState;
+    json[JSON_STATE_NODE] = _lastState;
   }
 }
 
@@ -225,13 +223,13 @@ void SensorCommandAdapter::process(const std::vector<String> arguments) {
     uint16_t sensorID = arguments[0].toInt();
     if (arguments.size() == 1 && SensorManager::remove(sensorID)) {
       // delete turnout
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else if (arguments.size() == 3) {
       // create sensor
       SensorManager::createOrUpdate(sensorID, arguments[1].toInt(), arguments[2].toInt() == 1);
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else {
-      wifiInterface.printf(F("<X>"));
+      wifiInterface.send(COMMAND_FAILED_RESPONSE);
     }
   }
 }

@@ -130,7 +130,7 @@ void WiFiInterface::begin() {
     InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("NO AP Found"));
 #endif
 		log_i("WiFI connect failed, restarting");
-		ESP.restart();
+		esp32_restart();
 	}
 }
 

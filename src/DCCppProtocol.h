@@ -47,3 +47,6 @@ private:
   void processData();
   std::vector<uint8_t> _buffer;
 };
+
+const String COMMAND_FAILED_RESPONSE = "<X>";
+const String COMMAND_SUCCESSFUL_RESPONSE = "<O>";

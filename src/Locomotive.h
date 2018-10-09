@@ -25,6 +25,7 @@ COPYRIGHT (c) 2017,2018 Mike Dunston
 class Locomotive {
 public:
   Locomotive(uint8_t);
+  Locomotive(JsonObject &);
   virtual ~Locomotive() {}
   uint8_t getRegister() {
     return _registerNumber;
@@ -64,21 +65,9 @@ public:
   void setIdle() {
     setSpeed(0);
   }
-  void setIdleOnStartup(bool value=false) {
-    _idleOnStartup = value;
-  }
-  bool isIdleOnStartup() {
-    return _idleOnStartup;
-  }
-  void setDefaultOnThrottles(bool value=false) {
-    _defaultOnThrottles = value;
-  }
-  bool isDefaultOnThrottles() {
-    return _defaultOnThrottles;
-  }
   void sendLocoUpdate();
   void showStatus();
-  void toJson(JsonObject &, bool=false);
+  void toJson(JsonObject &, bool=true, bool=true);
   void setFunction(uint8_t funcID, bool state=false) {
     _functionState[funcID] = state;
     _functionsChanged = true;
@@ -94,8 +83,6 @@ private:
   bool _direction;
   bool _orientation;
   uint32_t _lastUpdate;
-  bool _idleOnStartup;
-  bool _defaultOnThrottles;
   bool _functionsChanged;
   bool _functionState[MAX_LOCOMOTIVE_FUNCTIONS];
   std::vector<uint8_t> _functionPackets[MAX_LOCOMOTIVE_FUNCTION_PACKETS];
@@ -107,9 +94,10 @@ public:
     Locomotive(-1), _decoderAssisstedConsist(decoderAssistedConsist) {
     setLocoAddress(address);
   }
+  LocomotiveConsist(JsonObject &);
   virtual ~LocomotiveConsist();
   void showStatus();
-  void toJson(JsonObject &, bool=false);
+  void toJson(JsonObject &, bool=true, bool=true);
   bool isAddressInConsist(uint16_t);
   void updateThrottle(uint16_t, int8_t, bool);
   void addLocomotive(uint16_t, bool, uint8_t);
@@ -128,8 +116,53 @@ public:
     }
   }
 private:
-  const bool _decoderAssisstedConsist;
+  bool _decoderAssisstedConsist;
   std::vector<Locomotive *> _locos;
+};
+
+class RosterEntry {
+public:
+  RosterEntry(uint16_t address) : _description(""), _address(address), _type(""),
+    _idleOnStartup(false), _defaultOnThrottles(false) {}
+  RosterEntry(const JsonObject &);
+  void toJson(JsonObject &);
+  void setDescription(String description) {
+    _description = description;
+  }
+  String getDescription() {
+    return _description;
+  }
+  void setAddress(const uint16_t address) {
+    _address = address;
+  }
+  uint16_t getAddress() {
+    return _address;
+  }
+  void setType(String type) {
+    _type = type;
+  }
+  String getType() {
+    return _type;
+  }
+  void setIdleOnStartup(bool value=false) {
+    _idleOnStartup = value;
+  }
+  bool isIdleOnStartup() {
+    return _idleOnStartup;
+  }
+  void setDefaultOnThrottles(bool value=false) {
+    _defaultOnThrottles = value;
+  }
+  bool isDefaultOnThrottles() {
+    return _defaultOnThrottles;
+  }
+
+private:
+  String _description;
+  uint16_t _address;
+  String _type;
+  bool _idleOnStartup;
+  bool _defaultOnThrottles;
 };
 
 class LocomotiveManager {
@@ -150,16 +183,21 @@ public:
     return _locos.length();
   }
   static void init();
+  static void clear();
   static uint16_t store();
-  static std::vector<Locomotive *> getDefaultLocos(const int8_t=-1);
+  static std::vector<RosterEntry *> getDefaultLocos(const int8_t=-1);
   static void getDefaultLocos(JsonArray &);
   static void getActiveLocos(JsonArray &);
+  static void getRosterEntries(JsonArray &);
   static bool isConsistAddress(uint16_t);
   static bool isAddressInConsist(uint16_t);
   static LocomotiveConsist *getConsistByID(uint8_t);
   static LocomotiveConsist *getConsistForLoco(uint16_t);
   static LocomotiveConsist *createLocomotiveConsist(int8_t);
+  static RosterEntry *getRosterEntry(uint16_t, bool=true);
+  static void removeRosterEntry(uint16_t);
 private:
+  static LinkedList<RosterEntry *> _roster;
   static LinkedList<Locomotive *> _locos;
   static LinkedList<LocomotiveConsist *> _consists;
 };

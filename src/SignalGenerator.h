@@ -44,12 +44,14 @@ struct SignalGenerator {
   void loadPacket(std::vector<uint8_t>, int, bool=false);
   void waitForQueueEmpty();
   bool isQueueEmpty();
+  bool isEnabled();
 
   hw_timer_t *_fullCycleTimer;
   hw_timer_t *_pulseTimer;
   String _name;
   uint8_t _directionPin;
   int _currentMonitorPin;
+  bool _enabled;
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
   Packet *_currentPacket;
@@ -67,6 +69,7 @@ extern SignalGenerator dccSignal[2];
 void configureDCCSignalGenerators();
 void startDCCSignalGenerators();
 void stopDCCSignalGenerators();
+bool isDCCSignalEnabled();
 void sendDCCEmergencyStop();
 
 int16_t readCV(const uint16_t);
@@ -80,6 +83,12 @@ void writeOpsCVBit(const uint16_t, const uint16_t, const uint8_t, const bool);
 #define MAX_DCC_SIGNAL_GENERATORS 2
 
 enum CV_NAMES {
+  SHORT_ADDRESS=1,
+  DECODER_VERSION=7,
+  DECODER_MANUFACTURER=8,
+  ACCESSORY_DECODER_MSB_ADDRESS=9,
+  LONG_ADDRESS_MSB_ADDRESS=17,
+  LONG_ADDRESS_LSB_ADDRESS=18,
   CONSIST_ADDRESS=19,
   CONSIST_FUNCTION_CONTROL_F1_F8=21,
   CONSIST_FUNCTION_CONTROL_FL_F9_F12=22,
@@ -88,6 +97,17 @@ enum CV_NAMES {
 
 const uint8_t CONSIST_ADDRESS_REVERSED_ORIENTATION = 0x80;
 const uint8_t CONSIST_ADDRESS_NO_ADDRESS = 0x00;
+
+enum DECODER_CONFIG_BITS {
+  LOCOMOTIVE_DIRECTION=0,
+  FL_CONTROLLED_BY_SPEED=1,
+  POWER_CONVERSION=2,
+  BIDIRECTIONAL_COMMUNICATION=3,
+  SPEED_TABLE=4,
+  SHORT_OR_LONG_ADDRESS=5,
+  ACCESSORY_ADDRESS_MODE=6,
+  DECODER_TYPE=7
+};
 
 enum CONSIST_FUNCTION_CONTROL_F1_F8_BITS {
   F1_BIT=0,
@@ -107,7 +127,3 @@ enum CONSIST_FUNCTION_CONTROL_FL_F9_F12_BITS {
   F11_BIT=3,
   F12_BIT=4
 };
-
-//#define CV_CONSIST_ADDRESS_NO_CONSIST_VALUE 0
-//#define CV_CONSIST_ADDRESS_REVERSED_ORIENTATION_VALUE 0x80
-//#define CV_CONSIST_FUNCTION_CONTROL_F1_F8_VALUE 255

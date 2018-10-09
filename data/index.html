@@ -1,243 +1,134 @@
+<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>DCC++</title>
+	<title>DCC++ ESP32</title>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-	<script src="https://cdn.rawgit.com/jbloemendal/jquery-simple-websocket/v1.0.0/jquery.simple.websocket.js"></script>
-	<script src="https://cdn.rawgit.com/Mikhus/canvas-gauges/master/gauge.min.js"></script>
-	<script src="https://cdn.rawgit.com/Lwangaman/jQuery-Clock-Plugin/master/jqClock.min.js"></script>
-	<script src="https://cdn.rawgit.com/simontabor/jquery-toggles/master/toggles.min.js"></script>
-	<script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
-	<script src="https://cdn.datatables.net/1.10.16/js/dataTables.jqueryui.min.js"></script>
-	<script src="https://cdn.rawgit.com/flesler/hashmap/master/hashmap.js"></script>
-	<script src="https://cdn.rawgit.com/furf/jquery-ui-touch-punch/master/jquery.ui.touch-punch.min.js"></script>
-	<script src="https://cdn.datatables.net/buttons/1.4.2/js/dataTables.buttons.min.js"></script>
-	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/vader/jquery-ui.css">
-	<link rel="stylesheet" href="https://cdn.rawgit.com/simontabor/jquery-toggles/master/css/toggles.css">
-	<link rel="stylesheet" href="https://cdn.rawgit.com/simontabor/jquery-toggles/master/css/themes/toggles-dark.css">
-	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
-	<link rel="stylesheet" href="https://cdn.rawgit.com/twbs/bootstrap/v4.0.0/dist/css/bootstrap-grid.css">
-	<link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.4.2/css/buttons.jqueryui.min.css">
+	<link rel="stylesheet" href="https://code.jquery.com/mobile/1.5.0-rc1/jquery.mobile-1.5.0-rc1.min.css">
+	<script src="https://code.jquery.com/mobile/1.5.0-rc1/jquery.mobile-1.5.0-rc1.min.js"></script>
+	<script src="https://cdn.rawgit.com/jbloemendal/jquery-simple-websocket/master/dist/jquery.simple.websocket.min.js"></script>
+	<script src="https://cdn.rawgit.com/JohnRDOrazio/jQuery-Clock-Plugin/master/jqClock-lite.min.js"></script>
 	<style>
-		.clockdate {font-family:Arial,Helvetica,sans-serif;font-size:13px;text-align:center;text-shadow:0 0 5px #008B8B;color:#00CCFF;display:block;}
-		.clocktime {display:inline;font-size:28px;text-align:center;font-family:Arial,Helvetica,sans-serif;text-shadow:0 0 5px #008B8B;color:#00CCFF;display:block;}
-		#throttleSpeedRange { height:350; }
-		#throttleSpeedGauge { height:350; width:350; readonly:true; background-color:#121212; color:#00CCFF; border:0px; resize:none; }
-		#serialMonitorContent { height:10em; width:35em; readonly:true; background-color:#121212; color:#00CCFF; border:0px; resize:none; overflow:hidden; }
-		#throttleConsole { height:5em; width:40em; readonly:true; background-color:#121212; color:#00CCFF; border:0px; resize:none; overflow:hidden; }
-		#progResult { height:10em; width:35em; readonly:true; background-color:#121212; color:#00CCFF; border:0px; resize:none; overflow:hidden; }
-		.smaller-button { font-size: 9px !important }
-		.ui-button-text { font-size: inherit !important; }
-		@media (max-width: 500px) {
-			#throttleSpeedRange { height:200; }
-			#throttleSpeedGauge { height:200; width:200; }
-			#serialMonitorContent { width:20em; }
-			#throttleConsole { width:20em; }
+		.clocktime { padding:5px; }
+		.s88SensorOn { height:25px; width:40px; background-color:#00FF00; color:#FFFFFF; }
+		.s88SensorOff { height:25px; width:40px; background-color:#FF0000; color:#FFFFFF; }
+		@media (max-width: 35em) {
+			tbody tr td:first-child { border-bottom: 1px solid #cfcfcf; }
+			.s88Spacer {display:block;}
+			.s88Spacer:after {content: none;}
 		}
-		@media (max-height: 780px) {
-			.hideForHeight { display:none }
-		}
-		.s88SensorOn { height: 25px; width:40px; background-color:#00FF00; color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;font-size:12px;text-align:left }
-		.s88SensorOff { height: 25px; width:40px; background-color:#FF0000; color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;font-size:12px;text-align:left }
+		tbody tr:nth-child(odd) td, tbody tr:nth-child(odd) th { background-color: #9a9a9a;}
 	</style>
 </head>
 <body>
-<div id="top-tabs">
-	<ul>
-		<li><a href="#tab-top-0">Throttle</a></li>
-		<li><a href="#tab-top-1">Base Station</a></li>
-	</ul>
-	<div id="tab-top-0">
-		<div class="fluid-container">
-			<div class="row">
-				<div class="col-auto">
-					<div id="clock"></div>
-				</div>
-				<div class="col-auto">
-					<textarea id="throttleConsole">Connect to continue.</textarea>
-				</div>
+	<div data-role="page" data-theme="b">
+		<div data-role="header">DCC++ ESP32</div>
+		<div data-role="tabs" id="tabs">
+			<div data-role="navbar">
+				<ul>
+					<li><a href="#throttlePage" data-icon="ui-icon-home">Throttle</a></li>
+					<li><a href="#baseStationPage" data-icon="ui-icon-gear">Base Station</a></li>
+				</ul>
 			</div>
-			<div class="row center">
-				<div class="col-auto"><div id="throttleConnect" class="toggle toggle-dark"></div><div id="throttlePower" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="throttleDirection" class="toggle toggle-dark"></div></div>
-				<div class="col-1"></div>
-				<div class="col-auto"><button id="btnThrottleEStop"><font color="RED">EMERGENCY<br>STOP</font></button></div>
-			</div>
-			<div class="row">
-				<div class="col-auto">
-					<div id="throttleSpeedRange"></div>
+			<div id="throttlePage">
+				<div class="ui-grid-b">
+					<div class="ui-block-a"><label for="selected-loco-address">Locomotive:</label><input type="number" readonly="true" id="selected-loco-address" value="0"/></div>
+					<div class="ui-block-b"><label for="throttle-direction">Direction:</label><input type="checkbox" id="throttle-direction" data-role="flipswitch" data-off-text="FWD" data-on-text="REV" disabled="disabled"/></div>
+					<div class="ui-block-c"><button id="throttle-estop" class="ui-corner-all"><font color="RED">EMERGENCY<br>STOP</font></button></div>
 				</div>
-				<div class="col-auto">
-					<canvas id="throttleSpeedGauge"
-						data-type="radial-gauge"
-						data-title="DCC++"
-						data-color-title="#FFFFFF"
-						data-min-value="0"
-						data-max-value="128"
-						data-major-ticks='["0","10","20","30","40","50","60","70","80","90","100","110","120","128"]'
-						data-minor-ticks="10"
-						data-stroke-ticks="true"
-						data-units="Speed"
-						data-value="0"
-						data-value-dec="0"
-						data-glow="true"
-						data-animation-delay="10"
-						data-animation-duration="400"
-						data-animation-fn="linear"
-						data-color-plate="#4C4E4F"
-						data-color-needle="#FF0000"
-						data-color-needle-end="#00CCFF"
-						data-color-major-ticks="#00CCFF"
-						data-color-minor-ticks="#00CCFF"
-						data-color-numbers="#00CCFF"
-						data-highlights='[{"from":100, "to": 128, "color": "#FF0000"}]'>
-					</canvas>
+				<div class="ui-grid-a">
+					<div class="ui-block-a"><label for="throttle-speed">Speed:</label><input type="range" id="throttle-speed" min="0" max="128" value="0" disabled="disabled"/></div>
+					<div class="ui-block-b"><button id="throttle-select-loco" class="ui-corner-all">Select Locomotive</button><button id="throttle-release-loco" class="ui-corner-all" disabled="disabled">Release Locomotive</button></div>
 				</div>
-				<div class="col">
-					<div id="locoGroup">
-						<div class="row">
-							<label for="loco1">123</label>
-							<input type="radio" name="loco" id="loco1" value="">
-							<span id="loco1Info" class="clockdate">Idle</span>
+				<div class="ui-grid-solo">
+					<div class="ui-block-a">Functions:</div>
+				</div>
+				<div class="ui-grid-d">
+					<div class="ui-block-a"><input type="checkbox" id="funct_0" data-role="flipswitch"/></div>
+					<div class="ui-block-b"><input type="checkbox" id="funct_1" data-role="flipswitch"/></div>
+					<div class="ui-block-c"><input type="checkbox" id="funct_2" data-role="flipswitch"/></div>
+					<div class="ui-block-d"><input type="checkbox" id="funct_3" data-role="flipswitch"/></div>
+					<div class="ui-block-e"><input type="checkbox" id="funct_4" data-role="flipswitch"/></div>
+				</div>
+				<div class="ui-grid-d">
+					<div class="ui-block-a"></div>
+					<div class="ui-block-b"><input type="checkbox" id="funct_5" data-role="flipswitch"/></div>
+					<div class="ui-block-c"><input type="checkbox" id="funct_6" data-role="flipswitch"/></div>
+					<div class="ui-block-d"><input type="checkbox" id="funct_7" data-role="flipswitch"/></div>
+					<div class="ui-block-e"><input type="checkbox" id="funct_8" data-role="flipswitch"/></div>
+				</div>
+				<div data-role="collapsibleset">
+					<div data-role="collapsible">
+						<h2>F9-F28</h2>
+						<div class="ui-grid-d">
+							<div class="ui-block-a"></div>
+							<div class="ui-block-b"><input type="checkbox" id="funct_9" data-role="flipswitch"/></div>
+							<div class="ui-block-c"><input type="checkbox" id="funct_10" data-role="flipswitch"/></div>
+							<div class="ui-block-d"><input type="checkbox" id="funct_11" data-role="flipswitch"/></div>
+							<div class="ui-block-e"><input type="checkbox" id="funct_12" data-role="flipswitch"/></div>
 						</div>
-						<div class="row">
-							<label for="loco2">456</label>
-							<input type="radio" name="loco" id="loco2" value="">
-							<span id="loco2Info" class="clockdate">Idle</span>
+						<div class="ui-grid-d">
+							<div class="ui-block-a"></div>
+							<div class="ui-block-b"><input type="checkbox" id="funct_13" data-role="flipswitch"/></div>
+							<div class="ui-block-c"><input type="checkbox" id="funct_14" data-role="flipswitch"/></div>
+							<div class="ui-block-d"><input type="checkbox" id="funct_15" data-role="flipswitch"/></div>
+							<div class="ui-block-e"><input type="checkbox" id="funct_16" data-role="flipswitch"/></div>
 						</div>
-						<div class="row">
-							<label for="loco3">789</label>
-							<input type="radio" name="loco" id="loco3" value="">
-							<span id="loco3Info" class="clockdate">Idle</span>
+						<div class="ui-grid-d">
+							<div class="ui-block-a"></div>
+							<div class="ui-block-b"><input type="checkbox" id="funct_17" data-role="flipswitch"/></div>
+							<div class="ui-block-c"><input type="checkbox" id="funct_18" data-role="flipswitch"/></div>
+							<div class="ui-block-d"><input type="checkbox" id="funct_19" data-role="flipswitch"/></div>
+							<div class="ui-block-e"><input type="checkbox" id="funct_20" data-role="flipswitch"/></div>
 						</div>
-						<div class="row">
-							<label for="loco4">012</label>
-							<input type="radio" name="loco" id="loco4" value="">
-							<span id="loco4Info" class="clockdate">Idle</span>
+						<div class="ui-grid-d">
+							<div class="ui-block-a"></div>
+							<div class="ui-block-b"><input type="checkbox" id="funct_21" data-role="flipswitch"/></div>
+							<div class="ui-block-c"><input type="checkbox" id="funct_22" data-role="flipswitch"/></div>
+							<div class="ui-block-d"><input type="checkbox" id="funct_23" data-role="flipswitch"/></div>
+							<div class="ui-block-e"><input type="checkbox" id="funct_24" data-role="flipswitch"/></div>
 						</div>
-						<div class="row">
-							<label for="loco5">345</label>
-							<input type="radio" name="loco" id="loco5" value="">
-							<span id="loco5Info" class="clockdate">Idle</span>
-						</div>
-						<div class="row hideForHeight">
-							<label for="loco6">678</label>
-							<input type="radio" name="loco" id="loco6" value="">
-							<span id="loco6Info" class="clockdate">Idle</span>
-						</div>
-						<div class="row hideForHeight">
-							<label for="loco7">901</label>
-							<input type="radio" name="loco" id="loco7" value="">
-							<span id="loco7Info" class="clockdate">Idle</span>
-						</div>
-						<div class="row hideForHeight">
-							<label for="loco8">234</label>
-							<input type="radio" name="loco" id="loco8" value="">
-							<span id="loco8Info" class="clockdate">Idle</span>
-						</div>
-						<div class="row hideForHeight">
-							<label for="loco9">567</label>
-							<input type="radio" name="loco" id="loco9" value="">
-							<span id="loco9Info" class="clockdate">Idle</span>
-						</div>
-						<div class="row hideForHeight">
-							<label for="loco10">890</label>
-							<input type="radio" name="loco" id="loco10" value="">
-							<span id="loco10Info" class="clockdate">Idle</span>
+						<div class="ui-grid-d">
+							<div class="ui-block-a"></div>
+							<div class="ui-block-b"><input type="checkbox" id="funct_25" data-role="flipswitch"/></div>
+							<div class="ui-block-c"><input type="checkbox" id="funct_26" data-role="flipswitch"/></div>
+							<div class="ui-block-d"><input type="checkbox" id="funct_27" data-role="flipswitch"/></div>
+							<div class="ui-block-e"><input type="checkbox" id="funct_28" data-role="flipswitch"/></div>
 						</div>
 					</div>
 				</div>
 			</div>
-			<div class="row">
-				<div class="col-1"></div>
-				<div class="col-auto"><div id="funct_0" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_1" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_2" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_3" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_4" class="toggle toggle-dark"></div></div>
-			</div>
-			<div class="row">
-				<div class="col-1"></div>
-				<div class="col-auto"><div id="funct_5" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_6" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_7" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_8" class="toggle toggle-dark"></div></div>
-			</div>
-			<div class="row">
-				<div class="col-1"></div>
-				<div class="col-auto"><div id="funct_9" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_10" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_11" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_12" class="toggle toggle-dark"></div></div>
-			</div>
-			<div class="row">
-				<div class="col-1"></div>
-				<div class="col-auto"><div id="funct_13" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_14" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_15" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_16" class="toggle toggle-dark"></div></div>
-			</div>
-			<div class="row">
-				<div class="col-1"></div>
-				<div class="col-auto"><div id="funct_17" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_18" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_19" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_20" class="toggle toggle-dark"></div></div>
-			</div>
-			<div class="row">
-				<div class="col-1"></div>
-				<div class="col-auto"><div id="funct_21" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_22" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_23" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_24" class="toggle toggle-dark"></div></div>
-			</div>
-			<div class="row">
-				<div class="col-1"></div>
-				<div class="col-auto"><div id="funct_25" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_26" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_27" class="toggle toggle-dark"></div></div>
-				<div class="col-auto"><div id="funct_28" class="toggle toggle-dark"></div></div>
-			</div>
-		</div>
-	</div>
-	<div id="tab-top-1">
-		<div id="dcc-tabs">
-			<ul>
-				<li><a href="#dcc-tab-0">Status</a></li>
-				<li><a href="#dcc-tab-1">Turnouts</a></li>
-				<li><a href="#dcc-tab-2">Sensors</a></li>
-				<li><a href="#dcc-tab-3">Sensors (S88)</a></li>
-				<li><a href="#dcc-tab-4">Outputs</a></li>
-				<li><a href="#dcc-tab-5">Locomotive Roster</a></li>
-				<li><a href="#dcc-tab-6">Programmer</a></li>
-			</ul>
-			<div id="dcc-tab-0">
-				<div class="row">
-					<div class="col-auto"><label for="statusTrackPower">Track Power:</label></div>
-					<div class="col-auto"><div id="statusTrackPower" class="toggle toggle-dark"></div></div>
-				</div>
-				<div class="row">
-					<div class="col center">
-						<table id="powerDistrictStatus" class="display" cellspacing="0" width="100%">
-							<thead>
-								<tr>
-									<th>District</th>
-									<th>Status</th>
-									<th>Utilization (mA)</th>
-								</tr>
-							</thead>
-						</table>
-					</div>
-				</div>
-				<div class="row">
-					<div class="col-auto">Active Locomotives</div>
-				</div>
-				<div class="row">
-					<div class="col center">
-						<div class="col center">
-							<table id="locomotives" class="display" cellspacing="0" width="100%">
+			<div id="baseStationPage">
+				<div data-role="accordion" id="bs-accordion" data-height-style="content" data-icons="" data-collapsible="true">
+					<h3>Status</h3>
+					<div id="bs-status">
+						<div class="ui-grid-solo">
+							<div class="ui-block-a">
+								<table id="bs-table-power" data-role="table" class="ui-responsive">
+									<caption>Power Districts</caption>
+									<thead>
+										<tr>
+											<th>District</th>
+											<th>Status</th>
+											<th>Utilization (mA)</th>
+											<th>Power</th>
+										</tr>
+									</thead>
+									<tbody>
+									</tbody>
+									<tfoot>
+										<tr>
+											<td><label for="bs-power-all">All Districts:</label></td>
+											<td><input type="checkbox" id="bs-power-all" data-role="flipswitch" data-off-text="Off" data-on-text="On"></td>
+										</tr>
+									</tfoot>
+								</table>
+							</div>
+						</div>
+						<div class="ui-grid-solo">
+							<table data-role="table" id="bs-table-locomotives" class="ui-responsive">
+								<caption>Active Locomotives</caption>
 								<thead>
 									<tr>
 										<th>Address</th>
@@ -246,1308 +137,1153 @@
 										<th>Actions</th>
 									</tr>
 								</thead>
+								<tbody>
+								</tbody>
 							</table>
+						</div>
+						<div class="ui-grid-solo">
+							<label for="protocolConsole">DCC++ Protocol Console:</label>
+							<textarea id="protocolConsole" readonly="true" overflow="hidden"></textarea>
+						</div>
+						<div class="ui-grid-solo">
+							<input type="button" id="bs-persist-config" value="Save Config" class='ui-button-inline'/>
+							<input type="button" id="bs-clear-config" value="Clear Config" class='ui-button-inline'/>
+						</div>
+					</div>
+					<h3>Turnouts</h3>
+					<div id="bs-turnouts">
+						<div class="ui-grid-solo">
+							<table id="bs-table-turnouts" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
+								<thead>
+									<tr>
+										<th>ID</th>
+										<th>DCC Address</th>
+										<th>Sub Address</th>
+										<th>State</th>
+										<th>Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+								</tbody>
+							</table>
+						</div>
+						<div class="ui-grid-solo">
+							<a href='#' id='bs-turnout-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
+							<a href='#' id='bs-turnout-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
+						</div>
+					</div>
+					<h3>Sensors</h3>
+					<div id="bs-sensors">
+						<div class="ui-grid-solo">
+							<table id="bs-table-sensors" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
+								<thead>
+									<tr>
+										<th>ID</th>
+										<th>Pin</th>
+										<th>Pullup</th>
+										<th>State</th>
+										<th>Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+								</tbody>
+							</table>
+						</div>
+						<div class="ui-grid-solo">
+							<a href='#' id='bs-sensor-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
+							<a href='#' id='bs-sensor-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
+						</div>
+					</div>
+					<h3 id="bs-sensors-s88-h3">Sensors (S88)</h3>
+					<div id="bs-sensors-s88">
+						<div class="ui-grid-solo">
+							<table id="bs-table-sensors-s88" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
+								<thead>
+									<tr>
+										<th>ID</th>
+										<th>Data Pin</th>
+										<th>Sensor ID Base</th>
+										<th>Sensor Count</th>
+										<th>State</th>
+										<th>Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+								</tbody>
+							</table>
+						</div>
+						<div class="ui-grid-solo">
+							<a href='#' id='bs-sensor-s88-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
+							<a href='#' id='bs-sensor-s88-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
+						</div>
+					</div>
+					<h3>Outputs</h3>
+					<div id="bs-outputs">
+						<div class="ui-grid-solo">
+							<table id="bs-table-outputs" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
+								<thead>
+									<tr>
+										<th>ID</th>
+										<th>Pin</th>
+										<th>Flags</th>
+										<th>State</th>
+										<th>Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+								</tbody>
+							</table>
+						</div>
+						<div class="ui-grid-solo">
+							<a href='#' id='bs-output-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
+							<a href='#' id='bs-output-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
+						</div>
+					</div>
+					<h3>Locomotive Roster</h3>
+					<div id="bs-loco-roster">
+						<div class="ui-grid-solo">
+							<table id="bs-table-loco-roster" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
+								<thead>
+									<tr>
+										<th>Address</th>
+										<th>Type</th>
+										<th>Description</th>
+										<th>Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+								</tbody>
+							</table>
+						</div>
+						<div class="ui-grid-solo">
+							<a href='#' id='bs-loco-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
+							<a href='#' id='bs-loco-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
+						</div>
+					</div>
+					<h3>Programmer</h3>
+					<div id="bs-prog">
+						<div class="ui-grid-a">
+							<div class="ui-block-a"><label for="bs-prog-action">Action:</label></div>
+							<div class="ui-block-b"><select id="bs-prog-action"><option value="write">Write</option><option value="read">Read</option><option value="identify">Identify Address</option></select></div>
+						</div>
+						<div class="ui-grid-a" id="bs-prog-div-target">
+							<div class="ui-block-a"><label for="bs-prog-target">Programming Mode:</label></div>
+							<div class="ui-block-b"><input type="checkbox" id="bs-prog-target" data-role="flipswitch" data-off-text="PROG" data-on-text="OPS"></div>
+						</div>
+						<div class="ui-grid-a" id="bs-prog-div-addr">
+							<div class="ui-block-a"><label for="bs-prog-addr">DCC Address:</label></div>
+							<div class="ui-block-b"><input type="number" pattern="[0-9]*" id="bs-prog-addr" value="1" min="1" max="16384"></div>
+						</div>
+						<div class="ui-grid-a" id="bs-prog-div-cv">
+							<div class="ui-block-a"><label for="bs-prog-cv">CV:</label></div>
+							<div class="ui-block-b"><input type="number" pattern="[0-9]*" id="bs-prog-cv" value="1" min="1" max="1024"></div>
+						</div>
+						<div class="ui-grid-a" id="bs-prog-div-mode">
+							<div class="ui-block-a"><label for="bs-prog-mode">Mode:</label></div>
+							<div class="ui-block-b"><input type="checkbox" id="bs-prog-mode" data-role="flipswitch" data-off-text="Byte" data-on-text="Bit"></div>
+						</div>
+						<div class="ui-grid-a" id="bs-prog-div-value">
+							<div class="ui-block-a"><label for="bs-prog-cv-value">Value:</label></div>
+							<div class="ui-block-b"><input type="number" pattern="[0-9]*" id="bs-prog-cv-value" value="1" min="1" max="255"></div>
+						</div>
+						<div class="ui-grid-b" id="bs-prog-div-bit">
+							<div class="ui-block-a"><label for="bs-prog-cv-bit">Bit:</label></div>
+							<div class="ui-block-b"><input type="number" pattern="[0-7]*" id="bs-prog-cv-bit" value="0" min="0" max="7"></div>
+							<div class="ui-block-c"><input type="checkbox" id="bs-prog-cv-bit-value" data-role="flipswitch" data-off-text="Off" data-on-text="On"></div>
+						</div>
+						<div class="ui-grid-a" id="bs-prog-div-create-roster">
+							<div class="ui-block-a"><label for="bs-prog-create-roster">Create Roster entry:</label></div>
+							<div class="ui-block-b"><input type="checkbox" id="bs-prog-create-roster" data-role="flipswitch" data-off-text="No" data-on-text="Yes"></div>
+						</div>
+						<div class="ui-grid-solo">
+							<div class="ui-block-a"><button id="bs-prog-execute" class="ui-corner-all">Execute</button></div>
+						</div>
+						<div class="ui-grid-solo">
+							<div class="ui-block-a"><textarea id="bs-prog-result"></textarea></div>
 						</div>
 					</div>
 				</div>
-				<div class="row">
-					<div class="col-auto"><label for="consoleConnect">DCC++ Serial Console:</label></div>
-					<div class="col-auto"><div id="consoleConnect" class="toggle toggle-dark"></div></div>
-				</div>
-				<div class="row">
-					<div class="col-auto"><textarea id="serialMonitorContent">Connect to continue.</textarea></div>
-					<div class="col-auto"><p><button id="btnConsoleClear" class="smaller-button">Clear Console</button></p></div>
-				</div>
-				<div class="row">
-					<div class="col-auto"><button id="btnPersistConfig" class="smaller-button">Save Config</button></div>
-					<div class="col-auto"><button id="btnClearConfig" class="smaller-button">Clear Config</button></div>
-				</div>
 			</div>
-			<div id="dcc-tab-1">
-				<table id="turnouts" class="display" cellspacing="0" width="100%">
-					<thead>
-						<tr>
-							<th>ID</th>
-							<th>DCC Address</th>
-							<th>Sub Address</th>
-							<th>State</th>
-							<th>Actions</th>
-						</tr>
-					</thead>
-				</table>
-			</div>
-			<div id="dcc-tab-2">
-				<table id="sensors" class="display" cellspacing="0" width="100%">
-					<thead>
-						<tr>
-							<th>ID</th>
-							<th>Pin</th>
-							<th>Pullup</th>
-							<th>State</th>
-							<th>Actions</th>
-						</tr>
-					</thead>
-				</table>
-			</div>
-			<div id="dcc-tab-3">
-				<table id="s88sensors" class="display" cellspacing="0" width="100%">
-					<thead>
-						<tr>
-							<th>ID</th>
-							<th>Data Pin</th>
-							<th>Sensor ID Base</th>
-							<th>Sensor Count</th>
-							<th>State</th>
-							<th>Actions</th>
-						</tr>
-					</thead>
-				</table>
-			</div>
-			<div id="dcc-tab-4">
-				<table id="outputs" class="display" cellspacing="0" width="100%">
-					<thead>
-						<tr>
-							<th>ID</th>
-							<th>Pin</th>
-							<th>Flags</th>
-							<th>State</th>
-							<th>Actions</th>
-						</tr>
-					</thead>
-				</table>
-			</div>
-			<div id="dcc-tab-5">
-				<table id="locoRoster" class="display" cellspacing="0" width="100%">
+		</div>
+		<div data-role="footer"><div id="clock"></div></div>
+		<div data-role="popup" data-close-btn="none" data-dismissible="false" id="throttle-loco-select" class="ui-corner-all">
+			<div data-role="header">Select Locomotive</div>
+			<div data-role="main" class="ui-content">
+				<table id="throttle-loco-list" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
 					<thead>
 						<tr>
 							<th>Address</th>
 							<th>Type</th>
 							<th>Description</th>
-							<th>Actions</th>
 						</tr>
 					</thead>
+					<tbody>
+					</tbody>
 				</table>
+				<div id="throttle-loco-select-manual">
+					<label for="">Address:</label>
+					<input type="number" pattern="[0-9]*" id="throttle-loco-select-manual-address" value="1" min="1" max="16384">
+				</div>
 			</div>
-			<div id="dcc-tab-6">
-				<div class="row">
-					<div class="col-1"><label for="progTarget">Track:</label></div>
-					<div class="col-auto"><div id="progTarget" class="toggle toggle-dark"></div></div>
+			<div role="footer">
+				<div data-role="navbar">
+					<ul>
+						<li><a href="#throttlePage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
+						<li><a href="#" id="throttle-loco-select-add" data-icon="ui-icon-plus" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Add</a></li>
+						<li><a href="#throttlePage" id="throttle-loco-select-confirm" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
+					</ul>
 				</div>
-				<div class="row">
-					<div class="col-1"><label for="progReadOrWrite" id="progReadOrWriteLabel">Action:</label></div>
-					<div class="col-auto"><div id="progReadOrWrite" class="toggle toggle-dark"></div></div>
+			</div>
+		</div>
+		<div data-role="popup" data-close-btn="none" data-dismissible="false" id="bs-turnout-editor" class="ui-corner-all">
+			<div data-role="header">Turnout Editor</div>
+			<div data-role="main" class="ui-content">
+				<div class="ui-field-contain">
+					<label for="bs-turnout-id">Turnout ID:</label>
+					<input type="number" pattern="[0-9]*" id="bs-turnout-id" value="1" min="1" max="32767">
 				</div>
-				<div class="row">
-					<div class="col-1"><label for="progLocoNumber" id="progLocoNumberLabel">Loco:</label></div>
-					<div class="col-auto"><input type="number" min="1" max="10293" value="1" name="progLocoNumber" id="progLocoNumber" class="text ui-widget-content ui-corner-all" /></div>
+				<div class="ui-field-contain">
+					<label for="bs-turnout-address-mode">Address Mode:</label>
+					<select id="bs-turnout-address-mode"><option value="dcc">DCC Address Only</option><option value="dcc-index">DCC Address and Index</option></select>
 				</div>
-				<div class="row">
-					<div class="col-1"><label for="progCVNumber">CV:</label></div>
-					<div class="col-auto"><input type="number" value="1" min="1" max="1024" name="progCVNumber" id="progCVNumber" class="text ui-widget-content ui-corner-all" /></div>
+				<div class="ui-field-contain">
+					<label for="bs-turnout-address">Address:</label>
+					<input type="number" pattern="[0-9]*" id="bs-turnout-address" value="1" min="1" max="16384">
 				</div>
-				<div class="row">
-					<div class="col-1"><label for="progByteOrBit" id="progByteOrBitLabel">Mode:</label></div>
-					<div class="col-auto"><div id="progByteOrBit" class="toggle toggle-dark"></div></div>
+				<div class="ui-field-contain" id="bs-turnout-editor-index">
+					<label for="bs-turnout-index">Index:</label>
+					<select id="bs-turnout-index"><option>0</option><option>1</option><option>2</option><option>3</option></select>
 				</div>
-				<div class="row">
-					<div class="col-1"><label for="progBitNumber" id="progBitNumberLabel">Bit:</label></div>
-					<div class="col-auto"><input type="number" value="0" min="0" max="7" id="progBitNumber" class="text ui-widget-content ui-corner-all"/></div>
+				<div class="ui-field-contain">
+					<label for="bs-turnout-orientation">Orientation:</label>
+					<select id="bs-turnout-orientation"><option value="0">Left</option><option value="2">Right</option><option value="4">Y</option><option value="8">Multi (threeway/etc)</option></select>
 				</div>
-				<div class="row">
-					<div class="col-1"><label for="progCVValue" id="progCVValueLabel">Value:</label></div>
-					<div class="col-auto"><input type="number" value="1" min="1" max="1024" name="progCVValue" id="progCVValue" class="text ui-widget-content ui-corner-all" /></div>
-					<div class="col-auto"><div id="progBitValue" class="toggle toggle-dark"></div></div>
+			</div>
+			<div role="footer">
+				<div data-role="navbar">
+					<ul>
+						<li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
+						<li><a href="#baseStationPage" id="bs-turnout-dialog-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
+					</ul>
 				</div>
-				<div class="col-auto"><button id="btnProgExecute" class="smaller-button">Execute</button></div>
-				<div class="row">
-					<textarea id="progResult"></textarea>
+			</div>
+		</div>
+		<div data-role="popup" data-close-btn="none" data-dismissible="false" id="bs-sensor-editor" class="ui-corner-all">
+			<div data-role="header">Sensor Editor</div>
+			<div data-role="main" class="ui-content">
+				<div class="ui-field-contain">
+					<label for="bs-sensor-id">Sensor ID:</label>
+					<input type="number" pattern="[0-9]*" id="bs-sensor-id" value="1" min="1" max="32767">
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-sensor-pin">Pin:</label>
+					<input type="number" pattern="[0-9]*" id="bs-sensor-pin" value="1" min="1" max="40">
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-sensor-pullup">Pull Up:</label>
+					<input type="checkbox" id="bs-sensor-pullup" data-role="flipswitch" data-off-text="Of" data-on-text="On" />
+				</div>
+			</div>
+			<div role="footer">
+				<div data-role="navbar">
+					<ul>
+						<li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
+						<li><a href="#baseStationPage" id="bs-sensor-dialog-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+		<div data-role="popup" data-close-btn="none" data-dismissible="false" id="bs-sensor-s88-editor" class="ui-corner-all">
+			<div data-role="header">S88 Sensor Bus Editor</div>
+			<div data-role="main" class="ui-content">
+				<div class="ui-field-contain">
+					<label for="bs-sensor-s88-id">Sensor Bus ID:</label>
+					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-id" value="1" min="1" max="32767">
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-sensor-s88-pin">Data Pin:</label>
+					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-pin" value="1" min="1" max="40">
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-sensor-s88-count">Sensor Count:</label>
+					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-count" value="0" min="0" max="512">
+				</div>
+			</div>
+			<div role="footer">
+				<div data-role="navbar">
+					<ul>
+						<li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
+						<li><a href="#baseStationPage" id="bs-sensor-s88-dialog-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+		<div data-role="popup" data-close-btn="none" data-dismissible="false" id="bs-output-editor" class="ui-corner-all">
+			<div data-role="header">Output Editor</div>
+			<div data-role="main" class="ui-content">
+				<div class="ui-field-contain">
+					<label for="bs-output-id">ID:</label>
+					<input type="number" pattern="[0-9]*" id="bs-output-id" value="1" min="1" max="32767">
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-output-pin">Pin:</label>
+					<input type="number" pattern="[0-9]*" id="bs-output-pin" value="1" min="1" max="40">
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-output-logic">Logic:</label>
+					<input type="checkbox" id="bs-output-logic" data-role="flipswitch" data-off-text="Normal" data-on-text="Inverted" />
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-output-startup-state">Startup State:</label>
+					<input type="checkbox" id="bs-output-startup-state" data-role="flipswitch" data-off-text="Last State" data-on-text="Forced" />
+				</div>
+				<div class="ui-field-contain" id="bs-output-default-state-div">
+					<label for="bs-output-default-state">Default State:</label>
+					<input type="checkbox" id="bs-output-default-state" data-role="flipswitch" data-off-text="Off" data-on-text="On" />
+				</div>
+			</div>
+			<div role="footer">
+				<div data-role="navbar">
+					<ul>
+						<li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
+						<li><a href="#baseStationPage" id="bs-output-dialog-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+		<div data-role="popup" data-close-btn="none" data-dismissible="false" id="bs-loco-editor" class="ui-corner-all">
+			<div data-role="header">Locomotive Editor</div>
+			<div data-role="main" class="ui-content">
+				<div class="ui-field-contain">
+					<label for="bs-loco-addr">Address:</label>
+					<input type="number" pattern="[0-9]*" id="bs-loco-addr" value="1" min="1" max="16384" />
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-loco-type">Type:</label>
+					<input type="text" pattern="[0-9]*" id="bs-loco-type" value="" />
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-loco-desc">Description:</label>
+					<textarea id="bs-loco-desc" rows="5" cols="40"></textarea>
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-loco-idle">Idle by default:</label>
+					<input type="checkbox" id="bs-loco-idle" data-role="flipswitch" data-off-text="Off" data-on-text="On" />
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-loco-default">Default on Throttle:</label>
+					<input type="checkbox" id="bs-loco-default" data-role="flipswitch" data-off-text="Off" data-on-text="On" />
+				</div>
+			</div>
+			<div role="footer">
+				<div data-role="navbar">
+					<ul>
+						<li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
+						<li><a href="#baseStationPage" id="bs-loco-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
+					</ul>
 				</div>
 			</div>
 		</div>
 	</div>
-</div>
-<div id="dialog-locoNumber">
-	<form>
-		<div class="fluid-container">
-			<div class="row">
-				<div class="col-auto"><label for="locoNumber">Locomotive Number</label></div>
-				<div class="col-auto"><input type="number" name="locoNumber" id="dialogLocoNumber" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-		</div>
-	</form>
-</div>
-<div id="dialog-turnoutEditor">
-	<form>
-		<div class="fluid-container">
-			<div class="row">
-				<div class="col-auto"><label for="turnoutID">Turnout ID:</label></div>
-				<div class="col-auto"><input type="number" name="turnoutID" id="dialogTurnoutID" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="turnoutAddress">Address:</label></div>
-				<div class="col-auto"><input type="number" name="turnoutAddress" id="dialogTurnoutAddress" value="1" min="1" max="2044" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="turnoutSubAddress">Sub Address:</label></div>
-				<div class="col-auto"><input type="number" name="turnoutSubAddress" id="dialogTurnoutSubAddress" value="0" min="0" max="8" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-		</div>
-	</form>
-</div>
-<div id="dialog-outputEditor">
-	<form>
-		<div class="fluid-container">
-			<div class="row">
-				<div class="col-auto"><label for="dialogOutputID">Output ID:</label></div>
-				<div class="col-auto"><input type="number" name="dialogOutputID" id="dialogOutputID" value="0" min="0" max="65535" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="dialogOutputPin">Pin:</label></div>
-				<div class="col-auto"><input type="number" name="dialogOutputPin" id="dialogOutputPin" value="0" min="0" max="40" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="dialogOutputInverted">Inverted:</label></div>
-				<div class="col-auto"><div id="dialogOutputInverted" class="toggle toggle-dark"></div></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="dialogOutputRestore">Startup State:</label></div>
-				<div class="col-auto"><div id="dialogOutputRestore" class="toggle toggle-dark"></div></div>
-			</div>
-			<div class="row" id="dialogOutputDefaultRow">
-				<div class="col-auto"><label for="dialogOutputDefault">Default State:</label></div>
-				<div class="col-auto"><div id="dialogOutputDefault" class="toggle toggle-dark"></div></div>
-			</div>
-		</div>
-	</form>
-</div>
-<div id="dialog-sensorEditor">
-	<form>
-		<div class="fluid-container">
-			<div class="row">
-				<div class="col-auto"><label for="dialogSensorID">Sensor ID:</label></div>
-				<div class="col-auto"><input type="number" name="dialogSensorID" id="dialogSensorID" value="0" min="0" max="65535"class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="dialogSensorPin">Pin:</label></div>
-				<div class="col-auto"><input type="number" name="dialogSensorPin" id="dialogSensorPin" value="0" min="0" max="40" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="dialogSensorPullUp">Pull Up:</label></div>
-				<div class="col-auto"><div id="dialogSensorPullUp" class="toggle toggle-dark"></div></div>
-			</div>
-		</div>
-	</form>
-</div>
-<div id="dialog-s88sensorEditor">
-	<form>
-		<div class="fluid-container">
-			<div class="row">
-				<div class="col-auto"><label for="dialogS88SensorBus">S88 Bus:</label></div>
-				<div class="col-auto"><input type="number" value="0" min="0" max="16" name="dialogS88SensorBus" id="dialogS88SensorBus" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="dialogS88SensorDataPin">Data Pin:</label></div>
-				<div class="col-auto"><input type="number" value="0" min="0" max="40" name="dialogS88SensorDataPin" id="dialogS88SensorDataPin" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-			<div class="row">
-				<div class="col-auto"><label for="dialogS88SensorCount">Sensor Count:</label></div>
-				<div class="col-auto"><input type="number" value="0" min="0" max="512" name="dialogS88SensorCount" id="dialogS88SensorCount" class="text ui-widget-content ui-corner-all" /></div>
-			</div>
-		</div>
-	</form>
-</div>
-<script type="text/javascript">
-	var dialogLocoTargetObject;
-	var locoData = new HashMap();
-	var socket;
-	var socketUrl = window.location + "";
-	socketUrl = socketUrl.replace("http", "ws").replace("/index.html", "");
-	if(socketUrl.endsWith("/")) {
-		socketUrl += "ws";
-	} else {
-		socketUrl += "/ws";
-	}
-	console.log('server url:', socketUrl);
-	var turnoutEditor;
-
-	function sendCommand(command) {
-		if(!socket) {
-			connectWebSocket(true);
-		}
-		console.log('Sending:', command);
-		socket.send(command);
-	}
-	function setLocoSpeedSlider(newSpeed) {
-		document.gauges.get('throttleSpeedGauge').value = newSpeed;
-		if($('#locoGroup :radio:checked').attr('id')) {
-			var locoID = $('#locoGroup :radio:checked').attr('id').trim();
-			var locoIDKey = locoID.replace('loco', '');
-			sendLocoSpeed(locoIDKey, newSpeed);
+	<script type="text/javascript">
+var webSocket;
+function createButton({type, id, title='',}= {}) {
+	if(title === '') {
+		if(type === 'delete') {
+			title = 'Delete';
+		} else if(type === 'edit') {
+			title = 'Edit';
+		} else if(type === 'stop') {
+			title = 'Stop';
 		}
 	}
-	function sendLocoSpeed(locoIDKey, newSpeed) {
-		var locoNumber = $('label[for=loco' + locoIDKey + ']', '#locoGroup').text().trim();
-		var locoDirection = locoData.get(locoIDKey).get('direction');
-		locoData.get(locoIDKey).set('speed', newSpeed);
-		sendCommand('<t ' + locoIDKey + ' ' + locoNumber + ' ' + newSpeed + ' ' + locoDirection + '>');
-		if(newSpeed == 0) {
-			$('#loco' + locoIDKey + 'Info').text('Idle');
-		} else if(locoDirection == 1) {
-			$('#loco' + locoIDKey + 'Info').text('FWD ' + newSpeed);
-		} else {
-			$('#loco' + locoIDKey + 'Info').text('REV ' + newSpeed);
-		}
-	}
-	function sendLocoFunction(locoIDKey, functionID, active) {
-		var locoNumber = $('label[for=loco' + locoIDKey + ']', '#locoGroup').text().trim();
-		var functionGroups = [
-			{
-				firstByte: true,
-				members : ['1', '2', '3', '4', '0'],
-				base : 128
-			},
-			{
-				firstByte: true,
-				members : ['5', '6', '7', '8'],
-				base : 176
-			},
-			{
-				firstByte: true,
-				members : ['9', '10', '11', '12'],
-				base : 160
-			},
-			{
-				firstByte: false,
-				firstByteValue: 222,
-				members : ['13', '14', '15', '16', '17', '18', '19', '20'],
-				base : 0
-			},
-			{
-				firstByte: false,
-				firstByteValue: 223,
-				members : ['21', '22', '23', '24', '25', '26', '27', '28'],
-				base : 0
-			}
-		];
-		locoData.get(locoIDKey).get('functions').set('F' + functionID, active);
-		var firstByteValue = 0;
-		var secondByteValue = 0;
-		for(index = 0; index < functionGroups.length; index++) {
-			if(functionGroups[index].members.indexOf(functionID) >= 0) {
-				var functionValue = functionGroups[index].base;
-				for(memberIndex = 0; memberIndex < functionGroups[index].members.length; memberIndex++) {
-					if(locoData.get(locoIDKey).get('functions').get('F' + functionGroups[index].members[memberIndex])) {
-						functionValue += (1 << memberIndex);
-					}
-				}
-				if(functionGroups[index].firstByte) {
-					firstByteValue = functionValue;
-				} else {
-					firstByteValue = functionGroups[index].firstByteValue;
-					secondByteValue = functionValue;
-				}
-			}
-		}
-		if(secondByteValue != 0) {
-			sendCommand('<f ' + locoIDKey + ' ' + locoNumber + ' ' + firstByteValue + ' ' + secondByteValue + '>');
-		} else {
-			sendCommand('<f ' + locoIDKey + ' ' + locoNumber + ' ' + firstByteValue + '>');
-		}
-	}
-	function selectLoco(locoIDKey) {
-		var locoMap = locoData.get(locoIDKey);
-		var locoFunctionMap = locoMap.get('functions');
-		$('#throttleSpeedRange').slider('value', locoMap.get('speed'));
-		document.gauges.get('throttleSpeedGauge').value = locoMap.get('speed');
-		for(functionIndex = 0; functionIndex <= 28; functionIndex++) {
-			$('#funct_' + functionIndex).data('toggles').toggle(locoFunctionMap.get('F' + functionIndex), false, true);
-		}
-	}
-	function receiveWebSocketData(data) {
-		$('#serialMonitorContent').prepend(data.replace('<', '&lt;') + "\n");
-		$('#serialMonitorContent').scrollTop();
-		$('#throttleConsole').prepend(data.replace('<', '&lt;') + "\n");
-		$('#throttleConsole').scrollTop();
-	}
-	function connectWebSocket(active) {
-		if (active) {
-			if(!socket || !socket.isConnected()) {
-				console.log('connecting to:' + socketUrl)
-				socket = $.simpleWebSocket({url: socketUrl, dataType: 'text'});
-				socket.listen(receiveWebSocketData);
-				socket.connect();
-				$('#consoleConnect').data('toggles').toggle(true, false, true);
-				$('#throttleConnect').data('toggles').toggle(true, false, true);
-			}
-		} else {
-			if(socket && socket.isConnected()) {
-				console.log('disconnecting')
-				socket.close();
-				$('#consoleConnect').data('toggles').toggle(false, false, true);
-				$('#throttleConnect').data('toggles').toggle(false, false, true);
-			}
-		}
-	}
-	$(function(){
-		$('#dialog-locoNumber').dialog({
-			autoOpen:false,
-			modal:true,
-			resize:'auto',
-			buttons: {
-				'Ok': {
-					text: 'Ok',
-					click: function() {
-						var newValue = $('#dialogLocoNumber').val();
-						$('label[for=' + dialogLocoTargetObject + ']', '#locoGroup').html(newValue);
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				},
-				'Cancel': {
-					text: 'Cancel',
-					click: function() {
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				}}
-		});
-		$('#dialog-turnoutEditor').dialog({
-			autoOpen:false,
-			modal:true,
-			resize:'auto',
-			buttons: {
-				'Save': {
-					text: 'Save',
-					click: function() {
-						var turnoutID = $('#dialogTurnoutID').val();
-						var turnoutAddress = $('#dialogTurnoutAddress').val();
-						var turnoutSubAddress = $('#dialogTurnoutSubAddress').val();
-						$.post('/turnouts', { 'id': turnoutID, 'address': turnoutAddress, 'subAddress': turnoutSubAddress});
-						$('#turnouts').DataTable().draw();
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				},
-				'Cancel': {
-					text: 'Cancel',
-					click: function() {
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				}
-			}
-		});
-		$('#dialogOutputInverted').toggles({
-			text:{
-				on:'Inverted',
-				off:'Normal'
-			},
-			width:100}
-		);
-		$('#dialogOutputRestore').toggles({
-			text:{
-				on:'Force Set',
-				off:'Last State'
-			},
-			width:100}
-		);
-		$('#dialogOutputRestore').on('toggle', function(e, active) {
-			if(active) {
-				$('#dialogOutputDefaultRow').show();
-			} else {
-				$('#dialogOutputDefaultRow').hide();
-			}
-		});
-		$('#dialogOutputDefault').toggles({
-			text:{
-				on:'Active',
-				off:'Inactive'
-			},
-			width:100}
-		);
-		$('#dialogOutputDefaultRow').hide();
-		$('#dialog-outputEditor').dialog({
-			autoOpen:false,
-			modal:true,
-			resize:'auto',
-			buttons: {
-				'Save': {
-					text: 'Save',
-					click: function() {
-						var outputID = $('#dialogOutputID').val();
-						var outputPin = $('#dialogOutputPin').val();
-						var outputInverted = $('#dialogOutputInverted').data('toggles').active;
-						var outputRestoreState = $('#dialogOutputRestore').data('toggles').active;
-						var outputDefaultState = $('#dialogOutputDefault').data('toggles').active;
-						$.post('/outputs', { 'id': outputID, 'pin': outputPin, 'inverted': outputInverted, 'forceState' : outputRestoreState, 'defaultState' : outputDefaultState});
-						$('#outputs').DataTable().draw();
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				},
-				'Cancel': {
-					text: 'Cancel',
-					click: function() {
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				}
-			}
-		});
-		$('#dialogSensorPullUp').toggles({
-			text:{
-				on:'On',
-				off:'Off'
-			},
-			width:100}
-		);
-		$('#dialog-sensorEditor').dialog({
-			autoOpen:false,
-			modal:true,
-			resize:'auto',
-			buttons: {
-				'Save': {
-					text: 'Save',
-					click: function() {
-						var sensorID = $('#dialogSensorID').val();
-						var sensorPin = $('#dialogSensorPin').val();
-						var sensorPullUp = $('#dialogSensorPullUp').data('toggles').active;
-						console.log('creating/updating sensor: ' + sensorID + ', pin: ' + sensorPin + ', pullUp: ' + sensorPullUp)
-						$.post('/sensors', { 'id': sensorID, 'pin': sensorPin, 'pullUp': sensorPullUp});
-						$('#sensors').DataTable().draw();
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				},
-				'Cancel': {
-					text: 'Cancel',
-					click: function() {
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				}
-			}
-		});
-		$('#dialog-s88sensorEditor').dialog({
-			autoOpen:false,
-			modal:true,
-			resize:'auto',
-			buttons: {
-				'Save': {
-					text: 'Save',
-					click: function() {
-						var sensorBus = $('#dialogS88SensorBus').val();
-						var sensorDataPin = $('#dialogS88SensorDataPin').val();
-						var sensorCount = $('#dialogS88SensorCount').val();
-						console.log('creating/updating S88 sensor: ' + sensorBus + ', dataPin:' + sensorDataPin + ', sensorCount: ' + sensorCount)
-						$.post('/s88sensors', { 'bus': sensorBus, 'dataPin': sensorDataPin, 'sensorCount': sensorCount});
-						$('#s88sensors').DataTable().draw();
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				},
-				'Cancel': {
-					text: 'Cancel',
-					click: function() {
-						$(this).dialog('close');
-					},
-					class: 'smaller-button ui-button ui-corner-all ui-widget'
-				}
-			}
-		});
-		$('#dialogS88SensorInverted').toggles({
-			text:{
-				on:'Inverted',
-				off:'Normal'
-			},
-			width:100}
-		);
-		$('#top-tabs').tabs({
-			activate: function(event, ui) {
-				if(ui.newPanel.attr('id') == 'tab-top-1') {
-					$('#powerDistrictStatus').DataTable().draw();
-          $('#locomotives').DataTable().draw();
-					$('#dcc-tabs').tabs('option', 'active', 0);
-				}
-			}
-		});
-		$('#dcc-tabs').tabs({
-			beforeActivate: function(event, ui) {
-				if(ui.newPanel.attr('id') == 'dcc-tab-0') {
-					$('#powerDistrictStatus').DataTable().draw();
-          $('#locomotives').DataTable().draw();
-				} else if(ui.newPanel.attr('id') == 'dcc-tab-1') {
-					$('#turnouts').DataTable().draw();
-				} else if(ui.newPanel.attr('id') == 'dcc-tab-2') {
-					$('#sensors').DataTable().draw();
-				} else if(ui.newPanel.attr('id') == 'dcc-tab-3') {
-					$('#s88sensors').DataTable().draw();
-				} else if(ui.newPanel.attr('id') == 'dcc-tab-4') {
-					$('#outputs').DataTable().draw();
-				}
-			}
-		});
-		$('#dcc-programmer-tabs').tabs();
-		$('#consoleConnect').toggles({
-			text:{
-				on:'Connected',
-				off:'Disconnected'
-			},
-			width:100}
-		);
-		$('#throttleConnect').toggles({
-			text:{
-				on:'Connected',
-				off:'Disconnected'
-			},
-			width:100}
-		);
-		$('#throttleDirection').toggles({
-			text:{
-				on:'Forward',
-				off:'Reverse'
-			},
-			on:true,
-			width:100}
-		);
-		$('#throttlePower').toggles({
-			text:{
-				on:'Power ON',
-				off:'Power OFF'
-			},
-			width:100}
-		);
-		$('#statusTrackPower').toggles({
-			text:{
-				on:'Power ON',
-				off:'Power OFF'
-			},
-			width:100}
-		);
-		$('#turnouts').DataTable( {
-			'dom': 'tiB',
-			'ajax': {
-				url:'/turnouts',
-				dataSrc: ''
-			},
-			'columns': [
-				{ data: 'id',},
-				{ data: 'address' },
-				{ data: 'subAddress' },
-				{ data: 'state' },
-				{ render: function(data, type, row, meta) {
-						var cellText = "<button id='turnout-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
-						cellText += "<button id='turnout-" + row.id + "-edit-" + row.address + "-" + row.subAddress + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
-						if(row.state === 'Closed') {
-							cellText += "<button id='turnout-" + row.id + "-throw' class='smaller-button ui-button ui-corner-all ui-widget'>Throw</button>";
-						} else {
-							cellText += "<button id='turnout-" + row.id + "-close' class='smaller-button ui-button ui-corner-all ui-widget'>Close</button>";
-						}
-						return cellText;
-					}
-				}
-			],
-			'paging':false,
-			'info':false,
-			'searching':false,
-			'serverSide':true,
-			'jQueryUI':true,
-			'deferRender':true,
-			'serverSide':true,
-			'deferLoading':9,
-			'ordering': false,
-			'buttons': [
-				{
-					text: 'Create',
-					action: function ( e, dt, node, config ) {
-						$('#dialogTurnoutID').val("" + $('#turnouts').DataTable().data().count());
-						$('#dialogTurnoutAddress').val("0");
-						$('#dialogTurnoutSubAddress').val("0");
-						$('#dialog-turnoutEditor').dialog('open')
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				}
-			]
-		} );
-		$('#turnouts').on('draw.dt', function() {
-			$('#turnouts tr [id^=turnout-]').each(function(index) {
-				$(this).button();
-				$(this).click(function() {
-					var turnoutIdParts = $(this).attr('id').split('-');
-					if(turnoutIdParts[2] === 'delete') {
-						$.ajax({
-							url: '/turnouts?id=' + turnoutIdParts[1],
-							method: 'DELETE'
-						});
-					} else if(turnoutIdParts[2] === 'edit') {
-						$('#dialogTurnoutID').val(turnoutIdParts[1]);
-						$('#dialogTurnoutAddress').val(turnoutIdParts[3]);
-						$('#dialogTurnoutSubAddress').val(turnoutIdParts[4]);
-						$('#dialog-turnoutEditor').dialog('open')
-					} else {
-						$.ajax({
-							url: '/turnouts',
-							data: { 'id': turnoutIdParts[1] },
-							method: 'PUT'
-						});
-					}
-					$('#turnouts').DataTable().draw();
-				});
+	return String.format("<a href='#' data-role='button' data-show-label='false' class='ui-button-inline' data-icon='ui-icon-{0}' title='{1}' id='{2}'>{1}</a>", type, title, id);
+}
+$(function() {
+	registerStringFormat();
+	initPage();
+});
+function registerStringFormat() {
+	if (!String.format) {
+		String.format = function(format) {
+			var args = Array.prototype.slice.call(arguments, 1);
+			return format.replace(/{(\d+)}/g, function(match, number) { 
+			return typeof args[number] != 'undefined'
+				? args[number] 
+				: match
+			;
 			});
-		});
-		$('#sensors').DataTable( {
-			'dom': 'tiB',
-			'ajax': {
-				url:'/sensors',
-				dataSrc: ''
-			},
-			'columns': [
-				{ data: 'id' },
-				{ data: 'pin' },
-				{ data: 'pullUp' },
-				{ data: 'active' },
-				{ render: function(data, type, row, meta) {
-						return "<button id='sensor-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button><button id='sensor-" + row.id + "-edit-" + row.pin + "-" + row.pullUp + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
-					}
-				}
-			],
-			'paging':false,
-			'info':false,
-			'searching':false,
-			'serverSide':true,
-			'jQueryUI':true,
-			'deferRender':true,
-			'serverSide':true,
-			'deferLoading':9,
-			'ordering': false,
-			buttons: [
-				{
-					text: 'Create',
-					action: function ( e, dt, node, config ) {
-						$('#dialogSensorID').val("" + $('#sensors').DataTable().data().count());
-						$('#dialogSensorPin').val("0");
-						$('#dialogSensorPullUp').toggles(false);
-						$('#dialog-sensorEditor').dialog('open')
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				}
-			]
-		} );
-		$('#sensors').on('draw.dt', function() {
-			$('#sensors tr [id^=sensor-]').each(function(index) {
-				$(this).button();
-				$(this).click(function() {
-					var sensorIdParts = $(this).attr('id').split('-');
-					if(sensorIdParts[2] === 'delete') {
-						$.ajax({
-							url: '/sensors?id=' + sensorIdParts[1],
-							method: 'DELETE'
-						});
-					} else if(sensorIdParts[2] === 'edit') {
-						$('#dialogSensorID').val(sensorIdParts[1]);
-						$('#dialogSensorPin').val(sensorIdParts[3]);
-						$('#dialogSensorPullUp').toggles(sensorIdParts[4] == 'true');
-						$('#dialog-sensorEditor').dialog('open')
-					}
-					$('#sensors').DataTable().draw();
-				});
-			});
-		});
-		$('#s88sensors').DataTable( {
-			'dom': 'tiB',
-			'ajax': {
-				url:'/s88sensors',
-				dataSrc: ''
-			},
-			'columns': [
-				{ data: 'id' },
-				{ data: 'dataPin' },
-        { data: 'sensorIDBase' },
-				{ data: 'sensorCount' },
-				{ data: 'state',
-					render: function(data, type, row, meta) {
-						var result = '';
-						var dataSplit = data.split("");
-						var count = 0;
-						for(index in dataSplit) {
-							count++;
-							if(dataSplit[index] == '0') {
-								result += "<span class='s88SensorOff'>OFF</span>&nbsp;";
-							} else {
-								result += "<span class='s88SensorOn'>ON&nbsp;</span>&nbsp;";
-							}
-							if(count % 16 == 0) {
-								result += "<br/>";
-							}
-						}
-						return result;
-					}
-				},
-				{ render: function(data, type, row, meta) {
-						return "<button id='s88sensor-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button><button id='s88sensor-" + row.id + "-edit-" + row.dataPin + "-" + row.sensorCount + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
-					}
-				}
-			],
-			'paging':false,
-			'info':false,
-			'searching':false,
-			'serverSide':true,
-			'jQueryUI':true,
-			'deferRender':true,
-			'deferLoading':9,
-			'ordering': false,
-			buttons: [
-				{
-					text: 'Create',
-					action: function ( e, dt, node, config ) {
-						$('#dialogS88SensorBus').val("" + $('#s88sensors').DataTable().data().count());
-						$('#dialogS88SensorDataPin').val("0");
-						$('#dialogS88SensorCount').val("16");
-						$('#dialog-s88sensorEditor').dialog('open')
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				}
-			]
-		} );
-		$('#s88sensors').on('draw.dt', function() {
-			$('#s88sensors tr [id^=s88sensor-]').each(function(index) {
-				$(this).button();
-				$(this).click(function() {
-					var sensorIdParts = $(this).attr('id').split('-');
-					if(sensorIdParts[2] === 'delete') {
-						$.ajax({
-							url: '/s88sensors?id=' + sensorIdParts[1],
-							method: 'DELETE'
-						});
-					} else if(sensorIdParts[2] === 'edit') {
-						$('#dialogS88SensorBus').val(sensorIdParts[1]);
-						$('#dialogS88SensorDataPin').val(sensorIdParts[3]);
-						$('#dialogS88SensorCount').toggles(sensorIdParts[4] == 'true');
-						$('#dialog-s88sensorEditor').dialog('open')
-					}
-					$('#s88sensors').DataTable().draw();
-				});
-			});
-		});
-		$('#outputs').DataTable( {
-			'dom': 'tiB',
-			'ajax': {
-				url:'/outputs',
-				dataSrc: ''
-			},
-			'columns': [
-				{ data: 'id' },
-				{ data: 'pin' },
-				{ data: 'flags' },
-				{ data: 'state' },
-				{ render: function(data, type, row, meta) {
-						var cellText = "<button id='output-" + row.id + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
-						cellText += "<button id='output-" + row.id + "-edit-" + row.pin + "-" + row.flags + "' class='smaller-button ui-button ui-corner-all ui-widget'>Edit</button>";
-						if(row.state === 'Off') {
-							cellText += "<button id='output-" + row.id + "-activate' class='smaller-button ui-button ui-corner-all ui-widget'>Activate</button>";
-						} else {
-							cellText += "<button id='output-" + row.id + "-deactivate' class='smaller-button ui-button ui-corner-all ui-widget'>Deactivate</button>";
-						}
-						return cellText;
-					}
-				}
-			],
-			'paging':false,
-			'info':false,
-			'searching':false,
-			'serverSide':true,
-			'jQueryUI':true,
-			'deferRender':true,
-			'serverSide':true,
-			'deferLoading':9,
-			'ordering': false,
-			buttons: [
-				{
-					text: 'Create',
-					action: function ( e, dt, node, config ) {
-						$('#dialogOutputID').val("" + $('#outputs').DataTable().data().count());
-						$('#dialogOutputPin').val("0");
-						$('#dialogOutputInverted').toggles(false);
-						$('#dialogOutputRestore').toggles(false);
-						$('#dialogOutputDefault').toggles(false);
-						$('#dialog-outputEditor').dialog('open')
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				}
-			]
-		} );
-		$('#outputs').on('draw.dt', function() {
-			$('#outputs tr [id^=output-]').each(function(index) {
-				$(this).button();
-				$(this).click(function() {
-					var outputIdParts = $(this).attr('id').split('-');
-					if(outputIdParts[2] === 'delete') {
-						$.ajax({
-							url: '/outputs?id=' + outputIdParts[1],
-							method: 'DELETE'
-						});
-					} else if(outputIdParts[2] === 'edit') {
-						$('#dialogOutputID').val(outputIdParts[1]);
-						$('#dialogOutputPin').val(outputIdParts[3]);
-						$('#dialogOutputInverted').toggles(outputIdParts[4].includes('activeLow'));
-						$('#dialogOutputRestore').toggles(outputIdParts[4].includes('force'));
-						$('#dialogOutputDefault').toggles(outputIdParts[4].includes('force(on)'));
-						$('#dialog-outputEditor').dialog('open')
-					} else {
-						$.ajax({
-							url: '/outputs?id=' + outputIdParts[1],
-							method: 'PUT'
-						});
-					}
-					$('#outputs').DataTable().draw();
-				});
-			});
-		});
-		$('#powerDistrictStatus').DataTable( {
-			'ajax': {
-				url:'/powerStatus',
-				dataSrc: ''
-			},
-			'columns': [ { data: 'name' }, { data: 'state' }, { data: 'usage' } ],
-			'paging':false,
-			'info':false,
-			'searching':false,
-			'serverSide':true,
-			'jQueryUI':true,
-			'deferRender':true,
-			'serverSide':true,
-			'deferLoading':9,
-			'ordering': false
-		} );
-		$('#locomotives').DataTable( {
-			'ajax': {
-				url:'/locomotive',
-				dataSrc: ''
-			},
-			'columns': [ { data: 'address' }, { data: 'speed' }, { data: 'dir' },
-				{ render: function(data, type, row, meta) {
-						var cellText = "<button id='loco-" + row.address + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
-						cellText += "<button id='loco-" + row.address + "-stopspan' class='smaller-button ui-button ui-corner-all ui-widget'>Stop</button>";
-						return cellText;
-					}
-				} ],
-			'paging':false,
-			'info':false,
-			'searching':false,
-			'serverSide':true,
-			'jQueryUI':true,
-			'deferRender':true,
-			'serverSide':true,
-			'deferLoading':9,
-			'ordering': false
-		} );
-		$('#locomotives').on('draw.dt', function() {
-			$('#locomotives tr [id^=loco-]').each(function(index) {
-				$(this).button();
-				$(this).click(function() {
-					var locoIdParts = $(this).attr('id').split('-');
-					if(locoIdParts[2] === 'delete') {
-						$.ajax({
-							url: '/locomotive?addr=' + locoIdParts[1],
-							method: 'DELETE'
-						});
-					} else if(locoIdParts[2] === 'stop') {
-						$.ajax({
-							url: '/locomotive?speed=0&addr=' + locoIdParts[1],
-							method: 'PUT'
-						});
-					}
-					$('#locomotives').DataTable().draw();
-				});
-			});
-		});
-		$('#locoRoster').DataTable( {
-			'dom': 'tiB',
-			'ajax': {
-				url:'/locomotive/roster',
-				dataSrc: ''
-			},
-			'columns': [ { data: 'address' }, { data: 'type' }, { data: 'description' },
-				{ render: function(data, type, row, meta) {
-						var cellText = "<button id='roster-" + row.address + "-delete' class='smaller-button ui-button ui-corner-all ui-widget'>Delete</button>";
-						if(row.idleOnStartup == 'true') {
-							cellText += "<button id='roster-" + row.address + "-idle-enable' class='smaller-button ui-button ui-corner-all ui-widget'>Enable Idle</button>";
-						} else {
-							cellText += "<button id='roster-" + row.address + "-idle-disable' class='smaller-button ui-button ui-corner-all ui-widget'>Disable Idle</button>";
-						}
-						if(row.defaultOnThrottles == 'true') {
-							cellText += "<button id='roster-" + row.address + "-default-enable' class='smaller-button ui-button ui-corner-all ui-widget'>Default On Throttles</button>";
-						} else {
-							cellText += "<button id='roster-" + row.address + "-default-disable' class='smaller-button ui-button ui-corner-all ui-widget'>Remove From Throttles</button>";
-						}
-						return cellText;
-					}
-				} ],
-			'paging':false,
-			'info':false,
-			'searching':false,
-			'serverSide':true,
-			'jQueryUI':true,
-			'deferRender':true,
-			'serverSide':true,
-			'deferLoading':9,
-			'ordering': false,
-			buttons: [
-				{
-					text: 'Create',
-					action: function ( e, dt, node, config ) {
-						$('#dialogS88SensorBus').val("" + $('#s88sensors').DataTable().data().count());
-						$('#dialogS88SensorDataPin').val("0");
-						$('#dialogS88SensorCount').val("16");
-						$('#dialog-s88sensorEditor').dialog('open')
-					},
-					className: 'smaller-button ui-button ui-corner-all ui-widget',
-				}
-			]
-		} );
-		$('#locoRoster').on('draw.dt', function() {
-			$('#locoRoster tr [id^=roster-]').each(function(index) {
-				$(this).button();
-				$(this).click(function() {
-					var locoIdParts = $(this).attr('id').split('-');
-					if(locoIdParts[2] === 'delete') {
-						$.ajax({
-							url: '/locomotive/roster?addr=' + locoIdParts[1],
-							method: 'DELETE'
-						});
-					} else if(locoIdParts[2] === 'idle') {
-						$.ajax({
-							url: '/locomotive/roster?addr=' + locoIdParts[1] + '&idleOnStartup=' + locoIdParts[3] == 'enable',
-							method: 'PUT'
-						});
-					} else if(locoIdParts[2] === 'default') {
-						$.ajax({
-							url: '/locomotive/roster?addr=' + locoIdParts[1] + '&defaultOnThrottles=' + locoIdParts[3] == 'enable',
-							method: 'PUT'
-						});
-					}
-					$('#locomotives').DataTable().draw();
-				});
-			});
-		});
-		setInterval( function () {
-			if ($('#top-tabs').tabs('option', 'active') == 1) {
-				var tabTableSelectors = ['#powerDistrictStatus', '#turnouts', '#sensors', '#s88sensors', '#outputs', '#locoRoster', '#prog'];
-				var selector = tabTableSelectors[$('#dcc-tabs').tabs('option', 'active')];
-				if(selector != '#s88sensors' && selector != '#prog') {
-					$(tabTableSelectors[$('#dcc-tabs').tabs('option', 'active')]).DataTable().draw();
-					if(selector == '#powerDistrictStatus') {
-						// if we are on the status tab we need to refresh the active locomotives as well
-						$('#locomotives').DataTable().draw();
-					}
-				}
-			}
-		}, 20000 );
-		$('#throttleSpeedRange').slider({
-			min:0,
-			max:128,
-			orientation:'vertical',
-			animate:true,
-			slide: function(event, ui) {
-				setLocoSpeedSlider(ui.value);
-			}
-		});
-		$('#btnPersistConfig').button();
-		$('#btnConsoleClear').button();
-		$('#btnThrottleEStop').button();
-		$('#btnThrottleStatus').button();
-		$('#locoGroup').controlgroup({direction:'vertical'});
-		$('#locoGroup').on('change', function() {
-			var locoID = $("#locoGroup :radio:checked").attr('id').trim();
-			var locoIDKey = locoID.replace('loco', '');
-			selectLoco(locoIDKey);
-		});
-		$('label', '#locoGroup').dblclick(function() {
-			$('#dialogLocoNumber').val($(this).text())
-			dialogLocoTargetObject=$(this).attr('for');
-			$('#dialog-locoNumber').dialog('open')
-		})
-		$('label:first', $('#locoGroup')).removeClass('ui-corner-left').addClass('ui-corner-top');
-		$('label:last', $('#locoGroup')).removeClass('ui-corner-right').addClass('ui-corner-bottom');
-		$.fn.hideTab = function (tabIndex) {
-			$(this).find('li:eq(' + tabIndex + ')').hide();
-			return this;
 		};
-		$.fn.showTab = function (tabIndex) {
-			$(this).find('li:eq(' + tabIndex + ')').show();
-			return this;
-		};
-		$('#btnConsoleClear').click(function() {
-			$('#serialMonitorContent').val('');
-		});
-		$('#btnThrottleStatus').click(function() {
-			sendCommand('<s>');
-		});
-		$('#throttlePower').on('toggle', function(e, active) {
-			if ($('#top-tabs').tabs('option', 'active') == 0) {
-				$('#statusTrackPower').data('toggles').toggle(active, false, true);
-				if(active) {
-					sendCommand('<1>');
-				} else {
-					sendCommand('<0>');
-				}
-			}
-		});
-		$('#statusTrackPower').on('toggle', function(e, active) {
-			if ($('#top-tabs').tabs('option', 'active') == 1 && $('#dcc-tabs').tabs('option', 'active') == 0) {
-				$('#throttlePower').data('toggles').toggle(active, false, true);
-				if(active) {
-					sendCommand('<1>');
-				} else {
-					sendCommand('<0>');
-				}
-			}
-		});
-		$('#consoleConnect').on('toggle', function(e, active) {
-			if ($('#top-tabs').tabs('option', 'active') == 1 && $('#dcc-tabs').tabs('option', 'active') == 0) {
-				connectWebSocket(active);
-			}
-		});
-		$('#throttleConnect').on('toggle', function(e, active) {
-			if ($('#top-tabs').tabs('option', 'active') == 0) {
-				connectWebSocket(active);
-			}
-		});
-		$('#throttleDirection').on('toggle', function(e, active) {
-			if($('#locoGroup :radio:checked').attr('id')) {
-				var locoID = $('#locoGroup :radio:checked').attr('id').trim();
-				var locoIDKey = locoID.replace('loco', '');
-				var locoDataEntry = locoData.get(locoIDKey);
-				if (active) {
-					locoDataEntry.set('direction', '1');
-				} else {
-					locoDataEntry.set('direction', '0');
-				}
-				$('#throttleSpeedRange').slider('value', 0);
-				setLocoSpeedSlider(0);
-			}
-		});
-		$('#clock').clock({'format':'24'});
-		for(i = 1; i <= 10; i++) {
-			locoData.set('' + i, new HashMap());
-			locoData.get('' + i).set('speed', 0).set('direction', 1).set('functions', new HashMap());
-			for(functionIndex = 0; functionIndex <= 28; functionIndex++) {
-				locoData.get('' + i).get('functions').set('F' + functionIndex, false);
-			}
-		}
-		$('#locoGroup :radio:eq(0)').attr('checked', true);
-		for(i = 0; i <= 28; i++) {
-			$('#funct_' + i).toggles({
-				text:{
-					on:'F' + i,
-					off:'F' + i
-				}
-			});
-			$('#funct_' + i).on('toggle', function(e, active) {
-				var functionID = $(this).attr('id').replace('funct_', '').trim();
-				var locoID = $("#locoGroup :radio:checked").attr('id').trim();
-				var locoIDKey = locoID.replace('loco', '');
-				sendLocoFunction(locoIDKey, functionID, active);
-			});
-		}
-		$('#btnThrottleEStop').click(function() {
-			for(locoID = 1; locoID <= 10; locoID++) {
-				var locoIDKey = '' + locoID;
-				locoData.get(locoIDKey).set('speed', 0);
-				if($(':radio:eq(' + (locoID - 1) + ')', '#locoGroup').css("display") != 'none') {
-					sendLocoSpeed(locoIDKey, 0);
-					var locoRadioID = 'loco' + locoIDKey;
-					if($('#locoGroup :radio:checked').attr('id') == locoRadioID) {
-						// not using setLocoSpeedSlider as we don't want to send the value twice
-						$('#throttleSpeedRange').slider('value', 0);
-						document.gauges.get('throttleSpeedGauge').value = 0;
-					}
-				}
-			}
-		});
-		$('#btnPersistConfig').click(function() {
-			$.post({url: '/config'});
-		});
-		$('#btnClearConfig').button();
-		$('#btnClearConfig').click(function() {
-			$.ajax({
-				url: '/config',
-				method: 'DELETE'
-			});
-		});
-		$('#btnProgExecute').button();
-		$('#btnProgExecute').click(function() {
-			$('#btnProgExecute').addClass('disabled');
-			if($('#progReadOrWrite').data('toggles').active) {
-				if($('#progByteOrBit').data('toggles').active) {
-					$.post({
-						url: '/programmer',
-						dataType: 'json',
-						data: {
-							'cv' : $('#progCVNumber').val(),
-							'loco' : $('#progLocoNumber').val(),
-							'bit' : $('#progBitNumber').val(),
-							'bitValue' : $('#progBitValue').data('toggles').active,
-							'target': $('#progTarget').data('toggles').active
-						},
-						success : function (data, status, xhr) {
-							$('#progResult').append('Write CV: ' + $('#progCVNumber').val() + ' bit: ' + $('#progBitNumber').val() + ' value: ' + $('#progBitValue').data('toggles').active + ' completed.\n');
-							$('#btnProgExecute').removeClass('disabled');
-						},
-						error : function(xhr, status, error) {
-							$('#progResult').append('Write CV: ' + $('#progCVNumber').val() + ' bit: ' + $('#progBitNumber').val() + ' value: ' + $('#progBitValue').data('toggles').active + ' failed.\n');
-							$('#btnProgExecute').removeClass('disabled');
-						}
-					});
-				} else {
-					$.post({
-						url: '/programmer',
-						dataType: 'json',
-						data: {
-							'cv' : $('#progCVNumber').val(),
-							'loco' : $('#progLocoNumber').val(),
-							'value' : $('#progCVValue').val(),
-							'target': $('#progTarget').data('toggles').active
-						},
-						success : function (data, status, xhr) {
-							$('#progResult').append('Write CV: ' + $('#progCVNumber').val() + ' value: ' + $('#progCVValue').val() + ' completed.\n');
-							$('#btnProgExecute').removeClass('disabled');
-						},
-						error : function(xhr, status, error) {
-							$('#progResult').append('Write CV: ' + $('#progCVNumber').val() + ' value: ' + $('#progCVValue').val() + ' failed.\n');
-							$('#btnProgExecute').removeClass('disabled');
-						}
-					});
-				}
-			} else {
-				$.get({
-					url: '/programmer',
-					dataType: 'json',
-					data: {
-						'cv' : $('#progCVNumber').val()
-					},
-					success : function (data, status, xhr) {
-						$('#progResult').append('CV: ' + data['cv'] + ' value: ' + data['value'] + '\n');
-						$('#btnProgExecute').removeClass('disabled');
-					},
-					error : function(xhr, status, error) {
-						$('#progResult').append('CV ' + $('#progCVNumber').val() + ' read failed.\n');
-						$('#btnProgExecute').removeClass('disabled');
-					}
-				});
-			}
-		});
-		$('#progTarget').toggles({
-			text:{
-				on:'MAIN',
-				off:'PROG'
-			},
-			width:100}
-		);
-		$('#progByteOrBit').toggles({
-			text:{
-				on:'Bit',
-				off:'Byte'
-			},
-			width:100}
-		);
-		$('#progReadOrWrite').toggles({
-			text:{
-				on:'Write',
-				off:'Read'
-			},
-			width:100}
-		);
-		$('#progBitValue').toggles({
-			text:{
-				on:'ON',
-				off:'OFF'
-			},
-			width:100}
-		);
-		$('#progTarget').on('toggle', function(e, active) {
-			$('#progLocoNumber').toggle();
-			$('#progLocoNumberLabel').toggle();
-			$('#progLocoNumber').val('1');
-			if(active) {
-				$('#progReadOrWrite').toggles(true);
-				$('#progReadOrWrite').addClass('disabled');
-			} else {
-				$('#progReadOrWrite').toggles(false);
-				$('#progReadOrWrite').removeClass('disabled');
-			}
-		});
-		$('#progReadOrWrite').on('toggle', function(e, active) {
-			if(active) {
-				$('#progByteOrBit').toggles(false);
-				$('#progByteOrBit').show();
-				$('#progByteOrBitLabel').show();
-				$('#progCVValue').show();
-				$('#progCVValueLabel').show();
-			} else {
-				$('#progByteOrBit').hide();
-				$('#progByteOrBitLabel').hide();
-				$('#progCVValue').hide();
-				$('#progCVValueLabel').hide();
-				$('#progBitValue').hide();
-			}
-		});
-		$('#progByteOrBit').on('toggle', function(e, active) {
-			if($('#progReadOrWrite').data('toggles').active) {
-				if(active) {
-					$('#progBitValue').show();
-					$('#progBitNumberLabel').show();
-					$('#progBitNumber').show();
-					$('#progCVValueLabel').show();
-					$('#progCVValue').hide();
-				} else {
-					$('#progBitNumber').hide();
-					$('#progBitNumberLabel').hide();
-					$('#progBitValue').hide();
-					$('#progCVValueLabel').show();
-					$('#progCVValue').show();
-				}
-			} else {
-				if(active) {
-					$('#progBitNumber').show();
-					$('#progBitNumberLabel').show();
-					$('#progCVValue').hide();
-				} else {
-					$('#progCVValue').hide();
-					$('#progCVValueLabel').hide();
-					$('#progBitNumber').hide();
-					$('#progBitNumberLabel').hide();
-				}
-			}
-		});
-		$('#progByteOrBit').hide();
-		$('#progByteOrBitLabel').hide();
-		$('#progLocoNumber').hide();
-		$('#progLocoNumberLabel').hide();
-		$('#progCVValue').hide();
-		$('#progCVValueLabel').hide();
-		$('#progBitNumber').hide();
-		$('#progBitNumberLabel').hide();
-		$('#progBitValue').hide();
+	}
+}
+function initPage() {
+	if(!$.mobile.path.getDocumentBase().startsWith("file://")) {
+		$.mobile.loading("show", {
+			text: 'Connecting to Base Station',
+			textVisible: true,
+			textonly: false});
 		$.get({
 			url: '/features',
 			success : function (data, status, xhr) {
 				if(data['s88'] != 'true') {
-					$('#dcc-tabs').tabs('disable', '#dcc-tab-3');
-				} else {
-					setInterval( function () {
-						if ($('#top-tabs').tabs('option', 'active') == 1 && $('#dcc-tabs').tabs('option', 'active') == 3) {
-							$('#s88sensors').DataTable().draw();
-						}
-					}, 2500 );
+					disableS88Tab();
 				}
 			},
-			error : function(xhr, status, error) {
-				$('#dcc-tabs').tabs('disable', '#dcc-tab-3');
+			error : disableS88Tab()
+		});
+		setupSocket();
+		$.mobile.loading("hide");
+	} else {
+		disableS88Tab();
+		$("#throttle-loco-list").hide();
+		$("#throttle-loco-select-manual").show();
+		$("#throttle-loco-select-add").hide();
+		$("#throttle-loco-select-confirm").on("vclick", function(event, ui) {
+			changeLocomotive($("#throttle-loco-select-manual-address").val());
+			$("#throttle-loco-select").popup("close");
+		});
+	}
+	$('#clock').clock({'format':'24'});
+	setupThrottle();
+	setupBaseStation();
+}
+function setupSocket() {
+	if(!webSocket || !webSocket.isConnected()) {
+		var socketUrl = $.mobile.path.get($.mobile.path.getDocumentBase()).replace("http", "ws");
+		if(socketUrl.endsWith("/")) {
+			socketUrl += "ws";
+		} else {
+			socketUrl += "/ws";
+		}
+		console.log('connecting to:' + socketUrl)
+		webSocket = $.simpleWebSocket({url: socketUrl, dataType: 'text'});
+		webSocket.listen(function(data) {
+			$('#protocolConsole').append(data.replace('<', '&lt;') + "\n");
+			$('#protocolConsole').scrollBottom();
+		});
+		webSocket.connect();
+	}
+}
+function setupThrottle() {
+	$("#throttle-speed").on("slidestop", function(event, ui) {
+		var selectedLoco = $("#selected-loco-address").val();
+		var speed = $("#throttle-speed").val();
+		console.log('setting speed to', speed, 'for loco', selectedLoco);
+		$.ajax({url:'/locomotive', method: 'PUT', data: {'addr' : selectedLoco, 'speed' : speed}});
+	});
+	$("#throttle-estop").on("vclick", function(event, ui) {
+		$("#throttle-speed").val(0).slider("refresh");
+		$.post('/locomotive/estop');
+	});
+	$("#throttle-direction").on('change', function(event, ui) {
+		var selectedLoco = $("#selected-loco-address").val();
+		var direction = 'fwd';
+		if(this.checked) {
+			direction = 'rev';
+		}
+		console.log('setting direction to', direction, 'for loco', selectedLoco);
+		$.ajax({url:'/locomotive', method: 'PUT', data: {'addr' : selectedLoco, 'dir' : direction}});
+	});
+	$('#throttle-select-loco').on('vclick', function(event, ui) {
+		refreshTable({
+			table:'#throttle-loco-list',
+			url:'/locomotive/roster',
+			fields: ['address', 'type', 'description'],
+			filter : function(record) {
+				return record.defaultOnThrottles;
+			},
+			failureHandler: function(jqxhr, status, error) {
+				console.log('Failed to retrieve locomotive list from base station, switching to manual');
+				$("#throttle-loco-list").hide();
+				$("#throttle-loco-select-manual").show();
+				$("#throttle-loco-select").popup("open");
+			},
+			refreshCallback: function() {
+				$("#throttle-loco-list tr").on("vclick", function(event, ui) {
+					changeLocomotive($(event.target).parent().children(":eq(0)").text().substr(7));
+					$("#throttle-loco-select").popup("close");
+				});
+				$("#throttle-loco-select").popup("open");
+			}});
+	});
+	$('#throttle-release-loco').on('vclick', function(event, ui) {
+		var selectedLoco = $("#selected-loco-address").val();
+		if(selectedLoco > 0) {
+			$("#throttle-speed").val(0).slider("refresh");
+			$("#throttle-direction").prop('checked', false).flipswitch('refresh');
+			$.ajax({url: '/locomotive?address=' + selectedLoco, method: 'DELETE'});
+			disableLocomotiveInputs();
+		}
+	});
+	if(!$.mobile.path.getDocumentBase().startsWith("file://")) {
+		$("#throttle-loco-select-manual").hide();
+		$("#throttle-loco-select-confirm").on("vclick", function(event, ui) {
+			if($("#throttle-loco-list").is(":visible")) {
+				changeLocomotive($(event.target).parent().children(":eq(0)").text().substr(7));
+			} else {
+				changeLocomotive($("#throttle-loco-select-manual-address").val());
 			}
+			$("#throttle-loco-select").popup("close");
+		});
+		$("#throttle-loco-select-add").on("vclick", function(event, ui) {
+			$("#throttle-loco-list").hide();
+			$("#throttle-loco-select-manual").show();
+		});
+	}
+	$('[id^=funct_]').each(function() {
+		var functionID = $(this).prop('id').substr(6);
+		var label=functionID;
+		if(functionID === '0') {
+			label = 'FL';
+		}
+		$(this).flipswitch({
+			offText:label,
+			onText:label,
+			disabled:true
+		});
+		$(this).on('change', function(event, ui) {
+			var selectedLoco = $("#selected-loco-address").val();
+			var functionTag = String.format('f{0}', functionID);
+			console.log('setting function', functionTag, 'to', this.checked, 'for loco', selectedLoco);
+			$.ajax({url:'/locomotive', method: 'PUT', data: {'addr' : selectedLoco, functionTag : this.checked}});
 		});
 	});
-</script>
+}
+function disableLocomotiveInputs() {
+	$('[id^=funct_]').flipswitch('disable');
+	$('#throttle-direction').flipswitch('disable');
+	$('#throttle-speed').slider('disable');
+	$('#throttle-release-loco').button('disable');
+}
+function enableLocomotiveInputs() {
+	$('[id^=funct_]').flipswitch('enable');
+	$('#throttle-direction').flipswitch('enable');
+	$('#throttle-speed').slider('enable');
+	$('#throttle-release-loco').button('enable');
+}
+function setupBaseStation() {
+	$("#bs-accordion").on("accordionactivate", function(event, ui) {
+		BSTabRefresh(ui.newHeader.text());
+	});
+	$("#tabs").on("tabsactivate", function(event, ui) {
+		if(ui.newTab.text() == "Base Station") {
+			const sections = ["Status", "Turnouts", "Sensors", "Sensors (S88)", "Outputs", "Locomotive Roster", "Programmer"];
+			var currentSection = $("#bs-accordion").accordion("option", "active");
+			BSTabRefresh(sections[currentSection]);
+		}
+	});
+	setupBSStatus();
+	setupBSTurnout();
+	setupBSSensor();
+	setupBSS88Sensors();
+	setupBSOutput();
+	setupBSRoster();
+	setupProgrammer();
+}
+function setupBSStatus() {
+	$("#bs-persist-config").on("vclick", function() {
+		$.post({url: '/config'});
+	});
+	$("#bs-clear-config").on("vclick", function() {
+		$.ajax({url: '/config', method: 'DELETE'});
+	});
+	$('#bs-power-all').on('change', function() {
+		$.ajax({url: String.format('/power?overallState={0}', this.checked),
+			method: 'PUT',
+			success:function() {
+				BSTabRefresh('Status');
+			}});
+	})
+}
+function setupBSTurnout() {
+	$('#bs-turnout-address-mode').on('change', function(event, ui) {
+		if($('#bs-turnout-address-mode').val() === 'dcc') {
+			$('#bs-turnout-editor-index').hide();
+		} else {
+			$('#bs-turnout-editor-index').show();
+		}
+	});
+	// default to dcc addressing only.
+	$('#bs-turnout-address-mode').change();
+	$('#bs-turnout-dialog-save').on('vclick', function(event, ui) {
+		if($('#bs-turnout-address-mode').val() === 'dcc') {
+			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val());
+			$.post('/turnouts', {
+				'id': $('#bs-turnout-id').val(),
+				'address' : $('#bs-turnout-address').val(),
+				'subAddress' : -1,
+				'orientation' : $('#bs-turnout-orientation').val()
+			});
+		} else {
+			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val(), 'and index', $('#bs-turnout-index').val());
+			$.post('/turnouts', {
+				'id': $('#bs-turnout-id').val(),
+				'address' : $('#bs-turnout-address').val(),
+				'subAddress' : $('#bs-turnout-index').val(),
+				'orientation' : $('#bs-turnout-orientation').val()
+			});
+		}
+		BSTabRefresh('Turnouts');
+	});
+	$('#bs-turnout-create').on('vclick', function(event, ui) {
+		$('#bs-turnout-id').val(1);
+		$('#bs-turnout-address').val(1);
+		$('#bs-turnout-index').val(-1);
+		$('#bs-turnout-orientation').val(0);
+		$('#bs-turnout-address-mode').val('dcc').change();
+		$('#bs-turnout-editor').popup('open', {positionTo:'window'});
+	});
+	$('#bs-turnout-refresh').on('vclick', function(event, ui) {
+		BSTabRefresh('Turnouts');
+	});
+}
+function setupBSSensor() {
+	$('#bs-sensor-dialog-save').on('vclick', function(event, ui) {
+		$.post('/sensors', {
+			'id': $('#bs-sensor-id').val(),
+			'pin' : $('#bs-sensor-pin').val(),
+			'pullUp' : $('#bs-sensor-pullup').prop('checked')
+		});
+		BSTabRefresh('Sensors');
+	});
+	$('#bs-sensor-create').on('vclick', function(event, ui) {
+		$('#bs-sensor-id').val(1);
+		$('#bs-sensor-pin').val(1);
+		$('#bs-sensor-pullUp').prop('checked', false);
+		$('#bs-sensor-editor').popup('open', {positionTo:'window'});
+	});
+	$('#bs-sensor-refresh').on('vclick', function(event, ui) {
+		BSTabRefresh('Sensors');
+	});
+}
+function setupBSS88Sensors() {
+	$('#bs-sensor-s88-dialog-save').on('vclick', function(event, ui) {
+		$.post('/s88sensors', {
+			'bus': $('#bs-sensor-s88-id').val(),
+			'dataPin' : $('#bs-sensor-s88-pin').val(),
+			'sensorCount' : $('#bs-sensor-s88-count').val()
+		});
+		BSTabRefresh('Sensors (S88)');
+	});
+	$('#bs-sensor-s88-create').on('vclick', function(event, ui) {
+		$('#bs-sensor-s88-id').val(1);
+		$('#bs-sensor-s88-pin').val(1);
+		$('#bs-sensor-s88-count').val(0);
+		$('#bs-sensor-s88-editor').popup('open', {positionTo:'window'});
+	});
+	$('#bs-sensor-s88-refresh').on('vclick', function(event, ui) {
+		BSTabRefresh('Sensors (S88)');
+	});
+}
+function setupBSOutput() {
+	$('#bs-output-dialog-save').on('vclick', function() {
+		console.log('Creating output', $('#bs-output-id').val(), 'with pin',
+			$('#bs-output-pin').val(), 'logicInverted:', $('#bs-output-logic').prop('checked'),
+			'forceState:', $('#bs-output-startup-state').prop('checked'),
+			'defaultState:',$('#bs-output-default-state').prop('checked'));
+		$.post('/outputs', {
+			'id': $('#bs-output-id').val(),
+			'pin' : $('#bs-output-pin').val(),
+			'inverted' : $('#bs-output-logic').prop('checked'),
+			'forceState' : $('#bs-output-startup-state').prop('checked'),
+			'defaultState' : $('#bs-output-default-state').prop('checked')
+		});
+		BSTabRefresh('Outputs');
+	});
+	$('#bs-output-create').on('vclick', function() {
+		$('#bs-output-id').val(1);
+		$('#bs-output-pin').val(1);
+		$('#bs-output-logic').val(0);
+		$('#bs-output-startup-state').val(0);
+		$('#bs-output-default-state').val(0);
+		$('#bs-output-editor').popup('open', {positionTo:'window'});
+	});
+	$('#bs-output-refresh').on('vclick', function() {
+		BSTabRefresh('Outputs');
+	});
+	$('#bs-output-startup-state').on('change', function() {
+		if(this.checked) {
+			$('#bs-output-default-state-div').show();
+		} else {
+			$('#bs-output-default-state-div').hide();
+		}
+	});
+	$('#bs-output-default-state-div').hide();
+}
+function setupBSRoster() {
+	$('#bs-loco-save').on('vclick', function() {
+		console.log('Creating roster entry:', $('#bs-loco-addr').val(),
+			'type:', $('#bs-loco-type').val(), 'desc:', $('#bs-loco-desc').val(),
+			'idle:', $('#bs-loco-idle').prop('checked'),
+			'default:',$('#bs-loco-default').prop('checked'));
+		$.post('/locomotive/roster', {
+			'address': $('#bs-loco-addr').val(),
+			'type' : $('#bs-loco-type').val(),
+			'description' : $('#bs-loco-desc').val(),
+			'idleOnStartup' : $('#bs-loco-idle').prop('checked'),
+			'defaultOnThrottles' : $('#bs-loco-default').prop('checked')
+		});
+		BSTabRefresh('Locomotive Roster');
+	});
+	$('#bs-loco-create').on('vclick', function() {
+		$('#bs-loco-addr').val(1);
+		$('#bs-loco-type').val("");
+		$('#bs-loco-desc').val("");
+		$('#bs-loco-idle').prop('checked', false);
+		$('#bs-loco-default').prop('checked', false);
+		$('#bs-loco-editor').popup('open', {positionTo:'window'});
+	});
+	$('#bs-loco-refresh').on('vclick', function() {
+		BSTabRefresh('Locomotive Roster');
+	});
+}
+function setupProgrammer() {
+	$('#bs-prog-target').on('change', function() {
+		if(this.checked) {
+			$('#bs-prog-div-addr').show();
+		} else {
+			$('#bs-prog-div-addr').hide();
+		}
+	});
+	$('#bs-prog-mode').on('change', function() {
+		if(this.checked) {
+			$('#bs-prog-div-value').hide();
+			$('#bs-prog-div-bit').show();
+		} else {
+			$('#bs-prog-div-value').show();
+			$('#bs-prog-div-bit').hide();
+		}
+	});
+	$('#bs-prog-action').on('change', function() {
+		if($(this).val() === 'read') {
+			$('#bs-prog-target').val(0);
+			$('#bs-prog-target').flipswitch('disable');
+			$('#bs-prog-div-addr').hide();
+		} else if($(this).val() === 'write') {
+			$('#bs-prog-target').flipswitch('enable');
+		}
+		if($(this).val() === 'identify') {
+			$('#bs-prog-div-create-roster').show();
+			$('#bs-prog-div-target').hide();
+			$('#bs-prog-div-addr').hide();
+			$('#bs-prog-div-cv').hide();
+			$('#bs-prog-div-mode').hide();
+			$('#bs-prog-div-value').hide();
+		} else {
+			$('#bs-prog-div-target').show();
+			$('#bs-prog-div-cv').show();
+			$('#bs-prog-div-mode').show();
+			$('#bs-prog-div-value').show();
+			$('#bs-prog-div-create-roster').hide();
+		}
+	})
+	$('#bs-prog-execute').on('vclick', function() {
+		$('#bs-prog-result').val('pending...');
+		if($('#bs-prog-action').val() === 'read') {
+			$.get({url: '/programmer',
+				dataType: 'json',
+				data: {
+					'pom' : 'false',
+					'cv': $('#bs-prog-cv').val()
+				},
+				success: function(data, status, xhr) {
+					$('#bs-prog-result').val(String.format('CV {0} has value {1}', data['cv'], data['value']));
+				},
+				error: function() {
+					$('#bs-prog-result').val(String.format('CV {0} read was not successful', $('#bs-prog-cv').val()));
+				}
+			});
+		} else if($('#bs-prog-action').val() === 'write') {
+			if(!$('#bs-prog-mode').prop('checked')) {
+				$.post({url: '/programmer',
+					dataType: 'json',
+					data: {
+						'cv': $('#bs-prog-cv').val(),
+						'pom': $('#bs-prog-target').prop('checked'),
+						'address': $('#bs-prog-addr').val(),
+						'bit' : $('#bs-prog-cv-bit').val(),
+						'value' : $('#bs-prog-cv-bit-value').prop('checked')
+					},
+					success: function(data, status, xhr) {
+						$('#bs-prog-result').val(String.format('CV {0} bit {1} written successfully', $('#bs-prog-cv').val(), $('#bs-prog-cv-bit').val()));
+					},
+					error: function() {
+						$('#bs-prog-result').val(String.format('CV {0} bit {1} was not written successfully', $('#bs-prog-cv').val(), $('#bs-prog-cv-bit').val()));
+					}
+				});
+			} else {
+				$.post({url: '/programmer',
+					dataType: 'json',
+					data: {
+						'cv': $('#bs-prog-cv').val(),
+						'pom': $('#bs-prog-target').prop('checked'),
+						'address': $('#bs-prog-addr').val(),
+						'value' : $('#bs-prog-cv-value').prop('checked')
+					},
+					success: function(data, status, xhr) {
+						$('#bs-prog-result').val(String.format('CV {0} written successfully', $('#bs-prog-cv').val()));
+					},
+					error: function() {
+						$('#bs-prog-result').val(String.format('CV {0} was not written successfully', $('#bs-prog-cv').val()));
+					}
+				});
+			}
+		} else {
+			$.get({url: '/programmer',
+				dataType: 'json',
+				data: {
+					'pom' : 'false',
+					'identify' : 'true',
+					'create' : $('#bs-prog-create-roster').prop('checked')
+				},
+				success: function(data, status, xhr) {
+					if(data.hasOwnProperty('loco')) {
+						$('#bs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), manufacturer {2}, version {3}, speed table {4}.\nRoster entry has been created for the {5}',
+							data['address'], data['addressMode'], data['manufacturer'], data['version'], data['speedTable'], data['loco']['type']));
+					} else {
+						$('#bs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), manufacturer {2}, version {3}, speed table {4}',
+							data['address'], data['addressMode'], data['manufacturer'], data['version'], data['speedTable']));
+					}
+				},
+				error: function() {
+					$('#bs-prog-result').val('Unable to identify the decoder');
+				}
+			});
+		}
+	});
+	$('#bs-prog-div-addr').hide();
+	$('#bs-prog-div-bit').hide();
+}
 
+function BSTabRefresh(section) {
+	console.log("refreshing: " + section);
+	if(section === 'Status') {
+		refreshTable({table: '#bs-table-power', url: '/power',
+			fields: ['name', 'state', 'usage', function(record) {
+				if(record.state === 'Off') {
+					return createButton({type:'power', id:String.format("bs-power-{0}-true", record.name), title:'Enable'});
+				} else {
+					return createButton({type:'power', id:String.format("bs-power-{0}-false", record.name), title:'Disable'});
+				}
+			}],
+			refreshCallback:function() {
+				$('#bs-table-power tr td [id^=bs-power-]').button();
+				$('#bs-table-power tr td [id^=bs-power-]').on('vclick', function(event, ui) {
+					var idParts = $(this).attr('id').split('-');
+					$.ajax({url: String.format('/power?name={0}&state={1}', idParts[2], idParts[3]),
+						method: 'PUT',
+						success:function() {
+							BSTabRefresh('Status');
+					}});
+				});
+				$.get({url: '/power?overall=true',
+					success:function(data, status, jqxhr) {
+						$('#bs-power-all').val(data.state === 'Off');
+					}
+				});
+			}
+		});
+		refreshTable({table: '#bs-table-locomotives', url: '/locomotive',
+			fields: ['address', 'speed', 'dir', function(record) {
+				var buttons = '';
+				buttons += createButton({type:'delete', id:String.format("loco-{0}-delete", record.address)});
+				buttons += createButton({type:'stop', id:String.format("loco-{0}-stop", record.address)});
+				return buttons;
+			}],
+			refreshCallback: function() {
+				$('#bs-table-locomotives tr td [id^=loco-]').button();
+				$('#bs-table-locomotives tr td [id^=loco-]').on('vclick', function(event, ui) {
+					var idParts = $(this).attr('id').split('-');
+					if(idParts[2] === 'delete') {
+						$.ajax({url: String.format('/locomotive?address={0}', idParts[1]),
+							method: 'DELETE',
+							success:function() {
+								BSTabRefresh('Status');
+						}});
+					} else if(idParts[2] === 'stop') {
+						$.ajax({url: String.format('/locomotive/roster?address={0}&speed=0', idParts[1]),
+							method: 'PUT',
+							success:function() {
+								BSTabRefresh('Status');
+						}});
+					}
+				});
+			}
+		});
+	} else if(section === 'Turnouts') {
+		refreshTable({table: '#bs-table-turnouts', url: '/turnouts',
+			fields: ['id', 'address', 'subAddress', 'state', function(record) {
+				var buttons = '';
+				buttons += createButton({type:'delete', id:String.format("turnout-{0}-delete", record.id)});
+				buttons += createButton({type:'edit', id:String.format("turnout-{0}-edit", record.id)});
+				if(record.state === 'Closed') {
+					buttons += createButton({type:'action', id:String.format("turnout-{0}-throw", record.id), title:'Throw'});
+				} else {
+					buttons += createButton({type:'action', id:String.format("turnout-{0}-close", record.id), title:'Close'});
+				}
+				return buttons;
+			}],
+			refreshCallback: function() {
+				$('#bs-table-turnouts tr td [id^=turnout-]').button();
+				$('#bs-table-turnouts tr td [id^=turnout-]').on('vclick', function(event, ui) {
+					var idParts = $(this).attr('id').split('-');
+					if(idParts[2] === 'delete') {
+						$.ajax({url: String.format('/turnouts?id={0}', idParts[1]),
+							method: 'DELETE',
+							success: function() {
+								BSTabRefresh('Turnouts');
+						}});
+					} else if(idParts[2] === 'edit') {
+						$.ajax({url: String.format('/turnouts?id={0}', idParts[1]),
+							success:function(data, status, jqxhr) {
+								$('#bs-turnout-id').val(data.id);
+								$('#bs-turnout-address').val(data.address);
+								$('#bs-turnout-index').val(data.subAddress);
+								$('#bs-turnout-orientation').val(data.orientation);
+								if(data.subAddress != -1) {
+									$('#bs-turnout-address-mode').val('dcc-index').change();
+								} else {
+									// default to dcc addressing only.
+									$('#bs-turnout-address-mode').val('dcc').change();
+								}
+								$('#bs-turnout-editor').popup('open', {positionTo:'window'});
+							}
+						});
+					} else {
+						$.ajax({url: String.format('/turnouts?id={0}', idParts[1]),
+							method: 'PUT',
+							success: function() {
+								BSTabRefresh('Turnouts');
+						}});
+					}
+				});
+			}
+		});
+	} else if(section === 'Sensors') {
+		refreshTable({table: '#bs-table-sensors', url: '/sensors',
+			fields: ['id', 'pin', 'pullUp', 'state', function(record) {
+				var buttons = '';
+				if(record.pin > 0) {
+					buttons += createButton({type:'delete', id:String.format("sensor-{0}-delete", record.id)});
+					buttons += createButton({type:'edit', id:String.format("sensor-{0}-edit", record.id)});
+				}
+				return buttons;
+			}],
+			refreshCallback: function() {
+				$('#bs-table-sensors tr td [id^=sensor-]').button();
+				$('#bs-table-sensors tr td [id^=sensor-]').on('vclick', function(event, ui) {
+					var idParts = $(this).attr('id').split('-');
+					if(idParts[2] === 'delete') {
+						$.ajax({url: String.format('/sensors?id={0}', idParts[1]),
+							method: 'DELETE',
+							success:function() {
+								BSTabRefresh('Sensors');
+						}});
+					} else if(idParts[2] === 'edit') {
+						$.ajax({url: String.format('/sensors?id={0}', idParts[1]),
+							success:function(data, status, jqxhr) {
+								$('#bs-sensor-id').val(data.id);
+								$('#bs-sensor-pin').val(data.pin);
+								$('#bs-sensor-pullUp').val(data.pullUp);
+								$('#bs-sensor-editor').popup('open', {positionTo:'window'});
+							}
+						});
+					}
+				});
+			}
+		});
+	} else if(section === 'Sensors (S88)') {
+		refreshTable({table: '#bs-table-sensors-s88', url: '/s88sensors',
+			fields: ['id', 'pin', 'sensorIDBase', 'count', 'state', function(record) {
+				var buttons = '';
+				buttons += createButton({type:'delete', id:String.format("s88sensor-{0}-delete", record.id)});
+				buttons += createButton({type:'edit', id:String.format("s88sensor-{0}-edit", record.id)});
+				return buttons;
+			}],
+			refreshCallback: function() {
+				$('#bs-table-sensors-s88 tr td [id^=s88sensor-]').button();
+				$('#bs-table-sensors-s88 tr td [id^=s88sensor-]').on('vclick', function(event, ui) {
+					var idParts = $(this).attr('id').split('-');
+					if(idParts[2] === 'delete') {
+						$.ajax({url: String.format('/s88sensors?id={0}', idParts[1]),
+							method: 'DELETE',
+							success:function() {
+								BSTabRefresh('Sensors (S88)');
+						}});
+					} else if(idParts[2] === 'edit') {
+						$.ajax({url: String.format('/s88sensors?id={0}', idParts[1]),
+							success:function(data, status, jqxhr) {
+								$('#bs-sensor-s88-id').val(data.id);
+								$('#bs-sensor-s88-pin').val(data.dataPin);
+								$('#bs-sensor-s88-count').val(data.count);
+								$('#bs-sensor-s88-editor').popup('open', {positionTo:'window'});
+							}
+						});
+					}
+				});
+			}
+		});
+	} else if(section === 'Outputs') {
+		refreshTable({table: '#bs-table-outputs', url: '/outputs',
+			fields: ['id', 'pin', 'flags', 'state', function(record) {
+				var buttons = '';
+				buttons += createButton({type:'delete', id:String.format("output-{0}-delete", record.id)});
+				buttons += createButton({type:'edit', id:String.format("output-{0}-edit", record.id)});
+				if(record.state === 'Off') {
+					buttons += createButton({type:'power', id:String.format("output-{0}-toggle", record.id), title:'Enable'});
+				} else {
+					buttons += createButton({type:'power', id:String.format("output-{0}-toggle", record.id), title:'Disable'});
+				}
+				return buttons;
+			}],
+			refreshCallback: function() {
+				$('#bs-table-outputs tr td [id^=output-]').button();
+				$('#bs-table-outputs tr td [id^=output-]').on('vclick', function(event, ui) {
+					var idParts = $(this).attr('id').split('-');
+					if(idParts[2] === 'delete') {
+						$.ajax({url: String.format('/outputs?id={0}', idParts[1]),
+							method: 'DELETE',
+							success:function() {
+								BSTabRefresh('Outputs');
+						}});
+					} else if(idParts[2] === 'edit') {
+						$.ajax({url: String.format('/outputs?id={0}', idParts[1]),
+							success:function(data, status, jqxhr) {
+								$('#bs-output-id').val(data.id);
+								$('#bs-output-pin').val(data.pin);
+								$('#bs-output-logic').val(data.flags.includes('activeLow'));
+								$('#bs-output-startup-state').val(data.flags.includes('force'));
+								$('#bs-output-default-state').val(data.flags.includes('force(on)'));
+								$('#bs-output-editor').popup('open', {positionTo:'window'});
+							}
+						});
+					} else {
+						$.ajax({url: String.format('/outputs?id={0}', idParts[1]),
+							method: 'PUT',
+							success:function() {
+								BSTabRefresh('Outputs');
+						}});
+					}
+				});
+			}
+		});
+	} else if(section === 'Locomotive Roster') {
+		refreshTable({table: '#bs-table-loco-roster', url: '/locomotive/roster',
+			fields: ['address', 'type', 'description', function(record) {
+				var buttons = '';
+				buttons += createButton({type:'delete', id:String.format("roster-{0}-delete", record.address)});
+				buttons += createButton({type:'edit', id:String.format("roster-{0}-edit", record.address)});
+				if(record.idleOnStartup === 'true') {
+					buttons += createButton({type:'power', id:String.format("roster-{0}-idle-off", record.address), title:'Disable Idle'});
+				} else {
+					buttons += createButton({type:'power', id:String.format("roster-{0}-idle-on", record.address), title:'Enable Idle'});
+				}
+				if(record.defaultOnThrottles === 'true') {
+					buttons += createButton({type:'action', id:String.format("roster-{0}-default-off", record.address), title:'Disable default on Throttles'});
+				} else {
+					buttons += createButton({type:'action', id:String.format("roster-{0}-default-on", record.address), title:'Enable default on Throttles'});
+				}
+				return buttons;
+			}],
+			refreshCallback: function() {
+				$('#bs-table-loco-roster tr td [id^=roster-]').button();
+				$('#bs-table-loco-roster tr td [id^=roster-]').on('vclick', function(event, ui) {
+					var idParts = $(this).attr('id').split('-');
+					if(idParts[2] === 'delete') {
+						$.ajax({url: String.format('/locomotive/roster?address={0}', idParts[1]),
+							method: 'DELETE',
+							success: function() {
+								BSTabRefresh('Locomotive Roster');
+							}});
+					} else if(idParts[2] === 'edit') {
+						$.ajax({url: String.format('/locomotive/roster?address={0}', idParts[1]),
+							success:function(data, status, jqxhr) {
+								$('#bs-loco-address').val(data.address);
+								$('#bs-loco-type').val(data.type);
+								$('#bs-loco-desc').val(data.description);
+								$('#bs-loco-idle').val(data.idleOnStartup);
+								$('#bs-loco-default').val(data.defaultOnThrottles);
+								$('#bs-loco-editor').popup('open', {positionTo:'window'});
+							}
+						});
+					} else if(idParts[2] === 'idle') {
+						$.ajax({url: String.format('/locomotive/roster?address={0}&idleOnStartup={1}', idParts[1], idParts[3] === 'off'),
+							method: 'PUT',
+							success:function() {
+								BSTabRefresh('Locomotive Roster');
+							}});
+					} else if(idParts[2] === 'default') {
+						$.ajax({url: String.format('/locomotive/roster?address={0}&defaultOnThrottles={1}', idParts[1], idParts[3] === 'off'),
+							method: 'PUT',
+							success:function() {
+								BSTabRefresh('Locomotive Roster');
+							}});
+					}
+				});
+			}
+		});
+	}
+}
+function changeLocomotive(newAddress) {
+	console.log("selected loco:", newAddress);
+	$.get({
+		url: '/locomotive?address=' + newAddress,
+		success : function (data, status, xhr) {
+			$("#selected-loco-address").val(newAddress);
+			$("#throttle-speed").val(data.speed).slider("refresh");
+			if('FWD'.localeCompare(data.dir)) {
+				console.log('fwd');
+				$("#throttle-direction").prop("checked", false).flipswitch("refresh");
+			} else {
+				console.log('rev');
+				$("#throttle-direction").prop("checked", true).flipswitch("refresh");
+			}
+			$("[id^=funct_]").prop('checked', false);
+			enableLocomotiveInputs();
+		},
+		error : function(xhr, status, error) {
+			console.log("Failed to retrieve locomotive details from base station");
+			$("#selected-loco-address").val(newAddress);
+			enableLocomotiveInputs();
+		}
+	});
+}
+function disableS88Tab() {
+	console.log("Disabling S88 section");
+	$('#bs-sensors-s88-h3').hide();
+	$('#bs-sensors-s88').hide();
+}
+function refreshTable({table, url, fields, filter=function() {return true;}, failureHandler=function() {}, refreshCallback=function() {}} = {}) {
+	console.log('refreshing table:', table, 'using url:', url, 'and fields:', fields)
+	$.mobile.loading("show", {text: 'Refreshing data', textVisible: true});
+	$.ajax({
+		url: url,
+		dataType:'json',
+		error: failureHandler,
+		success: function(data, status, jqxhr) {
+			var tableBody = $(table + ' tbody');
+			tableBody.empty();
+			$.each(data, function(id, record) {
+				if (filter(record)) {
+					var row = '<tr>';
+					$.each(fields, function(id, field) {
+						row += '<td>';
+						if(typeof field === 'string') {
+							row += record[field];
+						} else {
+							row += field(record);
+						}
+						row += '</td>';
+					})
+					tableBody.append(row);
+				}
+			});
+			$(table).table('refresh');
+			refreshCallback();
+		}
+	});
+	$.mobile.loading("hide");
+}
+	</script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 /**********************************************************************
 DCC++ BASE STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017, 2018 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -38,7 +38,8 @@ public:
     S88BusManager::clear();
 #endif
     OutputManager::clear();
-    wifiInterface.printf(F("<O>"));
+    LocomotiveManager::clear();
+    wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     startDCCSignalGenerators();
   }
   String getID() {
@@ -47,7 +48,7 @@ public:
 };
 
 // <E> command handler, this command stores all currently defined Turnouts,
-// Sensors, S88 Sensors (if enabled) and  Outputs into the ESP32 for use on
+// Sensors, S88 Sensors (if enabled), Outputs and locomotives into the ESP32 for use on
 // subsequent startups.
 class ConfigStore : public DCCPPProtocolCommand {
 public:
@@ -248,7 +249,7 @@ void DCCPPProtocolHandler::process(const String &commandString) {
   }
   if(!processed) {
     log_e("No command handler for [%s]", commandID.c_str());
-    wifiInterface.printf(F("<X>"));
+    wifiInterface.send(COMMAND_FAILED_RESPONSE);
   }
 }
 
@@ -276,19 +277,7 @@ DCCPPProtocolCommand *DCCPPProtocolHandler::getCommandHandler(const String &id) 
 DCCPPProtocolConsumer::DCCPPProtocolConsumer() {
   _buffer.reserve(256);
 }
-/*
-void DCCPPProtocolConsumer::update() {
-  log_d("[%s] checking for available data", getName().c_str());
-  if (_stream.available()) {
-    auto len = _stream.available();
-    log_d("[%s] consuming %d bytes", getName().c_str(), len);
-    auto read_dest = _buffer.insert(_buffer.end(), len + 1, 0);
-    auto added = _stream.readBytes(&*read_dest, len);
-    _buffer.erase(read_dest + added, _buffer.end());
-    processData();
-  }
-}
-*/
+
 void DCCPPProtocolConsumer::feed(uint8_t *data, size_t len) {
   for(int i = 0; i < len; i++) {
     _buffer.emplace_back(data[i]);

@@ -90,3 +90,5 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Outputs.h"
 
 extern std::vector<uint8_t> restrictedPins;
+
+void esp32_restart();

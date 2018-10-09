@@ -625,8 +625,8 @@ void NextionThrottlePage::invalidateLocomotive(uint32_t address) {
 
 void NextionThrottlePage::init() {
   uint8_t index = 0;
-  for(auto loco : LocomotiveManager::getDefaultLocos(3)) {
-    _locomotives[index++] = loco;
+  for(auto entry : LocomotiveManager::getDefaultLocos(3)) {
+    _locomotives[index++] = LocomotiveManager::getLocomotive(entry->getAddress());
   }
   activateLoco(&_locoButtons[0]);
   activateFunctionGroup(&_fgroupButtons[0]);

@@ -67,6 +67,13 @@ void stopDCCSignalGenerators() {
   dccSignal[DCC_SIGNAL_PROGRAMMING].stopSignal<DCC_SIGNAL_PROGRAMMING>();
 }
 
+bool isDCCSignalEnabled() {
+  if(dccSignal[DCC_SIGNAL_OPERATIONS].isEnabled() || dccSignal[DCC_SIGNAL_PROGRAMMING].isEnabled()) {
+    return true;
+  }
+  return false;
+}
+
 void sendDCCEmergencyStop() {
   loadBytePacket(dccSignal[DCC_SIGNAL_OPERATIONS], eStopPacket, 2, 0, true);
   loadBytePacket(dccSignal[DCC_SIGNAL_PROGRAMMING], eStopPacket, 2, 0, true);
@@ -268,6 +275,8 @@ void SignalGenerator::startSignal() {
   timerAlarmEnable(_fullCycleTimer);
   log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), 2 * signalGenerator + 1);
   timerAlarmEnable(_pulseTimer);
+  
+  _enabled = true;
 }
 
 template<int signalGenerator>
@@ -308,18 +317,24 @@ void SignalGenerator::stopSignal() {
     memset(_currentPacket, 0, sizeof(Packet));
     _availablePackets.push(_currentPacket);
   }
+
+  _enabled = false;
   portEXIT_CRITICAL(&_sendQueueMUX);
 }
 
 void SignalGenerator::waitForQueueEmpty() {
   while(!isQueueEmpty()) {
-    log_i("[%s] Waiting for %d packets to send...", _name.c_str(), _toSend.size());
+    log_d("[%s] Waiting for %d packets to send...", _name.c_str(), _toSend.size());
     delay(10);
   }
 }
 
 bool SignalGenerator::isQueueEmpty() {
   return _toSend.empty();
+}
+
+bool SignalGenerator::isEnabled() {
+  return _enabled;
 }
 
 int16_t readCV(const uint16_t cv) {

@@ -61,14 +61,13 @@ void S88BusManager::init() {
   pinMode(S88_LOAD_PIN, OUTPUT);
 
   log_i("Initializing S88 SensorBus list");
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = configStore.load("S88.json", jsonBuffer);
-  JsonVariant count = root[F("count")];
+  JsonObject &root = configStore.load(S88_SENSORS_JSON_FILE);
+  JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t s88BusCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d S88 Busses", s88BusCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d S88 Bus"), s88BusCount);
   if(s88BusCount > 0) {
-    for(auto bus : root.get<JsonArray>(F("buses"))) {
+    for(auto bus : root.get<JsonArray>(JSON_SENSORS_NODE)) {
       s88SensorBus.add(new S88SensorBus(bus.as<JsonObject &>()));
     }
   }
@@ -80,16 +79,15 @@ void S88BusManager::clear() {
 }
 
 uint8_t S88BusManager::store() {
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();
-  JsonArray &array = root.createNestedArray("outputs");
+  JsonObject &root = configStore.createRootNode();
+  JsonArray &array = root.createNestedArray(JSON_SENSORS_NODE);
   uint8_t sensorBusIndex = 0;
   for (const auto& bus : s88SensorBus) {
     bus->toJson(array.createNestedObject());
     sensorBusIndex++;
   }
-  root[F("count")] = outputStoredCount;
-  configStore.store("S88.json", root);
+  root[JSON_COUNT_NODE] = sensorBusIndex;
+  configStore.store(S88_SENSORS_JSON_FILE, root);
   return sensorBusIndex;
 }
 
@@ -181,11 +179,10 @@ S88SensorBus::S88SensorBus(const uint8_t id, const uint8_t dataPin, const uint16
 }
 
 S88SensorBus::S88SensorBus(JsonObject &json) {
-  _id = json[F("id")];
-  _dataPin = json[F("dataPin")];
-  _lastSensorID = _sensorIDBase = json[F("sensorIDBase")];
-  uint16_t sensorCount = json[F("sensorCount")];
-  sensorJson[F("state")] = sensorBus->getStateString();
+  _id = json[JSON_ID_NODE];
+  _dataPin = json[JSON_PIN_NODE];
+  _lastSensorID = _sensorIDBase = json[JSON_S88_SENSOR_BASE_NODE];
+  uint16_t sensorCount = json[JSON_COUNT_NODE];
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("S88(%d) %02d sensors"), _id, sensorCount);
   for(uint16_t id = 0; id < sensorCount; id++) {
     _sensors.push_back(new S88Sensor(_sensorIDBase + id, id));
@@ -213,12 +210,12 @@ void S88SensorBus::update(const uint8_t dataPin, const uint16_t sensorCount) {
 }
 
 void S88SensorBus::toJson(JsonObject &json, bool includeState) {
-  json[F("id")] = _id;
-  json[F("dataPin")] = _dataPin
-  json[F("sensorIDBase")] = _sensorIDBase;
-  json[F("sensorCount")] = _sensors.size();
+  json[JSON_ID_NODE] = _id;
+  json[JSON_PIN_NODE] = _dataPin;
+  json[JSON_S88_SENSOR_BASE_NODE] = _sensorIDBase;
+  json[JSON_COUNT_NODE] = _sensors.size();
   if(includeState) {
-    json[F("state")] = sensorBus->getStateString();
+    json[JSON_STATE_NODE] = getStateString();
   }
 }
 
@@ -283,12 +280,12 @@ void S88BusCommandAdapter::process(const std::vector<String> arguments) {
   } else {
     if (arguments.size() == 1 && S88BusManager::removeBus(arguments[0].toInt())) {
       // delete sensor bus
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else if (arguments.size() == 3 && S88BusManager::createOrUpdateBus(arguments[0].toInt(), arguments[1].toInt(), arguments[2].toInt())) {
       // create sensor bus
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else {
-      wifiInterface.printf(F("<X>"));
+      wifiInterface.send(COMMAND_FAILED_RESPONSE);
     }
   }
 }

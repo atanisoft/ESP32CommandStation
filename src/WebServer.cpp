@@ -77,19 +77,18 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     auto jsonResponse = new AsyncJsonResponse();
     JsonObject &root = jsonResponse->getRoot();
 #if defined(S88_ENABLED) && S88_ENABLED
-    root[F("s88")] = "true";
+    root[JSON_S88_NODE] = JSON_VALUE_TRUE;
 #else
-    root[F("s88")] = "false";
+    root[JSON_S88_NODE] = JSON_VALUE_FALSE;
 #endif
-    LocomotiveManager::getDefaultLocos(root.createNestedArray("locos"));
     jsonResponse->setCode(STATUS_OK);
     jsonResponse->setLength();
     request->send(jsonResponse);
   });
   on("/programmer", HTTP_GET | HTTP_POST,
     std::bind(&DCCPPWebServer::handleProgrammer, this, std::placeholders::_1));
-  on("/powerStatus", HTTP_GET,
-    std::bind(&DCCPPWebServer::handlePowerStatus, this, std::placeholders::_1));
+  on("/power", HTTP_GET | HTTP_PUT,
+    std::bind(&DCCPPWebServer::handlePower, this, std::placeholders::_1));
   on("/outputs", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleOutputs, this, std::placeholders::_1));
   on("/turnouts", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
@@ -142,34 +141,107 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
  	auto jsonResponse = new AsyncJsonResponse();
 	// new programmer request
 	if (request->method() == HTTP_GET) {
-		if (request->arg("target") == "true") {
+		if (request->getParam(JSON_PROG_ON_MAIN)->value().equalsIgnoreCase(JSON_VALUE_TRUE)) {
 			jsonResponse->setCode(STATUS_NOT_ALLOWED);
-		} else {
-      uint16_t cvNumber = request->arg(F("cv")).toInt();
+		} else if(request->hasArg(JSON_IDENTIFY_NODE.c_str())) {
+      JsonObject &node = jsonResponse->getRoot();
+      int16_t decoderConfig = readCV(CV_NAMES::DECODER_CONFIG);
+      uint16_t decoderAddress = 0;
+      if(decoderConfig > 0) {
+        node[JSON_DECODER_VERSION_NODE] = readCV(CV_NAMES::DECODER_VERSION);
+        uint8_t decoderManufacturer = readCV(CV_NAMES::DECODER_MANUFACTURER);
+        node[JSON_DECODER_MANUFACTURER_NODE] = decoderManufacturer;
+        if(bitRead(decoderConfig, DECODER_CONFIG_BITS::DECODER_TYPE)) {
+          int16_t addrMSB = readCV(CV_NAMES::ACCESSORY_DECODER_MSB_ADDRESS);
+          int16_t addrLSB = readCV(CV_NAMES::SHORT_ADDRESS);
+          if(addrMSB >= 0 && addrLSB >= 0) {
+            if(decoderManufacturer == 0xA5) { // MERG uses 7 bit LSB
+              decoderAddress = (uint16_t)(((addrMSB & 0x07) << 7) | (addrLSB & 0x7F));
+            } else if(decoderManufacturer == 0x19) { // Team Digital uses 8 bit LSB and 4 bit MSB
+              decoderAddress = (uint16_t)(((addrMSB & 0x0F) << 8) | addrLSB);
+            } else { // NMRA spec shows 6 bit LSB
+              decoderAddress = (uint16_t)(((addrMSB & 0x07) << 6) | (addrLSB & 0x1F));
+            }
+            node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_LONG_ADDRESS;
+          } else {
+            jsonResponse->setCode(STATUS_SERVER_ERROR);
+          }
+        } else {
+          if(bitRead(decoderConfig, DECODER_CONFIG_BITS::SHORT_OR_LONG_ADDRESS)) {
+            int16_t addrMSB = readCV(CV_NAMES::LONG_ADDRESS_MSB_ADDRESS);
+            int16_t addrLSB = readCV(CV_NAMES::LONG_ADDRESS_LSB_ADDRESS);
+            if(addrMSB >= 0 && addrLSB >= 0) {
+              decoderAddress = (uint16_t)(((addrMSB & 0xFF) << 8) | (addrLSB & 0xFF));
+              node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_LONG_ADDRESS;
+            } else {
+              jsonResponse->setCode(STATUS_SERVER_ERROR);
+            }
+          } else {
+            int16_t shortAddr = readCV(CV_NAMES::SHORT_ADDRESS);
+            if(shortAddr > 0) {
+              decoderAddress = shortAddr;
+              node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_SHORT_ADDRESS;
+            } else {
+              jsonResponse->setCode(STATUS_SERVER_ERROR);
+            }
+          }
+          if(bitRead(decoderConfig, DECODER_CONFIG_BITS::SPEED_TABLE)) {
+            node[JSON_SPEED_TABLE_NODE] = JSON_VALUE_ON;
+          } else {
+            node[JSON_SPEED_TABLE_NODE] = JSON_VALUE_OFF;
+          }
+        }
+        if(decoderAddress > 0) {
+          node[JSON_ADDRESS_NODE] = decoderAddress;
+          auto roster = LocomotiveManager::getRosterEntry(decoderAddress, false);
+          if(roster) {
+            node[JSON_LOCO_NODE] = roster;
+          } else if(request->hasArg(JSON_CREATE_NODE.c_str()) && request->arg(JSON_CREATE_NODE).equalsIgnoreCase(JSON_VALUE_TRUE)) {
+            roster = LocomotiveManager::getRosterEntry(decoderAddress);
+            if(decoderConfig > 0) {
+              if(bitRead(decoderConfig, DECODER_CONFIG_BITS::DECODER_TYPE)) {
+                roster->setType(JSON_VALUE_STATIONARY_DECODER);
+              } else {
+                roster->setType(JSON_VALUE_MOBILE_DECODER);
+              }
+            }
+            node[JSON_LOCO_NODE] = roster;
+          }
+        } else {
+          jsonResponse->setCode(STATUS_SERVER_ERROR);
+        }
+      } else {
+        jsonResponse->setCode(STATUS_SERVER_ERROR);
+      }
+    } else {
+      uint16_t cvNumber = request->getParam(JSON_CV_NODE)->value().toInt();
       int16_t cvValue = readCV(cvNumber);
 			JsonObject &node = jsonResponse->getRoot();
-			node[F("cv")] = cvNumber;
-      node[F("value")] = cvValue;
+			node[JSON_CV_NODE] = cvNumber;
+      node[JSON_VALUE_NODE] = cvValue;
       if(cvValue < 0) {
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       } else {
         jsonResponse->setCode(STATUS_OK);
      }
 		}
-  } else if(request->method() == HTTP_POST) {
-    if (request->arg("target") == "true") {
-      if(request->hasArg("bit")) {
-        writeOpsCVBit(request->arg(F("loco")).toInt(), request->arg(F("cv")).toInt(), request->arg(F("bit")).toInt(), request->arg(F("bitValue")) == F("true"));
+  } else if(request->method() == HTTP_POST && request->hasArg(JSON_PROG_ON_MAIN.c_str())) {
+    if (request->getParam(JSON_PROG_ON_MAIN)->value().equalsIgnoreCase(JSON_VALUE_TRUE)) {
+      if(request->hasArg(JSON_CV_BIT_NODE.c_str())) {
+        writeOpsCVBit(request->getParam(JSON_ADDRESS_NODE)->value().toInt(), request->getParam(JSON_CV_NODE)->value().toInt(),
+          request->getParam(JSON_CV_BIT_NODE)->value().toInt(), request->getParam(JSON_VALUE_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE));
       } else {
-        writeOpsCVByte(request->arg(F("loco")).toInt(), request->arg(F("cv")).toInt(), request->arg(F("value")).toInt());
+        writeOpsCVByte(request->getParam(JSON_ADDRESS_NODE)->value().toInt(), request->getParam(JSON_CV_NODE)->value().toInt(),
+          request->getParam(JSON_VALUE_NODE)->value().toInt());
       }
 			jsonResponse->setCode(STATUS_OK);
 		} else {
       bool writeSuccess = false;
-      if(request->hasArg("bit")) {
-        writeSuccess = writeProgCVBit(request->arg(F("cv")).toInt(), request->arg(F("bit")).toInt(), request->arg(F("bitValue")) == F("true"));
+      if(request->hasArg(JSON_CV_BIT_NODE.c_str())) {
+        writeSuccess = writeProgCVBit(request->getParam(JSON_CV_NODE)->value().toInt(), request->getParam(JSON_CV_BIT_NODE)->value().toInt(),
+          request->getParam(JSON_VALUE_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE));
       } else {
-        writeSuccess = writeProgCVByte(request->arg(F("cv")).toInt(), request->arg(F("value")).toInt());
+        writeSuccess = writeProgCVByte(request->getParam(JSON_CV_NODE)->value().toInt(), request->getParam(JSON_VALUE_NODE)->value().toInt());
       }
       if(writeSuccess) {
         jsonResponse->setCode(STATUS_OK);
@@ -177,15 +249,39 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
 		}
+  } else {
+    jsonResponse->setCode(STATUS_BAD_REQUEST);
   }
 	jsonResponse->setLength();
 	request->send(jsonResponse);
  }
 
-void DCCPPWebServer::handlePowerStatus(AsyncWebServerRequest *request) {
+void DCCPPWebServer::handlePower(AsyncWebServerRequest *request) {
  	auto jsonResponse = new AsyncJsonResponse(true);
- 	JsonArray &array = jsonResponse->getRoot();
-  MotorBoardManager::getState(array);
+  if(request->method() == HTTP_GET) {
+    if(request->params()) {
+      jsonResponse->getRoot()[JSON_STATE_NODE] = MotorBoardManager::isTrackPowerOn() ? JSON_VALUE_TRUE : JSON_VALUE_FALSE;
+    } else {
+      JsonArray &array = jsonResponse->getRoot();
+      MotorBoardManager::getState(array);
+    }
+  } else if (request->method() == HTTP_PUT) {
+    if(request->hasArg(JSON_OVERALL_STATE_NODE.c_str())) {
+      if(request->getParam(JSON_OVERALL_STATE_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE)) {
+        MotorBoardManager::powerOnAll();
+      } else {
+        MotorBoardManager::powerOffAll();
+      }
+    } else if(request->hasArg(JSON_NAME_NODE.c_str())) {
+      if(request->getParam(JSON_STATE_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE)) {
+        MotorBoardManager::powerOn(request->getParam(JSON_NAME_NODE)->value());
+      } else {
+        MotorBoardManager::powerOff(request->getParam(JSON_NAME_NODE)->value());
+      }
+    } else {
+      jsonResponse->setCode(STATUS_BAD_REQUEST);
+    }
+  }
  	jsonResponse->setLength();
  	request->send(jsonResponse);
  }
@@ -196,11 +292,11 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
     JsonArray &array = jsonResponse->getRoot();
     OutputManager::getState(array);
   } else if(request->method() == HTTP_POST) {
-    uint16_t outputID = request->arg(F("id")).toInt();
-    uint8_t pin = request->arg(F("pin")).toInt();
-    bool inverted = request->arg(F("inverted")) == "true";
-    bool forceState = request->arg(F("forceState")) == "true";
-    bool defaultState = request->arg(F("defaultState")) == "true";
+    uint16_t outputID = request->getParam(JSON_ID_NODE)->value().toInt();
+    uint8_t pin = request->getParam(JSON_PIN_NODE)->value().toInt();
+    bool inverted = request->getParam(JSON_INVERTED_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE);
+    bool forceState = request->getParam(JSON_FORCE_STATE_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE);
+    bool defaultState = request->getParam(JSON_DEFAULT_STATE_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE);
     uint8_t outputFlags = 0;
     if(inverted) {
       bitSet(outputFlags, OUTPUT_IFLAG_INVERT);
@@ -215,11 +311,11 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
       jsonResponse->setCode(STATUS_NOT_ALLOWED);
     }
   } else if(request->method() == HTTP_DELETE) {
-    if(!OutputManager::remove(request->arg(F("id")).toInt())) {
+    if(!OutputManager::remove(request->getParam(JSON_ID_NODE)->value().toInt())) {
       jsonResponse->setCode(STATUS_NOT_FOUND);
     }
   } else if(request->method() == HTTP_PUT) {
-   OutputManager::toggle(request->arg(F("id")).toInt());
+   OutputManager::toggle(request->getParam(JSON_ID_NODE)->value().toInt());
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
@@ -231,17 +327,17 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
     JsonArray &array = jsonResponse->getRoot();
     TurnoutManager::getState(array);
   } else if(request->method() == HTTP_POST) {
-    uint16_t turnoutID = request->arg(F("id")).toInt();
-    uint16_t turnoutAddress = request->arg(F("address")).toInt();
-    uint8_t turnoutSubAddress = request->arg(F("subAddress")).toInt();
+    uint16_t turnoutID = request->getParam(JSON_ID_NODE)->value().toInt();
+    uint16_t turnoutAddress = request->getParam(JSON_ADDRESS_NODE)->value().toInt();
+    uint8_t turnoutSubAddress = request->getParam(JSON_SUB_ADDRESS_NODE)->value().toInt();
     TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress);
   } else if(request->method() == HTTP_DELETE) {
-    uint16_t turnoutID = request->arg(F("id")).toInt();
+    uint16_t turnoutID = request->getParam(JSON_ID_NODE)->value().toInt();
     if(!TurnoutManager::remove(turnoutID)) {
       jsonResponse->setCode(STATUS_NOT_FOUND);
     }
   } else if(request->method() == HTTP_PUT) {
-    uint16_t turnoutID = request->arg(F("id")).toInt();
+    uint16_t turnoutID = request->getParam(JSON_ID_NODE)->value().toInt();
     TurnoutManager::toggle(turnoutID);
   }
   jsonResponse->setLength();
@@ -254,14 +350,14 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
     JsonArray &array = jsonResponse->getRoot();
     SensorManager::getState(array);
   } else if(request->method() == HTTP_POST) {
-    uint16_t sensorID = request->arg(F("id")).toInt();
-    uint8_t sensorPin = request->arg(F("pin")).toInt();
-    bool sensorPullUp = request->arg(F("pullUp")) == "true";
+    uint16_t sensorID = request->getParam(JSON_ID_NODE)->value().toInt();
+    uint8_t sensorPin = request->getParam(JSON_PIN_NODE)->value().toInt();
+    bool sensorPullUp = request->getParam(JSON_PULLUP_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE);
     if(!SensorManager::createOrUpdate(sensorID, sensorPin, sensorPullUp)) {
       jsonResponse->setCode(STATUS_NOT_ALLOWED);
     }
   } else if(request->method() == HTTP_DELETE) {
-    uint16_t sensorID = request->arg(F("id")).toInt();
+    uint16_t sensorID = request->getParam(JSON_ID_NODE)->value().toInt();
     if(SensorManager::getSensorPin(sensorID) < 0) {
       // attempt to delete S88/RemoteSensor
       jsonResponse->setCode(STATUS_NOT_ALLOWED);
@@ -290,14 +386,14 @@ void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
     S88BusManager::getState(array);
   } else if(request->method() == HTTP_POST) {
     if(!S88BusManager::createOrUpdateBus(
-      request->arg(F("bus")).toInt(),
-      request->arg(F("dataPin")).toInt(),
-      request->arg(F("sensorCount")).toInt())) {
+      request->getParam(JSON_ID_NODE)->value().toInt(),
+      request->getParam(JSON_PIN_NODE)->value().toInt(),
+      request->getParam(JSON_COUNT_NODE)->value().toInt())) {
       // duplicate pin/id
       jsonResponse->setCode(STATUS_NOT_ALLOWED);
     }
   } else if(request->method() == HTTP_DELETE) {
-    S88BusManager::removeBus(request->arg(F("id")).toInt());
+    S88BusManager::removeBus(request->getParam(JSON_ID_NODE)->value().toInt());
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
@@ -310,10 +406,10 @@ void DCCPPWebServer::handleRemoteSensors(AsyncWebServerRequest *request) {
     JsonArray &array = jsonResponse->getRoot();
     RemoteSensorManager::getState(array);
   } else if(request->method() == HTTP_POST) {
-    RemoteSensorManager::createOrUpdate(request->arg(F("id")).toInt(),
-      request->arg(F("value")).toInt());
+    RemoteSensorManager::createOrUpdate(request->getParam(JSON_ID_NODE)->value().toInt(),
+      request->getParam(JSON_VALUE_NODE)->value().toInt());
   } else if(request->method() == HTTP_DELETE) {
-    RemoteSensorManager::remove(request->arg(F("id")).toInt());
+    RemoteSensorManager::remove(request->getParam(JSON_ID_NODE)->value().toInt());
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
@@ -323,18 +419,15 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
   // method - url pattern - meaning
   // ANY /locomotive/estop - send emergency stop to all locomotives
   // GET /locomotive/roster - roster
-  // GET /locomotive/roster?addr=<addr> - get roster entry
-  // PUT /locomotive/roster?addr=<addr> - update roster entry
-  // POST /locomotive/roster?addr=<addr> - create roster entry
-  // DELETE /locomotive/roster?addr=<addr> - delete roster entry
+  // GET /locomotive/roster?address=<address> - get roster entry
+  // PUT /locomotive/roster?address=<address> - update roster entry
+  // POST /locomotive/roster?address=<address> - create roster entry
+  // DELETE /locomotive/roster?address=<address> - delete roster entry
   // GET /locomotive - get active locomotives
-  // POST /locomotive?addr=<addr> - add locomotive to active management
-  // GET /locomotive?addr=<addr> - get locomotive state
-  // PUT /locomotive?addr=<addr>&speed=<speed>&dir=[FWD|REV]&fX=[true|false] - Update locomotive state, fX is short for function X where X is 0-28.
-  // DELETE /locomotive?addr=<addr> - removes locomotive from active management
-  //
-  // roster supports sorting/filtering/ordering based on
-  // https://datatables.net/manual/server-side
+  // POST /locomotive?address=<address> - add locomotive to active management
+  // GET /locomotive?address=<address> - get locomotive state
+  // PUT /locomotive?address=<address>&speed=<speed>&dir=[FWD|REV]&fX=[true|false] - Update locomotive state, fX is short for function X where X is 0-28.
+  // DELETE /locomotive?address=<address> - removes locomotive from active management
   auto jsonResponse = new AsyncJsonResponse(true);
   jsonResponse->setCode(STATUS_OK);
   const String url = request->url();
@@ -343,36 +436,58 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
   if(url.endsWith("/estop")) {
     LocomotiveManager::emergencyStop();
   } else if(url.indexOf("/roster") > 0) {
-    // TODO: ROSTER commands
+    if(request->method() == HTTP_GET && !request->hasArg(JSON_ADDRESS_NODE.c_str())) {
+      LocomotiveManager::getRosterEntries(jsonResponse->getRoot());
+    } else if (request->hasArg(JSON_ADDRESS_NODE.c_str())) {
+      if(request->method() == HTTP_DELETE) {
+        LocomotiveManager::removeRosterEntry(request->arg(JSON_ADDRESS_NODE).toInt());
+      } else {
+        RosterEntry *entry = LocomotiveManager::getRosterEntry(request->arg(JSON_ADDRESS_NODE).toInt());
+        if(request->method() == HTTP_PUT || request->method() == HTTP_POST) {
+          if(request->hasArg(JSON_DESCRIPTION_NODE.c_str())) {
+            entry->setDescription(request->arg(JSON_DESCRIPTION_NODE));
+          }
+          if(request->hasArg(JSON_TYPE_NODE.c_str())) {
+            entry->setType(request->arg(JSON_TYPE_NODE));
+          }
+          if(request->hasArg(JSON_IDLE_ON_STARTUP_NODE.c_str())) {
+            entry->setIdleOnStartup(request->arg(JSON_IDLE_ON_STARTUP_NODE).equalsIgnoreCase(JSON_VALUE_TRUE));
+          }
+          if(request->hasArg(JSON_DEFAULT_ON_THROTTLE_NODE.c_str())) {
+            entry->setDefaultOnThrottles(request->arg(JSON_DEFAULT_ON_THROTTLE_NODE).equalsIgnoreCase(JSON_VALUE_TRUE));
+          }
+        }
+        entry->toJson(jsonResponse->getRoot());
+      }
+    }
   } else {
     // Since it is not an eStop or roster command we need to check the request
     // method and ensure it contains the required arguments otherwise the
     // request should be rejected
-    if(request->method() == HTTP_GET && !request->hasArg("addr")) {
+    if(request->method() == HTTP_GET && !request->hasArg(JSON_ADDRESS_NODE.c_str())) {
       // get all active locomotives
       LocomotiveManager::getActiveLocos(jsonResponse->getRoot());
-    } else if (request->hasArg("addr")) {
-      auto loco = LocomotiveManager::getLocomotive(request->arg("addr").toInt());
+    } else if (request->hasArg(JSON_ADDRESS_NODE.c_str())) {
+      auto loco = LocomotiveManager::getLocomotive(request->getParam(JSON_ADDRESS_NODE)->value().toInt());
       if(request->method() == HTTP_PUT || request->method() == HTTP_POST) {
         // Creation / Update of active locomotive
         bool needUpdate = false;
-        if(request->hasArg("idle") && request->arg("idle").equalsIgnoreCase("true")) {
+        if(request->hasArg(JSON_IDLE_NODE.c_str()) && request->getParam(JSON_IDLE_NODE)->value().equalsIgnoreCase(JSON_VALUE_TRUE)) {
           loco->setIdle();
           needUpdate = true;
         }
-        if(request->hasArg("dir")) {
-          loco->setDirection(request->arg("dir").equalsIgnoreCase("fwd"));
+        if(request->hasArg(JSON_DIRECTION_NODE.c_str())) {
+          loco->setDirection(request->getParam(JSON_DIRECTION_NODE)->value().equalsIgnoreCase(JSON_VALUE_FORWARD));
           needUpdate = true;
         }
-        if(request->hasArg("speed")) {
-          loco->setSpeed(request->arg("speed").toInt());
+        if(request->hasArg(JSON_SPEED_NODE.c_str())) {
+          loco->setSpeed(request->getParam(JSON_SPEED_NODE)->value().toInt());
           needUpdate = true;
         }
         for(uint8_t funcID = 0; funcID <=28 ; funcID++) {
           String fArg = "f" + String(funcID);
           if(request->hasArg(fArg.c_str())) {
-            bool state = request->arg(fArg.c_str()).equalsIgnoreCase("true");
-            loco->setFunction(funcID, state);
+            loco->setFunction(funcID, request->getParam(fArg)->value().equalsIgnoreCase(JSON_VALUE_TRUE));
           }
         }
         if(needUpdate) {
@@ -380,12 +495,12 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
         }
       } else if(request->method() == HTTP_DELETE) {
         // Removal of an active locomotive
-        LocomotiveManager::removeLocomotive(request->arg("addr").toInt());
+        LocomotiveManager::removeLocomotive(request->getParam(JSON_ADDRESS_NODE)->value().toInt());
 #if defined(NEXTION_ENABLED) && NEXTION_ENABLED
-        static_cast<NextionThrottlePage *>(nextionPages[THROTTLE_PAGE])->invalidateLocomotive(request->arg("addr").toInt());
+        static_cast<NextionThrottlePage *>(nextionPages[THROTTLE_PAGE])->invalidateLocomotive(request->getParam(JSON_ADDRESS_NODE)->value().toInt());
 #endif
       }
-      loco->toJson(((JsonArray &)jsonResponse->getRoot()).createNestedObject());
+      loco->toJson(jsonResponse->getRoot());
     } else {
       // missing arg or unknown request
       jsonResponse->setCode(STATUS_BAD_REQUEST);

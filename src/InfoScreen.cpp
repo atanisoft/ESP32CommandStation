@@ -1,7 +1,7 @@
 /**********************************************************************
 DCC++ BASE STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017,2018 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -211,15 +211,15 @@ void InfoScreen::update() {
   static uint8_t _motorboardIndex = 0;
   static uint32_t _lastRotation = millis();
   static uint32_t _lastUpdate = millis();
-  if(_enabled) {
-    // switch to next status line detail set every five seconds
-    if(millis() - _lastRotation >= 5000) {
-      _lastRotation = millis();
-      ++_rotatingStatusIndex %= 3;
-    }
-    // update the status line details every second
-    if(millis() - _lastUpdate >= 950) {
-      _lastUpdate = millis();
+  // switch to next status line detail set every five seconds
+  if(millis() - _lastRotation >= 5000) {
+    _lastRotation = millis();
+    ++_rotatingStatusIndex %= 3;
+  }
+  // update the status line details every second
+  if(millis() - _lastUpdate >= 950) {
+    _lastUpdate = millis();
+    if(_enabled) {
       switch(_rotatingStatusIndex) {
         case 0: // free heap
           replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap:%d"),
@@ -255,7 +255,10 @@ void InfoScreen::update() {
               board->getName().c_str());
           }
           break;
-        }
+      }
+//    } else {
+//      replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap:%d"),
+//        ESP.getFreeHeap());
     }
   }
 }

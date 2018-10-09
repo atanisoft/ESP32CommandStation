@@ -17,6 +17,7 @@ COPYRIGHT (c) 2017,2018 Mike Dunston
 
 #include "DCCppESP32.h"
 
+LinkedList<RosterEntry *> LocomotiveManager::_roster([](RosterEntry *entry) {delete entry;});
 LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete loco; });
 LinkedList<LocomotiveConsist *> LocomotiveManager::_consists([](LocomotiveConsist *consist) {delete consist; });
 
@@ -181,23 +182,64 @@ bool LocomotiveManager::removeLocomotiveConsist(const uint16_t consistAddress) {
 }
 
 void LocomotiveManager::init() {
-  // TODO: load roster from storage and add any idle by default locos
-  //getLocomotive(1234)->setDefaultOnThrottles(true);
-  //getLocomotive(5678)->setDefaultOnThrottles(true);
-  //getLocomotive(9012)->setDefaultOnThrottles(true);
+  JsonObject &root = configStore.load(ROSTER_JSON_FILE);
+  JsonVariant count = root[JSON_COUNT_NODE];
+  uint16_t locoCount = count.success() ? count.as<int>() : 0;
+  log_i("Found %d RosterEntries", locoCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Locos"), locoCount);
+  if(locoCount > 0) {
+    for(auto loco : root.get<JsonArray>(JSON_LOCOS_NODE)) {
+      _roster.add(new RosterEntry(loco.as<JsonObject &>()));
+    }
+  }
+  JsonObject &consistRoot = configStore.load(CONSISTS_JSON_FILE);
+  count = consistRoot[JSON_COUNT_NODE];
+  uint16_t consistCount = count.success() ? count.as<int>() : 0;
+  log_i("Found %d Consists", consistCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Consists"), consistCount);
+  if(locoCount > 0) {
+    for(auto consist : consistRoot.get<JsonArray>(JSON_CONSISTS_NODE)) {
+      _consists.add(new LocomotiveConsist(consist.as<JsonObject &>()));
+    }
+  }
+}
+
+void LocomotiveManager::clear() {
+  _locos.free();
+  _consists.free();
+  _roster.free();
+  store();
 }
 
 uint16_t LocomotiveManager::store() {
-  // TODO: persist roster to storage
-  return 0;
+  JsonObject &root = configStore.createRootNode();
+  JsonArray &locoArray = root.createNestedArray(JSON_LOCOS_NODE);
+  uint16_t locoStoredCount = 0;
+  for (const auto& entry : _roster) {
+    entry->toJson(locoArray.createNestedObject());
+    locoStoredCount++;
+  }
+  root[JSON_COUNT_NODE] = locoStoredCount;
+  configStore.store(ROSTER_JSON_FILE, root);
+
+  JsonObject &consistRoot = configStore.createRootNode();
+  JsonArray &consistArray = consistRoot.createNestedArray(JSON_CONSISTS_NODE);
+  uint16_t consistStoredCount = 0;
+  for (const auto& consist : _consists) {
+    consist->toJson(consistArray.createNestedObject(), false, false);
+    consistStoredCount++;
+  }
+  consistRoot[JSON_COUNT_NODE] = consistStoredCount;
+  configStore.store(CONSISTS_JSON_FILE, consistRoot);
+  return locoStoredCount + consistStoredCount;
 }
 
-std::vector<Locomotive *> LocomotiveManager::getDefaultLocos(const int8_t maxCount) {
-  std::vector<Locomotive *> retval;
-  for (const auto& loco : _locos) {
-    if(loco->isDefaultOnThrottles()) {
+std::vector<RosterEntry *> LocomotiveManager::getDefaultLocos(const int8_t maxCount) {
+  std::vector<RosterEntry *> retval;
+  for (const auto& entry : _roster) {
+    if(entry->isDefaultOnThrottles()) {
       if(maxCount < 0 || (maxCount > 0 && retval.size() < maxCount)) {
-        retval.push_back(loco);
+        retval.push_back(entry);
       }
     }
   }
@@ -205,9 +247,9 @@ std::vector<Locomotive *> LocomotiveManager::getDefaultLocos(const int8_t maxCou
 }
 
 void LocomotiveManager::getDefaultLocos(JsonArray &array) {
-  for (const auto& loco : _locos) {
-    if(loco->isDefaultOnThrottles()) {
-      loco->toJson(array.createNestedObject(), true);
+  for (const auto& entry : _roster) {
+    if(entry->isDefaultOnThrottles()) {
+      entry->toJson(array.createNestedObject());
     }
   }
 }
@@ -215,6 +257,15 @@ void LocomotiveManager::getDefaultLocos(JsonArray &array) {
 void LocomotiveManager::getActiveLocos(JsonArray &array) {
   for (const auto& loco : _locos) {
     loco->toJson(array.createNestedObject());
+  }
+  for (const auto& consist : _consists) {
+    consist->toJson(array.createNestedObject());
+  }
+}
+
+void LocomotiveManager::getRosterEntries(JsonArray &array) {
+  for (const auto& entry : _roster) {
+    entry->toJson(array.createNestedObject());
   }
 }
 
@@ -272,4 +323,47 @@ LocomotiveConsist *LocomotiveManager::createLocomotiveConsist(int8_t consistAddr
     return getConsistByID(abs(consistAddress));
   }
   return nullptr;
+}
+
+RosterEntry *LocomotiveManager::getRosterEntry(uint16_t address, bool create) {
+  RosterEntry *instance = nullptr;
+  for (const auto& entry : _roster) {
+    if(entry->getAddress() == address) {
+      instance = entry;
+    }
+  }
+  if(instance == nullptr && create) {
+    log_i("No roster entry for address %d, creating", address);
+    instance = new RosterEntry(address);
+    _roster.add(instance);
+  }
+  return instance;
+}
+
+void LocomotiveManager::removeRosterEntry(uint16_t address) {
+  RosterEntry *entryToRemove = nullptr;
+  for (const auto& entry : _roster) {
+    if(entry->getAddress() == address) {
+      entryToRemove = entry;
+    }
+  }
+  if(entryToRemove != nullptr) {
+    _roster.remove(entryToRemove);
+  }
+}
+
+RosterEntry::RosterEntry(const JsonObject &json) {
+  _description = json[JSON_DESCRIPTION_NODE].as<String>();
+  _address = json[JSON_ADDRESS_NODE];
+  _type = json[JSON_TYPE_NODE].as<String>();
+  _idleOnStartup = json[JSON_IDLE_ON_STARTUP_NODE] == JSON_VALUE_TRUE;
+  _defaultOnThrottles = json[JSON_DEFAULT_ON_THROTTLE_NODE] == JSON_VALUE_TRUE;
+}
+
+void RosterEntry::toJson(JsonObject &json) {
+  json[JSON_DESCRIPTION_NODE] = _description;
+  json[JSON_ADDRESS_NODE] = _address;
+  json[JSON_TYPE_NODE] = _type;
+  json[JSON_IDLE_ON_STARTUP_NODE] = _idleOnStartup ? JSON_VALUE_TRUE : JSON_VALUE_FALSE;
+  json[JSON_DEFAULT_ON_THROTTLE_NODE] = _defaultOnThrottles ? JSON_VALUE_TRUE : JSON_VALUE_FALSE;
 }

@@ -206,9 +206,19 @@ COPYRIGHT (c) 2017 Mike Dunston
 //
 
 //#define SD_CARD_ENABLED true
-//#define SD_CARD_CS_PIN 5
-//#define SD_CARD_MOSI_PIN 13
-//#define SD_CARD_MISO_PIN 12
-//#define SD_CARD_CLK_PIN 14
+// if SD_CARD_USE_FSPI is enabled the MOSI, MISO and CLK pins are shared with
+// the built in flash, only the SS pin is required to be defined. All others are
+// defined as:
+// SD_CARD_MOSI_PIN: SD1 (8)
+// SD_CARD_MISO_PIN: SD0 (7)
+// SD_CARD_CLK_PIN: CLK (6)
+//#define SD_CARD_USE_FSPI true
+
+// The SD_CARD_SS_PIN should be connected to the SD Card breakout module CS or
+// SS pin, whichever is available
+//#define SD_CARD_SS_PIN 5
+//#define SD_CARD_MOSI_PIN 8
+//#define SD_CARD_MISO_PIN 7
+//#define SD_CARD_CLK_PIN 6
 
 /////////////////////////////////////////////////////////////////////////////////////

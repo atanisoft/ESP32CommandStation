@@ -161,10 +161,21 @@ present in DCCppESP32.cpp in the setup() method.
 #include "HC12Interface.h"
 #include "NextionInterface.h"
 
+#include <esp_int_wdt.h>
+#include <esp_task_wdt.h>
+
 const char * buildTime = __DATE__ " " __TIME__;
 WiFiInterface wifiInterface;
 
 std::vector<uint8_t> restrictedPins;
+
+// esp32 doesn't have a true restart method exposed so use the watchdog to
+// force a restart
+void esp32_restart() {
+  esp_task_wdt_init(1, true);
+  esp_task_wdt_add(NULL);
+  while(true);
+}
 
 void setup() {
 	Serial.begin(115200L);

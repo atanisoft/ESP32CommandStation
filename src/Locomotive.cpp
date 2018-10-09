@@ -19,10 +19,20 @@ COPYRIGHT (c) 2017,2018 Mike Dunston
 
 Locomotive::Locomotive(uint8_t registerNumber) :
   _registerNumber(registerNumber), _locoAddress(0), _speed(0), _direction(true),
-  _lastUpdate(0), _idleOnStartup(false), _defaultOnThrottles(false), _functionsChanged(true) {
+  _lastUpdate(0), _functionsChanged(true) {
   for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
     _functionState[funcID] = false;
   }
+}
+
+Locomotive::Locomotive(JsonObject &json) : _registerNumber(-1), _lastUpdate(0), _functionsChanged(true) {
+  for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
+    _functionState[funcID] = false;
+  }
+  _locoAddress = json[JSON_ADDRESS_NODE];
+  _speed = json[JSON_SPEED_NODE];
+  _direction = json[JSON_DIRECTION_NODE] == JSON_VALUE_FORWARD;
+  _orientation = json[JSON_ORIENTATION_NODE] == JSON_VALUE_FORWARD;
 }
 
 void Locomotive::sendLocoUpdate() {
@@ -53,19 +63,24 @@ void Locomotive::sendLocoUpdate() {
 
 void Locomotive::showStatus() {
   log_i("Loco(%d) locoNumber: %d, speed: %d, direction: %s",
-    _registerNumber, _locoAddress, _speed, _direction ? "FWD" : "REV");
+    _registerNumber, _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
   wifiInterface.printf(F("<T %d %d %d>"), _registerNumber, _speed, _direction);
 }
 
-void Locomotive::toJson(JsonObject &jsonObject, bool basic) {
-  jsonObject[F("address")] = _locoAddress;
-  if(!basic) {
-    jsonObject[F("speed")] = _speed;
-    jsonObject[F("dir")] = _direction ? "FWD" : "REV";
-    jsonObject[F("orientation")] = _orientation ? "FWD" : "REV";
+void Locomotive::toJson(JsonObject &jsonObject, bool includeSpeedDir, bool includeFunctions) {
+  jsonObject[JSON_ADDRESS_NODE] = _locoAddress;
+  if(includeSpeedDir) {
+    jsonObject[JSON_SPEED_NODE] = _speed;
+    jsonObject[JSON_DIRECTION_NODE] = _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE;
   }
-  jsonObject[F("idleOnStartup")] = _idleOnStartup ? "true" : "false";
-  jsonObject[F("defaultOnThrottles")] = _defaultOnThrottles ? "true" : "false";
+  jsonObject[JSON_ORIENTATION_NODE] = _orientation ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE;
+  if(includeFunctions) {
+    JsonArray &functions = jsonObject.createNestedArray(JSON_FUNCTIONS_NODE);
+    for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
+      functions.createNestedObject();
+      functions[funcID] = _functionState[funcID];
+    }
+  }
 }
 
 void Locomotive::createFunctionPackets() {

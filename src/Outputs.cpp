@@ -97,14 +97,13 @@ LinkedList<Output *> outputs([](Output *output) {delete output; });
 
 void OutputManager::init() {
   log_i("Initializing outputs");
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = configStore.load("Outputs.json", jsonBuffer);
-  JsonVariant count = root[F("count")];
+  JsonObject &root = configStore.load(OUTPUTS_JSON_FILE);
+  JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t outputCount = count.success() ? count.as<int>() : 0;
   log_i("Found %d outputs", outputCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Outputs"), outputCount);
   if(outputCount > 0) {
-    for(auto output : root.get<JsonArray>(F("outputs"))) {
+    for(auto output : root.get<JsonArray>(JSON_OUTPUTS_NODE)) {
       outputs.add(new Output(output.as<JsonObject &>()));
     }
   }
@@ -116,16 +115,15 @@ void OutputManager::clear() {
 }
 
 uint16_t OutputManager::store() {
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &root = jsonBuffer.createObject();
-  JsonArray &array = root.createNestedArray("outputs");
+  JsonObject &root = configStore.createRootNode();
+  JsonArray &array = root.createNestedArray(JSON_OUTPUTS_NODE);
   uint16_t outputStoredCount = 0;
   for (const auto& output : outputs) {
     output->toJson(array.createNestedObject());
     outputStoredCount++;
   }
-  root[F("count")] = outputStoredCount;
-  configStore.store("Outputs.json", root);
+  root[JSON_COUNT_NODE] = outputStoredCount;
+  configStore.store(OUTPUTS_JSON_FILE, root);
   return outputStoredCount;
 }
 
@@ -205,9 +203,9 @@ Output::Output(uint16_t id, uint8_t pin, uint8_t flags) : _id(id), _pin(pin), _f
 }
 
 Output::Output(JsonObject &json) {
-  _id = json[F("id")];
-  _pin = json[F("pin")];
-  _flags = json[F("flags")];
+  _id = json[JSON_ID_NODE];
+  _pin = json[JSON_PIN_NODE];
+  _flags = json[JSON_FLAGS_NODE];
   if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
       set(true, false);
@@ -215,7 +213,7 @@ Output::Output(JsonObject &json) {
       set(false, false);
     }
   } else {
-    if(json.get<bool>(F("state"))) {
+    if(json.get<bool>(JSON_STATE_NODE)) {
       set(true, false);
     } else {
       set(false, false);
@@ -228,7 +226,7 @@ Output::Output(JsonObject &json) {
 void Output::set(bool active, bool announce) {
   _active = active;
   digitalWrite(_pin, _active);
-  log_i("Output(%d) set to %s", _id, _active ? "ON" : "OFF");
+  log_i("Output(%d) set to %s", _id, _active ? JSON_VALUE_ON : JSON_VALUE_OFF);
   if(announce) {
     wifiInterface.printf(F("<Y %d %d>"), _id, !_active);
   }
@@ -251,18 +249,18 @@ void Output::update(uint8_t pin, uint8_t flags) {
 }
 
 void Output::toJson(JsonObject &json, bool readableStrings) {
-  json[F("id")] = _id;
-  json[F("pin")] = _pin;
+  json[JSON_ID_NODE] = _id;
+  json[JSON_PIN_NODE] = _pin;
   if(readableStrings) {
-    json[F("flags")] = getFlagsAsString();
+    json[JSON_FLAGS_NODE] = getFlagsAsString();
     if(isActive()) {
-      json[F("state")] = "On";
+      json[JSON_STATE_NODE] = JSON_VALUE_ON;
     } else {
-      json[F("state")] = "Off";
+      json[JSON_STATE_NODE] = JSON_VALUE_OFF;
     }
   } else {
-    json[F("flags")] = _flags;
-    json[F("state")] = _active;
+    json[JSON_FLAGS_NODE] = _flags;
+    json[JSON_STATE_NODE] = _active;
   }
 
 }
@@ -279,15 +277,15 @@ void OutputCommandAdapter::process(const std::vector<String> arguments) {
     uint16_t outputID = arguments[0].toInt();
     if (arguments.size() == 1 && OutputManager::remove(outputID)) {
       // delete output
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else if (arguments.size() == 2 && OutputManager::set(outputID, arguments[1].toInt() == 1)) {
       // set output state
     } else if (arguments.size() == 3) {
       // create output
       OutputManager::createOrUpdate(outputID, arguments[1].toInt(), arguments[2].toInt());
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else {
-      wifiInterface.printf(F("<X>"));
+      wifiInterface.send(COMMAND_FAILED_RESPONSE);
     }
   }
 }

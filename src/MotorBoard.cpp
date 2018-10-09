@@ -180,7 +180,7 @@ void MotorBoardManager::powerOffAll() {
 
 bool MotorBoardManager::powerOn(const String name) {
   for (const auto& board : motorBoards) {
-    if(name.equalsIgnoreCase(board->getName()) == 0) {
+    if(name.equalsIgnoreCase(board->getName())) {
       board->powerOn();
       return true;
     }
@@ -190,7 +190,7 @@ bool MotorBoardManager::powerOn(const String name) {
 
 bool MotorBoardManager::powerOff(const String name) {
   for (const auto& board : motorBoards) {
-    if(name.equalsIgnoreCase(board->getName()) == 0) {
+    if(name.equalsIgnoreCase(board->getName())) {
       board->powerOff();
       return true;
     }
@@ -200,7 +200,7 @@ bool MotorBoardManager::powerOff(const String name) {
 
 int MotorBoardManager::getLastRead(const String name) {
   for (const auto& board : motorBoards) {
-    if(name.equalsIgnoreCase(board->getName()) == 0) {
+    if(name.equalsIgnoreCase(board->getName())) {
       return board->getLastRead();
     }
   }
@@ -228,15 +228,17 @@ uint8_t MotorBoardManager::getMotorBoardCount() {
 void MotorBoardManager::getState(JsonArray &array) {
   for (const auto& motorBoard : motorBoards) {
     JsonObject &board = array.createNestedObject();
-    board[F("name")] = motorBoard->getName();
+    board[JSON_NAME_NODE] = motorBoard->getName();
     if(motorBoard->isOn()) {
-      board[F("state")] = F("Normal");
+      board[JSON_STATE_NODE] = JSON_VALUE_NORMAL;
+      board[JSON_USAGE_NODE] = motorBoard->getCurrentDraw();
     } else if(motorBoard->isOverCurrent()) {
-      board[F("state")] = F("Fault");
+      board[JSON_STATE_NODE] = JSON_VALUE_FAULT;
+      board[JSON_USAGE_NODE] = motorBoard->getCurrentDraw();
     } else {
-      board[F("state")] = F("Off");
+      board[JSON_STATE_NODE] = JSON_VALUE_OFF;
+      board[JSON_USAGE_NODE] = 0;
     }
-    board[F("usage")] = motorBoard->getCurrentDraw();
  	}
 }
 

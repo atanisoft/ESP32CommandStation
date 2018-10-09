@@ -38,7 +38,7 @@ private:
   AsyncWebSocket webSocket;
   void handleESPInfo(AsyncWebServerRequest *);
   void handleProgrammer(AsyncWebServerRequest *);
-  void handlePowerStatus(AsyncWebServerRequest *);
+  void handlePower(AsyncWebServerRequest *);
   void handleOutputs(AsyncWebServerRequest *);
   void handleTurnouts(AsyncWebServerRequest *);
   void handleSensors(AsyncWebServerRequest *);
