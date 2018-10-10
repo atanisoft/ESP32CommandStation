@@ -305,6 +305,7 @@ void DCCPPNextionPage::display() {
     init();
     _pageInitialized = true;
   }
+  refreshPowerButtons();
   displayPage();
 }
 
