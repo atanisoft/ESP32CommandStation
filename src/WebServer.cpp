@@ -148,10 +148,8 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
       int16_t decoderConfig = readCV(CV_NAMES::DECODER_CONFIG);
       uint16_t decoderAddress = 0;
       if(decoderConfig > 0) {
-        node[JSON_DECODER_VERSION_NODE] = readCV(CV_NAMES::DECODER_VERSION);
-        uint8_t decoderManufacturer = readCV(CV_NAMES::DECODER_MANUFACTURER);
-        node[JSON_DECODER_MANUFACTURER_NODE] = decoderManufacturer;
         if(bitRead(decoderConfig, DECODER_CONFIG_BITS::DECODER_TYPE)) {
+          uint8_t decoderManufacturer = readCV(CV_NAMES::DECODER_MANUFACTURER);
           int16_t addrMSB = readCV(CV_NAMES::ACCESSORY_DECODER_MSB_ADDRESS);
           int16_t addrLSB = readCV(CV_NAMES::SHORT_ADDRESS);
           if(addrMSB >= 0 && addrLSB >= 0) {

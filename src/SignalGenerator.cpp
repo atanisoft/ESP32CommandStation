@@ -337,43 +337,45 @@ bool SignalGenerator::isEnabled() {
   return _enabled;
 }
 
-int16_t readCV(const uint16_t cv) {
+int16_t readCV(const uint16_t cv, uint8_t attempts) {
   const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
   const uint16_t milliAmpAck = (4096 * 60 / motorBoard->getMaxMilliAmps());
   uint8_t readCVBitPacket[4] = { (uint8_t)(0x78 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
   uint8_t verifyCVBitPacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
-  int16_t cvValue = 0;
-  log_d("[PROG] Attempting to read CV %d, samples: %d, ack value: %d", cv, CVSampleCount, milliAmpAck);
-  auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
+  int16_t cvValue = -1;
+  for(int attempt = 0; attempt < attempts && cvValue == -1; attempt++) {
+    log_i("[PROG] Attempt %d/%d to read CV %d", attempt+1, attempts, cv);
+    auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
-  for(uint8_t bit = 0; bit < 8; bit++) {
-    log_d("[PROG] CV %d, bit [%d/7]", cv, bit);
-    readCVBitPacket[2] = 0xE8 + bit;
-    loadBytePacket(signalGenerator, resetPacket, 2, 3);
-    loadBytePacket(signalGenerator, readCVBitPacket, 3, 5);
-    signalGenerator.waitForQueueEmpty();
-    if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
-      log_d("[PROG] CV %d, bit [%d/7] ON", cv, bit);
-      bitWrite(cvValue, bit, 1);
-    } else {
-      log_d("[PROG] CV %d, bit [%d/7] OFF", cv, bit);
+    for(uint8_t bit = 0; bit < 8; bit++) {
+      log_v("[PROG] CV %d, bit [%d/7]", cv, bit);
+      readCVBitPacket[2] = 0xE8 + bit;
+      loadBytePacket(signalGenerator, resetPacket, 2, 3);
+      loadBytePacket(signalGenerator, readCVBitPacket, 3, 5);
+      signalGenerator.waitForQueueEmpty();
+      if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
+        log_v("[PROG] CV %d, bit [%d/7] ON", cv, bit);
+        bitWrite(cvValue, bit, 1);
+      } else {
+        log_v("[PROG] CV %d, bit [%d/7] OFF", cv, bit);
+      }
     }
-  }
 
-  // verify the byte we received
-  verifyCVBitPacket[2] = cvValue & 0xFF;
-  log_d("[PROG] CV %d, read value %d, verifying", cv, cvValue);
-  loadBytePacket(signalGenerator, resetPacket, 2, 3);
-  loadBytePacket(signalGenerator, verifyCVBitPacket, 3, 5);
-  signalGenerator.waitForQueueEmpty();
-  bool verified = false;
-  if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
-    verified = true;
-    log_d("[PROG] CV %d, verified", cv);
-  }
-  if(!verified) {
-    log_w("[PROG] CV %d, could not be verified", cv);
-    cvValue = -1;
+    // verify the byte we received
+    verifyCVBitPacket[2] = cvValue & 0xFF;
+    log_d("[PROG] Attempt %d/%d to read CV %d, verifying value is %d", attempt+1, attempts, cv, cvValue);
+    loadBytePacket(signalGenerator, resetPacket, 2, 3);
+    loadBytePacket(signalGenerator, verifyCVBitPacket, 3, 5);
+    signalGenerator.waitForQueueEmpty();
+    bool verified = false;
+    if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
+      verified = true;
+      log_i("[PROG] CV %d, verified as %d", cv, cvValue);
+    }
+    if(!verified) {
+      log_w("[PROG] CV %d, could not be verified", cv);
+      cvValue = -1;
+    }
   }
   return cvValue;
 }

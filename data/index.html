@@ -938,11 +938,11 @@ function setupProgrammer() {
 				},
 				success: function(data, status, xhr) {
 					if(data.hasOwnProperty('loco')) {
-						$('#bs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), manufacturer {2}, version {3}, speed table {4}.\nRoster entry has been created for the {5}',
-							data['address'], data['addressMode'], data['manufacturer'], data['version'], data['speedTable'], data['loco']['type']));
+						$('#bs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), speed table {2}.\nRoster entry has been created for the {3}',
+							data['address'], data['addressMode'], data['speedTable'], data['loco']['type']));
 					} else {
-						$('#bs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), manufacturer {2}, version {3}, speed table {4}',
-							data['address'], data['addressMode'], data['manufacturer'], data['version'], data['speedTable']));
+						$('#bs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), speed table {2}',
+							data['address'], data['addressMode'], data['speedTable']));
 					}
 				},
 				error: function() {

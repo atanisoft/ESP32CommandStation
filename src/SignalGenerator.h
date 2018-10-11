@@ -72,7 +72,7 @@ void stopDCCSignalGenerators();
 bool isDCCSignalEnabled();
 void sendDCCEmergencyStop();
 
-int16_t readCV(const uint16_t);
+int16_t readCV(const uint16_t, const uint8_t=3);
 bool writeProgCVByte(const uint16_t, const uint8_t);
 bool writeProgCVBit(const uint16_t, const uint8_t, const bool);
 void writeOpsCVByte(const uint16_t, const uint16_t, const uint8_t);
