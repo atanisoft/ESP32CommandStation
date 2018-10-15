@@ -569,7 +569,7 @@ function setupThrottle() {
 		var selectedLoco = $("#selected-loco-address").val();
 		var speed = $("#throttle-speed").val();
 		console.log('setting speed to', speed, 'for loco', selectedLoco);
-		$.ajax({url:'/locomotive', method: 'PUT', data: {'addr' : selectedLoco, 'speed' : speed}});
+		$.ajax({url:'/locomotive', method: 'PUT', data: {'address' : selectedLoco, 'speed' : speed}});
 	});
 	$("#throttle-estop").on("vclick", function(event, ui) {
 		$("#throttle-speed").val(0).slider("refresh");
@@ -582,7 +582,7 @@ function setupThrottle() {
 			direction = 'rev';
 		}
 		console.log('setting direction to', direction, 'for loco', selectedLoco);
-		$.ajax({url:'/locomotive', method: 'PUT', data: {'addr' : selectedLoco, 'dir' : direction}});
+		$.ajax({url:'/locomotive', method: 'PUT', data: {'address' : selectedLoco, 'dir' : direction}});
 	});
 	$('#throttle-select-loco').on('vclick', function(event, ui) {
 		refreshTable({
@@ -601,6 +601,7 @@ function setupThrottle() {
 			refreshCallback: function() {
 				$("#throttle-loco-list tr").on("vclick", function(event, ui) {
 					changeLocomotive($(event.target).parent().children(":eq(0)").text().substr(7));
+					$.ajax({url: '/power?overallState=true', method: 'PUT'});
 					$("#throttle-loco-select").popup("close");
 				});
 				$("#throttle-loco-select").popup("open");
@@ -623,6 +624,7 @@ function setupThrottle() {
 			} else {
 				changeLocomotive($("#throttle-loco-select-manual-address").val());
 			}
+			$.ajax({url: '/power?overallState=true', method: 'PUT'});
 			$("#throttle-loco-select").popup("close");
 		});
 		$("#throttle-loco-select-add").on("vclick", function(event, ui) {
@@ -645,7 +647,7 @@ function setupThrottle() {
 			var selectedLoco = $("#selected-loco-address").val();
 			var functionTag = String.format('f{0}', functionID);
 			console.log('setting function', functionTag, 'to', this.checked, 'for loco', selectedLoco);
-			$.ajax({url:'/locomotive', method: 'PUT', data: {'addr' : selectedLoco, functionTag : this.checked}});
+			$.ajax({url:'/locomotive', method: 'PUT', data: {'address' : selectedLoco, functionTag : this.checked}});
 		});
 	});
 }
@@ -958,6 +960,11 @@ function setupProgrammer() {
 function BSTabRefresh(section) {
 	console.log("refreshing: " + section);
 	if(section === 'Status') {
+		$.ajax({url: '/power?overallState=true',
+			method: 'GET',
+			success: function(data, status, xhr) {
+				$('#bs-power-all').val(data.state === 'true');
+		}});
 		refreshTable({table: '#bs-table-power', url: '/power',
 			fields: ['name', 'state', 'usage', function(record) {
 				if(record.state === 'Off') {

@@ -324,7 +324,7 @@ void SignalGenerator::stopSignal() {
 
 void SignalGenerator::waitForQueueEmpty() {
   while(!isQueueEmpty()) {
-    log_d("[%s] Waiting for %d packets to send...", _name.c_str(), _toSend.size());
+    log_v("[%s] Waiting for %d packets to send...", _name.c_str(), _toSend.size());
     delay(10);
   }
 }
@@ -344,7 +344,7 @@ int16_t readCV(const uint16_t cv, uint8_t attempts) {
   uint8_t verifyCVBitPacket[4] = { (uint8_t)(0x74 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
   int16_t cvValue = -1;
   for(int attempt = 0; attempt < attempts && cvValue == -1; attempt++) {
-    log_i("[PROG] Attempt %d/%d to read CV %d", attempt+1, attempts, cv);
+    log_i("[PROG %d/%d] Attempting to read CV %d", attempt+1, attempts, cv);
     auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
     for(uint8_t bit = 0; bit < 8; bit++) {
@@ -363,7 +363,7 @@ int16_t readCV(const uint16_t cv, uint8_t attempts) {
 
     // verify the byte we received
     verifyCVBitPacket[2] = cvValue & 0xFF;
-    log_d("[PROG] Attempt %d/%d to read CV %d, verifying value is %d", attempt+1, attempts, cv, cvValue);
+    log_d("[PROG %d/%d] Attempting to verify read of CV %d as %d", attempt+1, attempts, cv, cvValue);
     loadBytePacket(signalGenerator, resetPacket, 2, 3);
     loadBytePacket(signalGenerator, verifyCVBitPacket, 3, 5);
     signalGenerator.waitForQueueEmpty();
@@ -377,6 +377,7 @@ int16_t readCV(const uint16_t cv, uint8_t attempts) {
       cvValue = -1;
     }
   }
+  log_d("[PROG] CV %d value is %d", cv, cvValue);
   return cvValue;
 }
 

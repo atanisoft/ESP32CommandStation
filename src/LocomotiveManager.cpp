@@ -307,18 +307,24 @@ LocomotiveConsist *LocomotiveManager::getConsistForLoco(uint16_t locomotiveAddre
 
 LocomotiveConsist *LocomotiveManager::createLocomotiveConsist(int8_t consistAddress) {
   if(consistAddress == 0) {
+    log_i("Creating new Loco Consist, automatic address selection...");
     uint8_t newConsistAddress = 127;
     for (const auto& consist : _consists) {
       if(newConsistAddress > consist->getLocoAddress() - 1 && !isConsistAddress(consist->getLocoAddress() - 1)) {
         newConsistAddress = consist->getLocoAddress() - 1;
+        log_i("Found free address for new Loco Consist: %d", newConsistAddress);
         break;
       }
     }
     if(newConsistAddress > 0) {
+      log_i("Adding new Loco Consist %d", newConsistAddress);
       _consists.add(new LocomotiveConsist(newConsistAddress, true));
       return getConsistByID(newConsistAddress);
+    } else {
+      log_i("Unable to locate free address for new Loco Consist, giving up.");
     }
   } else {
+    log_i("Adding new Loco Consist %d", consistAddress);
     _consists.add(new LocomotiveConsist(abs(consistAddress), consistAddress < 0));
     return getConsistByID(abs(consistAddress));
   }
@@ -348,7 +354,10 @@ void LocomotiveManager::removeRosterEntry(uint16_t address) {
     }
   }
   if(entryToRemove != nullptr) {
+    log_i("Removing roster entry for address %d", address);
     _roster.remove(entryToRemove);
+  } else {
+    log_i("Roster entry for address %d doesn't exist, ignoring delete request", address);
   }
 }
 
