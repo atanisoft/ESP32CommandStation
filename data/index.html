@@ -289,7 +289,7 @@
 						<div class="ui-grid-b" id="bs-prog-div-bit">
 							<div class="ui-block-a"><label for="bs-prog-cv-bit">Bit:</label></div>
 							<div class="ui-block-b"><input type="number" pattern="[0-7]*" id="bs-prog-cv-bit" value="0" min="0" max="7"></div>
-							<div class="ui-block-c"><input type="checkbox" id="bs-prog-cv-bit-value" data-role="flipswitch" data-off-text="Off" data-on-text="On"></div>
+							<div class="ui-block-c" id="bs-prog-div-bit-value"><input type="checkbox" id="bs-prog-cv-bit-value" data-role="flipswitch" data-off-text="Off" data-on-text="On"></div>
 						</div>
 						<div class="ui-grid-a" id="bs-prog-div-create-roster">
 							<div class="ui-block-a"><label for="bs-prog-create-roster">Create Roster entry:</label></div>
@@ -864,9 +864,16 @@ function setupProgrammer() {
 	$('#bs-prog-mode').on('change', function() {
 		if(this.checked) {
 			$('#bs-prog-div-value').hide();
+			if($('#bs-prog-action').val() === 'write') {
+				$('#bs-prog-div-bit-value').show();
+			} else {
+				$('#bs-prog-div-bit-value').hide();
+			}
 			$('#bs-prog-div-bit').show();
 		} else {
-			$('#bs-prog-div-value').show();
+			if($('#bs-prog-action').val() === 'write') {
+				$('#bs-prog-div-value').show();
+			}
 			$('#bs-prog-div-bit').hide();
 		}
 	});
@@ -970,6 +977,7 @@ function setupProgrammer() {
 	});
 	$('#bs-prog-div-addr').hide();
 	$('#bs-prog-div-bit').hide();
+	$('#bs-prog-div-create-roster').hide();
 }
 function BSTabRefresh(section) {
 	console.log("refreshing: " + section);
