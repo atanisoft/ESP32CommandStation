@@ -34,7 +34,7 @@ struct Packet {
 
 struct SignalGenerator {
   template<int signalGenerator>
-  void configureSignal(String, uint8_t, uint16_t);
+  void configureSignal(String, uint8_t, uint16_t, uint8_t);
   template<int signalGenerator>
   void startSignal();
   template<int signalGenerator>
@@ -46,8 +46,9 @@ struct SignalGenerator {
   bool isQueueEmpty();
   bool isEnabled();
 
-  hw_timer_t *_fullCycleTimer;
-  hw_timer_t *_pulseTimer;
+  hw_timer_t *_timer;
+  uint8_t _timerNumber;
+  bool _topOfWave;
   String _name;
   uint8_t _directionPin;
   int _currentMonitorPin;
@@ -72,7 +73,7 @@ void stopDCCSignalGenerators();
 bool isDCCSignalEnabled();
 void sendDCCEmergencyStop();
 
-int16_t readCV(const uint16_t, const uint8_t=1);
+int16_t readCV(const uint16_t, const uint8_t=3);
 bool writeProgCVByte(const uint16_t, const uint8_t);
 bool writeProgCVBit(const uint16_t, const uint8_t, const bool);
 void writeOpsCVByte(const uint16_t, const uint16_t, const uint8_t);
@@ -81,6 +82,8 @@ void writeOpsCVBit(const uint16_t, const uint16_t, const uint8_t, const bool);
 #define DCC_SIGNAL_OPERATIONS 0
 #define DCC_SIGNAL_PROGRAMMING 1
 #define MAX_DCC_SIGNAL_GENERATORS 2
+#define DCC_TIMER_OPERATIONS 1
+#define DCC_TIMER_PROGRAMMING 2
 
 enum CV_NAMES {
   SHORT_ADDRESS=1,

@@ -262,14 +262,14 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
 	jsonResponse->setLength();
   log_d("Sending response, %d bytes", jsonResponse->getSize());
 	request->send(jsonResponse);
+  log_d("sent");
  }
 
 void DCCPPWebServer::handlePower(AsyncWebServerRequest *request) {
  	auto jsonResponse = new AsyncJsonResponse(true);
   if(request->method() == HTTP_GET) {
-    log_i("/power: %d", request->params());
     if(request->params()) {
-      jsonResponse->getRoot()[JSON_STATE_NODE] = MotorBoardManager::isTrackPowerOn() ? JSON_VALUE_TRUE : JSON_VALUE_FALSE;
+      ((JsonArray &)jsonResponse->getRoot()).createNestedObject()[JSON_STATE_NODE] = MotorBoardManager::isTrackPowerOn() ? JSON_VALUE_TRUE : JSON_VALUE_FALSE;
     } else {
       JsonArray &array = jsonResponse->getRoot();
       MotorBoardManager::getState(array);

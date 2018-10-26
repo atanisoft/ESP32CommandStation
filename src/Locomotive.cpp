@@ -77,8 +77,9 @@ void Locomotive::toJson(JsonObject &jsonObject, bool includeSpeedDir, bool inclu
   if(includeFunctions) {
     JsonArray &functions = jsonObject.createNestedArray(JSON_FUNCTIONS_NODE);
     for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
-      functions.createNestedObject();
-      functions[funcID] = _functionState[funcID];
+      JsonObject &node = functions.createNestedObject();
+      node[JSON_ID_NODE] = funcID;
+      node[JSON_STATE_NODE] = _functionState[funcID];
     }
   }
 }

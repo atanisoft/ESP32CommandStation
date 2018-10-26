@@ -54,7 +54,7 @@ public:
 	float getCurrentDraw() {
 		return (float)((_current * _maxMilliAmps) / 4096.0f);
 	}
-  uint64_t captureSample(uint8_t);
+  uint16_t captureSample(uint8_t, bool=false);
 private:
 	const String _name;
 	const adc1_channel_t _senseChannel;

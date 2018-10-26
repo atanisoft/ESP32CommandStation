@@ -37,6 +37,7 @@ GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enable
   _triggerRecurrenceCount(0) {
   adc1_config_channel_atten(_senseChannel, ADC_CURRENT_ATTENUATION);
   pinMode(enablePin, OUTPUT);
+  digitalWrite(enablePin, LOW);
   log_i("[%s] Configuring motor board [ADC1 Channel: %d, currentLimit: %d, enablePin: %d]",
     _name.c_str(), _senseChannel, _triggerValue, _enablePin);
 }
@@ -99,27 +100,17 @@ void GenericMotorBoard::check() {
 	}
 }
 
-uint64_t GenericMotorBoard::captureSample(uint8_t sampleCount) {
-  uint64_t averageReading = 0;
-  int successfulReads = 0;
-  for(uint8_t sampleReadCount = 0; sampleReadCount < sampleCount; sampleReadCount++) {
-    int reading = adc1_get_raw(_senseChannel);
-#if DEBUG_ADC_SAMPLING == 1
-    log_d("ADC(%d) sample %d/%d: %d", _senseChannel, sampleReadCount+1, sampleCount, reading);
-#endif
-    if(reading > 0) {
-      averageReading += reading;
-      successfulReads++;
-    }
-    delay(2);
+uint16_t GenericMotorBoard::captureSample(uint8_t sampleCount, bool logResults) {
+  std::vector<int> readings;
+  while(readings.size() < sampleCount) {
+    readings.push_back(adc1_get_raw(_senseChannel));
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
-  if(successfulReads) {
-    averageReading /= successfulReads;
+  auto avgReading = std::accumulate(readings.begin(), readings.end(), 0) / readings.size();
+  if(logResults) {
+    log_d("ADC(%d) average: %d, samples: %d", _senseChannel, avgReading, readings.size());
   }
-#if DEBUG_ADC_SAMPLING == 1
-  log_d("ADC(%d) average: %d", averageReading);
-#endif
-  return averageReading;
+  return avgReading;
 }
 
 GenericMotorBoard * MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin, MOTOR_BOARD_TYPE type, String name) {

@@ -37,7 +37,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 // number of samples to take when monitoring current after a CV verify
 // (bit or byte) has been sent
-const uint8_t CVSampleCount = 250;
+const uint8_t CVSampleCount = 150;
 
 SignalGenerator dccSignal[MAX_DCC_SIGNAL_GENERATORS];
 
@@ -52,9 +52,9 @@ void loadBytePacket(SignalGenerator &, uint8_t *, uint8_t, uint8_t, bool=false);
 
 void configureDCCSignalGenerators() {
   dccSignal[DCC_SIGNAL_OPERATIONS].configureSignal<DCC_SIGNAL_OPERATIONS>("OPS",
-    DCC_SIGNAL_PIN_OPERATIONS, 512);
+    DCC_SIGNAL_PIN_OPERATIONS, 512, DCC_TIMER_OPERATIONS);
   dccSignal[DCC_SIGNAL_PROGRAMMING].configureSignal<DCC_SIGNAL_PROGRAMMING>("PROG",
-    DCC_SIGNAL_PIN_PROGRAMMING, 64);
+    DCC_SIGNAL_PIN_PROGRAMMING, 64, DCC_TIMER_PROGRAMMING);
 }
 
 void startDCCSignalGenerators() {
@@ -201,33 +201,32 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
 }
 
 template<int signalGenerator>
-void IRAM_ATTR signalGeneratorPulseTimer(void)
+void IRAM_ATTR signalGeneratorTimerISR(void)
 {
   auto& generator = dccSignal[signalGenerator];
-  if(generator.getNextBitToSend()) {
-    timerAlarmWrite(generator._pulseTimer, DCC_ONE_BIT_PULSE_DURATION, false);
-    timerAlarmWrite(generator._fullCycleTimer, DCC_ONE_BIT_TOTAL_DURATION, true);
+  if(generator._topOfWave) {
+    if(generator.getNextBitToSend()) {
+      timerAlarmWrite(generator._timer, DCC_ONE_BIT_PULSE_DURATION, false);
+    } else {
+      timerAlarmWrite(generator._timer, DCC_ZERO_BIT_PULSE_DURATION, false);
+    }
+    digitalWrite(generator._directionPin, HIGH);
+    generator._topOfWave = false;
   } else {
-    timerAlarmWrite(generator._pulseTimer, DCC_ZERO_BIT_PULSE_DURATION, false);
-    timerAlarmWrite(generator._fullCycleTimer, DCC_ZERO_BIT_TOTAL_DURATION, true);
+    digitalWrite(generator._directionPin, LOW);
+    generator._topOfWave = true;
   }
-  timerWrite(generator._pulseTimer, 0);
-  timerAlarmEnable(generator._pulseTimer);
-  digitalWrite(generator._directionPin, HIGH);
+  timerWrite(generator._timer, 0);
+  timerAlarmEnable(generator._timer);
 }
 
 template<int signalGenerator>
-void IRAM_ATTR signalGeneratorDirectionTimer()
-{
-  auto& generator = dccSignal[signalGenerator];
-  digitalWrite(generator._directionPin, LOW);
-}
-
-template<int signalGenerator>
-void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_t maxPackets) {
+void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_t maxPackets, uint8_t timerNumber) {
   _name = name;
   _directionPin = directionPin;
   _currentPacket = nullptr;
+  _topOfWave = true;
+  _timerNumber = timerNumber;
 
   // create packets for this signal generator up front, they will be reused until
   // the base station is shutdown
@@ -236,6 +235,7 @@ void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_
   }
 
   // force the directionPin to low since it will be controlled by the DCC timer
+  log_i("[%s] Configuring direction pin %d", _name.c_str(), _directionPin);
   pinMode(_directionPin, INPUT);
   digitalWrite(_directionPin, LOW);
   pinMode(_directionPin, OUTPUT);
@@ -253,28 +253,17 @@ void SignalGenerator::startSignal() {
   log_i("[%s] Adding idle packet to packet queue", _name.c_str());
   loadBytePacket(dccSignal[signalGenerator], idlePacket, 2, 10);
 
-  log_i("[%s] Configuring Timer(%d) for generating DCC Signal (Full Wave)", _name.c_str(), 2 * signalGenerator);
-  _fullCycleTimer = timerBegin(2 * signalGenerator, DCC_TIMER_PRESCALE, true);
-  log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), 2 * signalGenerator);
-  timerAttachInterrupt(_fullCycleTimer, &signalGeneratorPulseTimer<signalGenerator>, true);
-  log_i("[%s] Configuring alarm on Timer(%d) to %dus", _name.c_str(), 2 * signalGenerator, DCC_ONE_BIT_TOTAL_DURATION);
-  timerAlarmWrite(_fullCycleTimer, DCC_ONE_BIT_TOTAL_DURATION, true);
-  log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), 2 * signalGenerator);
-  timerWrite(_fullCycleTimer, 0);
+  log_i("[%s] Configuring Timer(%d) for generating DCC Signal", _name.c_str(), _timerNumber);
+  _timer = timerBegin(_timerNumber, DCC_TIMER_PRESCALE, true);
+  log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), _timerNumber);
+  timerAttachInterrupt(_timer, &signalGeneratorTimerISR<signalGenerator>, true);
+  log_i("[%s] Configuring alarm on Timer(%d) to %dus", _name.c_str(), _timerNumber, DCC_ONE_BIT_PULSE_DURATION);
+  timerAlarmWrite(_timer, DCC_ONE_BIT_PULSE_DURATION, true);
+  log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), _timerNumber);
+  timerWrite(_timer, 0);
 
-  log_i("[%s] Configuring Timer(%d) for generating DCC Signal (Half Wave)", _name.c_str(), 2 * signalGenerator + 1);
-  _pulseTimer = timerBegin(2 * signalGenerator + 1, DCC_TIMER_PRESCALE, true);
-  log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), 2 * signalGenerator + 1);
-  timerAttachInterrupt(_pulseTimer, &signalGeneratorDirectionTimer<signalGenerator>, true);
-  log_i("[%s] Configuring alarm on Timer(%d) to %dus", _name.c_str(), 2 * signalGenerator + 1, DCC_ONE_BIT_TOTAL_DURATION / 2);
-  timerAlarmWrite(_pulseTimer, DCC_ONE_BIT_PULSE_DURATION, false);
-  log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), 2 * signalGenerator + 1);
-  timerWrite(_pulseTimer, 0);
-
-  log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), 2 * signalGenerator);
-  timerAlarmEnable(_fullCycleTimer);
-  log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), 2 * signalGenerator + 1);
-  timerAlarmEnable(_pulseTimer);
+  log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), _timerNumber);
+  timerAlarmEnable(_timer);
   
   _enabled = true;
 }
@@ -284,17 +273,12 @@ void SignalGenerator::stopSignal() {
   // prevent ISR from getting another packet while we are shutting down
   portENTER_CRITICAL(&_sendQueueMUX);
 
-  log_i("[%s] Shutting down Timer(%d) (Full Wave)", _name.c_str(), 2 * signalGenerator);
-  timerStop(_fullCycleTimer);
-  timerAlarmDisable(_fullCycleTimer);
-  timerDetachInterrupt(_fullCycleTimer);
-  timerEnd(_fullCycleTimer);
-
-  log_i("[%s] Shutting down Timer(%d) (Half Wave)", _name.c_str(), 2 * signalGenerator + 1);
-  timerStop(_pulseTimer);
-  timerAlarmDisable(_pulseTimer);
-  timerDetachInterrupt(_pulseTimer);
-  timerEnd(_pulseTimer);
+  log_i("[%s] Shutting down Timer(%d)", _name.c_str(), _timerNumber);
+  timerStop(_timer);
+  timerAlarmDisable(_timer);
+  timerDetachInterrupt(_timer);
+  timerEnd(_timer);
+  _timer = nullptr;
 
   // give enough time for any timer ISR calls to complete before proceeding
   delay(250);
@@ -324,8 +308,8 @@ void SignalGenerator::stopSignal() {
 
 void SignalGenerator::waitForQueueEmpty() {
   while(!isQueueEmpty()) {
-    log_v("[%s] Waiting for %d packets to send...", _name.c_str(), _toSend.size());
-    delay(10);
+    //log_v("[%s] Waiting for %d packets to send...", _name.c_str(), _toSend.size());
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
@@ -347,6 +331,8 @@ int16_t readCV(const uint16_t cv, uint8_t attempts) {
     log_i("[PROG %d/%d] Attempting to read CV %d", attempt+1, attempts, cv);
     auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
+    // reset cvValue to all bits OFF
+    cvValue = 0;
     for(uint8_t bit = 0; bit < 8; bit++) {
       log_v("[PROG] CV %d, bit [%d/7]", cv, bit);
       readCVBitPacket[2] = 0xE8 + bit;
@@ -367,12 +353,9 @@ int16_t readCV(const uint16_t cv, uint8_t attempts) {
     loadBytePacket(signalGenerator, resetPacket, 2, 3);
     loadBytePacket(signalGenerator, verifyCVBitPacket, 3, 5);
     signalGenerator.waitForQueueEmpty();
-    bool verified = false;
     if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
-      verified = true;
       log_i("[PROG] CV %d, verified as %d", cv, cvValue);
-    }
-    if(!verified) {
+    } else {
       log_w("[PROG] CV %d, could not be verified", cv);
       cvValue = -1;
     }
