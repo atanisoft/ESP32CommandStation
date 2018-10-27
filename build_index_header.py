@@ -5,6 +5,9 @@ import struct
 import cStringIO
 
 def build_index_html_h(source, target, env):
+    if os.path.exists('%s/src/index_html.h' % env.subst('$PROJECT_DIR')):
+        if os.path.getmtime('%s/data/index.html' % env.subst('$PROJECT_DIR')) < os.path.getmtime('%s/src/index_html.h' % env.subst('$PROJECT_DIR')):
+            return
     print "Attempting to compress %s/data/index.html" % env.subst('$PROJECT_DIR')
     gzFile = cStringIO.StringIO()
     with open('%s/data/index.html' % env.subst('$PROJECT_DIR')) as f, gzip.GzipFile(mode='wb', fileobj=gzFile) as gz:
