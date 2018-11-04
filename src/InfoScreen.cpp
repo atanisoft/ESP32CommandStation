@@ -55,6 +55,7 @@ void redrawOLED() {
 
 void InfoScreen::init() {
   _enabled = false;
+  bool scanI2C = false;
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
   for(int i = 0; i < INFO_SCREEN_OLED_LINES; i++) {
     infoScreenLines[i] = "";
@@ -83,8 +84,7 @@ void InfoScreen::init() {
   	oledDisplay.setFont(Monospaced_plain_10);
     _enabled = true;
   } else {
-    Serial.print("OLED screen not found at 0x");
-    Serial.println(INFO_SCREEN_OLED_I2C_ADDRESS, HEX);
+    scanI2C = true;
   }
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
   Wire.begin();
@@ -95,10 +95,30 @@ void InfoScreen::init() {
     lcdDisplay.setBacklight(255);
     lcdDisplay.clear();
     _enabled = true;
+  } else {
+    scanI2C = true;
   }
 #endif
   if(!_enabled) {
-    Serial.println("Unable to initialize InfoScreen, switching to Serial");
+    log_w("Unable to initialize InfoScreen, switching to Serial");
+    if(scanI2C) {
+      ::printf("OLED screen not found at 0x%x\n", INFO_SCREEN_OLED_I2C_ADDRESS);
+      ::printf("Scanning for I2C devices...\n");
+      ::printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
+      ::printf("00:         ");
+      for (uint8_t addr=3; addr < 0x78; addr++) {
+        if (addr % 16 == 0) {
+          ::printf("\n%.2x:", addr);
+        }
+        Wire.beginTransmission(addr);
+        if(Wire.endTransmission() == 0) {
+          ::printf(" %.2x", addr);
+        } else {
+          ::printf(" --");
+        }
+      }
+
+    }
   }
 }
 
@@ -214,13 +234,27 @@ void InfoScreen::update() {
   // switch to next status line detail set every five seconds
   if(millis() - _lastRotation >= 5000) {
     _lastRotation = millis();
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+    ++_rotatingStatusIndex %= 5;
+#else
     ++_rotatingStatusIndex %= 3;
+#endif
   }
   // update the status line details every second
   if(millis() - _lastUpdate >= 950) {
     _lastUpdate = millis();
     if(_enabled) {
       switch(_rotatingStatusIndex) {
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+        case 3: // LOCONET RX stats
+          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LN-RX: %d/%d"),
+            locoNet.getRxStats()->rxPackets, locoNet.getRxStats()->rxErrors);
+          break;
+        case 4: // LOCONET TX stats
+          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LN-TX: %d/%d/%d"),
+            locoNet.getTxStats()->txPackets, locoNet.getTxStats()->txErrors, locoNet.getTxStats()->collisions);
+          break;
+#endif
         case 0: // free heap
           replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap:%d"),
             ESP.getFreeHeap());
