@@ -84,6 +84,7 @@ void InfoScreen::init() {
   	oledDisplay.setFont(Monospaced_plain_10);
     _enabled = true;
   } else {
+    ::printf("OLED screen not found at 0x%x\n", INFO_SCREEN_OLED_I2C_ADDRESS);
     scanI2C = true;
   }
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
@@ -96,13 +97,13 @@ void InfoScreen::init() {
     lcdDisplay.clear();
     _enabled = true;
   } else {
+    ::printf("LCD screen not found at 0x%x\n", INFO_SCREEN_LCD_I2C_ADDRESS);
     scanI2C = true;
   }
 #endif
   if(!_enabled) {
     log_w("Unable to initialize InfoScreen, switching to Serial");
     if(scanI2C) {
-      ::printf("OLED screen not found at 0x%x\n", INFO_SCREEN_OLED_I2C_ADDRESS);
       ::printf("Scanning for I2C devices...\n");
       ::printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
       ::printf("00:         ");
