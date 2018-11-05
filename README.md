@@ -29,4 +29,13 @@ The following parameters in Config.h are optional but are useful to enable if yo
 * INFO_SCREEN_OLED - This can be enabled to use an I2C connected OLED display using either the SH1106 or SSD1306 chipset. If this is enabled the following parameters must also be defined: OLED_CHIPSET, INFO_SCREEN_OLED_I2C_ADDRESS, INFO_SCREEN_OLED_VERTICAL_FLIP.
 * INFO_SCREEN_LCD - This can be enabled to use an I2C connected LCD display. IF this option is enabled INFO_SCREEN_OLED can not be used. If this is enabled the following parameters must also be defined: INFO_SCREEN_LCD_I2C_ADDRESS, INFO_SCREEN_LCD_LINES, INFO_SCREEN_LCD_COLUMNS.
 
--December 10, 2017
+## Supported ESP32 Boards
+The DCC++ESP32 Base Station has been tested on a variety of ESP32 boards available on the internet, the current preferred format is either the Arduino Uno R3 formated boards (easy to use with the Arduino Motor Shield) or the TTGO T1 with the integrated SD Card. However, almost any variant of the ESP32 will work as long as there are enough pins available for the Motor Driver connections.
+
+## Supported Motor Drivers/Boards
+The DCC++ESP32 Base Station currently supports three types of Motor Driver/Boards.
+* Arduino Motor Shield Rev3 (https://store.arduino.cc/usa/arduino-motor-shield-rev3). There are various clones of this board avialable throughout the internet, many of these clones will work but many will not.
+* Pololu MC33926 Motor Driver (https://www.pololu.com/product/1213 or https://www.pololu.com/product/2503). There are a few variants on this board available from Pololu and they all should function identically. It is not necessary to have the Arduino shield format and all the majority of the testing has been carried out using the carrier format.
+* BTS 7960B. This is a *VERY* high current H-Bridge based circuit, in the DCC++ESP32 Base Station code it is software limited to either 5A or 10A.
+
+-October 31, 2018
