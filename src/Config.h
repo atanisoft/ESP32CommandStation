@@ -43,24 +43,30 @@ COPYRIGHT (c) 2017 Mike Dunston
 // ADC1_CHANNEL_7 : 35
 //
 // MOST ESP32 BOARDS DO NOT EXPOSE GPIO38 so ADC1_CHANNEL_2 MAY NOT BE USABLE.
+//
+// SUPPORTED MOTORBOARD TYPES:
+// ARDUINO_SHIELD : Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A per channel https://store.arduino.cc/usa/arduino-motor-shield-rev3
+// POLOLU         : Pololu MC33926 Motor Driver (shield or carrier). Max Output 2.5A per channel https://www.pololu.com/product/1213 / https://www.pololu.com/product/2503
+// BTS7960B_5A    : Infineon Technologies BTS 7960 Motor Driver Module. Max Output 5A (43A actual max) https://www.infineon.com/dgdl/bts7960b-pb-final.pdf
+// BTS7960B_10A   : Infineon Technologies BTS 7960 Motor Driver Module. Max Output 10A (43A actual max) https://www.infineon.com/dgdl/bts7960b-pb-final.pdf
 
 // MAIN TRACK MOTORBOARD NAME
 #define MOTORBOARD_NAME_MAIN "MAIN"
 // MAIN TRACK NOTORBOARD ENABLED PIN
 #define MOTORBOARD_ENABLE_PIN_MAIN 25
 // MAIN TRACK MOTORBOARD CURRENT SENSE ADC PIN
-#define MOTORBOARD_CURRENT_SENSE_MAIN ADC1_CHANNEL_0
+#define MOTORBOARD_CURRENT_SENSE_MAIN ADC1_CHANNEL_7
 // MAIN TRACK MOTORBOARD MOTOR_BOARD_TYPE
-#define MOTORBOARD_TYPE_MAIN MOTOR_BOARD_TYPE::ARDUINO_SHIELD
+#define MOTORBOARD_TYPE_MAIN ARDUINO_SHIELD
 
 // PROG TRACK MOTORBOARD NAME
 #define MOTORBOARD_NAME_PROG "PROG"
 // PROG TRACK NOTORBOARD ENABLED PIN
 #define MOTORBOARD_ENABLE_PIN_PROG 23
 // PROG TRACK MOTORBOARD CURRENT SENSE ADC PIN
-#define MOTORBOARD_CURRENT_SENSE_PROG ADC1_CHANNEL_3
+#define MOTORBOARD_CURRENT_SENSE_PROG ADC1_CHANNEL_6
 // PROG TRACK MOTORBOARD MOTOR_BOARD_TYPE
-#define MOTORBOARD_TYPE_PROG MOTOR_BOARD_TYPE::ARDUINO_SHIELD
+#define MOTORBOARD_TYPE_PROG ARDUINO_SHIELD
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -220,5 +226,17 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define SD_CARD_MOSI_PIN 8
 //#define SD_CARD_MISO_PIN 7
 //#define SD_CARD_CLK_PIN 6
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// The LocoNet interface allows using many of the available LocoNet sensors, throttles,
+// accessories, etc with this base station. It is still under active development, if
+// you find a device that does not work please let us know.
+//
+
+//#define LOCONET_ENABLED true
+//#define LOCONET_RX_PIN 16
+//#define LOCONET_TX_PIN 17
 
 /////////////////////////////////////////////////////////////////////////////////////

@@ -28,12 +28,7 @@ void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
     processConsistThrottle(arguments);
     return;
   }
-  Locomotive *instance = nullptr;
-  for (const auto& loco : _locos) {
-    if(loco->getRegister() == registerNumber) {
-      instance = loco;
-    }
-  }
+  Locomotive *instance = getLocomotiveByRegister(registerNumber);
   if(instance == nullptr) {
     instance = new Locomotive(registerNumber);
     _locos.add(instance);
@@ -150,6 +145,15 @@ Locomotive *LocomotiveManager::getLocomotive(const uint16_t locoAddress, const b
     }
   }
   return instance;
+}
+
+Locomotive *LocomotiveManager::getLocomotiveByRegister(const uint8_t registerNumber) {
+  for (const auto& loco : _locos) {
+    if(loco->getRegister() == registerNumber) {
+      return loco;
+    }
+  }
+  return nullptr;
 }
 
 void LocomotiveManager::removeLocomotive(const uint16_t locoAddress) {

@@ -169,6 +169,7 @@ class LocomotiveManager {
 public:
   // gets or creates a new locomotive to be managed
   static Locomotive *getLocomotive(const uint16_t, const bool=true);
+  static Locomotive *getLocomotiveByRegister(const uint8_t);
   // removes a locomotive from management, sends speed zero before removal
   static void removeLocomotive(const uint16_t);
   static bool removeLocomotiveConsist(const uint16_t);

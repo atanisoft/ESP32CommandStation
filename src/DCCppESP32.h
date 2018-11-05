@@ -79,6 +79,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <SPIFFS.h>
 
 #include "Config.h"
+
 #include "ConfigurationManager.h"
 #include "WiFiInterface.h"
 #include "InfoScreen.h"
@@ -90,5 +91,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Outputs.h"
 
 extern std::vector<uint8_t> restrictedPins;
+
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+#include <LocoNetESP32.h>
+extern LocoNetESP32 locoNet;
+#endif
 
 void esp32_restart();

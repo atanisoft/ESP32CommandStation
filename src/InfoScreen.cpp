@@ -118,7 +118,6 @@ void InfoScreen::init() {
           ::printf(" --");
         }
       }
-
     }
   }
 }

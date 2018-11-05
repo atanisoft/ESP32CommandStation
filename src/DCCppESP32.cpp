@@ -169,6 +169,10 @@ WiFiInterface wifiInterface;
 
 std::vector<uint8_t> restrictedPins;
 
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+LocoNetESP32 locoNet(LOCONET_RX_PIN, LOCONET_TX_PIN);
+#endif
+
 // esp32 doesn't have a true restart method exposed so use the watchdog to
 // force a restart
 void esp32_restart() {
@@ -229,6 +233,68 @@ void setup() {
   HC12Interface::init();
 #endif
 	configureDCCSignalGenerators();
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LocoNet Init"));
+  locoNet.begin();
+  locoNet.onPacket(OPC_GPON, [](lnMsg *msg) {
+    MotorBoardManager::powerOnAll();
+  });
+  locoNet.onPacket(OPC_GPOFF, [](lnMsg *msg) {
+    MotorBoardManager::powerOffAll();
+  });
+  locoNet.onPacket(OPC_IDLE, [](lnMsg *msg) {
+    LocomotiveManager::emergencyStop();
+  });
+  locoNet.onPacket(OPC_LOCO_ADR, [](lnMsg *msg) {
+    lnMsg response = {0};
+    auto loco = LocomotiveManager::getLocomotive(msg->la.adr_lo + (msg->la.adr_hi << 7));
+    response.sd.command = OPC_SL_RD_DATA;
+    response.sd.mesg_size = 0x0E;
+    response.sd.slot = loco->getRegister();
+    response.sd.stat = LOCO_IDLE | DEC_MODE_128;
+    response.sd.adr = msg->la.adr_lo;
+    response.sd.adr2 = msg->la.adr_hi;
+    response.sd.dirf = DIRF_F0;
+    response.sd.trk = GTRK_MLOK1;
+    if(MotorBoardManager::isTrackPowerOn()) {
+      response.sd.trk |= GTRK_POWER;
+    }
+    locoNet.send(&response);
+  });
+  locoNet.onPacket(OPC_LOCO_SPD, [](lnMsg *msg) {
+    auto loco = LocomotiveManager::getLocomotiveByRegister(msg->lsp.slot);
+    if(loco) {
+      loco->setSpeed(msg->lsp.spd);
+    } else {
+      locoNet.send(OPC_LONG_ACK, OPC_LOCO_SPD, 0);
+    }
+  });
+  locoNet.onPacket(OPC_LOCO_DIRF, [](lnMsg *msg) {
+    auto loco = LocomotiveManager::getLocomotiveByRegister(msg->ldf.slot);
+    if(loco) {
+      loco->setDirection(msg->ldf.dirf & DIRF_DIR);
+      loco->setFunction(0, msg->ldf.dirf & DIRF_F0);
+      loco->setFunction(1, msg->ldf.dirf & DIRF_F1);
+      loco->setFunction(2, msg->ldf.dirf & DIRF_F2);
+      loco->setFunction(3, msg->ldf.dirf & DIRF_F3);
+      loco->setFunction(4, msg->ldf.dirf & DIRF_F4);
+    } else {
+      locoNet.send(OPC_LONG_ACK, OPC_LOCO_DIRF, 0);
+    }
+  });
+  locoNet.onPacket(OPC_LOCO_SND, [](lnMsg *msg) {
+    auto loco = LocomotiveManager::getLocomotiveByRegister(msg->ls.slot);
+    if(loco) {
+      loco->setFunction(5, msg->ls.snd & SND_F5);
+      loco->setFunction(6, msg->ls.snd & SND_F6);
+      loco->setFunction(7, msg->ls.snd & SND_F7);
+      loco->setFunction(8, msg->ls.snd & SND_F8);
+    } else {
+      locoNet.send(OPC_LONG_ACK, OPC_LOCO_SND, 0);
+    }
+  });
+#endif
+
 	log_i("DCC++ READY!");
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("DCC++ READY!"));
 }

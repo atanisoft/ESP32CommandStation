@@ -47,6 +47,9 @@ void GenericMotorBoard::powerOn(bool announce) {
   digitalWrite(_enablePin, HIGH);
   _state = true;
 	if(announce) {
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+    locoNet.reportPower(true);
+#endif
 		wifiInterface.printf(F("<p1 %s>"), _name.c_str());
 	}
 }
@@ -57,8 +60,14 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
   _state = false;
 	if(announce) {
 		if(overCurrent) {
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+      locoNet.send(OPC_IDLE, 0, 0);
+#endif
 			wifiInterface.printf(F("<p2 %s>"), _name.c_str());
 		} else {
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+      locoNet.reportPower(false);
+#endif
 			wifiInterface.printf(F("<p0 %s>"), _name.c_str());
 		}
 	}
@@ -121,7 +130,7 @@ GenericMotorBoard * MotorBoardManager::registerBoard(adc1_channel_t sensePin, ui
       board = new GenericMotorBoard(sensePin, enablePin, 980, 2000, name);
       break;
     case POLOLU:
-      board = new GenericMotorBoard(sensePin, enablePin, 2750, 3000, name);
+      board = new GenericMotorBoard(sensePin, enablePin, 2250, 2500, name);
       break;
     case BTS7960B_5A:
       board = new GenericMotorBoard(sensePin, enablePin, 5000, 43000, name);
@@ -152,27 +161,36 @@ void MotorBoardManager::check() {
 void MotorBoardManager::powerOnAll() {
   log_i("Enabling DCC Signal for all boards");
   for (const auto& board : motorBoards) {
-    board->powerOn();
+    board->powerOn(false);
+    board->showStatus();
   }
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("ON   "));
+#endif
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+  locoNet.reportPower(true);
 #endif
 }
 
 void MotorBoardManager::powerOffAll() {
   log_i("Disabling DCC Signal for all boards");
   for (const auto& board : motorBoards) {
-    board->powerOff();
+    board->powerOff(false);
+    board->showStatus();
   }
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("OFF  "));
+#endif
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+  locoNet.reportPower(false);
 #endif
 }
 
 bool MotorBoardManager::powerOn(const String name) {
   for (const auto& board : motorBoards) {
     if(name.equalsIgnoreCase(board->getName())) {
-      board->powerOn();
+      board->powerOn(false);
+      board->showStatus();
       return true;
     }
   }
@@ -182,7 +200,8 @@ bool MotorBoardManager::powerOn(const String name) {
 bool MotorBoardManager::powerOff(const String name) {
   for (const auto& board : motorBoards) {
     if(name.equalsIgnoreCase(board->getName())) {
-      board->powerOff();
+      board->powerOff(false);
+      board->showStatus();
       return true;
     }
   }
