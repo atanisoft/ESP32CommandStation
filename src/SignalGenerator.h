@@ -73,6 +73,7 @@ void stopDCCSignalGenerators();
 bool isDCCSignalEnabled();
 void sendDCCEmergencyStop();
 
+extern bool progTrackBusy;
 int16_t readCV(const uint16_t, const uint8_t=3);
 bool writeProgCVByte(const uint16_t, const uint8_t);
 bool writeProgCVBit(const uint16_t, const uint8_t, const bool);

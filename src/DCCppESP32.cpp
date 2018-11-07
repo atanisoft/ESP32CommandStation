@@ -259,6 +259,9 @@ void setup() {
     if(MotorBoardManager::isTrackPowerOn()) {
       response.sd.trk |= GTRK_POWER;
     }
+    if(progTrackBusy) {
+      response.sd.trk |= GTRK_PROG_BUSY;
+    }
     locoNet.send(&response);
   });
   locoNet.onPacket(OPC_LOCO_SPD, [](lnMsg *msg) {
@@ -291,6 +294,65 @@ void setup() {
       loco->setFunction(8, msg->ls.snd & SND_F8);
     } else {
       locoNet.send(OPC_LONG_ACK, OPC_LOCO_SND, 0);
+    }
+  });
+  locoNet.onPacket(OPC_WR_SL_DATA, [](lnMsg *msg) {
+    if(msg->pt.slot == PRG_SLOT) {
+      if(msg->pt.cmd == 0x00) {
+        // Cancel / abort request, currently ignored
+      } else if (progTrackBusy) {
+        locoNet.send(OPC_LONG_ACK, OPC_MASK, 0);
+      } else {
+        uint16_t cv = PROG_CV_NUM(&msg->pt);
+        uint8_t value = PROG_DATA(&msg->pt);
+        if((msg->pt.cmd & DIR_BYTE_ON_SRVC_TRK) == 0 &&
+          (msg->pt.cmd & PCMD_RW) == 1) { // CV Write on PROG
+          locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
+          msg->pt.cmd = OPC_SL_RD_DATA;
+          if(!writeProgCVByte(cv, value)) {
+            msg->pt.pstat = PSTAT_WRITE_FAIL;
+          } else {
+            msg->pt.data7 = value;
+            if(value & 0x80) {
+              msg->pt.cvh |= CVH_D7;
+            }
+          }
+          locoNet.send(msg);
+        if((msg->pt.cmd & DIR_BYTE_ON_SRVC_TRK) == 0 &&
+          (msg->pt.cmd & PCMD_RW) == 0) { // CV Read on PROG
+          locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
+          msg->pt.cmd = OPC_SL_RD_DATA;
+          int16_t value = readCV(cv);
+          if(value == -1) {
+            msg->pt.pstat = PSTAT_READ_FAIL;
+          } else {
+            msg->pt.data7 = value & 0x7F;
+            if(value & 0x80) {
+              msg->pt.cvh |= CVH_D7;
+            }
+          }
+          locoNet.send(msg);
+        } else if ((msg->pt.cmd & OPS_BYTE_NO_FEEDBACK) == 0) {
+          // CV Write on OPS, no feedback
+          locoNet.send(OPC_LONG_ACK, OPC_MASK, 0x40);
+          uint16_t locoAddr = ((msg->pt.hopsa & 0x7F) << 7) + (msg->pt.lopsa & 0x7F);
+          writeOpsCVByte(locoAddr, cv, value);
+        } else if ((msg->pt.cmd & OPS_BYTE_FEEDBACK) == 0) {
+          // CV Write on OPS
+          locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
+          uint16_t locoAddr = ((msg->pt.hopsa & 0x7F) << 7) + (msg->pt.lopsa & 0x7F);
+          writeOpsCVByte(locoAddr, cv, value);
+          msg->pt.cmd = OPC_SL_RD_DATA;
+          if(value & 0x80) {
+            msg->pt.cvh |= CVH_D7;
+          }
+          msg->pt.data7 = value & 0x7F;
+          locoNet.send(msg);
+        } else {
+          // not implemented
+          locoNet.send(OPC_LONG_ACK, OPC_MASK, OPC_MASK);
+        }
+      }
     }
   });
 #endif

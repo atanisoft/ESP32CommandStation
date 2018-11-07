@@ -48,6 +48,8 @@ DRAM_ATTR uint8_t resetPacket[] = {0x00, 0x00};
 // S-9.2 baseline packet (eStop, direction bit ignored)
 DRAM_ATTR uint8_t eStopPacket[] = {0x00, 0x41};
 
+bool progTrackBusy = false;
+
 void loadBytePacket(SignalGenerator &, uint8_t *, uint8_t, uint8_t, bool=false);
 
 void configureDCCSignalGenerators() {
@@ -322,6 +324,7 @@ bool SignalGenerator::isEnabled() {
 }
 
 int16_t readCV(const uint16_t cv, uint8_t attempts) {
+  progTrackBusy = true;
   const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
   const uint16_t milliAmpAck = (4096 * 60 / motorBoard->getMaxMilliAmps());
   uint8_t readCVBitPacket[4] = { (uint8_t)(0x78 + (highByte(cv - 1) & 0x03)), lowByte(cv - 1), 0x00, 0x00};
@@ -361,10 +364,12 @@ int16_t readCV(const uint16_t cv, uint8_t attempts) {
     }
   }
   log_d("[PROG] CV %d value is %d", cv, cvValue);
+  progTrackBusy = false;
   return cvValue;
 }
 
 bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
+  progTrackBusy = true;
   const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
   const uint16_t milliAmpAck = (4096 * 60 / motorBoard->getMaxMilliAmps());
   const uint8_t maxWriteAttempts = 5;
@@ -394,10 +399,12 @@ bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
     log_i("[PROG] Sending decoder reset packet");
     loadBytePacket(signalGenerator, resetPacket, 2, 3);
   }
+  progTrackBusy = false;
   return writeVerified;
 }
 
 bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
+  progTrackBusy = true;
   const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
   const uint16_t milliAmpAck = (4096 * 60 / motorBoard->getMaxMilliAmps());
   const uint8_t maxWriteAttempts = 5;
@@ -427,6 +434,7 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
     log_i("[PROG] Sending decoder reset packet");
     loadBytePacket(signalGenerator, resetPacket, 2, 3);
   }
+  progTrackBusy = false;
   return writeVerified;
 }
 
