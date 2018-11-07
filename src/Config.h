@@ -133,13 +133,37 @@ COPYRIGHT (c) 2017 Mike Dunston
 //
 // BOTH OLED AND LCD SCREENS ARE SUPPORTED
 
+// For the Heltec or TTGO boards the below checks will automatically enable the OLED
+// and configure it for use. To use this setup be sure to select the correct board
+// type in platformio.ini:
+// Heltec: heltec_wifi_kit_32 or heltec_wifi_lora_32
+// TTGO: ttgo-lora32-v1
+// D-duino-32: d-duino-32 (if available, if not use block below)
+#if defined(OLED_SDA) && defined(OLED_SCL)
+#define INFO_SCREEN_OLED true
+#define OLED_CHIPSET SH1306
+#define INFO_SCREEN_OLED_I2C_ADDRESS 0x3C
+#define INFO_SCREEN_SDA_PIN OLED_SDA
+#define INFO_SCREEN_SCL_PIN OLED_SCL
+#ifdef OLED_RST
+#define INFO_SCREEN_RESET_PIN OLED_RST
+#endif
+#else
+// For the D-duino-32/WeMos (LilyGo) OLED board the following
+// settings should be used if d-duino-32 is not available in platformio.ini
+//#define INFO_SCREEN_OLED true
+//#define OLED_CHIPSET SH1306
+//#define INFO_SCREEN_OLED_I2C_ADDRESS 0x3C
+//#define INFO_SCREEN_SDA_PIN 5
+//#define INFO_SCREEN_SCL_PIN 4
+
 // If the ESP32 board does not use standard SDA/SCL pins as defined in pins_arduino.h
 // uncomment the next two lines and define the pins that need to be used instead.
 //#define INFO_SCREEN_SDA_PIN SDA
 //#define INFO_SCREEN_SCL_PIN SCL
 
-// If your board is a Heltec variant, uncomment the following line to enable the
-// OLED reset support for this board.
+// If the OLED screen requires a reset pulse on startup, uncomment the following line
+// to enable the reset pulse support.
 //#define INFO_SCREEN_RESET_PIN 15
 
 // OLED SCREEN PARAMETERS
@@ -155,6 +179,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define INFO_SCREEN_LCD_I2C_ADDRESS 0x27
 //#define INFO_SCREEN_LCD_LINES 4
 //#define INFO_SCREEN_LCD_COLUMNS 20
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
