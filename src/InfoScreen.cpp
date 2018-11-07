@@ -24,8 +24,8 @@ COPYRIGHT (c) 2017,2018 Mike Dunston
 #define INFO_SCREEN_SCL_PIN SCL
 #endif
 
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
 #include <Wire.h>
+#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
 #include "InfoScreen_OLED_font.h"
 #if OLED_CHIPSET == SH1106
 #include <SH1106Wire.h>
@@ -35,7 +35,6 @@ SH1106Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, INFO_SCREEN_SDA_PIN, INFO_S
 SSD1306Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
 #endif
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
-#include <Wire.h>
 #include <LiquidCrystal_PCF8574.h>
 LiquidCrystal_PCF8574 lcdDisplay(INFO_SCREEN_LCD_I2C_ADDRESS);
 #endif
@@ -88,7 +87,7 @@ void InfoScreen::init() {
     scanI2C = true;
   }
 #elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
-  Wire.begin();
+  Wire.begin(INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
   // Check that we can find the LCD by its address before attempting to use it.
   Wire.beginTransmission(INFO_SCREEN_LCD_I2C_ADDRESS);
   if(Wire.endTransmission() == 0) {
