@@ -39,7 +39,7 @@
 				</div>
 				<div class="ui-grid-a">
 					<div class="ui-block-a"><label for="throttle-speed">Speed:</label><input type="range" id="throttle-speed" min="0" max="128" value="0" disabled="disabled"/></div>
-					<div class="ui-block-b"><button id="throttle-aquire-loco" class="ui-corner-all">Aquire Locomotive</button><button id="throttle-release-loco" class="ui-corner-all" disabled="disabled">Release Locomotive</button></div>
+					<div class="ui-block-b"><button id="throttle-acquire-loco" class="ui-corner-all">Acquire Locomotive</button><button id="throttle-release-loco" class="ui-corner-all" disabled="disabled">Release Locomotive</button></div>
 				</div>
 				<div class="ui-grid-solo">
 					<div class="ui-block-a">Functions:</div>
@@ -593,7 +593,7 @@ function setupThrottle() {
 			$.ajax({url:'/locomotive', method: 'PUT', data: {'address' : selectedLoco, 'dir' : direction}});
 		}
 	});
-	$('#throttle-aquire-loco').on('vclick', function(event, ui) {
+	$('#throttle-acquire-loco').on('vclick', function(event, ui) {
 		refreshTable({
 			table:'#throttle-loco-list',
 			url:'/locomotive/roster',
