@@ -10,15 +10,14 @@
 	<script src="https://cdn.rawgit.com/jbloemendal/jquery-simple-websocket/master/dist/jquery.simple.websocket.min.js"></script>
 	<script src="https://cdn.rawgit.com/JohnRDOrazio/jQuery-Clock-Plugin/master/jqClock-lite.min.js"></script>
 	<style>
-		.clocktime { padding:5px; }
-		.s88SensorOn { height:25px; width:40px; background-color:#00FF00; color:#FFFFFF; }
-		.s88SensorOff { height:25px; width:40px; background-color:#FF0000; color:#FFFFFF; }
+		.s88SensorOn {height:25px; width:40px; background-color:#00FF00; color:#FFFFFF;}
+		.s88SensorOff {height:25px; width:40px; background-color:#FF0000; color:#FFFFFF;}
 		@media (max-width: 35em) {
-			tbody tr td:first-child { border-bottom: 1px solid #cfcfcf; }
+			tbody tr td:first-child {border-bottom: 1px solid #cfcfcf;}
 			.s88Spacer {display:block;}
-			.s88Spacer:after {content: none;}
+			.s88Spacer:after {content:none;}
 		}
-		tbody tr:nth-child(odd) td, tbody tr:nth-child(odd) th { background-color: #9a9a9a;}
+		tbody tr:nth-child(odd) td, tbody tr:nth-child(odd) th {background-color: #9a9a9a;}
 	</style>
 </head>
 <body>
@@ -38,7 +37,7 @@
 					<div class="ui-block-c"><button id="throttle-estop" class="ui-corner-all"><font color="RED">EMERGENCY<br>STOP</font></button></div>
 				</div>
 				<div class="ui-grid-a">
-					<div class="ui-block-a"><label for="throttle-speed">Speed:</label><input type="range" id="throttle-speed" min="0" max="128" value="0" disabled="disabled"/></div>
+					<div class="ui-block-a"><label for="throttle-speed">Speed:</label><input type="range" id="throttle-speed" min="0" max="126" value="0" disabled="disabled"/></div>
 					<div class="ui-block-b"><button id="throttle-acquire-loco" class="ui-corner-all">Acquire Locomotive</button><button id="throttle-release-loco" class="ui-corner-all" disabled="disabled">Release Locomotive</button></div>
 				</div>
 				<div class="ui-grid-solo">
