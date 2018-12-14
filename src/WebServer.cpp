@@ -501,6 +501,7 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
         }
         if(needUpdate) {
           loco->sendLocoUpdate();
+          loco->showStatus();
         }
       } else if(request->method() == HTTP_DELETE) {
         // Removal of an active locomotive
