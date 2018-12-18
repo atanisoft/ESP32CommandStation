@@ -21,6 +21,9 @@ LinkedList<RosterEntry *> LocomotiveManager::_roster([](RosterEntry *entry) {del
 LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete loco; });
 LinkedList<LocomotiveConsist *> LocomotiveManager::_consists([](LocomotiveConsist *consist) {delete consist; });
 
+TaskHandle_t LocomotiveManager::_taskHandle;
+xSemaphoreHandle LocomotiveManager::_lock;
+
 void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
   int registerNumber = arguments[0].toInt();
   uint16_t locoAddress = arguments[1].toInt();
@@ -108,19 +111,24 @@ void LocomotiveManager::showConsistStatus() {
 	}
 }
 
-void LocomotiveManager::update() {
-  for (const auto& loco : _locos) {
-    // if it has been more than 50ms we should send a loco update packet
-    if(millis() > loco->getLastUpdate() + 50) {
-      loco->sendLocoUpdate();
+void LocomotiveManager::updateTask(void *param) {
+  while(true) {
+    MUTEX_LOCK(_lock);
+    for (const auto& loco : _locos) {
+      // if it has been more than 50ms we should send a loco update packet
+      if(millis() > loco->getLastUpdate() + 50) {
+        loco->sendLocoUpdate();
+      }
     }
-	}
-  for (const auto& loco : _consists) {
-    // if it has been more than 50ms we should send a loco update packet
-    if(millis() > loco->getLastUpdate() + 50) {
-      loco->sendLocoUpdate();
+    for (const auto& loco : _consists) {
+      // if it has been more than 50ms we should send a loco update packet
+      if(millis() > loco->getLastUpdate() + 50) {
+        loco->sendLocoUpdate();
+      }
     }
-	}
+    MUTEX_UNLOCK(_lock);
+    vTaskDelay(pdMS_TO_TICKS(25));
+  }
 }
 
 void LocomotiveManager::emergencyStop() {
@@ -157,6 +165,7 @@ Locomotive *LocomotiveManager::getLocomotiveByRegister(const uint8_t registerNum
 }
 
 void LocomotiveManager::removeLocomotive(const uint16_t locoAddress) {
+  MUTEX_LOCK(_lock);
   Locomotive *locoToRemove = nullptr;
   for (const auto& loco : _locos) {
     if(loco->getLocoAddress() == locoAddress) {
@@ -168,9 +177,11 @@ void LocomotiveManager::removeLocomotive(const uint16_t locoAddress) {
     locoToRemove->sendLocoUpdate();
     _locos.remove(locoToRemove);
   }
+  MUTEX_UNLOCK(_lock);
 }
 
 bool LocomotiveManager::removeLocomotiveConsist(const uint16_t consistAddress) {
+  MUTEX_LOCK(_lock);
   LocomotiveConsist *consistToRemove = nullptr;
   for (const auto& consist : _consists) {
     if(consist->getLocoAddress() == consistAddress) {
@@ -180,12 +191,15 @@ bool LocomotiveManager::removeLocomotiveConsist(const uint16_t consistAddress) {
   if (consistToRemove != nullptr) {
     consistToRemove->releaseLocomotives();
     _consists.remove(consistToRemove);
+    MUTEX_UNLOCK(_lock);
     return true;
   }
+  MUTEX_UNLOCK(_lock);
   return false;
 }
 
 void LocomotiveManager::init() {
+  _lock = xSemaphoreCreateMutex();
   JsonObject &root = configStore.load(ROSTER_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t locoCount = count.success() ? count.as<int>() : 0;
@@ -206,13 +220,16 @@ void LocomotiveManager::init() {
       _consists.add(new LocomotiveConsist(consist.as<JsonObject &>()));
     }
   }
+  xTaskCreate(updateTask, "LocomotiveManager", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
 }
 
 void LocomotiveManager::clear() {
+  MUTEX_LOCK(_lock);
   _locos.free();
   _consists.free();
   _roster.free();
   store();
+  MUTEX_UNLOCK(_lock);
 }
 
 uint16_t LocomotiveManager::store() {

@@ -76,7 +76,11 @@ Depending on whether the physical sensor is acting as an "event-trigger" or a
 
 LinkedList<Sensor *> sensors([](Sensor *sensor) {delete sensor; });
 
+TaskHandle_t SensorManager::_taskHandle;
+xSemaphoreHandle SensorManager::_lock;
+
 void SensorManager::init() {
+  _lock = xSemaphoreCreateMutex();
   log_i("Initializing sensors list");
   JsonObject &root = configStore.load(SENSORS_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
@@ -88,11 +92,14 @@ void SensorManager::init() {
       sensors.add(new Sensor(sensor.as<JsonObject &>()));
     }
   }
+  xTaskCreate(sensorTask, "SensorManager", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
 }
 
 void SensorManager::clear() {
+  MUTEX_LOCK(_lock);
   sensors.free();
   store();
+  MUTEX_UNLOCK(_lock);
 }
 
 uint16_t SensorManager::store() {
@@ -110,9 +117,14 @@ uint16_t SensorManager::store() {
   return sensorStoredCount;
 }
 
-void SensorManager::check() {
-  for (const auto& sensor : sensors) {
-    sensor->check();
+void SensorManager::sensorTask(void *param) {
+  while(true) {
+    MUTEX_LOCK(_lock);
+    for (const auto& sensor : sensors) {
+      sensor->check();
+    }
+    MUTEX_UNLOCK(_lock);
+    vTaskDelay(pdMS_TO_TICKS(50));
   }
 }
 
@@ -124,21 +136,26 @@ void SensorManager::getState(JsonArray & array) {
 }
 
 bool SensorManager::createOrUpdate(const uint16_t id, const uint8_t pin, const bool pullUp) {
+  MUTEX_LOCK(_lock);
   // check for duplicate ID or PIN
   for (const auto& sensor : sensors) {
     if(sensor->getID() == id) {
       sensor->update(pin, pullUp);
+      MUTEX_UNLOCK(_lock);
       return true;
     }
   }
   if(std::find(restrictedPins.begin(), restrictedPins.end(), pin) != restrictedPins.end()) {
+    MUTEX_UNLOCK(_lock);
     return false;
   }
   sensors.add(new Sensor(id, pin, pullUp));
+  MUTEX_UNLOCK(_lock);
   return true;
 }
 
 bool SensorManager::remove(const uint16_t id) {
+  MUTEX_LOCK(_lock);
   Sensor *sensorToRemove = nullptr;
   // check for duplicate ID or PIN
   for (const auto& sensor : sensors) {
@@ -148,8 +165,10 @@ bool SensorManager::remove(const uint16_t id) {
   }
   if(sensorToRemove != nullptr) {
     sensors.remove(sensorToRemove);
+    MUTEX_UNLOCK(_lock);
     return true;
   }
+  MUTEX_UNLOCK(_lock);
   return false;
 }
 

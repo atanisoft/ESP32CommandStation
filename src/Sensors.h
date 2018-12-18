@@ -72,11 +72,14 @@ public:
   static void init();
   static void clear();
   static uint16_t store();
-  static void check();
+  static void sensorTask(void *param);
   static void getState(JsonArray &);
   static bool createOrUpdate(const uint16_t, const uint8_t, const bool);
   static bool remove(const uint16_t);
   static uint8_t getSensorPin(const uint16_t);
+private:
+  static TaskHandle_t _taskHandle;
+  static xSemaphoreHandle _lock;
 };
 
 class SensorCommandAdapter : public DCCPPProtocolCommand {

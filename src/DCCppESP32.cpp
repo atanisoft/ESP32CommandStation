@@ -365,11 +365,6 @@ void loop() {
 	wifiInterface.update();
 	InfoScreen::update();
 	MotorBoardManager::check();
-	SensorManager::check();
-#if defined(S88_ENABLED) && S88_ENABLED
-	S88BusManager::update();
-#endif
-	LocomotiveManager::update();
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
   HC12Interface::update();
 #endif

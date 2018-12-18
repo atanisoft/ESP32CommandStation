@@ -98,3 +98,6 @@ extern LocoNetESP32 locoNet;
 #endif
 
 void esp32_restart();
+
+#define MUTEX_LOCK(mutex)    do {} while (xSemaphoreTake(mutex, portMAX_DELAY) != pdPASS)
+#define MUTEX_UNLOCK(mutex)  xSemaphoreGive(mutex)

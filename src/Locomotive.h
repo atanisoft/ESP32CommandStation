@@ -178,7 +178,7 @@ public:
   static void processConsistThrottle(const std::vector<String>);
   static void showStatus();
   static void showConsistStatus();
-  static void update();
+  static void updateTask(void *param);
   static void emergencyStop();
   static uint8_t getActiveLocoCount() {
     return _locos.length();
@@ -201,6 +201,8 @@ private:
   static LinkedList<RosterEntry *> _roster;
   static LinkedList<Locomotive *> _locos;
   static LinkedList<LocomotiveConsist *> _consists;
+  static TaskHandle_t _taskHandle;
+  static xSemaphoreHandle _lock;
 };
 
 // <t {REGISTER} {LOCO} {SPEED} {DIRECTION}> command handler, this command

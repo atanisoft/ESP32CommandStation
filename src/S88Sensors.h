@@ -83,10 +83,13 @@ public:
   static void init();
   static void clear();
   static uint8_t store();
-  static void update();
+  static void s88SensorTask(void *param);
   static bool createOrUpdateBus(const uint8_t, const uint8_t, const uint16_t);
   static bool removeBus(const uint8_t);
   static void getState(JsonArray &);
+private:
+  static TaskHandle_t _taskHandle;
+  static xSemaphoreHandle _s88SensorLock;
 };
 
 class S88BusCommandAdapter : public DCCPPProtocolCommand {

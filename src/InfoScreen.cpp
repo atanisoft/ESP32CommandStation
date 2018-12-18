@@ -289,9 +289,6 @@ void InfoScreen::update() {
           }
           break;
       }
-//    } else {
-//      replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap:%d"),
-//        ESP.getFreeHeap());
     }
   }
 }

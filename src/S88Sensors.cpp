@@ -49,6 +49,10 @@ S88 Sensors are reported in the same manner as generic Sensors:
 #endif
 
 extern LinkedList<Sensor *> sensors;
+
+TaskHandle_t S88BusManager::_taskHandle;
+xSemaphoreHandle S88BusManager::_s88SensorLock;
+
 LinkedList<S88SensorBus *> s88SensorBus([](S88SensorBus *sensorBus) {
   sensorBus->removeSensors(-1);
   log_i("S88SensorBus(%d) removed", sensorBus->getID());
@@ -71,11 +75,15 @@ void S88BusManager::init() {
       s88SensorBus.add(new S88SensorBus(bus.as<JsonObject &>()));
     }
   }
+  _s88SensorLock = xSemaphoreCreateMutex();
+  xTaskCreate(s88SensorTask, "S88SensorManager", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
 }
 
 void S88BusManager::clear() {
+  MUTEX_LOCK(_s88SensorLock);
   s88SensorBus.free();
   store();
+  MUTEX_UNLOCK(_s88SensorLock);
 }
 
 uint8_t S88BusManager::store() {
@@ -91,36 +99,40 @@ uint8_t S88BusManager::store() {
   return sensorBusIndex;
 }
 
-void S88BusManager::update() {
-  for (const auto& sensorBus : s88SensorBus) {
-    sensorBus->prepForRead();
-  }
-  digitalWrite(S88_LOAD_PIN, HIGH);
-  delayMicroseconds(S88_SENSOR_LOAD_PRE_CLOCK_TIME);
-  digitalWrite(S88_CLOCK_PIN, HIGH);
-  delayMicroseconds(S88_SENSOR_CLOCK_PULSE_TIME);
-  digitalWrite(S88_CLOCK_PIN, LOW);
-  delayMicroseconds(S88_SENSOR_CLOCK_PRE_RESET_TIME);
-  digitalWrite(S88_RESET_PIN, HIGH);
-  delayMicroseconds(S88_SENSOR_RESET_PULSE_TIME);
-  digitalWrite(S88_RESET_PIN, LOW);
-  delayMicroseconds(S88_SENSOR_LOAD_POST_RESET_TIME);
-  digitalWrite(S88_LOAD_PIN, LOW);
-
-  delayMicroseconds(S88_SENSOR_READ_TIME);
-  bool keepReading = true;
-  while(keepReading) {
-    keepReading = false;
+void S88BusManager::s88SensorTask(void *param) {
+  while(true) {
+    MUTEX_LOCK(_s88SensorLock);
     for (const auto& sensorBus : s88SensorBus) {
-      if(sensorBus->hasMore()) {
-        keepReading = true;
-        sensorBus->readNext();
-      }
+      sensorBus->prepForRead();
     }
+    digitalWrite(S88_LOAD_PIN, HIGH);
+    delayMicroseconds(S88_SENSOR_LOAD_PRE_CLOCK_TIME);
     digitalWrite(S88_CLOCK_PIN, HIGH);
     delayMicroseconds(S88_SENSOR_CLOCK_PULSE_TIME);
     digitalWrite(S88_CLOCK_PIN, LOW);
+    delayMicroseconds(S88_SENSOR_CLOCK_PRE_RESET_TIME);
+    digitalWrite(S88_RESET_PIN, HIGH);
+    delayMicroseconds(S88_SENSOR_RESET_PULSE_TIME);
+    digitalWrite(S88_RESET_PIN, LOW);
+    delayMicroseconds(S88_SENSOR_LOAD_POST_RESET_TIME);
+    digitalWrite(S88_LOAD_PIN, LOW);
+
     delayMicroseconds(S88_SENSOR_READ_TIME);
+    bool keepReading = true;
+    while(keepReading) {
+      keepReading = false;
+      for (const auto& sensorBus : s88SensorBus) {
+        if(sensorBus->hasMore()) {
+          keepReading = true;
+          sensorBus->readNext();
+        }
+      }
+      digitalWrite(S88_CLOCK_PIN, HIGH);
+      delayMicroseconds(S88_SENSOR_CLOCK_PULSE_TIME);
+      digitalWrite(S88_CLOCK_PIN, LOW);
+      delayMicroseconds(S88_SENSOR_READ_TIME);
+    }
+    MUTEX_UNLOCK(_s88SensorLock);
   }
 }
 
@@ -133,21 +145,26 @@ bool S88BusManager::createOrUpdateBus(const uint8_t id, const uint8_t dataPin, c
       return false;
     }
   }
+  MUTEX_LOCK(_s88SensorLock);
   // check for existing bus to be updated
   for (const auto& sensorBus : s88SensorBus) {
     if(sensorBus->getID() == id) {
       sensorBus->update(dataPin, sensorCount);
+      MUTEX_UNLOCK(_s88SensorLock);
       return true;
     }
   }
   if(std::find(restrictedPins.begin(), restrictedPins.end(), dataPin) != restrictedPins.end()) {
+    MUTEX_UNLOCK(_s88SensorLock);
     return false;
   }
   s88SensorBus.add(new S88SensorBus(id, dataPin, sensorCount));
+  MUTEX_UNLOCK(_s88SensorLock);
   return true;
 }
 
 bool S88BusManager::removeBus(const uint8_t id) {
+  MUTEX_LOCK(_s88SensorLock);
   S88SensorBus *sensorBusToRemove = nullptr;
   for (const auto& sensorBus : s88SensorBus) {
     if(sensorBus->getID() == id) {
@@ -156,8 +173,10 @@ bool S88BusManager::removeBus(const uint8_t id) {
   }
   if(sensorBusToRemove != nullptr) {
     s88SensorBus.remove(sensorBusToRemove);
+    MUTEX_UNLOCK(_s88SensorLock);
     return true;
   }
+  MUTEX_UNLOCK(_s88SensorLock);
   return false;
 }
 
