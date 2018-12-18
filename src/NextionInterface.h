@@ -31,10 +31,9 @@ COPYRIGHT (c) 2018 Mike Dunston
 class NextionInterface {
 public:
   static void init();
-  static void update();
+  static void nextionTask(void *param);
 private:
-  static bool _initializing;
-  static uint64_t _startupTransitionTimer;
+  static TaskHandle_t _taskHandle;
 };
 
 enum NEXTION_PAGES {

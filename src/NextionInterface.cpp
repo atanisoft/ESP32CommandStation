@@ -248,8 +248,7 @@ Nextion nextion(Serial1);
 #else
 Nextion nextion(Serial);
 #endif
-bool NextionInterface::_initializing;
-uint64_t NextionInterface::_startupTransitionTimer;
+TaskHandle_t NextionInterface::_taskHandle;
 
 const uint8_t SPEED_INCREMENT = 5;
 
@@ -802,14 +801,9 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
   }
 }
 
-/*
-void NextionTurnoutPage::setReturnPage()
-{
-}
-*/
 void NextionInterface::init() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init Nextion"));
-  #if NEXTION_UART_NUM == 2
+#if NEXTION_UART_NUM == 2
   Serial2.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
 #elif NEXTION_UART_NUM == 1
   Serial1.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
@@ -817,20 +811,24 @@ void NextionInterface::init() {
   Serial.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
 #endif
   if(nextion.init()) {
-    nextionPages[TITLE_PAGE]->display();
-    _initializing = true;
-    _startupTransitionTimer = millis() + 2500;
+    xTaskCreate(nextionTask, "NextionInterface", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
   } else {
     log_e("Nextion init failed");
   }
 }
 
-void NextionInterface::update() {
-  if(_initializing && _startupTransitionTimer <= millis()) {
-    _initializing = false;
-    nextionPages[THROTTLE_PAGE]->display();
-	}
-  nextion.poll();
+void NextionInterface::nextionTask(void *param) {
+  nextionPages[TITLE_PAGE]->display();
+  bool showingTitlePage = true;
+  uint64_t startupTransition = millis() + 2500;
+  while(true) {
+    if(showingTitlePage && startupTransition <= millis()) {
+      showingTitlePage = false;
+      nextionPages[THROTTLE_PAGE]->display();
+    }
+    nextion.poll();
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
 }
 
 #endif

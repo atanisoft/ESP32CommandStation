@@ -373,7 +373,4 @@ void loop() {
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
   HC12Interface::update();
 #endif
-#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
-  NextionInterface::update();
-#endif
 }
