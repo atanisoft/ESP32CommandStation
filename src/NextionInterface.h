@@ -49,7 +49,7 @@ enum NEXTION_PAGES {
 
 class DCCPPNextionPage : public NextionPage {
 public:
-  DCCPPNextionPage(Nextion &, uint8_t, const char *);
+  DCCPPNextionPage(Nextion &, uint8_t, const String &);
   void display();
   void refresh();
   virtual void refreshPage() = 0;

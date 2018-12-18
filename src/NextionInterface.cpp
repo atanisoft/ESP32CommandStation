@@ -241,12 +241,12 @@ COPYRIGHT (c) 2018 Mike Dunston
 #define del 23
 #define routes 24
 
-HardwareSerial nextionSerial(NEXTION_UART_NUM);
-// if using UART2 we need to turn off flushing as it corrupts the stream
 #if NEXTION_UART_NUM == 2
-Nextion nextion(nextionSerial, false);
+Nextion nextion(Serial2);
+#elif NEXTION_UART_NUM == 1
+Nextion nextion(Serial1);
 #else
-Nextion nextion(nextionSerial);
+Nextion nextion(Serial);
 #endif
 bool NextionInterface::_initializing;
 uint64_t NextionInterface::_startupTransitionTimer;
@@ -262,7 +262,7 @@ DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   nullptr
 };
 
-DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const char *pageName) :
+DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const String &pageName) :
   NextionPage(nextion, pageID, 0, pageName),
   _onButton(nextion, pageID, on1, "On"),
   _offButton(nextion, pageID, off1, "Off"),
@@ -288,18 +288,10 @@ DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const
 }
 
 void DCCPPNextionPage::display() {
-#if NEXTION_UART_NUM == 2
-  // manual flush since we are on UART2
-  while(nextionSerial.available()) {
-    nextionSerial.read();
-  }
-#endif
-  String cmd = String("page ") + String(m_name);
-  m_nextion.sendCommand((char *)cmd.c_str());
-  if(!m_nextion.checkCommandComplete()) {
-    log_e("display of page %s was not successful.", m_name);
+  if(!show()) {
+    log_e("display of page %s was not successful.", m_name.c_str());
   } else {
-    log_i("displayed page %s", m_name);
+    log_i("displayed page %s", m_name.c_str());
   }
   if(!_pageInitialized) {
     init();
@@ -817,11 +809,20 @@ void NextionTurnoutPage::setReturnPage()
 */
 void NextionInterface::init() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init Nextion"));
-  nextionSerial.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
-  nextion.init();
-  nextionPages[TITLE_PAGE]->display();
-  _initializing = true;
-  _startupTransitionTimer = millis() + 2500;
+  #if NEXTION_UART_NUM == 2
+  Serial2.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
+#elif NEXTION_UART_NUM == 1
+  Serial1.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
+#else
+  Serial.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
+#endif
+  if(nextion.init()) {
+    nextionPages[TITLE_PAGE]->display();
+    _initializing = true;
+    _startupTransitionTimer = millis() + 2500;
+  } else {
+    log_e("Nextion init failed");
+  }
 }
 
 void NextionInterface::update() {
