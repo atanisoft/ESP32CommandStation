@@ -1,0 +1,3 @@
+[submodule "lib/NeoNextion"]
+	path = lib/NeoNextion
+	url = git@github.com:atanisoft/NeoNextion.git
