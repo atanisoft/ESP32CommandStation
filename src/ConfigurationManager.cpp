@@ -16,7 +16,6 @@ COPYRIGHT (c) 2017,2018 Mike Dunston
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include <Preferences.h>
 
 
 String JSON_NAME_NODE PROGMEM = "name";

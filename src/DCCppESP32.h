@@ -67,7 +67,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 #define DEBUG_ADC_SAMPLING 0
 
 #include <Arduino.h>
-#include <Preferences.h>
 #include <algorithm>
 #include <functional>
 #include <StringArray.h>
