@@ -100,12 +100,16 @@ void WiFiInterface::begin() {
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
 #endif
 
-    MDNS.begin(HOSTNAME);
+    if(!MDNS.begin(HOSTNAME)) {
+      log_e("Failed to start mDNS");
+    } else {
+      log_d("Adding dccpp.tcp service to mDNS advertiser");
+      MDNS.addService("dccpp", "tcp", DCCPP_CLIENT_PORT);
+    }
 
     DCCppServer.setNoDelay(true);
     DCCppServer.begin();
     dccppWebServer.begin();
-    MDNS.addService("dccpp", "tcp", DCCPP_CLIENT_PORT);
   }, SYSTEM_EVENT_STA_GOT_IP);
   WiFi.onEvent([](system_event_id_t event) {
     wifiConnected = false;
@@ -115,6 +119,12 @@ void WiFiInterface::begin() {
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, "Disconnected");
 #endif
   }, SYSTEM_EVENT_STA_LOST_IP);
+  WiFi.onEvent([](system_event_id_t event) {
+    if(wifiConnected) {
+      log_e("Connection to WiFi lost, reconnecting...");
+      WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
+    }
+  }, SYSTEM_EVENT_STA_DISCONNECTED);
 
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Connecting to AP"));
 	log_i("Connecting to WiFi: %s", wifiSSID.c_str());
@@ -129,9 +139,19 @@ void WiFiInterface::begin() {
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
     InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("NO AP Found"));
 #endif
-		log_i("WiFI connect failed, restarting");
+		log_e("WiFI connect failed, restarting");
 		esp32_restart();
-	}
+	} else if(WiFi.status() == WL_CONNECT_FAILED) {
+#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+		InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Failed"));
+#else
+    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFi Failed"));
+#endif
+		log_e("WiFI connect failed, restarting");
+		esp32_restart();
+  }
 }
 
 void WiFiInterface::update() {
