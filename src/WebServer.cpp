@@ -437,9 +437,9 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
   // GET /locomotive?address=<address> - get locomotive state
   // PUT /locomotive?address=<address>&speed=<speed>&dir=[FWD|REV]&fX=[true|false] - Update locomotive state, fX is short for function X where X is 0-28.
   // DELETE /locomotive?address=<address> - removes locomotive from active management
-  auto jsonResponse = new AsyncJsonResponse(true);
-  jsonResponse->setCode(STATUS_OK);
   const String url = request->url();
+  auto jsonResponse = new AsyncJsonResponse(url.endsWith("/roster") && request->method() == HTTP_GET);
+  jsonResponse->setCode(STATUS_OK);
   // check if we have an eStop command, we don't care how this gets sent to the
   // base station (method) so check it first
   if(url.endsWith("/estop")) {
