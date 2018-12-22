@@ -40,10 +40,8 @@ void HC12Interface::init() {
 
 void HC12Interface::update() {
   uint8_t buf[128];
-  log_d("[hc12] checking for available data");
   while (hc12Serial.available()) {
     auto len = hc12Serial.available();
-    log_d("[hc12] consuming %d bytes", len);
     auto added = hc12Serial.readBytes(&buf[0], len < 128 ? len : 128);
     hc12Consumer.feed(&buf[0], added);
   }
