@@ -5,8 +5,8 @@ import struct
 import cStringIO
 
 def build_index_html_h(source, target, env):
-    if os.path.exists('%s/src/index_html.h' % env.subst('$PROJECT_DIR')):
-        if os.path.getmtime('%s/data/index.html' % env.subst('$PROJECT_DIR')) < os.path.getmtime('%s/src/index_html.h' % env.subst('$PROJECT_DIR')):
+    if os.path.exists('%s/include/index_html.h' % env.subst('$PROJECT_DIR')):
+        if os.path.getmtime('%s/data/index.html' % env.subst('$PROJECT_DIR')) < os.path.getmtime('%s/include/index_html.h' % env.subst('$PROJECT_DIR')):
             return
     print "Attempting to compress %s/data/index.html" % env.subst('$PROJECT_DIR')
     gzFile = cStringIO.StringIO()
@@ -16,7 +16,7 @@ def build_index_html_h(source, target, env):
     gzLen = gzFile.tell()
     gzFile.seek(0, os.SEEK_SET)
     print 'Compressed index.html.gz file is %d bytes' % gzLen
-    with open('%s/src/index_html.h' % env.subst('$PROJECT_DIR'), 'w') as f:
+    with open('%s/include/index_html.h' % env.subst('$PROJECT_DIR'), 'w') as f:
         f.write("#pragma once\n")
         f.write("const size_t indexHtmlGz_size = {};\n".format(gzLen))
         f.write("const uint8_t indexHtmlGz[] PROGMEM = {\n");
