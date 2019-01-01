@@ -170,7 +170,7 @@ WiFiInterface wifiInterface;
 std::vector<uint8_t> restrictedPins;
 
 #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
-LocoNetESP32 locoNet(LOCONET_RX_PIN, LOCONET_TX_PIN);
+LocoNetESP32Uart locoNet(LOCONET_RX_PIN, LOCONET_TX_PIN, LOCONET_UART);
 #endif
 
 // esp32 doesn't have a true restart method exposed so use the watchdog to

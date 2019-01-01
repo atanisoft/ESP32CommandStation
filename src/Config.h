@@ -55,7 +55,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 // MAIN TRACK NOTORBOARD ENABLED PIN
 #define MOTORBOARD_ENABLE_PIN_MAIN 25
 // MAIN TRACK MOTORBOARD CURRENT SENSE ADC PIN
-#define MOTORBOARD_CURRENT_SENSE_MAIN ADC1_CHANNEL_7
+#define MOTORBOARD_CURRENT_SENSE_MAIN ADC1_CHANNEL_0
 // MAIN TRACK MOTORBOARD MOTOR_BOARD_TYPE
 #define MOTORBOARD_TYPE_MAIN ARDUINO_SHIELD
 
@@ -64,7 +64,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 // PROG TRACK NOTORBOARD ENABLED PIN
 #define MOTORBOARD_ENABLE_PIN_PROG 23
 // PROG TRACK MOTORBOARD CURRENT SENSE ADC PIN
-#define MOTORBOARD_CURRENT_SENSE_PROG ADC1_CHANNEL_6
+#define MOTORBOARD_CURRENT_SENSE_PROG ADC1_CHANNEL_3
 // PROG TRACK MOTORBOARD MOTOR_BOARD_TYPE
 #define MOTORBOARD_TYPE_PROG ARDUINO_SHIELD
 
@@ -159,8 +159,8 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 // If the ESP32 board does not use standard SDA/SCL pins as defined in pins_arduino.h
 // uncomment the next two lines and define the pins that need to be used instead.
-//#define INFO_SCREEN_SDA_PIN SDA
-//#define INFO_SCREEN_SCL_PIN SCL
+//#define INFO_SCREEN_SDA_PIN 23
+//#define INFO_SCREEN_SCL_PIN 22
 
 // If the OLED screen requires a reset pulse on startup, uncomment the following line
 // to enable the reset pulse support.
@@ -195,7 +195,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 //
 // The following pins are considered reserved pins by Espressif and should not
 // be used by applications:
-// GPIO6, GPIO7, GPIO8, GPIO9, GPIO10, GPIO11, GPIO12 -- used by flash
+// GPIO6, GPIO7, GPIO8, GPIO9, GPIO10, GPIO11 -- used by flash
 // GPIO0, GPIO2, GPIO5, GPIO12, GPIO15 -- used as bootstrap pins
 //
 // details of these usages can be found in section 2.2 of:
@@ -216,8 +216,8 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define HC12_RADIO_ENABLED true
 //#define HC12_RADIO_BAUD 19200
 //#define HC12_UART_NUM 1
-//#define HC12_RX_PIN 9
-//#define HC12_TX_PIN 10
+//#define HC12_RX_PIN 16
+//#define HC12_TX_PIN 17
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -252,7 +252,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define SD_CARD_MISO_PIN 7
 //#define SD_CARD_CLK_PIN 6
 
-
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // The LocoNet interface allows using many of the available LocoNet sensors, throttles,
@@ -263,5 +262,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 //#define LOCONET_ENABLED true
 //#define LOCONET_RX_PIN 16
 //#define LOCONET_TX_PIN 17
+//#define LOCONET_UART 1
 
 /////////////////////////////////////////////////////////////////////////////////////
