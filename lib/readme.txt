@@ -1,36 +1,8 @@
+At this time the following libraries are required under this folder:
+- NeoNextion (https://github.com/atanisoft/NeoNextion)
+- LocoNet2 (https://github.com/atanisoft/LocoNet2, from the development branch)
 
-This directory is intended for the project specific (private) libraries.
-PlatformIO will compile them to static libraries and link to executable file.
-
-The source code of each library should be placed in separate directory, like
-"lib/private_lib/[here are source files]".
-
-For example, see how can be organized `Foo` and `Bar` libraries:
-
-|--lib
-|  |--Bar
-|  |  |--docs
-|  |  |--examples
-|  |  |--src
-|  |     |- Bar.c
-|  |     |- Bar.h
-|  |--Foo
-|  |  |- Foo.c
-|  |  |- Foo.h
-|  |- readme.txt --> THIS FILE
-|- platformio.ini
-|--src
-   |- main.c
-
-Then in `src/main.c` you should use:
-
-#include <Foo.h>
-#include <Bar.h>
-
-// rest H/C/CPP code
-
-PlatformIO will find your libraries automatically, configure preprocessor's
-include paths and build them.
-
-More information about PlatformIO Library Dependency Finder
-- http://docs.platformio.org/page/librarymanager/ldf.html
+If you use git to clone this repository you can automatically pull the required
+versions of the libraries via "git submodule init" from the DCCppESP32 cloned
+repository, or via "git clone --recursive https://github.com/atanisoft/DCCppESP32.git"
+which will clone all three in one command.

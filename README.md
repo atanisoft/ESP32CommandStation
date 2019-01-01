@@ -7,9 +7,9 @@ DCC++ESP32 is an open-source hardware and software system for the operation of D
 The DCC++ESP32 Base Station consists of an ESP32 micro controller connected to at least one Motor Shield that can be connected directly to the tracks of a model railroad.
 
 ## Whats in this Repository
-This repository, DCCppESP32, contains a complete DCC++ESP32 Base Station code designed for compiling and uploading into an ESP32. All files are in the folder named src.
+This repository, DCCppESP32, contains a complete DCC++ESP32 Base Station code designed for compiling and uploading into an ESP32. All source files are in the folder named src and header files are under include (including index_html.h which is generated during the build in PlatformIO IDE).
 
-To utilize this code, simply download a zip file of this repository and open the included project file in PlatformIO IDE. No code modifications should be required *EXCEPT* for
+To utilize this code, simply download a zip file of this repository and open the included project file in PlatformIO IDE, and the dependent libraries listed under the "lib" folder (see the readme.txt file for details). No code modifications should be required *EXCEPT* for
 
 The latest production release of the code is 1.2.0:
 * Supports almost any variant of the ESP32.
