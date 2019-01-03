@@ -355,6 +355,15 @@ void setup() {
       }
     }
   });
+  locoNet.onPacket(OPC_INPUT_REP, [](lnMsg *msg) {
+    log_i("LocoNet INPUT_REPORT %02x : %02x", msg->ir.in1, msg->ir.in2);
+  });
+  locoNet.onPacket(OPC_SW_REQ, [](lnMsg *msg) {
+    log_i("LocoNet SW_REQ %02x : %02x", msg->srq.sw1, msg->srq.sw2);
+  });
+  locoNet.onPacket(OPC_SW_REP, [](lnMsg *msg) {
+    log_i("LocoNet SW_REP %02x : %02x", msg->srp.sn1, msg->srp.sn2);
+  });
 #endif
 
 	log_i("DCC++ READY!");
