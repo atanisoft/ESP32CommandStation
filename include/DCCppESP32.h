@@ -100,3 +100,137 @@ void esp32_restart();
 
 #define MUTEX_LOCK(mutex)    do {} while (xSemaphoreTake(mutex, portMAX_DELAY) != pdPASS)
 #define MUTEX_UNLOCK(mutex)  xSemaphoreGive(mutex)
+
+// Perform some basic configuration validations to prevent common mistakes
+
+#if !defined(WIFI_SSID) || !defined(WIFI_PASSWORD)
+#error "Invalid Configuration detected, Config_WiFi.h is a mandatory module."
+#endif
+
+#if !defined(MOTORBOARD_NAME_MAIN) || !defined(MOTORBOARD_ENABLE_PIN_MAIN) || \
+  !defined(MOTORBOARD_CURRENT_SENSE_MAIN) || !defined(MOTORBOARD_TYPE_MAIN) || \
+  !defined(MOTORBOARD_NAME_PROG) || !defined(MOTORBOARD_ENABLE_PIN_PROG) || \
+  !defined(MOTORBOARD_CURRENT_SENSE_PROG) || !defined(MOTORBOARD_TYPE_PROG) || \
+  !defined(DCC_SIGNAL_PIN_OPERATIONS) || !defined(DCC_SIGNAL_PIN_PROGRAMMING)
+#error "Invalid Configuration detected, Config_MotorBoard.h is a mandatory module."
+#endif
+
+#if MOTORBOARD_ENABLE_PIN_MAIN == MOTORBOARD_ENABLE_PIN_PROG
+#error "Invalid Configuration detected, MOTORBOARD_ENABLE_PIN_MAIN and MOTORBOARD_ENABLE_PIN_PROG must be unique."
+#endif
+
+#if DCC_SIGNAL_PIN_OPERATIONS == DCC_SIGNAL_PIN_PROGRAMMING
+#error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS and DCC_SIGNAL_PIN_PROGRAMMING must be unique."
+#endif
+
+#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED && defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+#error "Invalid Configuration detected, it is not supported to include both OLED and LCD support."
+#endif
+
+#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+  #if NEXTION_RX_PIN == NEXTION_TX_PIN
+  #error "Invalid Configuration detected, NEXTION_RX_PIN and NEXTION_TX_PIN must be unique."
+  #endif
+  #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+    #if NEXTION_UART_NUM == HC12_UART_NUM
+    #error "Invalid Configuration detected, the Nextion and HC12 can not share the UART interface."
+    #endif
+    #if NEXTION_RX_PIN == HC12_RX_PIN
+    #error "Invalid Configuration detected, the Nextion and HC12 can not share the same RX Pin."
+    #endif
+    #if NEXTION_TX_PIN == HC12_TX_PIN
+    #error "Invalid Configuration detected, the Nextion and HC12 can not share the same TX Pin."
+    #endif
+  #endif
+  #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+    #if NEXTION_UART_NUM == LOCONET_UART
+    #error "Invalid Configuration detected, the Nextion and LocoNet can not share the UART interface."
+    #endif
+    #if NEXTION_RX_PIN == LOCONET_RX_PIN
+    #error "Invalid Configuration detected, the Nextion and LocoNet can not share the same RX Pin."
+    #endif
+    #if NEXTION_TX_PIN == LOCONET_TX_PIN
+    #error "Invalid Configuration detected, the Nextion and LocoNet can not share the same TX Pin."
+    #endif
+  #endif
+  #if defined(S88_ENABLED) && S88_ENABLED
+    #if S88_CLOCK_PIN == NEXTION_RX_PIN
+    #error "Invalid Configuration detected, the Nextion RX Pin and S88 Clock Pin must be unique."
+    #endif
+    #if S88_CLOCK_PIN == NEXTION_TX_PIN
+    #error "Invalid Configuration detected, the Nextion TX Pin and S88 Clock Pin must be unique."
+    #endif
+    #if S88_RESET_PIN == NEXTION_RX_PIN
+    #error "Invalid Configuration detected, the Nextion RX Pin and S88 Reset Pin must be unique."
+    #endif
+    #if S88_RESET_PIN == NEXTION_TX_PIN
+    #error "Invalid Configuration detected, the Nextion TX Pin and S88 Reset Pin must be unique."
+    #endif
+    #if S88_LOAD_PIN == NEXTION_RX_PIN
+    #error "Invalid Configuration detected, the Nextion RX Pin and S88 Load Pin must be unique."
+    #endif
+    #if S88_LOAD_PIN == NEXTION_TX_PIN
+    #error "Invalid Configuration detected, the Nextion TX Pin and S88 Load Pin must be unique."
+    #endif
+  #endif
+#endif
+
+#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+  #if HC12_RX_PIN == HC12_TX_PIN
+  #error "Invalid Configuration detected, HC12_RX_PIN and HC12_TX_PIN must be unique."
+  #endif
+  #if defined(S88_ENABLED) && S88_ENABLED
+    #if S88_CLOCK_PIN == HC12_RX_PIN
+    #error "Invalid Configuration detected, the HC12 RX Pin and S88 Clock Pin must be unique."
+    #endif
+    #if S88_CLOCK_PIN == HC12_TX_PIN
+    #error "Invalid Configuration detected, the HC12 TX Pin and S88 Clock Pin must be unique."
+    #endif
+    #if S88_RESET_PIN == HC12_RX_PIN
+    #error "Invalid Configuration detected, the HC12 RX Pin and S88 Reset Pin must be unique."
+    #endif
+    #if S88_RESET_PIN == HC12_TX_PIN
+    #error "Invalid Configuration detected, the HC12 TX Pin and S88 Reset Pin must be unique."
+    #endif
+    #if S88_LOAD_PIN == HC12_RX_PIN
+    #error "Invalid Configuration detected, the HC12 RX Pin and S88 Load Pin must be unique."
+    #endif
+    #if S88_LOAD_PIN == HC12_TX_PIN
+    #error "Invalid Configuration detected, the HC12 TX Pin and S88 Load Pin must be unique."
+    #endif
+  #endif
+  #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+    #if LOCONET_UART == HC12_UART_NUM
+    #error "Invalid Configuration detected, the LocoNet and HC12 can not share the UART interface."
+    #endif
+    #if LOCONET_RX_PIN == HC12_RX_PIN
+    #error "Invalid Configuration detected, the LocoNet RX Pin and HC12 RX Pin must be unique."
+    #endif
+    #if LOCONET_TX_PIN == HC12_TX_PIN
+    #error "Invalid Configuration detected, the LocoNet TX Pin and HC12 TX Pin must be unique."
+    #endif
+  #endif
+#endif
+
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+  #if defined(S88_ENABLED) && S88_ENABLED
+    #if S88_CLOCK_PIN == LOCONET_RX_PIN
+    #error "Invalid Configuration detected, the LocoNet RX Pin and S88 Clock Pin must be unique."
+    #endif
+    #if S88_CLOCK_PIN == LOCONET_TX_PIN
+    #error "Invalid Configuration detected, the LocoNet TX Pin and S88 Clock Pin must be unique."
+    #endif
+    #if S88_RESET_PIN == LOCONET_RX_PIN
+    #error "Invalid Configuration detected, the LocoNet RX Pin and S88 Reset Pin must be unique."
+    #endif
+    #if S88_RESET_PIN == LOCONET_TX_PIN
+    #error "Invalid Configuration detected, the LocoNet TX Pin and S88 Reset Pin must be unique."
+    #endif
+    #if S88_LOAD_PIN == LOCONET_RX_PIN
+    #error "Invalid Configuration detected, the LocoNet RX Pin and S88 Load Pin must be unique."
+    #endif
+    #if S88_LOAD_PIN == LOCONET_TX_PIN
+    #error "Invalid Configuration detected, the LocoNet TX Pin and S88 Load Pin must be unique."
+    #endif
+  #endif
+#endif

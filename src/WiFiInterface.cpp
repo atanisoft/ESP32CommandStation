@@ -65,7 +65,7 @@ const String wifiSSID = WIFI_SSID;
 const String wifiPassword = WIFI_PASSWORD;
 
 DCCPPWebServer dccppWebServer;
-WiFiServer DCCppServer(DCCPP_CLIENT_PORT);
+WiFiServer DCCppServer(DCCPP_JMRI_CLIENT_PORT);
 LinkedList<WiFiClientWrapper *> DCCppClients([](WiFiClientWrapper *consumer) {consumer->stop(); delete consumer; });
 bool wifiConnected = false;
 
@@ -104,7 +104,7 @@ void WiFiInterface::begin() {
       log_e("Failed to start mDNS");
     } else {
       log_d("Adding dccpp.tcp service to mDNS advertiser");
-      MDNS.addService("dccpp", "tcp", DCCPP_CLIENT_PORT);
+      MDNS.addService("dccpp", "tcp", DCCPP_JMRI_CLIENT_PORT);
     }
 
     DCCppServer.setNoDelay(true);

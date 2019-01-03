@@ -54,7 +54,9 @@ void redrawOLED() {
 
 void InfoScreen::init() {
   _enabled = false;
+#if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD)
   bool scanI2C = false;
+#endif
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
   for(int i = 0; i < INFO_SCREEN_OLED_LINES; i++) {
     infoScreenLines[i] = "";
@@ -100,8 +102,9 @@ void InfoScreen::init() {
     scanI2C = true;
   }
 #endif
+#if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD)
   if(!_enabled) {
-    log_w("Unable to initialize InfoScreen, switching to Serial");
+    log_w("Unable to initialize InfoScreen");
     if(scanI2C) {
       ::printf("Scanning for I2C devices...\n");
       ::printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
@@ -119,6 +122,7 @@ void InfoScreen::init() {
       }
     }
   }
+#endif
 }
 
 void InfoScreen::clear() {
@@ -147,8 +151,6 @@ void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...
       lcdDisplay.print(buf);
     }
 #endif
-  } else {
-    Serial.println(buf);
   }
 }
 
@@ -168,8 +170,6 @@ void InfoScreen::printf(int col, int row, const String &format, ...) {
       lcdDisplay.print(buf);
     }
 #endif
-  } else {
-    Serial.println(buf);
   }
 }
 
@@ -194,8 +194,6 @@ void InfoScreen::replaceLine(int row, const __FlashStringHelper *format, ...) {
       }
     }
 #endif
-  } else {
-    Serial.println(buf);
   }
 }
 
@@ -220,8 +218,6 @@ void InfoScreen::replaceLine(int row, const String &format, ...) {
       }
     }
 #endif
-  } else {
-    Serial.println(buf);
   }
 }
 
