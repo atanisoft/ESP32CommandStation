@@ -34,7 +34,7 @@ struct Packet {
 
 struct SignalGenerator {
   template<int signalGenerator>
-  void configureSignal(String, uint8_t, uint16_t, uint8_t);
+  void configureSignal(String, uint8_t, uint8_t, uint16_t, uint8_t);
   template<int signalGenerator>
   void startSignal();
   template<int signalGenerator>
@@ -50,7 +50,8 @@ struct SignalGenerator {
   uint8_t _timerNumber;
   bool _topOfWave;
   String _name;
-  uint8_t _directionPin;
+  uint8_t _signalPin;
+  uint8_t _invertedSignalPin;
   int _currentMonitorPin;
   bool _enabled;
   std::queue<Packet *> _toSend;

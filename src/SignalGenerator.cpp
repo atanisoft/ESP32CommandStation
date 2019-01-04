@@ -52,11 +52,19 @@ bool progTrackBusy = false;
 
 void loadBytePacket(SignalGenerator &, uint8_t *, uint8_t, uint8_t, bool=false);
 
+#ifndef DCC_SIGNAL_PIN_OPERATIONS_INVERTED
+#define DCC_SIGNAL_PIN_OPERATIONS_INVERTED 0
+#endif
+
+#ifndef DCC_SIGNAL_PIN_PROGRAMMING_INVERTED
+#define DCC_SIGNAL_PIN_PROGRAMMING_INVERTED 0
+#endif
+
 void configureDCCSignalGenerators() {
   dccSignal[DCC_SIGNAL_OPERATIONS].configureSignal<DCC_SIGNAL_OPERATIONS>("OPS",
-    DCC_SIGNAL_PIN_OPERATIONS, 512, DCC_TIMER_OPERATIONS);
+    DCC_SIGNAL_PIN_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS_INVERTED, 512, DCC_TIMER_OPERATIONS);
   dccSignal[DCC_SIGNAL_PROGRAMMING].configureSignal<DCC_SIGNAL_PROGRAMMING>("PROG",
-    DCC_SIGNAL_PIN_PROGRAMMING, 64, DCC_TIMER_PROGRAMMING);
+    DCC_SIGNAL_PIN_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED, 64, DCC_TIMER_PROGRAMMING);
 }
 
 void startDCCSignalGenerators() {
@@ -212,10 +220,16 @@ void IRAM_ATTR signalGeneratorTimerISR(void)
     } else {
       timerAlarmWrite(generator._timer, DCC_ZERO_BIT_PULSE_DURATION, false);
     }
-    digitalWrite(generator._directionPin, HIGH);
+    digitalWrite(generator._signalPin, HIGH);
+    if(generator._invertedSignalPin) {
+      digitalWrite(generator._invertedSignalPin, LOW);
+    }
     generator._topOfWave = false;
   } else {
-    digitalWrite(generator._directionPin, LOW);
+    digitalWrite(generator._signalPin, LOW);
+    if(generator._invertedSignalPin) {
+      digitalWrite(generator._invertedSignalPin, HIGH);
+    }
     generator._topOfWave = true;
   }
   timerWrite(generator._timer, 0);
@@ -223,9 +237,10 @@ void IRAM_ATTR signalGeneratorTimerISR(void)
 }
 
 template<int signalGenerator>
-void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_t maxPackets, uint8_t timerNumber) {
+void SignalGenerator::configureSignal(String name, uint8_t signalPin, uint8_t invertedSignalPin, uint16_t maxPackets, uint8_t timerNumber) {
   _name = name;
-  _directionPin = directionPin;
+  _signalPin = signalPin;
+  _invertedSignalPin = invertedSignalPin;
   _currentPacket = nullptr;
   _topOfWave = true;
   _timerNumber = timerNumber;
@@ -236,11 +251,20 @@ void SignalGenerator::configureSignal(String name, uint8_t directionPin, uint16_
     _availablePackets.push(new Packet());
   }
 
-  // force the directionPin to low since it will be controlled by the DCC timer
-  log_i("[%s] Configuring direction pin %d", _name.c_str(), _directionPin);
-  pinMode(_directionPin, INPUT);
-  digitalWrite(_directionPin, LOW);
-  pinMode(_directionPin, OUTPUT);
+  // force the signalPin to low since it will be controlled by the DCC timer
+  log_i("[%s] Configuring signal pin %d", _name.c_str(), _signalPin);
+  pinMode(_signalPin, INPUT);
+  digitalWrite(_signalPin, LOW);
+  pinMode(_signalPin, OUTPUT);
+
+  if(_invertedSignalPin) {
+    // force the signalPin to low since it will be controlled by the DCC timer
+    log_i("[%s] Configuring inverted signal pin %d", _name.c_str(), _invertedSignalPin);
+    pinMode(_invertedSignalPin, INPUT);
+    digitalWrite(_invertedSignalPin, LOW);
+    pinMode(_invertedSignalPin, OUTPUT);
+  }
+
   startSignal<signalGenerator>();
 }
 

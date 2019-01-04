@@ -123,6 +123,22 @@ void esp32_restart();
 #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS and DCC_SIGNAL_PIN_PROGRAMMING must be unique."
 #endif
 
+#if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED) && DCC_SIGNAL_PIN_OPERATIONS_INVERTED == DCC_SIGNAL_PIN_OPERATIONS
+#error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and DCC_SIGNAL_PIN_OPERATIONS must be unique."
+#endif
+
+#if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED) && DCC_SIGNAL_PIN_OPERATIONS_INVERTED == DCC_SIGNAL_PIN_PROGRAMMING
+#error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and DCC_SIGNAL_PIN_PROGRAMMING must be unique."
+#endif
+
+#if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED) && DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == DCC_SIGNAL_PIN_OPERATIONS
+#error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and DCC_SIGNAL_PIN_OPERATIONS must be unique."
+#endif
+
+#if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED) && DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == DCC_SIGNAL_PIN_PROGRAMMING
+#error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and DCC_SIGNAL_PIN_PROGRAMMING must be unique."
+#endif
+
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED && defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
 #error "Invalid Configuration detected, it is not supported to include both OLED and LCD support."
 #endif
@@ -173,6 +189,22 @@ void esp32_restart();
     #error "Invalid Configuration detected, the Nextion TX Pin and S88 Load Pin must be unique."
     #endif
   #endif
+  #if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
+    #if DCC_SIGNAL_PIN_OPERATIONS_INVERTED == NEXTION_RX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and NEXTION_RX_PIN must be unique."
+    #endif
+    #if DCC_SIGNAL_PIN_OPERATIONS_INVERTED == NEXTION_TX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and NEXTION_TX_PIN must be unique."
+    #endif
+  #endif
+  #if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
+    #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == NEXTION_RX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and NEXTION_RX_PIN must be unique."
+    #endif
+    #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == NEXTION_TX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and NEXTION_TX_PIN must be unique."
+    #endif
+  #endif
 #endif
 
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
@@ -210,6 +242,22 @@ void esp32_restart();
     #error "Invalid Configuration detected, the LocoNet TX Pin and HC12 TX Pin must be unique."
     #endif
   #endif
+  #if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
+    #if DCC_SIGNAL_PIN_OPERATIONS_INVERTED == HC12_RX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and HC12_RX_PIN must be unique."
+    #endif
+    #if DCC_SIGNAL_PIN_OPERATIONS_INVERTED == HC12_TX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and HC12_TX_PIN must be unique."
+    #endif
+  #endif
+  #if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
+    #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == HC12_RX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and HC12_RX_PIN must be unique."
+    #endif
+    #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == HC12_TX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and HC12_TX_PIN must be unique."
+    #endif
+  #endif
 #endif
 
 #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
@@ -231,6 +279,22 @@ void esp32_restart();
     #endif
     #if S88_LOAD_PIN == LOCONET_TX_PIN
     #error "Invalid Configuration detected, the LocoNet TX Pin and S88 Load Pin must be unique."
+    #endif
+  #endif
+  #if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
+    #if DCC_SIGNAL_PIN_OPERATIONS_INVERTED == LOCONET_RX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and LOCONET_RX_PIN must be unique."
+    #endif
+    #if DCC_SIGNAL_PIN_OPERATIONS_INVERTED == LOCONET_TX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and LOCONET_TX_PIN must be unique."
+    #endif
+  #endif
+  #if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
+    #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == LOCONET_RX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and LOCONET_RX_PIN must be unique."
+    #endif
+    #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == LOCONET_TX_PIN
+    #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and LOCONET_TX_PIN must be unique."
     #endif
   #endif
 #endif
