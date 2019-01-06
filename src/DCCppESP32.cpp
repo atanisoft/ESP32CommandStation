@@ -374,7 +374,4 @@ void loop() {
 	wifiInterface.update();
 	InfoScreen::update();
 	MotorBoardManager::check();
-#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
-  HC12Interface::update();
-#endif
 }

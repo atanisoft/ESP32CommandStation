@@ -22,6 +22,8 @@ COPYRIGHT (c) 2018 Mike Dunston
 class HC12Interface {
 public:
 	static void init();
-  static void update();
+  static void hc12Task(void *param);
   static void send(const String &buf);
+private:
+  static TaskHandle_t _taskHandle;
 };
