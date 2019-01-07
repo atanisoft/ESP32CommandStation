@@ -88,7 +88,7 @@ void WiFiInterface::begin() {
 	WiFi.config(staticIP, gatewayIP, subnetMask, dnsServer);
 #endif
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
+  WiFi.disconnect(true, true);
   WiFi.onEvent([](system_event_id_t event) {
     if(wifiConnected) {
       return;
