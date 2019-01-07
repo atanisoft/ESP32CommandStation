@@ -917,7 +917,7 @@ function setupProgrammer() {
 				}
 			});
 		} else if($('#bs-prog-action').val() === 'write') {
-			if(!$('#bs-prog-mode').prop('checked')) {
+			if($('#bs-prog-mode').prop('checked')) {
 				$.post({url: '/programmer',
 					dataType: 'json',
 					data: {
@@ -941,7 +941,7 @@ function setupProgrammer() {
 						'cv': $('#bs-prog-cv').val(),
 						'pom': $('#bs-prog-target').prop('checked'),
 						'address': $('#bs-prog-addr').val(),
-						'value' : $('#bs-prog-cv-value').prop('checked')
+						'value' : $('#bs-prog-cv-value').val()
 					},
 					success: function(data, status, xhr) {
 						$('#bs-prog-result').val(String.format('CV {0} written successfully', $('#bs-prog-cv').val()));
