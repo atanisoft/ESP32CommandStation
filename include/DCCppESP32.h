@@ -89,6 +89,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Locomotive.h"
 #include "Outputs.h"
 
+#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+#include "NextionInterface.h"
+#endif
+
 extern std::vector<uint8_t> restrictedPins;
 
 #if defined(LOCONET_ENABLED) && LOCONET_ENABLED

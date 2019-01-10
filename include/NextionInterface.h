@@ -63,6 +63,7 @@ public:
   uint8_t getReturnPage() {
     return _returnPageID;
   }
+  void sendEStop();
 protected:
   // One time page initialization
   virtual void init() = 0;
@@ -148,7 +149,6 @@ private:
   uint8_t _activeLoco;
   uint8_t _activeFunctionGroup;
   uint32_t _locoNumbers[3];
-  Locomotive *_locomotives[3];
   NextionButton _locoButtons[3];
   NextionButton _fgroupButtons[3];
   NextionButton _fwdButton;
