@@ -21,12 +21,12 @@ COPYRIGHT (c) 2018 Mike Dunston
 #include "Locomotive.h"
 #include "Turnouts.h"
 #include <HardwareSerial.h>
-#include <Nextion.h>
-#include <NextionPage.h>
-#include <NextionButton.h>
-#include <NextionText.h>
-#include <NextionSlider.h>
-#include <NextionNumber.h>
+#include <NeoNextion/Nextion.h>
+#include <NeoNextion/NextionPage.h>
+#include <NeoNextion/NextionButton.h>
+#include <NeoNextion/NextionText.h>
+#include <NeoNextion/NextionSlider.h>
+#include <NeoNextion/NextionNumber.h>
 
 class NextionInterface {
 public:

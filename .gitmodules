@@ -1,7 +1,0 @@
-[submodule "lib/NeoNextion"]
-	path = lib/NeoNextion
-	url = git@github.com:atanisoft/NeoNextion.git
-[submodule "lib/LocoNet2"]
-	path = lib/LocoNet2
-	url = git@github.com:atanisoft/LocoNet2.git
-	branch = development
