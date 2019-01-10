@@ -40,6 +40,9 @@ public:
   const uint16_t getAddress() {
     return _address;
   }
+  const uint16_t getBoardAddress() {
+    return _boardAddress;
+  }
   const uint8_t getIndex() {
     return _index;
   }
