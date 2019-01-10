@@ -42,11 +42,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // devices via an HC12.
 //#include "Config_HC12.h"
 
-// The SD module interface is an optional module that is used only for storing the
-// base station dynamic configuration data. If this module is not enabled, SPIFFS
-// will be utilized instead.
-//#include "Config_SD.h"
-
 // The LocoNet interface is an optional module, if you wish to interface with LocoNet
 // you must uncomment the next line and edit the Config_LocoNet.h file to match your
 // configuration.

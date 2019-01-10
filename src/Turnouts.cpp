@@ -147,7 +147,7 @@ void TurnoutManager::showStatus() {
   }
 }
 
-void TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const uint8_t subAddress) {
+void TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t subAddress) {
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == id) {
       turnout->update(address, subAddress);
@@ -185,32 +185,55 @@ uint16_t TurnoutManager::getTurnoutCount() {
   return turnouts.length();
 }
 
-Turnout::Turnout(uint16_t turnoutID, uint16_t address, uint8_t subAddress,
+Turnout::Turnout(uint16_t turnoutID, uint16_t address, int8_t index,
   bool thrown, TurnoutOrientation orientation) : _turnoutID(turnoutID),
-  _address(address), _subAddress(subAddress), _thrown(thrown),
+  _address(address), _index(index), _boardAddress(0), _thrown(thrown),
   _orientation(orientation) {
-  log_i("Turnout %d created using address %d/%d", turnoutID, address, subAddress);
+  if(index == -1) {
+    // convert the provided decoder address to a board address and accessory index
+    calculateBoardAddressAndIndex();
+    log_i("Turnout %d created using address %d", turnoutID, address);
+  } else {
+    log_i("Turnout %d created using address %d/%d", turnoutID, address, index);
+  }
 }
 
 Turnout::Turnout(JsonObject &json) {
   _turnoutID = json.get<int>(JSON_ID_NODE);
   _address = json.get<int>(JSON_ADDRESS_NODE);
-  _subAddress = json.get<int>(JSON_SUB_ADDRESS_NODE);
+  _index = json.get<int>(JSON_SUB_ADDRESS_NODE);
   _thrown = json.get<bool>(JSON_STATE_NODE);
   _orientation = (TurnoutOrientation)json.get<int>(JSON_ORIENTATION_NODE);
-  log_i("Turnout(%d, %d, %d)", _turnoutID, _address, _subAddress);
+  if(json.get<int>(JSON_SUB_ADDRESS_NODE) == -1) {
+    // convert the provided decoder address to a board address and accessory index
+    calculateBoardAddressAndIndex();
+    log_i("Turnout(%d, %d)", _turnoutID, _address);
+  } else {
+    log_i("Turnout(%d, %d, %d)", _turnoutID, _address, _index);
+  }
 }
 
-void Turnout::update(uint16_t address, uint8_t subAddress) {
-   _address = address;
-   _subAddress = subAddress;
-  log_i("Turnout %d updated to address %d/%d", _turnoutID, _address, _subAddress);
+void Turnout::update(uint16_t address, int8_t index) {
+  _address = address;
+  _index = index;
+  if(index == -1) {
+    // convert the provided decoder address to a board address and accessory index
+    calculateBoardAddressAndIndex();
+    log_i("Turnout %d updated to address %d", _turnoutID, _address);
+  } else {
+    log_i("Turnout %d updated to address %d/%d", _turnoutID, _address, _index);
+  }
 }
 
 void Turnout::toJson(JsonObject &json, bool readableStrings) {
   json[JSON_ID_NODE] = _turnoutID;
   json[JSON_ADDRESS_NODE] = _address;
-  json[JSON_SUB_ADDRESS_NODE] = _subAddress;
+  json[JSON_BOARD_ADDRESS_NODE] = _boardAddress;
+  if(_boardAddress) {
+    json[JSON_SUB_ADDRESS_NODE] = -1;
+  } else {
+    json[JSON_SUB_ADDRESS_NODE] = _index;
+  }
   if(readableStrings) {
     if(_thrown) {
       json[JSON_STATE_NODE] = JSON_VALUE_THROWN;
@@ -226,8 +249,12 @@ void Turnout::toJson(JsonObject &json, bool readableStrings) {
 void Turnout::set(bool thrown) {
   _thrown = thrown;
   std::vector<String> args;
-  args.push_back(String(_address));
-  args.push_back(String(_subAddress));
+  if(_boardAddress) {
+    args.push_back(String(_boardAddress));
+  } else {
+    args.push_back(String(_address));
+  }
+  args.push_back(String(_index));
   args.push_back(String(_thrown));
   DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   wifiInterface.printf(F("<H %d %d>"), _turnoutID, !_thrown);
@@ -235,7 +262,7 @@ void Turnout::set(bool thrown) {
 }
 
 void Turnout::showStatus() {
-  wifiInterface.printf(F("<H %d %d %d %d>"), _turnoutID, _address, _subAddress, _thrown);
+  wifiInterface.printf(F("<H %d %d %d %d>"), _turnoutID, _address, _index, _thrown);
 }
 
 void TurnoutCommandAdapter::process(const std::vector<String> arguments) {

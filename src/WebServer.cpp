@@ -338,7 +338,7 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
   } else if(request->method() == HTTP_POST) {
     uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();
     uint16_t turnoutAddress = request->arg(JSON_ADDRESS_NODE.c_str()).toInt();
-    uint8_t turnoutSubAddress = request->arg(JSON_SUB_ADDRESS_NODE.c_str()).toInt();
+    int8_t turnoutSubAddress = request->arg(JSON_SUB_ADDRESS_NODE.c_str()).toInt();
     TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress);
   } else if(request->method() == HTTP_DELETE) {
     uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();

@@ -28,10 +28,10 @@ enum TurnoutOrientation {
 
 class Turnout {
 public:
-  Turnout(uint16_t, uint16_t, uint8_t, bool=false, TurnoutOrientation=LEFT);
+  Turnout(uint16_t, uint16_t, int8_t, bool=false, TurnoutOrientation=LEFT);
   Turnout(JsonObject &);
   virtual ~Turnout() {}
-  void update(uint16_t, uint8_t);
+  void update(uint16_t, int8_t);
   void set(bool=false);
   void toJson(JsonObject &, bool=false);
   const uint16_t getID() {
@@ -40,8 +40,8 @@ public:
   const uint16_t getAddress() {
     return _address;
   }
-  const uint8_t getSubAddress() {
-    return _subAddress;
+  const uint8_t getIndex() {
+    return _index;
   }
   const bool isThrown() {
     return _thrown;
@@ -56,9 +56,14 @@ public:
 private:
   uint16_t _turnoutID;
   uint16_t _address;
-  uint8_t _subAddress;
+  uint8_t _index;
+  uint16_t _boardAddress;
   bool _thrown;
   TurnoutOrientation _orientation;
+  void calculateBoardAddressAndIndex() {
+    _boardAddress = (_address + 3) / 4;
+    _index = (_address - (_boardAddress * 4)) + 3;
+  }
 };
 
 class TurnoutManager {
@@ -70,7 +75,7 @@ public:
   static bool toggle(uint16_t);
   static void getState(JsonArray &);
   static void showStatus();
-  static void createOrUpdate(const uint16_t, const uint16_t, const uint8_t);
+  static void createOrUpdate(const uint16_t, const uint16_t, const int8_t);
   static bool remove(const uint16_t);
   static Turnout *getTurnout(const uint16_t);
   static uint16_t getTurnoutCount();

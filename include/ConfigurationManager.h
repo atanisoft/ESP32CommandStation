@@ -32,9 +32,6 @@ public:
   JsonObject &load(const String &);
   void store(const String &, const JsonObject &);
   JsonObject &createRootNode(bool=true);
-private:
-  FS &_fs;
-  bool _usingSpiffs;
 };
 
 extern ConfigurationManager configStore;
@@ -45,6 +42,7 @@ extern String JSON_USAGE_NODE;
 extern String JSON_COUNT_NODE;
 extern String JSON_ADDRESS_NODE;
 extern String JSON_SUB_ADDRESS_NODE;
+extern String JSON_BOARD_ADDRESS_NODE;
 extern String JSON_SPEED_NODE;
 extern String JSON_DIRECTION_NODE;
 extern String JSON_ORIENTATION_NODE;

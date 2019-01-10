@@ -27,6 +27,7 @@ String JSON_COUNT_NODE PROGMEM = "count";
 String JSON_ADDRESS_NODE PROGMEM = "address";
 
 String JSON_SUB_ADDRESS_NODE PROGMEM = "subAddress";
+String JSON_BOARD_ADDRESS_NODE = "boardAddress";
 String JSON_SPEED_NODE PROGMEM = "speed";
 String JSON_DIRECTION_NODE PROGMEM = "dir";
 String JSON_ORIENTATION_NODE PROGMEM = "orientation";
@@ -101,73 +102,33 @@ ConfigurationManager configStore;
 
 StaticJsonBuffer<20480> jsonConfigBuffer;
 
-#if defined(SD_CARD_ENABLED) && SD_CARD_ENABLED
-  #if defined(SD_CARD_USE_FSPI) && SD_CARD_USE_FSPI
-    SPIClass configSPI(FSPI);
-    #define SD_CARD_MOSI_PIN 8
-    #define SD_CARD_MISO_PIN 7
-    #define SD_CARD_CLK_PIN 6
-  #else
-    #define configSPI SPI
-    #if !defined(SD_CARD_MOSI_PIN)
-      #define SD_CARD_MOSI_PIN MOSI
-    #endif
-    #if !defined(SD_CARD_MISO_PIN)
-      #define SD_CARD_MISO_PIN MISO
-    #endif
-    #if !defined(SD_CARD_CLK_PIN)
-      #define SD_CARD_CLK_PIN SCK
-    #endif
-  #endif
-#endif
-
-ConfigurationManager::ConfigurationManager() :
-#if defined(SD_CARD_ENABLED) && SD_CARD_ENABLED
-  _fs(SD), _usingSpiffs(false)
-#else
-  _fs(SPIFFS), _usingSpiffs(true)
-#endif
-  {
+ConfigurationManager::ConfigurationManager() {
 }
 
 ConfigurationManager::~ConfigurationManager() {
-#if defined(SD_CARD_ENABLED) && SD_CARD_ENABLED
-  SD.end();
-#endif
-  if(_usingSpiffs) {
-    SPIFFS.end();
-  }
+  SPIFFS.end();
 }
 
 void ConfigurationManager::init() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Loading Config"));
-#if defined(SD_CARD_ENABLED) && SD_CARD_ENABLED
-  configSPI.begin(SD_CARD_CLK_PIN, SD_CARD_MISO_PIN, SD_CARD_MOSI_PIN, SD_CARD_SS_PIN);
-  SD.begin(SD_CARD_SS_PIN, configSPI);
-  if(SD.cardType() == CARD_NONE) {
-    log_w("SD Card not found, switching to SPIFFS storage");
-    _fs = SPIFFS;
-    _usingSpiffs = true;
-  }
-#endif
-  if(_usingSpiffs && !SPIFFS.begin()) {
+  if(!SPIFFS.begin()) {
     log_i("SPIFFS mount failed, formatting SPIFFS and retrying");
     SPIFFS.begin(true);
   }
-  _fs.mkdir("/DCCppESP32");
+  SPIFFS.mkdir("/DCCppESP32");
 }
 
 void ConfigurationManager::clear() {
 }
 
 JsonObject &ConfigurationManager::load(const String &name) {
-  log_i("Loading /DCCppESP32/%s using %s", name.c_str(), _usingSpiffs ? "SPIFFS" : "SD");
+  log_i("Loading /DCCppESP32/%s", name.c_str());
   bool restartDCC = false;
-  if(_usingSpiffs && isDCCSignalEnabled()) {
+  if(isDCCSignalEnabled()) {
     stopDCCSignalGenerators();
     restartDCC = true;
   }
-  File configFile = _fs.open("/DCCppESP32/" + name, FILE_READ);
+  File configFile = SPIFFS.open("/DCCppESP32/" + name, FILE_READ);
   jsonConfigBuffer.clear();
   JsonObject &root = jsonConfigBuffer.parseObject(configFile);
   configFile.close();
@@ -178,13 +139,13 @@ JsonObject &ConfigurationManager::load(const String &name) {
 }
 
 void ConfigurationManager::store(const String &name, const JsonObject &json) {
-  log_i("Storing /DCCppESP32/%s using %s", name.c_str(), _usingSpiffs ? "SPIFFS" : "SD");
+  log_i("Storing /DCCppESP32/%s", name.c_str());
   bool restartDCC = false;
-  if(_usingSpiffs && isDCCSignalEnabled()) {
+  if(isDCCSignalEnabled()) {
     stopDCCSignalGenerators();
     restartDCC = true;
   }
-  File configFile = _fs.open("/DCCppESP32/" + name, FILE_WRITE);
+  File configFile = SPIFFS.open("/DCCppESP32/" + name, FILE_WRITE);
   if(!configFile) {
     log_e("Failed to open /DCCppESP32/%s", name.c_str());
     if(restartDCC) {
