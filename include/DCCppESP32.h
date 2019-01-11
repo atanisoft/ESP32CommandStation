@@ -74,7 +74,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <esp32-hal-log.h>
 #include <SPI.h>
 #include <FS.h>
-#include <SD.h>
 #include <SPIFFS.h>
 
 #include "Config.h"
@@ -96,7 +95,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 extern std::vector<uint8_t> restrictedPins;
 
 #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
-#include <LocoNetESP32UART.h>
+#include <LocoNet2/LocoNetESP32UART.h>
 extern LocoNetESP32Uart locoNet;
 #endif
 
