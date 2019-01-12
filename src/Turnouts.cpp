@@ -147,10 +147,10 @@ void TurnoutManager::showStatus() {
   }
 }
 
-void TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t subAddress) {
+void TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t subAddress, const TurnoutOrientation orientation) {
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == id) {
-      turnout->update(address, subAddress);
+      turnout->update(address, subAddress, orientation);
       return;
     }
   }
@@ -213,9 +213,10 @@ Turnout::Turnout(JsonObject &json) {
   }
 }
 
-void Turnout::update(uint16_t address, int8_t index) {
+void Turnout::update(uint16_t address, int8_t index, TurnoutOrientation orientation) {
   _address = address;
   _index = index;
+  _orientation = orientation;
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateBoardAddressAndIndex();

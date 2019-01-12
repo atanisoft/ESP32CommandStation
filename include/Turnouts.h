@@ -28,10 +28,10 @@ enum TurnoutOrientation {
 
 class Turnout {
 public:
-  Turnout(uint16_t, uint16_t, int8_t, bool=false, TurnoutOrientation=LEFT);
+  Turnout(uint16_t, uint16_t, int8_t, bool=false, TurnoutOrientation=TurnoutOrientation::LEFT);
   Turnout(JsonObject &);
   virtual ~Turnout() {}
-  void update(uint16_t, int8_t);
+  void update(uint16_t, int8_t, TurnoutOrientation);
   void set(bool=false);
   void toJson(JsonObject &, bool=false);
   const uint16_t getID() {
@@ -78,7 +78,7 @@ public:
   static bool toggle(uint16_t);
   static void getState(JsonArray &);
   static void showStatus();
-  static void createOrUpdate(const uint16_t, const uint16_t, const int8_t);
+  static void createOrUpdate(const uint16_t, const uint16_t, const int8_t, const TurnoutOrientation=TurnoutOrientation::LEFT);
   static bool remove(const uint16_t);
   static Turnout *getTurnout(const uint16_t);
   static uint16_t getTurnoutCount();

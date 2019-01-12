@@ -339,7 +339,8 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
     uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();
     uint16_t turnoutAddress = request->arg(JSON_ADDRESS_NODE.c_str()).toInt();
     int8_t turnoutSubAddress = request->arg(JSON_SUB_ADDRESS_NODE.c_str()).toInt();
-    TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress);
+    TurnoutOrientation orientation = (TurnoutOrientation)request->arg(JSON_ORIENTATION_NODE.c_str()).toInt();
+    TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress, orientation);
   } else if(request->method() == HTTP_DELETE) {
     uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();
     if(!TurnoutManager::remove(turnoutID)) {
@@ -519,3 +520,4 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
   jsonResponse->setLength();
   request->send(jsonResponse);
 }
+
