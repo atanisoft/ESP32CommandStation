@@ -77,7 +77,7 @@ void DCCPPNextionPage::setTrackPower(bool on) {
 }
 
 void DCCPPNextionPage::sendEStop() {
-  sendDCCEmergencyStop();
+  LocomotiveManager::emergencyStop();
 }
 
 void DCCPPNextionPage::displayPreviousPage(bool invokeCallback) {
