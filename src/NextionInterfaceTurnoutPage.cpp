@@ -171,8 +171,15 @@ void NextionTurnoutPage::displayPage() {
   }
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
     Turnout *turnout = TurnoutManager::getTurnout(startIndex + componentIndex);
-    _turnoutButtons[componentIndex].setNumberProperty("pic", (RH + (turnout->getOrientation()) + (turnout->isThrown())));
-    _toAddress[componentIndex].setTextAsNumber(turnout->getID());
+    if(turnout != nullptr) {
+      _turnoutButtons[componentIndex].setNumberProperty("pic", (RH + (turnout->getOrientation()) + (turnout->isThrown())));
+      _turnoutButtons[componentIndex].show();
+      _toAddress[componentIndex].setTextAsNumber(turnout->getID());
+      _toAddress[componentIndex].show();
+    } else {
+      _turnoutButtons[componentIndex].hide();
+      _toAddress[componentIndex].hide();
+    }
   }
 }
 
