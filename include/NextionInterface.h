@@ -172,14 +172,14 @@ public:
   virtual void refreshPage() {}
   void incrementTurnoutPage() {
     _turnoutStartIndex += TURNOUTS_PER_PAGE;
-    refreshPage();
+    displayPage();
   }
   void decrementTurnoutPage() {
     _turnoutStartIndex -= TURNOUTS_PER_PAGE;
     if(_turnoutStartIndex < 0) {
       _turnoutStartIndex = 0;
     }
-    refreshPage();
+    displayPage();
   }
 protected:
   virtual void init() {}
