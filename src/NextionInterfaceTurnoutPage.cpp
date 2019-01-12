@@ -1,8 +1,8 @@
 /**********************************************************************
 DCC++ BASE STATION FOR ESP32
 
-COPYRIGHT (c) 2018 NormHal
-COPYRIGHT (c) 2018 Mike Dunston
+COPYRIGHT (c) 2018-2019 NormHal
+COPYRIGHT (c) 2018-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,13 +18,13 @@ COPYRIGHT (c) 2018 Mike Dunston
 
 #include "DCCppESP32.h"
 
-constexpr uint8_t RH=108;
 constexpr uint8_t LH=106;
+constexpr uint8_t RH=108;
 
-constexpr uint8_t TO_RH_CLOSED=108;
-constexpr uint8_t TO_RH_THROWN=109;
 constexpr uint8_t TO_LH_CLOSED=106;
 constexpr uint8_t TO_LH_THROWN=107;
+constexpr uint8_t TO_RH_CLOSED=108;
+constexpr uint8_t TO_RH_THROWN=109;
 
 constexpr uint8_t slot0=4;
 constexpr uint8_t slot1=5;
@@ -115,7 +115,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     NextionButton(nextion, TURNOUT_PAGE, slot12, "To12"),
     NextionButton(nextion, TURNOUT_PAGE, slot13, "To13"),
     NextionButton(nextion, TURNOUT_PAGE, slot14, "To14")
-  } {
+  }, _turnoutStartIndex(0) {
   for(int slot = 0; slot < 15; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
@@ -132,13 +132,13 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 
   _prevButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
-      printf("Prev Button Pressed\n");
+      static_cast<NextionTurnoutPage*>(nextionPages[TURNOUT_PAGE])->decrementTurnoutPage();
     }
   });
 
   _nextButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
-      printf("Next Button Pressed\n");
+      static_cast<NextionTurnoutPage*>(nextionPages[TURNOUT_PAGE])->incrementTurnoutPage();
     }
   });
 
@@ -163,16 +163,22 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 }
 
 void NextionTurnoutPage::displayPage() {
-  int startIndex = 0;
-  uint16_t turnoutsToDisplay = TurnoutManager::getTurnoutCount() - startIndex;
   // make sure that we only ever display a maximum of 15 turnouts per page
-  if(turnoutsToDisplay > 15) {
-    turnoutsToDisplay = 15;
+  uint16_t turnoutsToDisplay = min(TurnoutManager::getTurnoutCount() - _turnoutStartIndex, TURNOUTS_PER_PAGE);
+  if(turnoutsToDisplay < TURNOUTS_PER_PAGE) {
+    _nextButton.hide();
+  } else {
+    _nextButton.show();
+  }
+  if(_turnoutStartIndex) {
+    _prevButton.show();
+  } else {
+    _prevButton.hide();
   }
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
-    Turnout *turnout = TurnoutManager::getTurnout(startIndex + componentIndex);
-    if(turnout != nullptr) {
-      _turnoutButtons[componentIndex].setNumberProperty("pic", (RH + (turnout->getOrientation()) + (turnout->isThrown())));
+    auto turnout = TurnoutManager::getTurnout(_turnoutStartIndex + componentIndex);
+    if(turnout) {
+      _turnoutButtons[componentIndex].setNumberProperty("pic", (LH + (turnout->getOrientation()) + (turnout->isThrown())));
       _turnoutButtons[componentIndex].show();
       _toAddress[componentIndex].setTextAsNumber(turnout->getID());
       _toAddress[componentIndex].show();
@@ -188,13 +194,13 @@ void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
 }
 
 void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
-  for(uint8_t slot = 0; slot < 15; slot++) {
+  for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
     if(&_turnoutButtons[slot] == button) {
-      log_i("Toggle slot %d activated", slot);
-      //This is where logic to activate the turnout needs to go
-      _turnoutButtons[slot].setNumberProperty("pic", LH); //temporary wrong image
+      auto turnout = TurnoutManager::getTurnout(_toAddress[slot].getTextAsNumber());
+      log_i("Turnout slot %d (%d) %d, %d activated", slot, turnout->getID(), (turnout->getOrientation()), (turnout->isThrown()));
+      _turnoutButtons[slot].setNumberProperty("pic", (LH + (turnout->getOrientation()) + (turnout->isThrown())));
       // toggle the turnout state
-      TurnoutManager::toggle(_toAddress[slot].getTextAsNumber());
+      turnout->set(!turnout->isThrown());
     }
   }
 }

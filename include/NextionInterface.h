@@ -163,11 +163,22 @@ private:
   NextionText _speedNumber;
 };
 
+constexpr int TURNOUTS_PER_PAGE = 15;
+
 class NextionTurnoutPage : public DCCPPNextionPage {
 public:
   NextionTurnoutPage(Nextion &);
   void toggleTurnout(const NextionButton *);
   virtual void refreshPage() {}
+  void incrementTurnoutPage() {
+    _turnoutStartIndex += TURNOUTS_PER_PAGE;
+  }
+  void decrementTurnoutPage() {
+    _turnoutStartIndex -= TURNOUTS_PER_PAGE;
+    if(_turnoutStartIndex < 0) {
+      _turnoutStartIndex = 0;
+    }
+  }
 protected:
   virtual void init() {}
   virtual void displayPage();
@@ -181,6 +192,7 @@ private:
   NextionButton _delButton;
   NextionButton _routesButton;
   NextionButton _toAddress[15];
+  int16_t _turnoutStartIndex;
 };
 
 extern DCCPPNextionPage *nextionPages[MAX_PAGES];
