@@ -87,10 +87,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Sensors.h"
 #include "Locomotive.h"
 #include "Outputs.h"
-
-#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
 #include "NextionInterface.h"
-#endif
 
 extern std::vector<uint8_t> restrictedPins;
 
