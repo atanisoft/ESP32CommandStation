@@ -29,6 +29,8 @@ public:
 
   bool show();
   bool hide();
+  bool enable();
+  bool disable();
 
 protected:
   void sendCommand(const String &format, ...);

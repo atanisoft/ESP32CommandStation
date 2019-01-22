@@ -91,10 +91,10 @@ void DCCPPNextionPage::displayPreviousPage(bool invokeCallback) {
 
 void DCCPPNextionPage::refreshPowerButtons() {
   if(MotorBoardManager::isTrackPowerOn()) {
-    _onButton.setNumberProperty("pic", ON_PIC_ON);
-    _offButton.setNumberProperty("pic", OFF_PIC_OFF);
+    _onButton.setPictureID(ON_PIC_ON);
+    _offButton.setPictureID(OFF_PIC_OFF);
   } else {
-    _onButton.setNumberProperty("pic", ON_PIC_OFF);
-    _offButton.setNumberProperty("pic", OFF_PIC_ON);
+    _onButton.setPictureID(ON_PIC_OFF);
+    _offButton.setPictureID(OFF_PIC_ON);
   }
 }

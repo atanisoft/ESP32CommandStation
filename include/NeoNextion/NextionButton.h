@@ -30,6 +30,25 @@ public:
       , INextionFontStyleable(nex, page, component, name)
   {
   }
+
+  /*!
+  * \brief Gets the ID of the currently displayed picture.
+  * \return PIcture ID (may also return 0 in case of error)
+  */
+  uint16_t getPictureID()
+  {
+    return getNumberProperty("pic");
+  }
+
+  /*!
+  * \brief Sets the picture to be displayed.
+  * \param id Picture ID
+  * \return True if successful
+  */
+  bool setPictureID(uint16_t id)
+  {
+    return setNumberProperty("pic", id);
+  }
 };
 
 #endif

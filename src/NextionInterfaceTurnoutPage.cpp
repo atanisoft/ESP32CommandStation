@@ -26,6 +26,11 @@ constexpr uint8_t TO_LH_THROWN=107;
 constexpr uint8_t TO_RH_CLOSED=108;
 constexpr uint8_t TO_RH_THROWN=109;
 
+constexpr uint8_t NEXT_BUTTON_ENABLED=110;
+constexpr uint8_t NEXT_BUTTON_DISABLED=126;
+constexpr uint8_t PREV_BUTTON_ENABLED=111;
+constexpr uint8_t PREV_BUTTON_DISABLED=125;
+
 constexpr uint8_t slot0=4;
 constexpr uint8_t slot1=5;
 constexpr uint8_t slot2=6;
@@ -165,27 +170,42 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 void NextionTurnoutPage::displayPage() {
   // make sure that we only ever display a maximum of 15 turnouts per page
   uint16_t turnoutsToDisplay = min(TurnoutManager::getTurnoutCount() - _turnoutStartIndex, TURNOUTS_PER_PAGE);
-  if(turnoutsToDisplay < TURNOUTS_PER_PAGE) {
-    _nextButton.hide();
-  } else {
-    _nextButton.show();
-  }
-  if(_turnoutStartIndex) {
-    _prevButton.show();
-  } else {
-    _prevButton.hide();
-  }
+  // update the number of turnouts we can display on the page
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
     auto turnout = TurnoutManager::getTurnout(_turnoutStartIndex + componentIndex);
     if(turnout) {
-      _turnoutButtons[componentIndex].setNumberProperty("pic", (LH + (turnout->getOrientation()) + (turnout->isThrown())));
+      _turnoutButtons[componentIndex].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
       _turnoutButtons[componentIndex].show();
       _toAddress[componentIndex].setTextAsNumber(turnout->getID());
       _toAddress[componentIndex].show();
-    } else {
-      _turnoutButtons[componentIndex].hide();
-      _toAddress[componentIndex].hide();
+    } 
+  }
+  // check if we need to show/hide any components on the page
+  if(turnoutsToDisplay < TURNOUTS_PER_PAGE) {
+    // we are displaying a partial page of turnouts, so hide the remaining
+    // buttons and the next page button
+    for (; turnoutsToDisplay < TURNOUTS_PER_PAGE; turnoutsToDisplay++)
+    {
+      _turnoutButtons[turnoutsToDisplay].hide();
+      _toAddress[turnoutsToDisplay].hide();
     }
+    _nextButton.setPictureID(NEXT_BUTTON_DISABLED);
+    _nextButton.disable();
+  } else if(turnoutsToDisplay == TURNOUTS_PER_PAGE && 
+     TurnoutManager::getTurnoutCount() > (turnoutsToDisplay + _turnoutStartIndex)) {
+    // we are displaying a full page of turnouts and there is at least one
+    // additional turnout to display so show the next page button
+    _nextButton.setPictureID(NEXT_BUTTON_ENABLED);
+    _nextButton.enable();
+  }
+  // if we are not on the first page of turnouts display the previous page button
+  if(_turnoutStartIndex) {
+    _prevButton.setPictureID(PREV_BUTTON_ENABLED);
+    _prevButton.enable();
+  } else {
+    // first page of turnouts, hide the previous page button
+    _prevButton.setPictureID(PREV_BUTTON_DISABLED);
+    _prevButton.disable();
   }
 }
 
@@ -198,7 +218,7 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
     if(&_turnoutButtons[slot] == button) {
       auto turnout = TurnoutManager::getTurnout(_toAddress[slot].getTextAsNumber());
       log_i("Turnout slot %d (%d) %d, %d activated", slot, turnout->getID(), (turnout->getOrientation()), (turnout->isThrown()));
-      _turnoutButtons[slot].setNumberProperty("pic", (LH + (turnout->getOrientation()) + (turnout->isThrown())));
+      _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
       // toggle the turnout state
       turnout->set(!turnout->isThrown());
     }

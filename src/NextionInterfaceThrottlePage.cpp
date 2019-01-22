@@ -188,12 +188,12 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(ne
 void NextionThrottlePage::activateLoco(const NextionButton *button) {
   // turn off all buttons
   for(int index = 0; index < 3; index++) {
-    _locoButtons[index].setNumberProperty("pic", LOCO_PIC_OFF);
+    _locoButtons[index].setPictureID(LOCO_PIC_OFF);
   }
   // find and activate the selected button
   for(int index = 0; index < 3; index++) {
     if(button == &_locoButtons[index]) {
-      _locoButtons[index].setNumberProperty("pic", LOCO_PIC_ON);
+      _locoButtons[index].setPictureID(LOCO_PIC_ON);
       _activeLoco = index;
     }
   }
@@ -204,12 +204,12 @@ void NextionThrottlePage::activateFunctionGroup(const NextionButton *button) {
   // turn off all buttons
   uint8_t fgrp_buts[6] = {FG1_PIC_OFF, FG2_PIC_OFF, FG3_PIC_OFF, FG1_PIC_ON, FG2_PIC_ON, FG3_PIC_ON};
   for(int index = 0; index < 3; index++) {
-    _fgroupButtons[index].setNumberProperty("pic", fgrp_buts[index]);
+    _fgroupButtons[index].setPictureID(fgrp_buts[index]);
   }
   // find and activate the selected button
   for(int index = 0; index < 3; index++) {
     if (button == &_fgroupButtons[index]) {
-      _fgroupButtons[index].setNumberProperty("pic", fgrp_buts[index + 3]);
+      _fgroupButtons[index].setPictureID(fgrp_buts[index + 3]);
       _activeFunctionGroup = index;
     }
   }
@@ -220,11 +220,11 @@ void NextionThrottlePage::setLocoDirection(bool direction) {
   if(_locoNumbers[_activeLoco] > 0) {
     LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setDirection(direction);
     if(direction) {
-      _fwdButton.setNumberProperty("pic", FWD_PIC_ON);
-      _revButton.setNumberProperty("pic", REV_PIC_OFF);
+      _fwdButton.setPictureID(FWD_PIC_ON);
+      _revButton.setPictureID(REV_PIC_OFF);
     } else {
-      _fwdButton.setNumberProperty("pic", FWD_PIC_OFF);
-      _revButton.setNumberProperty("pic", REV_PIC_ON);
+      _fwdButton.setPictureID(FWD_PIC_OFF);
+      _revButton.setPictureID(REV_PIC_ON);
     }
   }
 }
@@ -236,11 +236,11 @@ void NextionThrottlePage::toggleFunction(const NextionButton *button) {
       uint16_t functionPicOn = _activeFunctionGroup * 8 + function + F1_PIC_ON;
       if(&_functionButtons[function] == button) {
         if(function == 8) { // Front Light
-          if(_functionButtons[8].getNumberProperty("pic") == F0_PIC_OFF) {
-            _functionButtons[8].setNumberProperty("pic", F0_PIC_ON);
+          if(_functionButtons[8].getPictureID() == F0_PIC_OFF) {
+            _functionButtons[8].setPictureID(F0_PIC_ON);
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(0, true);
           } else {
-            _functionButtons[8].setNumberProperty("pic", F0_PIC_OFF);
+            _functionButtons[8].setPictureID(F0_PIC_OFF);
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(0, false);
           }
         } else if(function == 9) { // Clear all 28 functions... 29?
@@ -248,11 +248,11 @@ void NextionThrottlePage::toggleFunction(const NextionButton *button) {
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(index, false);
           }
         } else {
-          if(_functionButtons[function].getNumberProperty("pic") == functionPicOff) {
-            _functionButtons[function].setNumberProperty("pic", functionPicOn);
+          if(_functionButtons[function].getPictureID() == functionPicOff) {
+            _functionButtons[function].setPictureID(functionPicOn);
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(_activeFunctionGroup * 8 + function + 1, true);
           } else {
-            _functionButtons[function].setNumberProperty("pic", functionPicOff);
+            _functionButtons[function].setPictureID(functionPicOff);
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(_activeFunctionGroup * 8 + function + 1, true);
           }
         }
@@ -328,8 +328,8 @@ void NextionThrottlePage::init() {
 }
 
 void NextionThrottlePage::displayPage() {
-  _locoButtons[_activeLoco].setNumberProperty("pic", LOCO_PIC_ON);
-  _fgroupButtons[_activeFunctionGroup].setNumberProperty("pic", FG1_PIC_ON);
+  _locoButtons[_activeLoco].setPictureID(LOCO_PIC_ON);
+  _fgroupButtons[_activeFunctionGroup].setPictureID(FG1_PIC_ON);
   refreshLocomotiveDetails();
 }
 
@@ -351,20 +351,20 @@ void NextionThrottlePage::refreshLocomotiveDetails()
     _speedSlider.setValue(loco->getSpeed());
     _speedNumber.setTextAsNumber(loco->getSpeed());
     if(loco->isDirectionForward()) {
-      _fwdButton.setNumberProperty("pic", FWD_PIC_ON);
-      _revButton.setNumberProperty("pic", REV_PIC_OFF);
+      _fwdButton.setPictureID(FWD_PIC_ON);
+      _revButton.setPictureID(REV_PIC_OFF);
     } else {
-      _fwdButton.setNumberProperty("pic", FWD_PIC_OFF);
-      _revButton.setNumberProperty("pic", REV_PIC_ON);
+      _fwdButton.setPictureID(FWD_PIC_OFF);
+      _revButton.setPictureID(REV_PIC_ON);
     }
     refreshFunctionButtons();
   } else {
     _speedSlider.setValue(0);
     _speedNumber.setTextAsNumber(0);
-    _fwdButton.setNumberProperty("pic", FWD_PIC_ON);
-    _revButton.setNumberProperty("pic", REV_PIC_OFF);
+    _fwdButton.setPictureID(FWD_PIC_ON);
+    _revButton.setPictureID(REV_PIC_OFF);
     for(int index = 0; index < 8; index++) {
-      _functionButtons[index].setNumberProperty("pic", _activeFunctionGroup * 8 + index + F1_PIC_OFF);
+      _functionButtons[index].setPictureID(_activeFunctionGroup * 8 + index + F1_PIC_OFF);
     }
   }
 }
@@ -372,9 +372,9 @@ void NextionThrottlePage::refreshLocomotiveDetails()
 void NextionThrottlePage::refreshFunctionButtons() {
   for(int index = 0; index < 8; index++) {
     if(_locoNumbers[_activeLoco] > 0 && LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->isFunctionEnabled(_activeFunctionGroup * 8 + index + 1)) {
-      _functionButtons[index].setNumberProperty("pic", (_activeFunctionGroup * 8 + index + F1_PIC_ON));
+      _functionButtons[index].setPictureID(_activeFunctionGroup * 8 + index + F1_PIC_ON);
     } else {
-      _functionButtons[index].setNumberProperty("pic", _activeFunctionGroup * 8 + index + F1_PIC_OFF);
+      _functionButtons[index].setPictureID(_activeFunctionGroup * 8 + index + F1_PIC_OFF);
     }
   }
 }
