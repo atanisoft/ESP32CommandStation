@@ -372,6 +372,9 @@ void setup() {
 
 void loop() {
 	wifiInterface.update();
+#if defined(LCC_ENABLED) && LCC_ENABLED
+  lccInterface.update();
+#endif
 	InfoScreen::update();
 	MotorBoardManager::check();
 }

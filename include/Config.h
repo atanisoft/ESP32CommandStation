@@ -35,7 +35,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 // The Nextion interface is an optional module that allows a Nextion display to
 // be connected directly to the base station as a throttle and programming interface.
-#include "Config_Nextion.h"
+//#include "Config_Nextion.h"
 
 // The HC12 interface is an optional module which allows for an HC12 to be connected
 // to the base station allowing the text based protocol to be utilized by external
@@ -46,6 +46,10 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // you must uncomment the next line and edit the Config_LocoNet.h file to match your
 // configuration.
 //#include "Config_LocoNet.h"
+
+// The LCC interface is an optional module, by default the WiFi interface is available
+// uncomment the line below if you wish to have a hardware CAN interface used as well.
+//#include "Config_LCC.h"
 
 /////////////////////////////////////////////////////////////////////////////////////
 //

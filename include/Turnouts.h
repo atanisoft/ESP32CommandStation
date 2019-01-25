@@ -32,7 +32,7 @@ public:
   Turnout(JsonObject &);
   virtual ~Turnout() {}
   void update(uint16_t, int8_t, TurnoutOrientation);
-  void set(bool=false);
+  void set(bool=false, bool=true);
   void toJson(JsonObject &, bool=false);
   const uint16_t getID() {
     return _turnoutID;
@@ -81,6 +81,7 @@ public:
   static void createOrUpdate(const uint16_t, const uint16_t, const int8_t, const TurnoutOrientation=TurnoutOrientation::LEFT);
   static bool remove(const uint16_t);
   static Turnout *getTurnout(const uint16_t);
+  static Turnout *getTurnoutByAddress(const uint16_t);
   static uint16_t getTurnoutCount();
 };
 

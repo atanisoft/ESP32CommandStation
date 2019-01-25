@@ -181,6 +181,16 @@ Turnout *TurnoutManager::getTurnout(const uint16_t id) {
   return retval;
 }
 
+Turnout *TurnoutManager::getTurnoutByAddress(const uint16_t address) {
+  Turnout *retval = nullptr;
+  for (const auto& turnout : turnouts) {
+    if(turnout->getAddress() == address) {
+      retval = turnout;
+    }
+  }
+  return retval;
+}
+
 uint16_t TurnoutManager::getTurnoutCount() {
   return turnouts.length();
 }
@@ -247,17 +257,20 @@ void Turnout::toJson(JsonObject &json, bool readableStrings) {
   json[JSON_ORIENTATION_NODE] = _orientation;
 }
 
-void Turnout::set(bool thrown) {
+void Turnout::set(bool thrown, bool sendDCCPacket) {
   _thrown = thrown;
-  std::vector<String> args;
-  if(_boardAddress) {
-    args.push_back(String(_boardAddress));
-  } else {
-    args.push_back(String(_address));
+  if(sendDCCPacket) {
+    std::vector<String> args;
+    // if we are in DCC address mode use the calculated board address instead of address
+    if(_boardAddress) {
+      args.push_back(String(_boardAddress));
+    } else {
+      args.push_back(String(_address));
+    }
+    args.push_back(String(_index));
+    args.push_back(String(_thrown));
+    DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   }
-  args.push_back(String(_index));
-  args.push_back(String(_thrown));
-  DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   wifiInterface.printf(F("<H %d %d>"), _turnoutID, !_thrown);
   log_i("Turnout(%d) %s", _turnoutID, _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
 }

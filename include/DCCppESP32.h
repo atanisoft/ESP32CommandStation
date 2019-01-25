@@ -88,6 +88,9 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Locomotive.h"
 #include "Outputs.h"
 #include "NextionInterface.h"
+#if defined(LCC_ENABLED) && LCC_ENABLED
+#include "LCCInterface.h"
+#endif
 
 extern std::vector<uint8_t> restrictedPins;
 
