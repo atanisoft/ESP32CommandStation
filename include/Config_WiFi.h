@@ -19,8 +19,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // DEFINE WiFi Parameters
 //
-#define WIFI_SSID "TheHomeNet"
-#define WIFI_PASSWORD "Welcome1"
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
