@@ -74,6 +74,7 @@ public:
   static uint16_t store();
   static void sensorTask(void *param);
   static void getState(JsonArray &);
+  static Sensor *getSensor(uint16_t);
   static bool createOrUpdate(const uint16_t, const uint8_t, const bool);
   static bool remove(const uint16_t);
   static uint8_t getSensorPin(const uint16_t);

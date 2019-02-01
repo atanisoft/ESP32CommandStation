@@ -76,6 +76,7 @@ class OutputManager {
     static void clear();
     static uint16_t store();
     static bool set(uint16_t, bool=false);
+    static Output *getOutput(uint16_t);
     static bool toggle(uint16_t);
     static void getState(JsonArray &);
     static void showStatus();

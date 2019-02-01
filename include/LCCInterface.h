@@ -20,8 +20,8 @@ COPYRIGHT (c) 2019 Mike Dunston
 class LCCInterface {
 public:
 	LCCInterface();
-	void begin();
-	void update();
+  void init();
+	void startWiFiDependencies();
 };
 
 extern LCCInterface lccInterface;

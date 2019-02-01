@@ -59,7 +59,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // GPIO0, GPIO2, GPIO5, GPIO12, GPIO15 -- used as bootstrap pins
 //
 // details of these usages can be found in section 2.2 of:
-// https://www.espressif.com/sites/default/files/documentation/esp-wroom-32_datasheet_en.pdf
+// https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32_datasheet_en.pdf
 //
 // uncomment the following define to allow these pins to be used for sensors or
 // outputs.

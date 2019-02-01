@@ -111,7 +111,7 @@ void WiFiInterface::begin() {
     DCCppServer.begin();
     dccppWebServer.begin();
 #if defined(LCC_ENABLED) && LCC_ENABLED
-    lccInterface.begin();
+    lccInterface.startWiFiDependencies();
 #endif
   }, SYSTEM_EVENT_STA_GOT_IP);
   WiFi.onEvent([](system_event_id_t event) {

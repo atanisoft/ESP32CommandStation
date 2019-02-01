@@ -212,11 +212,14 @@ void setup() {
   NextionInterface::init();
 #endif
   configStore.init();
+#if defined(LCC_ENABLED) && LCC_ENABLED
+  lccInterface.init();
+#endif
 	wifiInterface.begin();
-  MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_MAIN,
-		MOTORBOARD_ENABLE_PIN_MAIN, MOTORBOARD_TYPE_MAIN, MOTORBOARD_NAME_MAIN);
+  MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_OPS,
+		MOTORBOARD_ENABLE_PIN_OPS, MOTORBOARD_TYPE_OPS, MOTORBOARD_NAME_OPS);
   MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_PROG,
-		MOTORBOARD_ENABLE_PIN_PROG, MOTORBOARD_TYPE_PROG, MOTORBOARD_NAME_PROG);
+		MOTORBOARD_ENABLE_PIN_PROG, MOTORBOARD_TYPE_PROG, MOTORBOARD_NAME_PROG, true);
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
 	InfoScreen::replaceLine(INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
 #endif
@@ -366,15 +369,12 @@ void setup() {
   });
 #endif
 
-	log_i("DCC++ READY!");
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("DCC++ READY!"));
+	log_i("DCC++ESP32 READY!");
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("DCC++ESP READY!"));
 }
 
 void loop() {
 	wifiInterface.update();
-#if defined(LCC_ENABLED) && LCC_ENABLED
-  lccInterface.update();
-#endif
 	InfoScreen::update();
 	MotorBoardManager::check();
 }

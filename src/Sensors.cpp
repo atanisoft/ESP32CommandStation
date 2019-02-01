@@ -135,6 +135,15 @@ void SensorManager::getState(JsonArray & array) {
   }
 }
 
+Sensor *SensorManager::getSensor(uint16_t id) {
+  for (const auto& sensor : sensors) {
+    if(sensor->getID() == id && sensor->getPin() != -1) {
+      return sensor;
+    }
+  }
+  return nullptr;
+}
+
 bool SensorManager::createOrUpdate(const uint16_t id, const uint8_t pin, const bool pullUp) {
   MUTEX_LOCK(_lock);
   // check for duplicate ID or PIN

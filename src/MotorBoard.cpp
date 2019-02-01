@@ -30,11 +30,11 @@ const uint16_t motorBoardCheckFaultCountdownInterval = 40;
 LinkedList<GenericMotorBoard *> motorBoards([](GenericMotorBoard *board) {delete board; });
 
 GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enablePin,
-  uint16_t triggerMilliAmps, uint32_t maxMilliAmps, String name) :
+  uint16_t triggerMilliAmps, uint32_t maxMilliAmps, String name, bool programmingTrack) :
   _name(name), _senseChannel(senseChannel), _enablePin(enablePin),
   _maxMilliAmps(maxMilliAmps), _triggerValue(4096 * triggerMilliAmps / maxMilliAmps),
-  _current(0), _state(false), _triggered(false), _triggerClearedCountdown(0),
-  _triggerRecurrenceCount(0) {
+  _progTrack(programmingTrack), _current(0), _state(false), _triggered(false),
+  _triggerClearedCountdown(0), _triggerRecurrenceCount(0) {
   adc1_config_channel_atten(_senseChannel, ADC_CURRENT_ATTENUATION);
   pinMode(enablePin, OUTPUT);
   digitalWrite(enablePin, LOW);
@@ -122,25 +122,35 @@ uint16_t GenericMotorBoard::captureSample(uint8_t sampleCount, bool logResults) 
   return avgReading;
 }
 
-GenericMotorBoard * MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin, MOTOR_BOARD_TYPE type, String name) {
+void MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin, MOTOR_BOARD_TYPE type, String name, bool programmingTrack) {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s Init"), name.c_str());
-  GenericMotorBoard *board = nullptr;
+  uint32_t maxAmps = 0;
+  uint32_t triggerAmps = 0;
   switch(type) {
     case ARDUINO_SHIELD:
-      board = new GenericMotorBoard(sensePin, enablePin, 980, 2000, name);
+      maxAmps = 2000;
+      triggerAmps = 980;
       break;
     case POLOLU:
-      board = new GenericMotorBoard(sensePin, enablePin, 2250, 2500, name);
+      maxAmps = 2500;
+      triggerAmps = 2250;
       break;
     case BTS7960B_5A:
-      board = new GenericMotorBoard(sensePin, enablePin, 5000, 43000, name);
+      maxAmps = 43000;
+      triggerAmps = 5000;
       break;
     case BTS7960B_10A:
-      board = new GenericMotorBoard(sensePin, enablePin, 10000, 43000, name);
+      maxAmps = 43000;
+      triggerAmps = 10000;
       break;
   }
-  motorBoards.add(board);
-  return board;
+  // programming tracks need a much lower rate limit, the value below
+  // gives a 20% buffer over RCN-216 due to the nature of the esp32
+  // analog read instability.
+  if(programmingTrack) {
+    triggerAmps = 300;
+  }
+  motorBoards.add(new GenericMotorBoard(sensePin, enablePin, triggerAmps, maxAmps, name, programmingTrack));
 }
 
 GenericMotorBoard *MotorBoardManager::getBoardByName(String name) {
@@ -161,8 +171,10 @@ void MotorBoardManager::check() {
 void MotorBoardManager::powerOnAll() {
   log_i("Enabling DCC Signal for all boards");
   for (const auto& board : motorBoards) {
-    board->powerOn(false);
-    board->showStatus();
+    if(!board->isProgrammingTrack()) {
+      board->powerOn(false);
+      board->showStatus();
+    }
   }
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("ON   "));
@@ -170,6 +182,7 @@ void MotorBoardManager::powerOnAll() {
 #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
   locoNet.reportPower(true);
 #endif
+  startDCCSignalGenerators();
 }
 
 void MotorBoardManager::powerOffAll() {
@@ -184,6 +197,7 @@ void MotorBoardManager::powerOffAll() {
 #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
   locoNet.reportPower(false);
 #endif
+  stopDCCSignalGenerators();
 }
 
 bool MotorBoardManager::powerOn(const String name) {

@@ -119,6 +119,8 @@ void ConfigurationManager::init() {
 }
 
 void ConfigurationManager::clear() {
+  SPIFFS.rmdir("/DCCppESP32");
+  SPIFFS.mkdir("/DCCppESP32");
 }
 
 JsonObject &ConfigurationManager::load(const String &name) {

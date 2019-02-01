@@ -28,7 +28,7 @@ enum MOTOR_BOARD_TYPE { ARDUINO_SHIELD, POLOLU, BTS7960B_5A, BTS7960B_10A };
 
 class GenericMotorBoard {
 public:
-	GenericMotorBoard(adc1_channel_t, uint8_t, uint16_t, uint32_t, String);
+	GenericMotorBoard(adc1_channel_t, uint8_t, uint16_t, uint32_t, String, bool);
 	void powerOn(bool=true);
 	void powerOff(bool=true, bool=false);
 	void showStatus();
@@ -44,6 +44,9 @@ public:
 	}
 	const adc1_channel_t getADC1Channel() {
 		return _senseChannel;
+	}
+	const bool isProgrammingTrack() {
+		return _progTrack;
 	}
 	uint16_t getLastRead() {
 		return _current;
@@ -61,6 +64,7 @@ private:
 	const uint8_t _enablePin;
 	const uint32_t _maxMilliAmps;
 	const uint32_t _triggerValue;
+	const bool _progTrack;
 	uint32_t _current;
 	uint32_t _lastCheckTime;
 	bool _state;
@@ -71,7 +75,7 @@ private:
 
 class MotorBoardManager {
 public:
-	static GenericMotorBoard *registerBoard(adc1_channel_t, uint8_t, MOTOR_BOARD_TYPE, String);
+	static void registerBoard(adc1_channel_t, uint8_t, MOTOR_BOARD_TYPE, String, bool=false);
 	static GenericMotorBoard *getBoardByName(String);
 	static std::vector<String> getBoardNames();
 	static uint8_t getMotorBoardCount();

@@ -26,13 +26,25 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // pin definitions below to valid pin numbers.
 //
 
+// This is the LCC node identifier for the DCC++ESP32 Command Station. It is
+// recommended, but not required, to request your own ID range via:
+// https://registry.openlcb.org/requestuniqueidrange
+//
+// The format below must start with 0x and have exactly 12 characters
+// the first 10 will be the unique ID range and the last two the unique
+// node ID in the range. Using 01 is recommended for the command station.
+#define LCC_NODE_ID 0x050101013F01
+
 // This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 R (RX) pin.
-// Recommended pin: 4
-#define LCC_CAN_RX_PIN 4
+// Recommended pin: 4, 16, 21.
+// to disable the CAN interface set this to -1
+#define LCC_CAN_RX_PIN -1
 
 // This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 D (TX) pin.
-// Recommended pin: 5
-#define LCC_CAN_TX_PIN 5
+// Recommended pin: 5, 17, 22.
+// to disable the CAN interface set this to -1
+#define LCC_CAN_TX_PIN -1
 
-#define LCC_HARDWARE_CAN_ENABLED true
 /////////////////////////////////////////////////////////////////////////////////////
+
+#define LCC_ENABLED true

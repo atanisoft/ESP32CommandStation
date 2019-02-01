@@ -24,8 +24,8 @@ COPYRIGHT (c) 2019 Mike Dunston
 namespace openlcb {
     const SimpleNodeStaticValues SNIP_STATIC_DATA = {
         4,
-        "Mike Dunston",
-        "DCC++ESP32 Base Station",
+        "github.com/atanisoft (Mike Dunston)",
+        "ESP32 Command Station",
         "ESP32",
         VERSION
     };

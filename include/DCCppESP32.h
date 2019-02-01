@@ -110,16 +110,16 @@ void esp32_restart();
 #error "Invalid Configuration detected, Config_WiFi.h is a mandatory module."
 #endif
 
-#if !defined(MOTORBOARD_NAME_MAIN) || !defined(MOTORBOARD_ENABLE_PIN_MAIN) || \
-  !defined(MOTORBOARD_CURRENT_SENSE_MAIN) || !defined(MOTORBOARD_TYPE_MAIN) || \
+#if !defined(MOTORBOARD_NAME_OPS) || !defined(MOTORBOARD_ENABLE_PIN_OPS) || \
+  !defined(MOTORBOARD_CURRENT_SENSE_OPS) || !defined(MOTORBOARD_TYPE_OPS) || \
   !defined(MOTORBOARD_NAME_PROG) || !defined(MOTORBOARD_ENABLE_PIN_PROG) || \
   !defined(MOTORBOARD_CURRENT_SENSE_PROG) || !defined(MOTORBOARD_TYPE_PROG) || \
   !defined(DCC_SIGNAL_PIN_OPERATIONS) || !defined(DCC_SIGNAL_PIN_PROGRAMMING)
 #error "Invalid Configuration detected, Config_MotorBoard.h is a mandatory module."
 #endif
 
-#if MOTORBOARD_ENABLE_PIN_MAIN == MOTORBOARD_ENABLE_PIN_PROG
-#error "Invalid Configuration detected, MOTORBOARD_ENABLE_PIN_MAIN and MOTORBOARD_ENABLE_PIN_PROG must be unique."
+#if MOTORBOARD_ENABLE_PIN_OPS == MOTORBOARD_ENABLE_PIN_PROG
+#error "Invalid Configuration detected, MOTORBOARD_ENABLE_PIN_OPS and MOTORBOARD_ENABLE_PIN_PROG must be unique."
 #endif
 
 #if DCC_SIGNAL_PIN_OPERATIONS == DCC_SIGNAL_PIN_PROGRAMMING
@@ -174,22 +174,22 @@ void esp32_restart();
   #endif
   #if defined(S88_ENABLED) && S88_ENABLED
     #if S88_CLOCK_PIN == NEXTION_RX_PIN
-    #error "Invalid Configuration detected, the Nextion RX Pin and S88 Clock Pin must be unique."
+    #error "Invalid Configuration detected, the Nextion RX Pin and S88_CLOCK_PIN must be unique."
     #endif
     #if S88_CLOCK_PIN == NEXTION_TX_PIN
-    #error "Invalid Configuration detected, the Nextion TX Pin and S88 Clock Pin must be unique."
+    #error "Invalid Configuration detected, the NEXTION_TX_PIN and S88_CLOCK_PIN must be unique."
     #endif
     #if S88_RESET_PIN == NEXTION_RX_PIN
-    #error "Invalid Configuration detected, the Nextion RX Pin and S88 Reset Pin must be unique."
+    #error "Invalid Configuration detected, the Nextion RX Pin and S88_RESET_PIN must be unique."
     #endif
     #if S88_RESET_PIN == NEXTION_TX_PIN
-    #error "Invalid Configuration detected, the Nextion TX Pin and S88 Reset Pin must be unique."
+    #error "Invalid Configuration detected, the NEXTION_TX_PIN and S88_RESET_PIN must be unique."
     #endif
     #if S88_LOAD_PIN == NEXTION_RX_PIN
-    #error "Invalid Configuration detected, the Nextion RX Pin and S88 Load Pin must be unique."
+    #error "Invalid Configuration detected, the Nextion RX Pin and S88_LOAD_PIN must be unique."
     #endif
     #if S88_LOAD_PIN == NEXTION_TX_PIN
-    #error "Invalid Configuration detected, the Nextion TX Pin and S88 Load Pin must be unique."
+    #error "Invalid Configuration detected, the NEXTION_TX_PIN and S88_LOAD_PIN must be unique."
     #endif
   #endif
   #if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
@@ -216,22 +216,22 @@ void esp32_restart();
   #endif
   #if defined(S88_ENABLED) && S88_ENABLED
     #if S88_CLOCK_PIN == HC12_RX_PIN
-    #error "Invalid Configuration detected, the HC12 RX Pin and S88 Clock Pin must be unique."
+    #error "Invalid Configuration detected, the HC12_RX_PIN and S88_CLOCK_PIN must be unique."
     #endif
     #if S88_CLOCK_PIN == HC12_TX_PIN
-    #error "Invalid Configuration detected, the HC12 TX Pin and S88 Clock Pin must be unique."
+    #error "Invalid Configuration detected, the HC12_TX_PIN and S88_CLOCK_PIN must be unique."
     #endif
     #if S88_RESET_PIN == HC12_RX_PIN
-    #error "Invalid Configuration detected, the HC12 RX Pin and S88 Reset Pin must be unique."
+    #error "Invalid Configuration detected, the HC12_RX_PIN and S88_RESET_PIN must be unique."
     #endif
     #if S88_RESET_PIN == HC12_TX_PIN
-    #error "Invalid Configuration detected, the HC12 TX Pin and S88 Reset Pin must be unique."
+    #error "Invalid Configuration detected, the HC12_TX_PIN and S88_RESET_PIN must be unique."
     #endif
     #if S88_LOAD_PIN == HC12_RX_PIN
-    #error "Invalid Configuration detected, the HC12 RX Pin and S88 Load Pin must be unique."
+    #error "Invalid Configuration detected, the HC12_RX_PIN and S88_LOAD_PIN must be unique."
     #endif
     #if S88_LOAD_PIN == HC12_TX_PIN
-    #error "Invalid Configuration detected, the HC12 TX Pin and S88 Load Pin must be unique."
+    #error "Invalid Configuration detected, the HC12_TX_PIN and S88_LOAD_PIN must be unique."
     #endif
   #endif
   #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
@@ -239,10 +239,10 @@ void esp32_restart();
     #error "Invalid Configuration detected, the LocoNet and HC12 can not share the UART interface."
     #endif
     #if LOCONET_RX_PIN == HC12_RX_PIN
-    #error "Invalid Configuration detected, the LocoNet RX Pin and HC12 RX Pin must be unique."
+    #error "Invalid Configuration detected, the LOCONET_RX_PIN and HC12_RX_PIN must be unique."
     #endif
     #if LOCONET_TX_PIN == HC12_TX_PIN
-    #error "Invalid Configuration detected, the LocoNet TX Pin and HC12 TX Pin must be unique."
+    #error "Invalid Configuration detected, the LOCONET_TX_PIN and HC12_TX_PIN must be unique."
     #endif
   #endif
   #if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
@@ -266,22 +266,22 @@ void esp32_restart();
 #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
   #if defined(S88_ENABLED) && S88_ENABLED
     #if S88_CLOCK_PIN == LOCONET_RX_PIN
-    #error "Invalid Configuration detected, the LocoNet RX Pin and S88 Clock Pin must be unique."
+    #error "Invalid Configuration detected, the LOCONET_RX_PIN and S88_CLOCK_PIN must be unique."
     #endif
     #if S88_CLOCK_PIN == LOCONET_TX_PIN
-    #error "Invalid Configuration detected, the LocoNet TX Pin and S88 Clock Pin must be unique."
+    #error "Invalid Configuration detected, the LOCONET_TX_PIN and S88_CLOCK_PIN must be unique."
     #endif
     #if S88_RESET_PIN == LOCONET_RX_PIN
-    #error "Invalid Configuration detected, the LocoNet RX Pin and S88 Reset Pin must be unique."
+    #error "Invalid Configuration detected, the LOCONET_RX_PIN and S88_RESET_PIN must be unique."
     #endif
     #if S88_RESET_PIN == LOCONET_TX_PIN
-    #error "Invalid Configuration detected, the LocoNet TX Pin and S88 Reset Pin must be unique."
+    #error "Invalid Configuration detected, the LOCONET_TX_PIN and S88_RESET_PIN must be unique."
     #endif
     #if S88_LOAD_PIN == LOCONET_RX_PIN
-    #error "Invalid Configuration detected, the LocoNet RX Pin and S88 Load Pin must be unique."
+    #error "Invalid Configuration detected, the LOCONET_RX_PIN and S88_LOAD_PIN must be unique."
     #endif
     #if S88_LOAD_PIN == LOCONET_TX_PIN
-    #error "Invalid Configuration detected, the LocoNet TX Pin and S88 Load Pin must be unique."
+    #error "Invalid Configuration detected, the LOCONET_TX_PIN and S88_LOAD_PIN must be unique."
     #endif
   #endif
   #if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
@@ -299,5 +299,57 @@ void esp32_restart();
     #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == LOCONET_TX_PIN
     #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and LOCONET_TX_PIN must be unique."
     #endif
+  #endif
+#endif
+
+#if defined(LCC_ENABLED) && LCC_ENABLED
+  #if defined(LCC_CAN_RX_PIN) && LCC_CAN_RX_PIN != -1
+    #if defined(S88_ENABLED) && S88_ENABLED
+      #if S88_CLOCK_PIN == LCC_CAN_RX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_RX_PIN and S88_CLOCK_PIN must be unique."
+      #endif
+      #if S88_CLOCK_PIN == LCC_CAN_RX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_RX_PIN and S88_CLOCK_PIN must be unique."
+      #endif
+      #if S88_RESET_PIN == LCC_CAN_RX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_RX_PIN and S88_CLOCK_PIN must be unique."
+      #endif
+    #endif
+    #if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
+      #if DCC_SIGNAL_PIN_OPERATIONS_INVERTED == LCC_CAN_RX_PIN
+      #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and LCC_CAN_RX_PIN must be unique."
+      #endif
+    #endif
+    #if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
+      #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == LCC_CAN_RX_PIN
+      #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and LCC_CAN_RX_PIN must be unique."
+      #endif
+    #endif
+  #endif
+  #if defined(LCC_CAN_TX_PIN) && LCC_CAN_TX_PIN != -1
+    #if defined(S88_ENABLED) && S88_ENABLED
+      #if S88_CLOCK_PIN == LCC_CAN_TX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_TX_PIN and S88_CLOCK_PIN must be unique."
+      #endif
+      #if S88_CLOCK_PIN == LCC_CAN_TX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_TX_PIN and S88_CLOCK_PIN must be unique."
+      #endif
+      #if S88_RESET_PIN == LCC_CAN_TX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_TX_PIN and S88_CLOCK_PIN must be unique."
+      #endif
+    #endif
+    #if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
+      #if DCC_SIGNAL_PIN_OPERATIONS_INVERTED == LCC_CAN_TX_PIN
+      #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS_INVERTED and LCC_CAN_TX_PIN must be unique."
+      #endif
+    #endif
+    #if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
+      #if DCC_SIGNAL_PIN_PROGRAMMING_INVERTED == LCC_CAN_TX_PIN
+      #error "Invalid Configuration detected, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED and LCC_CAN_TX_PIN must be unique."
+      #endif
+    #endif
+  #endif
+  #if defined(LCC_CAN_RX_PIN) && defined(LCC_CAN_TX_PIN) && LCC_CAN_RX_PIN == LCC_CAN_TX_PIN && LCC_CAN_RX_PIN != -1 && LCC_CAN_TX_PIN != -1
+    #error "Invalid Configuration detected, LCC_CAN_RX_PIN and LCC_CAN_TX_PIN must be unique."
   #endif
 #endif

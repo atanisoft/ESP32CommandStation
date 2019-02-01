@@ -296,10 +296,17 @@ void DCCPPWebServer::handlePower(AsyncWebServerRequest *request) {
  }
 
 void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse(true);
-  if (request->method() == HTTP_GET) {
+  auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->params());
+  if (request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE.c_str())) {
     JsonArray &array = jsonResponse->getRoot();
     OutputManager::getState(array);
+  } else if (request->method() == HTTP_GET) {
+    auto output = OutputManager::getOutput(request->arg(JSON_ID_NODE.c_str()).toInt());
+    if(output) {
+      output->toJson(jsonResponse->getRoot(), true);
+    } else {
+      jsonResponse->setCode(STATUS_NOT_FOUND);
+    }
   } else if(request->method() == HTTP_POST) {
     uint16_t outputID = request->arg(JSON_ID_NODE.c_str()).toInt();
     uint8_t pin = request->arg(JSON_PIN_NODE.c_str()).toInt();
@@ -331,16 +338,29 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
 }
 
 void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse(true);
-  if (request->method() == HTTP_GET) {
+  auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->params());
+  if (request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE.c_str())) {
     JsonArray &array = jsonResponse->getRoot();
     TurnoutManager::getState(array);
+  } else if (request->method() == HTTP_GET) {
+    auto turnout = TurnoutManager::getTurnout(request->arg(JSON_ID_NODE.c_str()).toInt());
+    if(turnout) {
+      turnout->toJson(jsonResponse->getRoot());
+    } else {
+      jsonResponse->setCode(STATUS_NOT_FOUND);
+    }
   } else if(request->method() == HTTP_POST) {
     uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();
     uint16_t turnoutAddress = request->arg(JSON_ADDRESS_NODE.c_str()).toInt();
     int8_t turnoutSubAddress = request->arg(JSON_SUB_ADDRESS_NODE.c_str()).toInt();
     TurnoutOrientation orientation = (TurnoutOrientation)request->arg(JSON_ORIENTATION_NODE.c_str()).toInt();
     TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress, orientation);
+    auto turnout = TurnoutManager::getTurnout(request->arg(JSON_ID_NODE.c_str()).toInt());
+    if(turnout) {
+      turnout->toJson(jsonResponse->getRoot());
+    } else {
+      jsonResponse->setCode(STATUS_SERVER_ERROR);
+    }
   } else if(request->method() == HTTP_DELETE) {
     uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();
     if(!TurnoutManager::remove(turnoutID)) {
@@ -355,10 +375,17 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
 }
 
 void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse(true);
-  if (request->method() == HTTP_GET) {
+  auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->params());
+  if (request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE.c_str())) {
     JsonArray &array = jsonResponse->getRoot();
     SensorManager::getState(array);
+  } else if (request->method() == HTTP_GET) {
+    auto sensor = SensorManager::getSensor(request->arg(JSON_ID_NODE.c_str()).toInt());
+    if(sensor) {
+      sensor->toJson(jsonResponse->getRoot());
+    } else {
+      jsonResponse->setCode(STATUS_NOT_FOUND);
+    }
   } else if(request->method() == HTTP_POST) {
     uint16_t sensorID = request->arg(JSON_ID_NODE.c_str()).toInt();
     uint8_t sensorPin = request->arg(JSON_PIN_NODE.c_str()).toInt();

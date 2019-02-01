@@ -214,6 +214,7 @@ Turnout::Turnout(JsonObject &json) {
   _index = json.get<int>(JSON_SUB_ADDRESS_NODE);
   _thrown = json.get<bool>(JSON_STATE_NODE);
   _orientation = (TurnoutOrientation)json.get<int>(JSON_ORIENTATION_NODE);
+  _boardAddress = 0;
   if(json.get<int>(JSON_SUB_ADDRESS_NODE) == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateBoardAddressAndIndex();

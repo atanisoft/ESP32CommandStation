@@ -25,22 +25,37 @@ COPYRIGHT (c) 2017,2018 Mike Dunston
 
 #define MAX_BYTES_IN_PACKET 10
 
+// standard DCC packet (S-9.2)
+// byte #
+// 0         1         2         3
+// 1111 1111 1111 1111 1111 110X XXXX XXXX
+// 0xFF      0xFF      0xFC
+// 22 BIT PREAMBLE            ^ marker for END of preamble, must be zero
+//   minimum is 14 bits        ^ bit 7 of first byte of payload
+//                                       ^ bit 7 of second byte of payload
+// 4         5         6         7
+// XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX
+//         ^ bit 7 of third byte
+//                   ^ bit 7 of fourth byte
+//                             ^ bit 7 of fifth byte
+//                                       ^ bit 7 of sixth byte
+// 8         9
+// XXXX XXXX XXXX XXXX
+//        ^ bit 1 of sixth byte (last bit of packet)
 struct Packet {
   uint8_t buffer[MAX_BYTES_IN_PACKET];
   uint8_t numberOfBits;
   uint8_t numberOfRepeats;
   uint8_t currentBit;
-}; // Packet
+};
 
 struct SignalGenerator {
-  template<int signalGenerator>
   void configureSignal(String, uint8_t, uint8_t, uint16_t, uint8_t);
-  template<int signalGenerator>
-  void startSignal();
-  template<int signalGenerator>
+  void startSignal(bool=true);
   void stopSignal();
 
-  bool IRAM_ATTR getNextBitToSend();
+  bool IRAM_ATTR advancePacketBit();
+  void loadBytePacket(const uint8_t *, uint8_t, uint8_t, bool=false);
   void loadPacket(std::vector<uint8_t>, int, bool=false);
   void waitForQueueEmpty();
   bool isQueueEmpty();
@@ -70,7 +85,7 @@ struct SignalGenerator {
 extern SignalGenerator dccSignal[2];
 void configureDCCSignalGenerators();
 void startDCCSignalGenerators();
-void stopDCCSignalGenerators();
+bool stopDCCSignalGenerators();
 bool isDCCSignalEnabled();
 void sendDCCEmergencyStop();
 

@@ -1063,6 +1063,7 @@ function BSTabRefresh(section) {
 					} else if(idParts[2] === 'edit') {
 						$.ajax({url: String.format('/turnouts?id={0}', idParts[1]),
 							success:function(data, status, jqxhr) {
+								console.log('Edit turnout', data);
 								$('#bs-turnout-id').val(data.id);
 								$('#bs-turnout-address').val(data.address);
 								$('#bs-turnout-index').val(data.subAddress);
@@ -1109,6 +1110,7 @@ function BSTabRefresh(section) {
 					} else if(idParts[2] === 'edit') {
 						$.ajax({url: String.format('/sensors?id={0}', idParts[1]),
 							success:function(data, status, jqxhr) {
+								console.log('Edit sensor', data);
 								$('#bs-sensor-id').val(data.id);
 								$('#bs-sensor-pin').val(data.pin);
 								$('#bs-sensor-pullUp').val(data.pullUp);
@@ -1140,6 +1142,7 @@ function BSTabRefresh(section) {
 					} else if(idParts[2] === 'edit') {
 						$.ajax({url: String.format('/s88sensors?id={0}', idParts[1]),
 							success:function(data, status, jqxhr) {
+								console.log('Edit s88 sensor', data);
 								$('#bs-sensor-s88-id').val(data.id);
 								$('#bs-sensor-s88-pin').val(data.dataPin);
 								$('#bs-sensor-s88-count').val(data.count);
@@ -1176,6 +1179,7 @@ function BSTabRefresh(section) {
 					} else if(idParts[2] === 'edit') {
 						$.ajax({url: String.format('/outputs?id={0}', idParts[1]),
 							success:function(data, status, jqxhr) {
+								console.log('Edit output', data);
 								$('#bs-output-id').val(data.id);
 								$('#bs-output-pin').val(data.pin);
 								$('#bs-output-logic').val(data.flags.includes('activeLow'));
@@ -1225,6 +1229,7 @@ function BSTabRefresh(section) {
 					} else if(idParts[2] === 'edit') {
 						$.ajax({url: String.format('/locomotive/roster?address={0}', idParts[1]),
 							success:function(data, status, jqxhr) {
+								console.log('Edit roster entry', data);
 								$('#bs-loco-address').val(data.address);
 								$('#bs-loco-type').val(data.type);
 								$('#bs-loco-desc').val(data.description);

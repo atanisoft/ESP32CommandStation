@@ -137,6 +137,15 @@ bool OutputManager::set(uint16_t id, bool active) {
   return false;
 }
 
+Output *OutputManager::getOutput(uint16_t id) {
+  for (const auto& output : outputs) {
+    if(output->getID() == id) {
+      return output;
+    }
+  }
+  return nullptr;
+}
+
 bool OutputManager::toggle(uint16_t id) {
   for (const auto& output : outputs) {
     if(output->getID() == id) {
