@@ -193,8 +193,8 @@ When this module is enabled the Command Station will receive and respond to cert
 | CLEAR_EMERGENCY_OFF_EVENT | 01.00.00.00.00.00.FF.FE | Turns on track power |
 | EMERGENCY_STOP_EVENT | 01.00.00.00.00.00.FF.FD | Sends a broadcast DCC Emergency Stop packet to PROG and OPS track outputs |
 | CLEAR_EMERGENCY_STOP_EVENT | 01.00.00.00.00.00.FF.FC | Currently Ignored |
-| ACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE | 01.01.02.00.00.FF.00.00 (first value, 2044 follow) | Processed as an Accessory Decoder DCC packet on the OPS track output |
-| INACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE | 01.01.02.00.00.FE.00.00 (first value, 2044 follow) | Processed as an Accessory Decoder DCC packet on the OPS track output |
+| ACTIVATE_BASIC_DCC_ACCESSORY_EVENT | 01.01.02.00.00.FF.00.00 through 01.01.02.00.00.FF.07.FC (2044 accessory decoders supported) | Processed as an Accessory Decoder DCC packet on the OPS track output |
+| INACTIVATE_BASIC_DCC_ACCESSORY_EVENT | 01.01.02.00.00.FE.00.00 through 01.01.02.00.00.FE.07.FC (2044 accessory decoders supported) | Processed as an Accessory Decoder DCC packet on the OPS track output |
 | IS_TRAIN_EVENT | 01.01.00.00.00.00.03.03 | To be implemented. This will allow control of locomotives via the Traction specification |
 
 #### LCC Configuration
