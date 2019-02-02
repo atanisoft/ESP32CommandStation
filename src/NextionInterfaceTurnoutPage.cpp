@@ -105,21 +105,21 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
   _delButton(nextion, TURNOUT_PAGE, del, "Del"),
   _routesButton(nextion, TURNOUT_PAGE, routes, "Routes"),
   _toAddress {
-    NextionButton(nextion, TURNOUT_PAGE, slot0, "To0"),
-    NextionButton(nextion, TURNOUT_PAGE, slot1, "To1"),
-    NextionButton(nextion, TURNOUT_PAGE, slot2, "To2"),
-    NextionButton(nextion, TURNOUT_PAGE, slot3, "To3"),
-    NextionButton(nextion, TURNOUT_PAGE, slot4, "To4"),
-    NextionButton(nextion, TURNOUT_PAGE, slot5, "To5"),
-    NextionButton(nextion, TURNOUT_PAGE, slot6, "To6"),
-    NextionButton(nextion, TURNOUT_PAGE, slot7, "To7"),
-    NextionButton(nextion, TURNOUT_PAGE, slot8, "To8"),
-    NextionButton(nextion, TURNOUT_PAGE, slot9, "To9"),
-    NextionButton(nextion, TURNOUT_PAGE, slot10, "To10"),
-    NextionButton(nextion, TURNOUT_PAGE, slot11, "To11"),
-    NextionButton(nextion, TURNOUT_PAGE, slot12, "To12"),
-    NextionButton(nextion, TURNOUT_PAGE, slot13, "To13"),
-    NextionButton(nextion, TURNOUT_PAGE, slot14, "To14")
+    NextionButton(nextion, TURNOUT_PAGE, slot0, "Ad0"),
+    NextionButton(nextion, TURNOUT_PAGE, slot1, "Ad1"),
+    NextionButton(nextion, TURNOUT_PAGE, slot2, "Ad2"),
+    NextionButton(nextion, TURNOUT_PAGE, slot3, "Ad3"),
+    NextionButton(nextion, TURNOUT_PAGE, slot4, "Ad4"),
+    NextionButton(nextion, TURNOUT_PAGE, slot5, "Ad5"),
+    NextionButton(nextion, TURNOUT_PAGE, slot6, "Ad6"),
+    NextionButton(nextion, TURNOUT_PAGE, slot7, "Ad7"),
+    NextionButton(nextion, TURNOUT_PAGE, slot8, "Ad8"),
+    NextionButton(nextion, TURNOUT_PAGE, slot9, "Ad9"),
+    NextionButton(nextion, TURNOUT_PAGE, slot10, "Ad10"),
+    NextionButton(nextion, TURNOUT_PAGE, slot11, "Ad11"),
+    NextionButton(nextion, TURNOUT_PAGE, slot12, "Ad12"),
+    NextionButton(nextion, TURNOUT_PAGE, slot13, "Ad13"),
+    NextionButton(nextion, TURNOUT_PAGE, slot14, "Ad114")
   }, _turnoutStartIndex(0) {
   for(int slot = 0; slot < 15; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
@@ -150,13 +150,17 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
   _addButton.attachCallback([](NextionEventType type, INextionTouchable *widget)
   {
     if(type == NEX_EVENT_PUSH) {
-      printf("Add Button Pressed\n");
+      NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
+      addressPage->setPreviousPage(TURNOUT_PAGE);
+      addressPage->display();
     }
   });
 
   _delButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       printf("Del Button Pressed\n");
+      //auto turnout = TurnoutManager::getTurnout(1);
+      //turnout->setOrientation(LEFT);
     }
   });
 
@@ -168,7 +172,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 }
 
 void NextionTurnoutPage::displayPage() {
-  // make sure that we only ever display a maximum of 15 turnouts per page
+  // make sure that we only ever display a maximum of TURNOUTS_PER_PAGE turnouts per page
   uint16_t turnoutsToDisplay = min(TurnoutManager::getTurnoutCount() - _turnoutStartIndex, TURNOUTS_PER_PAGE);
   // update the number of turnouts we can display on the page
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
@@ -176,7 +180,7 @@ void NextionTurnoutPage::displayPage() {
     if(turnout) {
       _turnoutButtons[componentIndex].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
       _turnoutButtons[componentIndex].show();
-      _toAddress[componentIndex].setTextAsNumber(turnout->getID());
+      _toAddress[componentIndex].setTextAsNumber(turnout->getAddress());
       _toAddress[componentIndex].show();
     } 
   }
@@ -210,16 +214,19 @@ void NextionTurnoutPage::displayPage() {
 }
 
 void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
-  // static_cast<NextionAddressPage *>(previousPage)->getNewAddress();
+  addNewTurnoutAddress(static_cast<NextionAddressPage *>(previousPage)->getNewAddress());
+}
+
+void NextionTurnoutPage::addNewTurnoutAddress(uint32_t newAddress) {
+  log_i("and the received address is:- %d", newAddress);
 }
 
 void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
   for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
     if(&_turnoutButtons[slot] == button) {
       auto turnout = TurnoutManager::getTurnout(_toAddress[slot].getTextAsNumber());
-      log_i("Turnout slot %d (%d) %d, %d activated", slot, turnout->getID(), (turnout->getOrientation()), (turnout->isThrown()));
+      log_i("Turnout slot %d, address %d, orientation %d, state %d", slot, turnout->getAddress(), (turnout->getOrientation()), (turnout->isThrown()));
       _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
-      // toggle the turnout state
       turnout->set(!turnout->isThrown());
     }
   }

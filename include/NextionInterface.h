@@ -84,7 +84,14 @@ private:
 class NextionTitlePage : public DCCPPNextionPage {
 public:
   NextionTitlePage(Nextion &nextion) : DCCPPNextionPage(nextion, TITLE_PAGE, "0"),
-    _versionText(nextion, TITLE_PAGE, 3, "Version") {}
+    _versionText(nextion, TITLE_PAGE, 3, "Version"),
+    _statusText {
+      NextionText(nextion, TITLE_PAGE, 4, "Status1"), 
+      NextionText(nextion, TITLE_PAGE, 5, "Status2"),
+      NextionText(nextion, TITLE_PAGE, 6, "Status3"),
+      NextionText(nextion, TITLE_PAGE, 7, "Status4"),
+      NextionText(nextion, TITLE_PAGE, 8, "Status5")
+     } {}
   virtual void refreshPage() {}
 protected:
   virtual void init() {
@@ -93,10 +100,10 @@ protected:
   virtual void displayPage() {}
 private:
   NextionText _versionText;
+  NextionText _statusText[5];
 };
 
-class NextionAddressPage : public DCCPPNextionPage
-{
+class NextionAddressPage : public DCCPPNextionPage {
 public:
   NextionAddressPage(Nextion &);
   void setCurrentAddress(uint32_t address) {
@@ -104,6 +111,7 @@ public:
   }
   void addNumber(const NextionButton *);
   void removeNumber(const NextionButton *);
+  void changeOrientation(const NextionButton *);
   uint32_t getNewAddress() {
     return _newAddressString.toInt();
   }
@@ -112,13 +120,18 @@ protected:
   virtual void init() {}
   virtual void displayPage();
 private:
+  NextionButton _addressPic;
+  NextionText _boardAddress;
+  NextionText _indexAddress;
+  NextionButton _orientationButton;
   NextionButton _buttons[10];
-  NextionButton _doneButton;
-  NextionButton _abortButton;
-  NextionButton _eraseButton;
+  NextionButton _saveButton;
+  NextionButton _quitButton;
+  NextionButton _undoButton;
   NextionText _currentAddress;
   NextionText _newAddress;
   uint32_t _address;
+  uint8_t _orientation;
   String _newAddressString;
 };
 
@@ -169,6 +182,8 @@ class NextionTurnoutPage : public DCCPPNextionPage {
 public:
   NextionTurnoutPage(Nextion &);
   void toggleTurnout(const NextionButton *);
+  void addNewTurnoutAddress(uint32_t);
+  
   virtual void refreshPage() {}
   void incrementTurnoutPage() {
     _turnoutStartIndex += TURNOUTS_PER_PAGE;

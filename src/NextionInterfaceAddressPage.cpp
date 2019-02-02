@@ -31,8 +31,18 @@ constexpr uint8_t num8=16;   //b8 PIC 79/89
 constexpr uint8_t num9=17;   //b9 PIC 80/90
 constexpr uint8_t num0=18;   //b0 PIC 81/91
 constexpr uint8_t save1=19;  //save PIC 92/93
-constexpr uint8_t erase=20;
+constexpr uint8_t undo=20;
 constexpr uint8_t quit1=21;  //quit PIC 94/95
+constexpr uint8_t addrtype=22;  //AddrType PIC129/130
+constexpr uint8_t boardaddress=5;
+constexpr uint8_t indexaddress=6;
+constexpr uint8_t orientation=23;
+
+constexpr uint8_t LHTO=107;
+constexpr uint8_t RHTO=109;
+
+constexpr uint8_t LOCO_PIC=129;
+constexpr uint8_t TURNOUT_PIC=130;
 //
 /************************************************************************************************************/
 // Address Page
@@ -52,9 +62,13 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
     NextionButton(nextion, ADDRESS_PAGE, num9, "b9"),
     NextionButton(nextion, ADDRESS_PAGE, num0, "b0")
   },
-  _doneButton(nextion, ADDRESS_PAGE, save1, "Save"),
-  _abortButton(nextion, ADDRESS_PAGE, quit1, "Quit"),
-  _eraseButton(nextion, ADDRESS_PAGE, erase, "Erase"),
+  _addressPic(nextion, ADDRESS_PAGE, addrtype, "AddrType"),
+  _boardAddress(nextion, ADDRESS_PAGE, boardaddress, "boardAddress"),
+  _indexAddress(nextion, ADDRESS_PAGE, indexaddress, "indexAddress"),
+  _orientationButton(nextion, ADDRESS_PAGE, orientation, "Orientation"),
+  _saveButton(nextion, ADDRESS_PAGE, save1, "Save"),
+  _quitButton(nextion, ADDRESS_PAGE, quit1, "Quit"),
+  _undoButton(nextion, ADDRESS_PAGE, undo, "Undo"),
   _currentAddress(nextion, ADDRESS_PAGE, oldaddr, "OldAddr"),
   _newAddress(nextion, ADDRESS_PAGE, newaddr, "NewAddr"),
   _address(0),
@@ -66,19 +80,24 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
       }
     });
   }
-  _doneButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+  _saveButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       nextionPages[widget->getPageID()]->displayPreviousPage();
     }
   });
-  _abortButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+  _quitButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       nextionPages[widget->getPageID()]->returnToPreviousPage();
     }
   });
-  _eraseButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+  _undoButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE])->removeNumber(static_cast<NextionButton *>(widget));
+    }
+  });
+  _orientationButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+    if (type == NEX_EVENT_PUSH) {
+      static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE])->changeOrientation(static_cast<NextionButton *>(widget));
     }
   });
 }
@@ -89,8 +108,21 @@ void NextionAddressPage::addNumber(const NextionButton *button) {
     if(button == &_buttons[index]) {
       _newAddressString += String(buttonMap[index]);
       _newAddress.setTextAsNumber(_newAddressString.toInt());
+      _boardAddress.setTextAsNumber((_newAddressString.toInt() + 3) / 4);                                         // = (_boardAddress + 3) / 4;
+      _indexAddress.setTextAsNumber(_newAddressString.toInt()-(((_newAddressString.toInt() + 3) / 4) * 4) + 3); // = (_address - (_boardAddress * 4)) + 3;
     }
   }
+}
+void NextionAddressPage::changeOrientation(const NextionButton *button) {
+  if (_orientation == 0) {
+    _orientation = 2;
+    _orientationButton.setPictureID(LHTO);
+  }
+  else{
+    _orientation = 0;
+    _orientationButton.setPictureID(RHTO);
+  }
+  log_i("Orientation set to %d", _orientation);
 }
 
 void NextionAddressPage::removeNumber(const NextionButton *button) {
@@ -106,7 +138,25 @@ void NextionAddressPage::removeNumber(const NextionButton *button) {
 }
 
 void NextionAddressPage::displayPage() {
+  if (getReturnPage() == THROTTLE_PAGE) {
+    _addressPic.setPictureID(LOCO_PIC);
+    _boardAddress.hide();
+    _indexAddress.hide();
+    _currentAddress.hide();
+    _orientationButton.hide();
+  }
+  else
+  {
+    _address = 0;
+    _addressPic.setPictureID(TURNOUT_PIC);
+    _boardAddress.show();
+    _indexAddress.show();
+    _orientationButton.show();
+    _currentAddress.hide();
+  }
   _newAddressString = "";
-  _currentAddress.setTextAsNumber(_address);
+  _boardAddress.setTextAsNumber(0);
+  _indexAddress.setTextAsNumber(0);
+  //_currentAddress.setTextAsNumber(_address);
   _newAddress.setTextAsNumber(0);
 }
