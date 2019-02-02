@@ -6,7 +6,7 @@ The DCC++ESP32 Command Station consists of an ESP32 micro controller connected t
 ## Whats in this Repository
 This repository, DCCppESP32, contains a complete DCC++ESP32 Command Station code designed for compiling and uploading into an ESP32. All source files are in the folder named src and header files are under include (including index_html.h which is generated during the build in PlatformIO IDE, for Arduino IDE be sure to download the latest released version of this file and place it in the include directory).
 
-To utilize this code, download a release zip file from this repository and open the included project file in PlatformIO IDE, and the dependent libraries listed under the "lib" folder (see the readme.txt file for details). No code modifications should be required *EXCEPT* for configuring which features you want to use, see the (Building DCC++ESP32)[#building-dccesp32] section further down for specifics.
+To utilize this code, download a release zip file from this repository and open the included project file in PlatformIO IDE, and the dependent libraries listed under the "lib" folder (see the readme.txt file for details). No code modifications should be required *EXCEPT* for configuring which features you want to use, see the [Building DCC++ESP32](#building-dccesp32) section further down for specifics.
 
 The latest production release of the code is 1.2.0:
 * Supports almost any variant of the ESP32.
@@ -21,12 +21,12 @@ The DCC++ESP32 Command Station has been tested on a variety of ESP32 boards avai
 
 ## Supported Motor Boards
 The DCC++ESP32 Command Station currently supports three types of Motor Boards.
-* Arduino Motor Shield Rev3 (https://store.arduino.cc/usa/arduino-motor-shield-rev3). There are various clones of this board avialable throughout the internet, many of these clones will work but many will not.
-* Pololu MC33926 Motor Driver (https://www.pololu.com/product/1213 or https://www.pololu.com/product/2503). There are a few variants on this board available from Pololu and they all should function identically. It is not necessary to have the Arduino shield format and all the majority of the testing has been carried out using the carrier format.
+* [Arduino Motor Shield Rev3](https://store.arduino.cc/usa/arduino-motor-shield-rev3). There are various clones of this board avialable throughout the internet, many of these clones will work but many will not.
+* [Pololu MC33926 Motor Driver](https://www.pololu.com/product/2503) or [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213). There are a few variants on this board available from Pololu and they all should function identically. It is not necessary to have the Arduino shield format and all the majority of the testing has been carried out using the carrier format.
 * BTS 7960B. This is a *VERY* high current H-Bridge based circuit, in the DCC++ESP32 Command Station code it is software limited to either 5A or 10A.
 
 # Building DCC++ESP32
-Building the DCC++ESP32 code is easiest using PlatformIO IDE which can be installed from http://platformio.org/platformio-ide. When installing PlatformIO IDE be sure to add Python to the default path (if prompted). Using (Atom)[https://atom.io/] or (Visual Studio Code)[https://code.visualstudio.com/] does not make that much of a difference in compilation/usage of the included PlatformIO project file. Currently all development and testing is conducted with (Visual Studio Code)[https://code.visualstudio.com/].
+Building the DCC++ESP32 code is easiest using PlatformIO IDE which can be installed from http://platformio.org/platformio-ide. When installing PlatformIO IDE be sure to add Python to the default path (if prompted). Using [Atom](https://atom.io/) or [Visual Studio Code](https://code.visualstudio.com/) does not make that much of a difference in compilation/usage of the included PlatformIO project file. Currently all development and testing is conducted with [Visual Studio Code](https://code.visualstudio.com/).
 
 The DCC++ESP32 Command Station consists of multiple modules, some of which are required and others are optional. The list below covers the various modules:
 | Module | Description |
@@ -114,7 +114,7 @@ Note that on the Arduino Uno form factor ESP32 boards, the A0 and A1 pins connec
 Only one of these modules can be included at a time. Both will provide similar information about the health and status of the Command Station
 
 #### OLED Configuration
-If the ESP32 board has a built in OLED screen it may automatically be usable, this depends on the board being configured correctly in the (arduino-esp32)[https://github.com/espressif/arduino-esp32] release. Currently only ome of the Heltec, TTGO or D-Duino-32 boards provide the automatic configuration. If the OLED does not work out-of-box with these boards or if your board does not define OLED_SDA and OLED_SCL, you can configure it via the parameters below.
+If the ESP32 board has a built in OLED screen it may automatically be usable, this depends on the board being configured correctly in the [arduino-esp32](https://github.com/espressif/arduino-esp32) release. Currently only ome of the Heltec, TTGO or D-Duino-32 boards provide the automatic configuration. If the OLED does not work out-of-box with these boards or if your board does not define OLED_SDA and OLED_SCL, you can configure it via the parameters below.
 | PARAM | Description |
 | ----- | ----------- |
 | OLED_CHIPSET | This configures how the Command Station will talk to the OLED screen, currently only SH1106 and SSD1306 chips are supported. |
@@ -163,7 +163,7 @@ The following are not implemented but are planned:
 John Plocher created the circuit shown below, it works great for a DIY interface as it only requires a handful of components.
 ![LocoNet Interface](docs/loconet/LocoNetInterface.png)
 
-Newer versions of this circuit can be found on his (website)[http://www.spcoast.com/wiki/index.php/LocoShield], they use a different IC and have not been tested.
+Newer versions of this circuit can be found on his [website](http://www.spcoast.com/wiki/index.php/LocoShield), they use a different IC and have not been tested.
 
 ### Configuring the Nextion module (Optional)
 TBD
@@ -189,7 +189,7 @@ When this module is enabled the Command Station will receive and respond to cert
 #### LCC Configuration
 | PARAM | Description |
 | ----- | ----------- |
-| LCC_NODE_ID | This is the unique 64bit node ID for the DCC++ESP32 Command Station. You are encouraged to have your own unique ID but it is not mandatory. You can get a unique ID range (here)[https://registry.openlcb.org/requestuniqueidrange] and assign one ID from the range here. The default value is 05.01.01.01.3F.01 (without dots) which indicates it is the second ID in the 05.01.01.01.3F.{00-FF} range. |
+| LCC_NODE_ID | This is the unique 64bit node ID for the DCC++ESP32 Command Station. You are encouraged to have your own unique ID but it is not mandatory. You can get a unique ID range [here](https://registry.openlcb.org/requestuniqueidrange) and assign one ID from the range here. The default value is 05.01.01.01.3F.01 (without dots) which indicates it is the second ID in the 05.01.01.01.3F.{00-FF} range. |
 | LCC_CAN_RX_PIN | This is the pin connected to the CAN transceiver RX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 | LCC_CAN_TX_PIN | This is the pin connected to the CAN transceiver TX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 
