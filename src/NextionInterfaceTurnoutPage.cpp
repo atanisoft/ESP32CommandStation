@@ -159,7 +159,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
   _delButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       printf("Del Button Pressed\n");
-      //auto turnout = TurnoutManager::getTurnout(1);
+      //auto turnout = TurnoutManager::getTurnoutByAddress(1);
       //turnout->setOrientation(LEFT);
     }
   });
@@ -224,7 +224,7 @@ void NextionTurnoutPage::addNewTurnoutAddress(uint32_t newAddress) {
 void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
   for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
     if(&_turnoutButtons[slot] == button) {
-      auto turnout = TurnoutManager::getTurnout(_toAddress[slot].getTextAsNumber());
+      auto turnout = TurnoutManager::getTurnoutByAddress(_toAddress[slot].getTextAsNumber());
       log_i("Turnout slot %d, address %d, orientation %d, state %d", slot, turnout->getAddress(), (turnout->getOrientation()), (turnout->isThrown()));
       _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
       turnout->set(!turnout->isThrown());
