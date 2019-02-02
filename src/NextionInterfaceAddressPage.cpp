@@ -50,6 +50,10 @@ constexpr uint8_t TURNOUT_PIC=130;
 //
 NextionAddressPage::NextionAddressPage(Nextion &nextion) :
   DCCPPNextionPage(nextion, ADDRESS_PAGE, "1"),
+  _addressPic(nextion, ADDRESS_PAGE, addrtype, "AddrType"),
+  _boardAddress(nextion, ADDRESS_PAGE, boardaddress, "boardAddress"),
+  _indexAddress(nextion, ADDRESS_PAGE, indexaddress, "indexAddress"),
+  _orientationButton(nextion, ADDRESS_PAGE, orientation, "Orientation"),
   _buttons {
     NextionButton(nextion, ADDRESS_PAGE, num1, "b1"),
     NextionButton(nextion, ADDRESS_PAGE, num2, "b2"),
@@ -62,10 +66,6 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
     NextionButton(nextion, ADDRESS_PAGE, num9, "b9"),
     NextionButton(nextion, ADDRESS_PAGE, num0, "b0")
   },
-  _addressPic(nextion, ADDRESS_PAGE, addrtype, "AddrType"),
-  _boardAddress(nextion, ADDRESS_PAGE, boardaddress, "boardAddress"),
-  _indexAddress(nextion, ADDRESS_PAGE, indexaddress, "indexAddress"),
-  _orientationButton(nextion, ADDRESS_PAGE, orientation, "Orientation"),
   _saveButton(nextion, ADDRESS_PAGE, save1, "Save"),
   _quitButton(nextion, ADDRESS_PAGE, quit1, "Quit"),
   _undoButton(nextion, ADDRESS_PAGE, undo, "Undo"),
