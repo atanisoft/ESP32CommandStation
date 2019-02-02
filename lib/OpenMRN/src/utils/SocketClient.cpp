@@ -65,21 +65,8 @@ int ConnectSocket(const char *host, const char* port_str)
     return SocketClient::connect(host, port_str);
 }
 
-int SocketClient::connect(const char *host, int port)
-{
-#ifdef __linux__
-    // We expect write failures to occur but we want to handle them where 
-    // the error occurs rather than in a SIGPIPE handler.
-    signal(SIGPIPE, SIG_IGN);
-#endif
-
-    char port_str[30];
-    integer_to_buffer(port, port_str);
-
-    return SocketClient::connect(host, port_str);
-}
-
-int SocketClient::connect(const char *host, const char* port_str)
+SocketClient::AddrinfoPtr SocketClient::string_to_address(
+    const char *host, const char *port_str)
 {
     struct addrinfo *addr;
     struct addrinfo hints;
@@ -93,21 +80,36 @@ int SocketClient::connect(const char *host, const char* port_str)
     {
         LOG_ERROR("getaddrinfo failed for '%s': %s", host,
                   gai_strerror(ai_ret));
-        return -1;
+        return {nullptr};
     }
 
-    struct AddrInfoDeleter
-    {
-        void operator()(struct addrinfo *s)
-        {
-            if (s)
-            {
-                freeaddrinfo(s);
-            }
-        }
-    };
-    std::unique_ptr<struct addrinfo, AddrInfoDeleter> ai_deleter(addr);
+    AddrinfoPtr ai_deleter(addr);
+    return ai_deleter;
+}
 
+int SocketClient::connect(const char *host, const char *port_str)
+{
+    int fd = connect(string_to_address(host, port_str).get());
+    if (fd >= 0)
+    {
+        LOG(INFO, "Connected to %s:%s. fd=%d", host ? host : "mDNS", port_str,
+            fd);
+    }
+    return fd;
+}
+
+int SocketClient::connect(struct addrinfo *addr)
+{
+#ifdef __linux__
+    // We expect write failures to occur but we want to handle them where
+    // the error occurs rather than in a SIGPIPE handler.
+    signal(SIGPIPE, SIG_IGN);
+#endif
+
+    if (!addr)
+    {
+        return -1;
+    }
     int fd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
     if (fd < 0)
     {
@@ -127,8 +129,53 @@ int SocketClient::connect(const char *host, const char* port_str)
     ERRNOCHECK("setsockopt(nodelay)",
                ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)));
 
-    LOG(INFO, "Connected to %s:%s. fd=%d", host ? host : "mDNS", port_str, fd);
     return fd;
+}
+
+bool SocketClient::address_to_string(
+    struct addrinfo *addr, string *host, int *port)
+{
+    HASSERT(host && port);
+    *port = -1;
+    host->clear();
+    if (!addr || !addr->ai_addr)
+    {
+        return false;
+    }
+    const char *n = nullptr;
+    char buf[35];
+
+    switch (addr->ai_family)
+    {
+        case AF_INET:
+        {
+            auto *sa = (struct sockaddr_in *)addr->ai_addr;
+            *port = ntohs(sa->sin_port);
+            n = inet_ntop(addr->ai_family, &sa->sin_addr, buf, sizeof(buf));
+            break;
+        }
+#ifdef __linux__
+        case AF_INET6:
+        {
+            auto *sa = (struct sockaddr_in6 *)addr->ai_addr;
+            *port = ntohs(sa->sin6_port);
+            n = inet_ntop(addr->ai_family, &sa->sin6_addr, buf, sizeof(buf));
+            break;
+        }
+#endif
+        default:
+            LOG(INFO, "unsupported address type.");
+            errno = EAFNOSUPPORT;
+            return false;
+    }
+    if (!n)
+    {
+        // failed to convert to string.
+        LOG(INFO, "Failed to convert sockaddr to string: %s", strerror(errno));
+        return false;
+    }
+    *host = buf;
+    return true;
 }
 
 /*
@@ -169,6 +216,25 @@ bool SocketClient::local_test(struct addrinfo *addr)
     }
 
     return local;
+}
+
+std::unique_ptr<SocketClientParams> SocketClientParams::from_static(
+    string hostname, int port)
+{
+    std::unique_ptr<DefaultSocketClientParams> p(new DefaultSocketClientParams);
+    p->staticHost_ = std::move(hostname);
+    p->staticPort_ = port;
+    return std::move(p);
+}
+
+std::unique_ptr<SocketClientParams> SocketClientParams::from_static_and_mdns(
+    string hostname, int port, string mdns_service)
+{
+    std::unique_ptr<DefaultSocketClientParams> p(new DefaultSocketClientParams);
+    p->staticHost_ = std::move(hostname);
+    p->staticPort_ = port;
+    p->mdnsService_ = std::move(mdns_service);
+    return std::move(p);
 }
 
 #endif // __linux__

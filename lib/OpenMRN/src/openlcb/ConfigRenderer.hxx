@@ -242,7 +242,7 @@ struct GroupConfigDefs : public AtomConfigDefs
     DECLARE_OPTIONALARG(FixedSize, fixed_size, unsigned, 13, 0);
     DECLARE_OPTIONALARG(Hidden, hidden, int, 14, 0);
     using Base = OptionalArg<GroupConfigDefs, Name, Description, Segment,
-                             Offset, RepName, FixedSize, Hidden>;
+        Offset, RepName, FixedSize, Hidden>;
 };
 
 /// Implementation class for the condifuration options of a CDI group element.
@@ -277,7 +277,7 @@ public:
     /// effectively hiding hte settings from the user. The space will still be
     /// reserved and skipped.
     DEFINE_OPTIONALARG(Hidden, hidden, int);
-    
+
     /// Declares that this group is a toplevel CDI. Causes the group to render
     /// the xml header.
     /// static constexpr Segment MainCdi() { return Segment(-2); }

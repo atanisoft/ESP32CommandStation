@@ -384,6 +384,60 @@ protected:
     uint8_t localState_ : 1;
 };
 
+/// Speciallization of NetworkInitializedBit that adds callback support when
+/// the state changes.
+class CallbackNetworkInitializedBit : public NetworkInitializedBit
+{
+public:
+    /// Constructor.
+    ///
+    /// @param node the virtual node who exposes this bit.
+    /// @param event_on event ID to set the state to true
+    /// @param event_off event ID to set the state to false
+    /// @param default_local_state Until there is a definite network state we
+    ///        return this state for a local query. Also determines what state
+    ///        a first local toggle() call will set to.
+    CallbackNetworkInitializedBit(openlcb::Node *node, uint64_t event_on,
+                                  uint64_t event_off, bool default_local_state)
+        : NetworkInitializedBit(node, event_on, event_off, default_local_state)
+    {
+    }
+
+    /// Specifies the change notifier.
+    /// @param cb will be invoked every time the state is changed
+    ///        (both from local calls as well as from the network stack).
+    void set_change_callback(std::function<void()> cb)
+    {
+        callback_ = std::move(cb);
+    }
+
+    /// Call from the network stack (or the client before notifying the network
+    /// stack) to set the state. Always sets the state to definite.
+    /// NOTE: this does not send any messages. The caller must use the
+    /// EventHandler object after this function to send out an event.
+    ///
+    /// @param new state value
+    void set_state(bool new_value) override
+    {
+        openlcb::NetworkInitializedBit::set_state(new_value);
+        if (callback_)
+        {
+            callback_();
+        }
+    }
+
+    /// Call this function in order to reset the network state to unknown.
+    void reset()
+    {
+        isKnown_ = 0;
+    }
+    
+private:
+    /// This function is invoked when the state of the bit changes.
+    std::function<void()> callback_;
+};
+
+
 /// Simple implementation of a BitEventInterface when the true state ofthe
 /// variable is mapped in memory (e.g. mmap-ed gpio, or if there is no real
 /// hardware but a bit in RAM).

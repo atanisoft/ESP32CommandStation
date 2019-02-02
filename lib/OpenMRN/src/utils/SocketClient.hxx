@@ -48,74 +48,50 @@
 #include "executor/Timer.hxx"
 #include "os/MDNS.hxx"
 #include "utils/Atomic.hxx"
+#include "utils/SocketClientParams.hxx"
 #include "utils/format_utils.hxx"
 
-class SocketClient : public StateFlowBase, private OSThread, private Atomic
+class SocketClient : public StateFlowBase, private Atomic
 {
 public:
-    /** Connection status that can be sent back to the "owner" of the socket so
-    * it can update display or status information while the connection attempts
-    * are progressing.
-    */
-    enum class Status
-    {
-        MDNS_LOOKUP,
-        MDNS_CONNECT,
-        STATIC_CONNECT,
-        CONNECT_FAILED,
-        CONNECT_FAILED_SELF,
-    };
-    
-     /** Constructor.
-     * @param service service that the StateFlowBase will be bound to.
-     * @param mdns service name to connect to, nullptr to force use
-     *                  hostname and port
-     * @param host host to connect to if mdns_name resolution fails,
-     *             nullptr to force use mDNS
-     * @param port port number to connect to if mdns_name resolution fails
-     * @param callback callback method to invoke when a client connection is
-     *                 made successfully.  It is the responsibility of the
-     *                 callee to register the notifiable (on close) if this
-     *                 client shall reattempt the connection if the socket
-     *                 is ever closed.
-     *                 - First param is the file descriptor of the resulting
-     *                   socket
-     *                 - Second param is the struct addrinfo for the connected
-     *                   peer
-     *                 - Third param is a pointer to "this" class to notify
-     *                   on exit that the socket has been torn down.
-     * @param status_callback method for status as the connection attempt
-     *                        progresses. This callback will most likely be from
-     *                        a different thread.
-     * @param retry_seconds time in seconds that the client shall wait to retry
-     *                      connecting on error.
-     * @param timeout_seconds time in seconds that the connect is supposed to
-     *                        timeout and look for a possible shutdown.
-     * @param disallow_local disallow local connections to one's self
+    /** Constructor.
+     * @param service service that the StateFlowBase will be bound to. This
+     * service will never be blocked. Externally owned.
+     * @param connect_executor is a thread on which DNS lookups and blocking
+     * connect calls will be attempted. Externally owned. May be shared between
+     * different SocketClients.
+     * @param mdns_executor is a thread on which mdns lookups will be
+     * attempted. May be null if mdns is never used (by the parameters) or may
+     * be the same executor as connect_executor if connect and mdns attempts
+     * ought to be serialized. Externally owned. May be shared between
+     * different SocketClients.
+     * @param params defines all the different parameters on whom to connect
+     * to. Takes ownership.
+     * @param connect_callback callback method to invoke when a client
+     * connection is made successfully. It is unspecified which thread this
+     * callback will be invoked upon.
+     * - First param is the file descriptor of the resulting socket
+     * - Second param is a notifiable (ownership is not transferred). The
+     * callee must invoke this notifiable when the socket has been torn down in
+     * order to restart the search with the same parameters.
      */
-    SocketClient(Service *service, const char *mdns, const char *host,
-                 uint16_t port,
-                 std::function<void(int, struct addrinfo *, Notifiable*)> callback,
-                 std::function<void(Status)> status_callback = nullptr,
-                 uint8_t retry_seconds = 5, uint8_t timeout_seconds = 255,
-                 bool disallow_local = false)
+    SocketClient(Service *service, ExecutorBase *connect_executor,
+        ExecutorBase *mdns_executor, std::unique_ptr<SocketClientParams> params,
+        std::function<void(int, Notifiable *)> connect_callback)
         : StateFlowBase(service)
-        , OSThread()
-        , mdns_(mdns)
-        , host_(host)
-        , port_(port)
-        , callback_(callback)
-        , statusCallback_(status_callback)
-        , state_(STATE_CREATED)
+        , callback_(connect_callback)
+        , connectExecutor_(connect_executor)
+        , mdnsExecutor_(mdns_executor)
+        , strategyOffset_(0)
+        , mdnsPending_(false)
+        , mdnsJoin_(false)
+        , sleeping_(false)
+        , requestShutdown_(false)
+        , isConnected_(false)
         , fd_(-1)
-        , addr_(nullptr)
-        , sem_()
-        , retrySeconds_(retry_seconds)
-        , timeoutSeconds_(timeout_seconds)
-        , disallowLocal_(disallow_local)
     {
-        HASSERT(mdns_ || (host_ && port_));
-        start_flow(STATE(spawn_thread));
+        reset_params(std::move(params));
+        start_flow(STATE(start_connection));
     }
 
     /** Destructor.
@@ -123,10 +99,48 @@ public:
     ~SocketClient()
     {
         shutdown();
-        if (addr_)
+    }
+
+    /// Helper structure for creating a unique_ptr for struct addrinfo pointers.
+    struct AddrInfoDeleter
+    {
+        void operator()(struct addrinfo *s)
         {
-            freeaddrinfo(addr_);
+            if (s)
+            {
+                freeaddrinfo(s);
+            }
         }
+    };
+
+    /// Custom unique pointer that knows how to delete a struct addrinfo.
+    typedef std::unique_ptr<struct addrinfo, AddrInfoDeleter> AddrinfoPtr;
+
+    /// This enum represents individual states of this state flow that we can
+    /// branch to. The configuration of connection strategy is a sequence of
+    /// these enum values.
+    enum class Attempt : uint8_t
+    {
+        /// Connect to the reconnect slot.
+        RECONNECT,
+        /// Start mDNS lookup.
+        INITIATE_MDNS,
+        /// Connect to mDNS lookup result.
+        CONNECT_MDNS,
+        /// Connect to static target.
+        CONNECT_STATIC,
+        /// Attempt complete. Start again.
+        WAIT_RETRY,
+    };
+
+    /// Updates the parameter structure for this socket client.
+    /// @param params is the parameter structure; ownership will be
+    /// transferred.
+    void reset_params(std::unique_ptr<SocketClientParams> params)
+    {
+        params_ = std::move(params);
+        /// @todo (balazs.racz): do we need to somehow wake up the flow and
+        /// make it attempt to reconnect?
     }
 
     /** Shutdown the client so that it can be deleted.
@@ -134,17 +148,31 @@ public:
     void shutdown()
     {
         start_shutdown();
-        while (state_ != STATE_SHUTDOWN)
+        while (true)
+        {
+            AtomicHolder h(this);
+            if (!mdnsPending_)
+            {
+                break;
+            }
+        }
+        while (!is_terminated())
         {
             usleep(1000);
         }
     }
 
-    /** Reports if this instance has finished shutting down
-     */
+    /// @return true if we have a working connection.
+    bool is_connected()
+    {
+        AtomicHolder h(this);
+        return isConnected_;
+    }
+
+    /// @return true if the shutdown has completed.
     bool is_shutdown()
     {
-        return state_ == STATE_SHUTDOWN;
+        return is_terminated();
     }
 
     /** Request that this client shutdown and exit the other thread.
@@ -153,12 +181,25 @@ public:
     {
         {
             AtomicHolder h(this);
-            if (state_ != STATE_SHUTDOWN)
+            if (requestShutdown_)
             {
-                state_ = STATE_SHUTDOWN_REQUESTED;
+                return;
+            }
+            requestShutdown_ = true;
+            if (sleeping_)
+            {
+                sleeping_ = false;
+                timer_.ensure_triggered();
+            }
+            if (isConnected_)
+            {
+                isConnected_ = false;
+                notify();
             }
         }
-        sem_.post();
+        // NOTE: It would be nice to abort any pending asynchronous tasks we
+        // have such as a connect or a getaddrinfo call running on the
+        // secondary executors. However, there is no API to do that right now.
     }
 
     /** Connects a tcp socket to the specified remote host:port. Returns -1 if
@@ -169,7 +210,10 @@ public:
      *
      *  @return fd of the connected socket.
      */
-    static int connect(const char *host, int port);
+    static int connect(const char *host, int port)
+    {
+        return connect(host, integer_to_string(port).c_str());
+    }
 
     /** Connects a tcp socket to the specified remote host:port. Returns -1 if
      *  unsuccessful; returns the fd if successful.
@@ -181,30 +225,252 @@ public:
      */
     static int connect(const char *host, const char* port_str);
 
-private:
-    /** Execution state.
+    /** Connects a tcp socket to the specified remote address. Returns -1 if
+     *  unsuccessful; returns the fd if successful.
+     *
+     *  @param addr IP(v4/v6) addrinfo structure describing the remote host. May
+     *  be null. Ownership is not transferred. Will not be used after the
+     *  funciton returns.
+     *
+     *  @return fd of the connected socket.
      */
-    enum State
-    {
-        STATE_CREATED = 0, /**< constructed */
-        STATE_STARTED,     /**< thread started */
-        STATE_SHUTDOWN_REQUESTED, /**< shutdown requested */
-        STATE_SHUTDOWN, /**< shutdown */
-    };
+    static int connect(struct addrinfo *addr);
 
-    /** Entry point to the thread; this thread performs the synchronous network
-     * calls (address resolution and connect). The function returns only when
-     * the thread needs to be terminated (i.e. after shutdown() is invoked).
-     *
-     * When this method is first called, the state should be STATE_CREATED. This
-     * will then switch to STATE_STARTED and remain there for most of the
-     * lifetime of this method. It will switch to STATE_SHUTDOWN_REQUESTED after
-     * the shutdown() method is called, and then to STATE_SHUTDOWN once it
-     * finishes shutting down.
-     *
-     * @return does not return a value, but exits after shutdown
-     */
-    void *entry() override
+    /// Converts a struct addrinfo to a dotted-decimal notation IP address.
+    /// @param addr is an addrinfo returned by getaddrinfo or gethostbyname.
+    /// @param host will be filled with dotted-decimal IP address.
+    /// @param port will be filled with the port number.
+    /// @return true on success.
+    static bool address_to_string(
+        struct addrinfo *addr, string *host, int *port);
+
+    /// Converts a hostname string and port number to a struct addrinfo.
+    /// @param host hostname to connect to.
+    /// @param port port number to connect to.
+    /// @return a struct addrinfo; ownership is transferred.
+    static AddrinfoPtr string_to_address(const char *host, int port)
+    {
+        return string_to_address(host, integer_to_string(port).c_str());
+    }
+
+    /// Converts a hostname string (or null) and port number (or service name)
+    /// to a struct addrinfo.
+    /// @param host hostname to connect to.
+    /// @param port port name or service name to connect to.
+    /// @return a struct addrinfo; ownership is transferred to the caller.
+    static AddrinfoPtr string_to_address(
+        const char *host, const char *port_str);
+
+private:
+    /// Parses the params_ configuration and fills in strategyConfig_.
+    void prepare_strategy()
+    {
+        unsigned ofs = 0;
+        auto search = params_->search_mode();
+        // If we only have one extra thread, we initiate mdns only at the time
+        // we are trying to connect to it. If we have two, we start the lookup
+        // at the beginning.
+        bool mdns_ahead = (connectExecutor_ != mdnsExecutor_);
+        if (mdns_ahead && search != SocketClientParams::MANUAL_ONLY)
+        {
+            strategyConfig_[ofs++] = Attempt::INITIATE_MDNS;
+        }
+        if (params_->enable_last())
+        {
+            strategyConfig_[ofs++] = Attempt::RECONNECT;
+        }
+        switch (search)
+        {
+            case SocketClientParams::AUTO_MANUAL:
+                if (!mdns_ahead)
+                {
+                    strategyConfig_[ofs++] = Attempt::INITIATE_MDNS;
+                }
+                strategyConfig_[ofs++] = Attempt::CONNECT_MDNS;
+                strategyConfig_[ofs++] = Attempt::CONNECT_STATIC;
+                break;
+            case SocketClientParams::MANUAL_AUTO:
+                strategyConfig_[ofs++] = Attempt::CONNECT_STATIC;
+                if (!mdns_ahead)
+                {
+                    strategyConfig_[ofs++] = Attempt::INITIATE_MDNS;
+                }
+                strategyConfig_[ofs++] = Attempt::CONNECT_MDNS;
+                break;
+            case SocketClientParams::MANUAL_ONLY:
+                strategyConfig_[ofs++] = Attempt::CONNECT_STATIC;
+                break;
+            case SocketClientParams::AUTO_ONLY:
+                if (!mdns_ahead)
+                {
+                    strategyConfig_[ofs++] = Attempt::INITIATE_MDNS;
+                }
+                strategyConfig_[ofs++] = Attempt::CONNECT_MDNS;
+                break;
+        }
+        strategyConfig_[ofs++] = Attempt::WAIT_RETRY;
+        HASSERT(ofs <= strategyConfig_.size());
+    }
+
+    /// Main entry point of the connection process.
+    Action start_connection()
+    {
+        startTime_ = os_get_time_monotonic();
+        prepare_strategy();
+        {
+            AtomicHolder h(this);
+            strategyOffset_ = 0;
+            mdnsPending_ = false;
+            mdnsJoin_ = false;
+            isConnected_ = false;
+            mdnsAddr_.reset();
+        }
+        return call_immediately(STATE(next_step));
+    }
+
+    /// Execute the next step of the strategy.
+    Action next_step()
+    {
+        Attempt a = Attempt::WAIT_RETRY;
+        if (strategyOffset_ < strategyConfig_.size())
+        {
+            AtomicHolder h(this);
+            if (requestShutdown_)
+            {
+                return exit();
+            }
+            a = strategyConfig_[strategyOffset_++];
+        }
+        switch (a)
+        {
+            default:
+                DIE("Unexpected action");
+            case Attempt::WAIT_RETRY:
+                return wait_retry();
+            case Attempt::RECONNECT:
+                return try_schedule_connect(SocketClientParams::CONNECT_RE,
+                    to_string(params_->last_host_name()), params_->last_port());
+            case Attempt::INITIATE_MDNS:
+                return start_mdns();
+            case Attempt::CONNECT_MDNS:
+                return wait_and_connect_mdns();
+            case Attempt::CONNECT_STATIC:
+                return try_schedule_connect(SocketClientParams::CONNECT_MANUAL,
+                    to_string(params_->manual_host_name()),
+                    params_->manual_port());
+        }
+    }
+
+    /// Helper function to schedule asynchronous connect on a separate
+    /// executor. Never blocks. Will deliver exactly one notify to the barrier
+    /// notifiable n_.
+    /// @param log will be emitted to the params_ structure if connection is
+    /// attempted.
+    /// @param host hostname (or IP address in text form) to connect to. May be
+    /// empty in which case no connection will be attempted.
+    /// @param port port number to connect to.
+    /// @return the connection wait action or next_state depending on whether
+    /// connection was attempted.
+    Action try_schedule_connect(
+        SocketClientParams::LogMessage log, string host, int port)
+    {
+        if (port <= 0 || host.empty())
+        {
+            return call_immediately(STATE(next_step));
+        }
+        string v = host;
+        v += ':';
+        v += integer_to_string(port);
+        params_->log_message(log, v);
+        fd_ = -1;
+        n_.reset(this);
+        connectExecutor_->add(new CallbackExecutable(
+            [this, host, port]() { connect_blocking(host, port); }));
+        return wait_and_call(STATE(connect_complete));
+    }
+
+    /// Called on the connect executor.
+    /// @param host hostname (or IP address in text form) to connect to
+    /// @param port port number to connect to.
+    void connect_blocking(const string &host, int port)
+    {
+        AutoNotify an(&n_);
+        auto addr = SocketClient::string_to_address(host.c_str(), port);
+        if (params_->disallow_local() && local_test(addr.get()))
+        {
+            params_->log_message(SocketClientParams::CONNECT_FAILED_SELF);
+            return;
+        }
+        fd_ = SocketClient::connect(addr.get());
+        if (fd_ >= 0)
+        {
+            params_->set_last(host.c_str(), port);
+        }
+    }
+
+    /// State that gets invoked once the reconnect attempt is complete.
+    Action connect_complete()
+    {
+        if (fd_ < 0)
+        {
+            // reconnect failed
+            return next_step();
+        }
+        else
+        {
+            // we have a connection.
+            return connected();
+        }
+    }
+
+    /// State that gets called when we have a completed connection in fd_.
+    Action connected()
+    {
+        {
+            AtomicHolder h(this);
+            isConnected_ = true;
+        }
+        callback_(fd_, this);
+        return wait_and_call(STATE(start_connection));
+    }
+
+    /// Turns a parameter to a string.
+    /// @param p is a parameter; may be nullptr or empty.
+    /// @return empty string if p is null or empty, otherwise p (copied).
+    string to_string(const char *p)
+    {
+        if (!p || !*p)
+        {
+            return string();
+        }
+        return p;
+    }
+
+    /// State that initiates the mdns lookup asynchronously.
+    /// @return next step state.
+    Action start_mdns()
+    {
+        HASSERT(mdnsExecutor_);
+        mdnsAddr_.reset();
+        string srv = to_string(params_->mdns_service_name());
+        string host = to_string(params_->mdns_host_name());
+        if (!srv.empty())
+        {
+            {
+                AtomicHolder h(this);
+                mdnsPending_ = true;
+            }
+            mdnsExecutor_->add(new CallbackExecutable(
+                [this, host, srv]() { mdns_lookup(host, srv); }));
+        }
+        return call_immediately(STATE(next_step));
+    }
+
+    /// Synchronous function that runs on the mdns executor. Performs the
+    /// lookup.
+    /// @param mdns_service is the service name to look up.
+    /// @param mdns_hostname is ignored for now.
+    void mdns_lookup(string mdns_hostname, string mdns_service)
     {
         int ai_ret = -1;
         struct addrinfo hints;
@@ -215,212 +481,147 @@ private:
         hints.ai_flags = 0;
         hints.ai_protocol = IPPROTO_TCP;
 
-        sem_.wait();
-
-        for ( ; /* forever */ ; )
+        struct addrinfo *addr = nullptr;
+        params_->log_message(SocketClientParams::MDNS_SEARCH, mdns_service);
+        ai_ret = MDNS::lookup(mdns_service.c_str(), &hints, &addr);
+        mdnsAddr_.reset(addr); // will take care of freeing it.
+        if (ai_ret != 0 || addr == nullptr)
         {
-            {
-                AtomicHolder h(this);
-                switch (state_)
-                {
-                    case STATE_CREATED:
-                        state_ = STATE_STARTED;
-                    case STATE_STARTED:
-                        break;
-                    case STATE_SHUTDOWN_REQUESTED:
-                        state_ = STATE_SHUTDOWN;
-                    case STATE_SHUTDOWN:
-                        return nullptr;
-                }
-            }
-            long long start_time = OSTime::get_monotonic();
-
-            if (mdns_)
-            {
-                LOG(INFO, "mdns lookup for %s", mdns_);
-                /* try mDNS address resolution */
-                update_status(Status::MDNS_LOOKUP);
-                ai_ret = MDNS::lookup(mdns_, &hints, &addr_);
-                if (ai_ret != 0 || addr_ == nullptr)
-                {
-                    LOG(INFO, "mdns lookup for %s failed.", mdns_);
-                }
-                else
-                {
-                    update_status(Status::MDNS_CONNECT);
-                }
-                
-            }
-            if ((ai_ret != 0 || addr_ == nullptr) && host_)
-            {
-                /* try address resolution without mDNS */
-                update_status(Status::STATIC_CONNECT);
-                char port_str[30];
-                integer_to_buffer(port_, port_str);
-                ai_ret = getaddrinfo(host_, port_str, &hints, &addr_);
-            }
-
-            if (ai_ret == 0 && addr_)
-            {
-                /* able to resolve the hostname to an address */
-                bool addr_okay = true;
-                if (addr_->ai_addr->sa_family != AF_INET)
-                {
-                    /* we only support IPv4 addresses */
-                    addr_okay = false;
-                }
-                if (addr_okay && disallowLocal_)
-                {
-                    /* test for trying to connect to self */
-                    addr_okay = !local_test(addr_);
-                    if (!addr_okay)
-                    {
-                        update_status(Status::CONNECT_FAILED_SELF);
-                    }
-                }
-                if (addr_okay)
-                {
-                    /* we have a valid IPv4 address that is not ourselves */
-                    fd_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-                    if (fd_ >= 0)
-                    {
-                        {
-                            struct timeval tm;
-                            tm.tv_sec = timeoutSeconds_;
-                            tm.tv_usec = 0;
-                            ERRNOCHECK("setsockopt_timeout",
-                                       setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO,
-                                                  &tm, sizeof(tm)
-                                                 )
-                                      );
-                        }
-                        /* socket available */
-                        int ret = ::connect(fd_, addr_->ai_addr,
-                                            addr_->ai_addrlen);
-                        if (ret == 0)
-                        {
-                            /* test for possible connection to self, again */
-                            if (disallowLocal_ && local_test(addr_))
-                            {
-                                /* connected to self */
-                                update_status(Status::CONNECT_FAILED_SELF);
-                                /* connect failed */
-                                close(fd_);
-                            }
-                            else
-                            {
-                                /* connect successful */
-                                notify();
-                                sem_.wait();
-                            }
-                        }
-                        else
-                        {
-                            update_status(Status::CONNECT_FAILED);
-                            /* connect failed */
-                            close(fd_);
-                        }
-                    }
-                }
-            }
-
-            if (addr_)
-            {
-                freeaddrinfo(addr_);
-                addr_ = nullptr;
-            }
-
-            long long diff_time = OSTime::get_monotonic() - start_time;
-            if (NSEC_TO_SEC(diff_time) < retrySeconds_)
-            {
-                sleep(retrySeconds_ - NSEC_TO_SEC(diff_time));
-            }
+            params_->log_message(SocketClientParams::MDNS_NOT_FOUND);
+            // LOG(INFO, "mdns lookup for %s failed.", mdns_service.c_str());
         }
-
-        /* should never get here */
-        return nullptr;
-    }
-
-    void update_status(Status status)
-    {
-        if (statusCallback_ != nullptr)
+        else
         {
-            statusCallback_(status);
+            params_->log_message(SocketClientParams::MDNS_FOUND);
+        }
+        {
+            AtomicHolder h(this);
+            mdnsPending_ = false;
+            if (mdnsJoin_)
+            {
+                // Flow is waiting for mdns result.
+                mdnsJoin_ = false;
+                notify();
+            }
         }
     }
 
-    /** Entry point into the state flow. Create a new thread, which will then
-     * call the entry() method of this class.
-     * @return next state is do_connect()
-     */
-    Action spawn_thread()
+    /// Blocks the flow until mdns lookup is complete, then connects to the
+    /// resulting address.
+    /// @return mdns connect step
+    Action wait_and_connect_mdns()
     {
-        start("socket_client", 0, 1536);
-        return call_immediately(STATE(do_connect));
+        {
+            AtomicHolder h(this);
+            if (mdnsPending_)
+            {
+                mdnsJoin_ = true;
+                return wait_and_call(STATE(connect_mdns));
+            }
+        }
+        return call_immediately(STATE(connect_mdns));
     }
 
-    /** Kick off connection attempt.
-     * @return next state is connected() upon successful connection
-     */
-    Action do_connect()
+    /// Takes the address from the mdns lookup and connects to it if it is
+    /// valid.
+    /// @return next step or pending connection step.
+    Action connect_mdns()
     {
-        sem_.post();
-        return wait_and_call(STATE(connected));
+        string host;
+        int port = -1;
+        if (!mdnsAddr_.get() ||
+            !SocketClient::address_to_string(mdnsAddr_.get(), &host, &port))
+        {
+            // no address to connect to.
+            return call_immediately(STATE(next_step));
+        }
+        return try_schedule_connect(
+            SocketClientParams::CONNECT_MDNS, std::move(host), port);
     }
 
-    /** Connected successfully, notify user through a callback.
-     * @return next state is do_connect() after the connection has been broken
-     */
-    Action connected()
+    /// Last state in the connection sequence, when everything failed: sleeps
+    /// until the timeout specified in the params, then goes back to the
+    /// start_connection.
+    Action wait_retry()
     {
-        /* connect successful */
-        callback_(fd_, addr_, this);
-        return wait_and_call(STATE(do_connect));
+        {
+            AtomicHolder h(this);
+            if (requestShutdown_)
+            {
+                return exit();
+            }
+            sleeping_ = true;
+        }
+        long long end_time = startTime_ + SEC_TO_NSEC(params_->retry_seconds());
+        timer_.start_absolute(end_time);
+        return wait_and_call(STATE(sleep_done));
+    }
+
+    Action sleep_done()
+    {
+        {
+            AtomicHolder h(this);
+            sleeping_ = false;
+        }
+        return call_immediately(STATE(start_connection));
     }
 
     /** Test if a given address is local.
      * @param addr address info to test
      * @return true if local, else false if not local
      */
-    bool local_test(struct addrinfo *addr);
+    static bool local_test(struct addrinfo *addr);
 
-    /** mDNS service name */
-    const char *mdns_;
+    /// When the last connection attempt was started.
+    long long startTime_;
+    /// Helper for sleeping.
+    StateFlowTimer timer_{this};
 
-    /** hostname */
-    const char *host_;
+    /// Stores the parameter structure.
+    std::unique_ptr<SocketClientParams> params_;
 
-    /** port number */
-    int port_;
+    /// callback to call on connection success
+    std::function<void(int, Notifiable *)> callback_ = nullptr;
 
-    /** callback to call on connection success */
-    std::function<void(int, struct addrinfo *, Notifiable*)> callback_ = nullptr;
+    /// Executor for synchronous (blocking) connect calls. Externally owned.
+    ExecutorBase *connectExecutor_ = nullptr;
+    /// Executor for synchronous (blocking) mDNS lookup calls. Externally
+    /// owned, may be null.
+    ExecutorBase *mdnsExecutor_ = nullptr;
 
-    /** callback to call on connection status */
-    std::function<void(Status)> statusCallback_ = nullptr;
-    
-    /** current state in the objects lifecycle */
-    volatile State state_;
+    /// Stores the sequence of operations we need to try.
+    std::array<Attempt, 5> strategyConfig_{{
+        Attempt::WAIT_RETRY,
+    }};
+    /// What is the next step in the strategy. Index into the strategyConfig_
+    /// array. Guarded by Atomic *this.
+    uint8_t strategyOffset_ : 3;
+
+    /// true if there is a pending mdns lookup operation. Guarded by
+    /// Atomic *this.
+    uint8_t mdnsPending_ : 1;
+
+    /// true if the main flow is waiting for the mdns lookup to
+    /// complete. Guarded by Atomic *this.
+    uint8_t mdnsJoin_ : 1;
+
+    /// true while we are waiting for the timer.
+    uint8_t sleeping_ : 1;
+
+    /// true if an external agent requested the flow to exit.
+    uint8_t requestShutdown_ : 1;
+
+    /// true if we are connected and waiting for a client notification to
+    /// restart.
+    uint8_t isConnected_ : 1;
+
+    /// Holds the results of the mdns lookup. null if failed (or never ran).
+    AddrinfoPtr mdnsAddr_;
+
+    BarrierNotifiable n_;
 
     /** socket descriptor */
     int fd_;
-
-    /** address info metadata */
-    struct addrinfo *addr_;
-
-    /** Semaphore for synchronizing with the helper thread */
-    OSSem sem_;
-
-    /** number of seconds between retries */
-    uint8_t retrySeconds_;
-
-    /** time in seconds that the connect is supposed to
-     *  timeout and look for a possible shutdown
-     */
-    uint8_t timeoutSeconds_;
-
-    /** disallow local connections to one's self */
-    bool disallowLocal_;
 
     DISALLOW_COPY_AND_ASSIGN(SocketClient);
 };

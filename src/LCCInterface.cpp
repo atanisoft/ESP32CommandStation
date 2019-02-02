@@ -164,7 +164,7 @@ void lccTask(void *param) {
 #if LCC_CAN_RX_PIN != -1 && LCC_CAN_TX_PIN != -1
     // Add the hardware CAN device as a bridge
     openmrn.add_can_port(
-        new Esp32HardwareCan("esp32can", (gpio_num_t)LCC_CAN_RX_PIN, (gpio_num_t)LCC_CAN_TX_PIN), false);
+        new Esp32HardwareCan("esp32can", (gpio_num_t)LCC_CAN_RX_PIN, (gpio_num_t)LCC_CAN_TX_PIN, false));
 #endif
     while(true) {
         // if the TCP/IP listener has a new client accept it and add it

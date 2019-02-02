@@ -88,7 +88,16 @@ public:
      */
     ~MDNS()
     {
+#if defined(__linux__)
+        shutdown();
+#endif
     }
+
+#if defined(__linux__)
+    /// Requests that all exported services be cancelled, helper thread to exit,
+    /// and all memory cleaned up. Blocks until the exit is completed.
+    void shutdown();
+#endif
 
     /** Publish an mDNS name.
      * @param name local "username" or "nodename" of the service

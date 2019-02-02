@@ -66,4 +66,28 @@ public:
     }
 };
 
+/** A notifiable class that calls a particular function object once when it is
+ * invoked, then deletes itself. */
+class CallbackExecutable : public Executable
+{
+public:
+    /// Constructor. @param body is the function object that will be called
+    /// when *this is executed, just before *this is deleted.
+    CallbackExecutable(std::function<void()> &&body)
+        : body_(std::move(body))
+    {
+    }
+
+    /// Calls the notification method.
+    void run() override
+    {
+        body_();
+        delete this;
+    }
+
+private:
+    /// Function object (callback) to call.
+    std::function<void()> body_;
+};
+
 #endif // _EXECUTOR_EXECUTABLE_HXX_

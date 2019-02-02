@@ -222,10 +222,12 @@ int SimpleCanStackBase::create_config_file_if_needed(
 
     // Clears the file, preserving the node name and desription if any.
     if (extend && !reset) {
-        lseek(fd, statbuf.st_size, SEEK_SET);
+        auto ret = lseek(fd, statbuf.st_size, SEEK_SET);
+        HASSERT(ret == statbuf.st_size);
         file_size -= statbuf.st_size; // Clears nothing, just extends with 0xFF.
     } else if (statbuf.st_size >= 128) {
-        lseek(fd, 128, SEEK_SET);
+        auto ret = lseek(fd, 128, SEEK_SET);
+        HASSERT(ret == 128);
         file_size -= 128; // Clears less.
     } else {
         lseek(fd, 0, SEEK_SET);

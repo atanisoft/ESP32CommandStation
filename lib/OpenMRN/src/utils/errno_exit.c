@@ -44,6 +44,10 @@
 /// @param where C-style string describing where the error has happened. Will
 /// be printed too.
 ///
-void print_errno_and_exit(const char* where) {
-  LOG(FATAL, "%s: error (%d) %s\n", where, errno, strerror(errno));
+void print_errno_and_exit(const char *where)
+{
+    volatile int last_errno;
+    last_errno = errno;
+    (void)last_errno;
+    LOG(FATAL, "%s: error (%d) %s\n", where, errno, strerror(errno));
 }

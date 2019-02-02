@@ -53,6 +53,12 @@
 #define USE_WIFI
 // #define USE_CAN
 
+// uncomment the line below to have this node advertise itself via mDNS as a
+// hub. When this is enabled, other devices can find and connect to this node
+// via mDNS treating it as a hub. Note this requires USE_WIFI to be enabled
+// above and should only be enabled on one node which is acting as a hub.
+// #define BROADCAST_MDNS
+
 // uncomment the line below to have all packets printed to the Serial
 // output. This is not recommended for production deployment.
 //#define PRINT_PACKETS
@@ -193,7 +199,7 @@ typedef GpioInitializer<
     IO0_Pin,  IO1_Pin,  IO2_Pin,  IO3_Pin,  // outputs 0-3
     IO4_Pin,  IO5_Pin,  IO6_Pin,  IO7_Pin,  // outputs 4-7
     IO8_Pin,  IO9_Pin,  IO10_Pin, IO11_Pin, // inputs 0-3
-    IO12_Pin, IO13_Pin, IO14_Pin, IO15_Pin  // inputs 4-7
+    IO12_Pin, IO13_Pin, IO14_Pin, IO15_Pin // inputs 4-7
     > GpioInit;
 
 // The producers need to be polled repeatedly for changes and to execute the
@@ -344,7 +350,7 @@ void setup()
         new Esp32HardwareCan("esp32can", CAN_RX_PIN, CAN_TX_PIN));
 #endif // USE_CAN
 
-#if defined(USE_WIFI)
+#if defined(USE_WIFI) && defined(BROADCAST_MDNS)
     // Broadcast this node's hostname with the mDNS service name
     // for a TCP GridConnect endpoint.
     MDNS.addService(openlcb::TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN,

@@ -208,6 +208,7 @@ public:
     virtual ~UpstreamConnectionClient()
     {
     }
+
 private:
     /// Implementation of connection method.
     void try_connect() OVERRIDE
