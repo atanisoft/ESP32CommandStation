@@ -29,6 +29,7 @@ The DCC++ESP32 Command Station currently supports three types of Motor Boards.
 Building the DCC++ESP32 code is easiest using PlatformIO IDE which can be installed from http://platformio.org/platformio-ide. When installing PlatformIO IDE be sure to add Python to the default path (if prompted). Using [Atom](https://atom.io/) or [Visual Studio Code](https://code.visualstudio.com/) does not make that much of a difference in compilation/usage of the included PlatformIO project file. Currently all development and testing is conducted with [Visual Studio Code](https://code.visualstudio.com/).
 
 The DCC++ESP32 Command Station consists of multiple modules, some of which are required and others are optional. The list below covers the various modules:
+
 | Module | Description |
 | ------ | ----------- |
 | WiFi | This is a required module as it makes the DCC++ESP32 Command Station accessible to JMRI, throttles or WiFi enabled devices via the web interface. |
@@ -44,6 +45,7 @@ With only two modules being required out-of-box the configuration is relatively 
 
 ### Configuring the WiFi module
 Open include/Config_WiFi.h and set the values for the following parameters as required:
+
 | PARAM | Description |
 | ----- | ----------- |
 | WIFI_SSID | This is the WiFi Access Point the Command Station should connect to on startup. |
@@ -52,6 +54,7 @@ Open include/Config_WiFi.h and set the values for the following parameters as re
 
 #### Static IP vs DHCP assigned IP (Optional)
 If you prefer to use a static IP instead of DHCP you can set the static IP details in these parameters:
+
 | PARAM | Description |
 | ----- | ----------- |
 | WIFI_STATIC_IP_ADDRESS | This is the static IP for the Command Station. |
@@ -61,6 +64,7 @@ If you prefer to use a static IP instead of DHCP you can set the static IP detai
 
 #### Remote Sensor support (Optional)
 By default the Command Station supports remote sensors reporting their status via the http/tcp interfaces. If you prefer to have the Command Station perform a scan for any remote sensors on startup you can configure this behavior with the following options:
+
 | PARAM | Description |
 | ----- | ----------- |
 | SCAN_REMOTE_SENSORS_ON_STARTUP | By uncommenting this line it will trigger a WiFi AP scan on startup searching for any WiFi Access Points with the prefix defined in REMOTE_SENSORS_PREFIX. |
@@ -70,6 +74,7 @@ By default the Command Station supports remote sensors reporting their status vi
 
 ### Configuring the MotorBoard module
 Open include/Config_MotorBoard.h and adjust values to match your configuration, the defaults are set for an Arduino Uno form factor ESP32 with an attached Arduino motor shield.
+
 | PARAM | Description |
 | ----- | ----------- |
 | MOTORBOARD_NAME_OPS | This is the name for the Operations track DCC signal. |
@@ -90,6 +95,7 @@ Open include/Config_MotorBoard.h and adjust values to match your configuration, 
 
 #### Supported Motor Boards
 When configuring the motor board module you will need to pick the type of motor board that is being used, the following table shows the supported options and their current limits:
+
 | MOTORBOARD TYPE | Name | Max Current (Amps) | Current Limit (Amps) |
 | --------------- | ---- | ------------------ | -------------------- |
 | ARDUINO_SHIELD | Arduino Motor Shield (L298 compatible) | 2 Amp | 980mA |
@@ -99,6 +105,7 @@ When configuring the motor board module you will need to pick the type of motor 
 
 #### Supported Analog Channels
 With the ESP32 there are 16 analog inputs, unfortunately many of these are not reliable when WiFi is active and only those connected to ADC1 should be used. The table below provides the channel names and pin numbers for them:
+
 | CHANNEL | PIN |
 | ------- | --- |
 | ADC1_CHANNEL_0 | 36 (listed as SVP or VP on some ESP32 boards) |
@@ -115,6 +122,7 @@ Only one of these modules can be included at a time. Both will provide similar i
 
 #### OLED Configuration
 If the ESP32 board has a built in OLED screen it may automatically be usable, this depends on the board being configured correctly in the [arduino-esp32](https://github.com/espressif/arduino-esp32) release. Currently only ome of the Heltec, TTGO or D-Duino-32 boards provide the automatic configuration. If the OLED does not work out-of-box with these boards or if your board does not define OLED_SDA and OLED_SCL, you can configure it via the parameters below.
+
 | PARAM | Description |
 | ----- | ----------- |
 | OLED_CHIPSET | This configures how the Command Station will talk to the OLED screen, currently only SH1106 and SSD1306 chips are supported. |
@@ -134,6 +142,7 @@ If the ESP32 board has a built in OLED screen it may automatically be usable, th
 
 ### Configuring the LocoNet module (Optional)
 If you have an existing LocoNet bus the DCC++ESP32 Command Station can interact with these devices. Currently only the following OP Codes are implemented:
+
 | OPC | Description |
 | --- | ----------- |
 | OPC_GPON | Turns track power on. |
@@ -146,6 +155,7 @@ If you have an existing LocoNet bus the DCC++ESP32 Command Station can interact 
 | OPC_WR_SL_DATA | This is currently limited to only the Programming Track support. Fast Clock or other features may be implemented in the future. |
 
 The following are not implemented but are planned:
+
 | OPC | Description |
 | --- | ----------- |
 | OPC_INPUT_REP | Sensor inputs |
@@ -176,6 +186,7 @@ LCC is the Layout Command Control standard from the NMRA. The LCC module allows 
 
 #### Supported LCC well-known event IDs
 When this module is enabled the Command Station will receive and respond to certain LCC well-known events listed below with their function:
+
 | Event Name | Event ID (hex) | Description |
 | ---------- | -------------- | ----------- |
 | EMERGENCY_OFF_EVENT | 01.00.00.00.00.00.FF.FF | Turns off track power |
