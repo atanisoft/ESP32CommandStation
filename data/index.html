@@ -141,10 +141,6 @@
 							</table>
 						</div>
 						<div class="ui-grid-solo">
-							<label for="protocolConsole">DCC++ Protocol Console:</label>
-							<textarea id="protocolConsole" readonly="true" overflow="hidden"></textarea>
-						</div>
-						<div class="ui-grid-solo">
 							<input type="button" id="bs-persist-config" value="Save Config" class='ui-button-inline'/>
 							<input type="button" id="bs-clear-config" value="Clear Config" class='ui-button-inline'/>
 						</div>
@@ -485,7 +481,6 @@
 		</div>
 	</div>
 	<script type="text/javascript">
-var webSocket;
 var fireLocoEvents = true;
 var firePowerEvents = true;
 function createButton({type, id, title='',}= {}) {
@@ -532,7 +527,6 @@ function initPage() {
 			},
 			error : disableS88Tab()
 		});
-		setupSocket();
 		$.mobile.loading("hide");
 	} else {
 		disableS88Tab();
@@ -547,23 +541,6 @@ function initPage() {
 	$('#clock').clock({'format':'24'});
 	setupThrottle();
 	setupBaseStation();
-}
-function setupSocket() {
-	if(!webSocket || !webSocket.isConnected()) {
-		var socketUrl = $.mobile.path.get($.mobile.path.getDocumentBase()).replace("http", "ws");
-		if(socketUrl.endsWith("/")) {
-			socketUrl += "ws";
-		} else {
-			socketUrl += "/ws";
-		}
-		console.log('connecting to:' + socketUrl)
-		webSocket = $.simpleWebSocket({url: socketUrl, dataType: 'text'});
-		webSocket.listen(function(data) {
-			$('#protocolConsole').append(data.replace('<', '&lt;') + "\n");
-			$('#protocolConsole').scrollBottom();
-		});
-		webSocket.connect();
-	}
 }
 function enableTrackPower() {
 	$.ajax({url: '/power?overallState=true', method: 'PUT'});
