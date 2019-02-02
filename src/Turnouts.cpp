@@ -171,7 +171,7 @@ bool TurnoutManager::remove(const uint16_t id) {
   return false;
 }
 
-Turnout *TurnoutManager::getTurnout(const uint16_t id) {
+Turnout *TurnoutManager::getTurnoutByID(const uint16_t id) {
   Turnout *retval = nullptr;
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == id) {

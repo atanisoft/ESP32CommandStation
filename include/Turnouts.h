@@ -80,7 +80,7 @@ public:
   static void showStatus();
   static void createOrUpdate(const uint16_t, const uint16_t, const int8_t, const TurnoutOrientation=TurnoutOrientation::LEFT);
   static bool remove(const uint16_t);
-  static Turnout *getTurnout(const uint16_t);
+  static Turnout *getTurnoutByID(const uint16_t);
   static Turnout *getTurnoutByAddress(const uint16_t);
   static uint16_t getTurnoutCount();
 };

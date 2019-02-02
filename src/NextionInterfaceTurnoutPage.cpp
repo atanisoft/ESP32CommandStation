@@ -176,7 +176,7 @@ void NextionTurnoutPage::displayPage() {
   uint16_t turnoutsToDisplay = min(TurnoutManager::getTurnoutCount() - _turnoutStartIndex, TURNOUTS_PER_PAGE);
   // update the number of turnouts we can display on the page
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
-    auto turnout = TurnoutManager::getTurnout(_turnoutStartIndex + componentIndex);
+    auto turnout = TurnoutManager::getTurnoutByID(_turnoutStartIndex + componentIndex);
     if(turnout) {
       _turnoutButtons[componentIndex].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
       _turnoutButtons[componentIndex].show();

@@ -343,7 +343,7 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
     JsonArray &array = jsonResponse->getRoot();
     TurnoutManager::getState(array);
   } else if (request->method() == HTTP_GET) {
-    auto turnout = TurnoutManager::getTurnout(request->arg(JSON_ID_NODE.c_str()).toInt());
+    auto turnout = TurnoutManager::getTurnoutByID(request->arg(JSON_ID_NODE.c_str()).toInt());
     if(turnout) {
       turnout->toJson(jsonResponse->getRoot());
     } else {
@@ -355,7 +355,7 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
     int8_t turnoutSubAddress = request->arg(JSON_SUB_ADDRESS_NODE.c_str()).toInt();
     TurnoutOrientation orientation = (TurnoutOrientation)request->arg(JSON_ORIENTATION_NODE.c_str()).toInt();
     TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress, orientation);
-    auto turnout = TurnoutManager::getTurnout(request->arg(JSON_ID_NODE.c_str()).toInt());
+    auto turnout = TurnoutManager::getTurnoutByID(request->arg(JSON_ID_NODE.c_str()).toInt());
     if(turnout) {
       turnout->toJson(jsonResponse->getRoot());
     } else {
