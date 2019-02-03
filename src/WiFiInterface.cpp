@@ -45,10 +45,9 @@ public:
 
   void update() {
     uint8_t buf[128];
-    //log_d("[%s] checking for available data", _client.remoteIP().toString().c_str());
     while (_client.available()) {
       auto len = _client.available();
-      log_d("[%s] reading %d bytes", _client.remoteIP().toString().c_str(), len);
+      log_v("[%s] reading %d bytes", _client.remoteIP().toString().c_str(), len);
       auto added = _client.readBytes(&buf[0], len < 128 ? len : 128);
       feed(&buf[0], added);
     }
