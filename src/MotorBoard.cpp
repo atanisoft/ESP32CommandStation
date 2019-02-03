@@ -129,7 +129,7 @@ void MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin
   switch(type) {
     case ARDUINO_SHIELD:
       maxAmps = 2000;
-      triggerAmps = 980;
+      triggerAmps = 1750;
       break;
     case POLOLU:
       maxAmps = 2500;
@@ -145,8 +145,8 @@ void MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin
       break;
   }
   // programming tracks need a much lower rate limit, the value below
-  // gives a 20% buffer over RCN-216 due to the nature of the esp32
-  // analog read instability.
+  // gives a 20% buffer over RCN-216. the programming track code itself
+  // will limit to ~250mA.
   if(programmingTrack) {
     triggerAmps = 300;
   }
