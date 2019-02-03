@@ -108,8 +108,14 @@ void NextionAddressPage::addNumber(const NextionButton *button) {
     if(button == &_buttons[index]) {
       _newAddressString += String(buttonMap[index]);
       _newAddress.setTextAsNumber(_newAddressString.toInt());
-      _boardAddress.setTextAsNumber((_newAddressString.toInt() + 3) / 4);                                         // = (_boardAddress + 3) / 4;
-      _indexAddress.setTextAsNumber(_newAddressString.toInt()-(((_newAddressString.toInt() + 3) / 4) * 4) + 3); // = (_address - (_boardAddress * 4)) + 3;
+      // if it is a turnout, calculate and display the board address and index
+      if(_addressPic.getPictureID() == TURNOUT_PIC) {
+        uint16_t boardAddress = 0;
+        uint8_t boardIndex = 0;
+        calculateTurnoutBoardAddressAndIndex(&boardAddress, &boardIndex, _newAddressString.toInt());
+        _boardAddress.setTextAsNumber(boardAddress);
+        _indexAddress.setTextAsNumber(boardIndex);
+      }
     }
   }
 }
@@ -149,14 +155,14 @@ void NextionAddressPage::displayPage() {
   {
     _address = 0;
     _addressPic.setPictureID(TURNOUT_PIC);
+    _boardAddress.setTextAsNumber(0);
+    _indexAddress.setTextAsNumber(0);
     _boardAddress.show();
     _indexAddress.show();
     _orientationButton.show();
     _currentAddress.hide();
   }
   _newAddressString = "";
-  _boardAddress.setTextAsNumber(0);
-  _indexAddress.setTextAsNumber(0);
   //_currentAddress.setTextAsNumber(_address);
   _newAddress.setTextAsNumber(0);
 }

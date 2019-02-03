@@ -195,13 +195,18 @@ uint16_t TurnoutManager::getTurnoutCount() {
   return turnouts.length();
 }
 
+void calculateTurnoutBoardAddressAndIndex(uint16_t *boardAddress, uint8_t *boardIndex, uint16_t address) {
+  *boardAddress = (address + 3) / 4;
+  *boardIndex = (address - (*boardAddress * 4)) + 3;
+}
+
 Turnout::Turnout(uint16_t turnoutID, uint16_t address, int8_t index,
   bool thrown, TurnoutOrientation orientation) : _turnoutID(turnoutID),
   _address(address), _index(index), _boardAddress(0), _thrown(thrown),
   _orientation(orientation) {
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
-    calculateBoardAddressAndIndex();
+    calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
     log_i("Turnout %d created using address %d", turnoutID, address);
   } else {
     log_i("Turnout %d created using address %d/%d", turnoutID, address, index);
@@ -217,7 +222,7 @@ Turnout::Turnout(JsonObject &json) {
   _boardAddress = 0;
   if(json.get<int>(JSON_SUB_ADDRESS_NODE) == -1) {
     // convert the provided decoder address to a board address and accessory index
-    calculateBoardAddressAndIndex();
+    calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
     log_i("Turnout(%d, %d)", _turnoutID, _address);
   } else {
     log_i("Turnout(%d, %d, %d)", _turnoutID, _address, _index);
@@ -230,7 +235,7 @@ void Turnout::update(uint16_t address, int8_t index, TurnoutOrientation orientat
   _orientation = orientation;
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
-    calculateBoardAddressAndIndex();
+    calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
     log_i("Turnout %d updated to address %d", _turnoutID, _address);
   } else {
     log_i("Turnout %d updated to address %d/%d", _turnoutID, _address, _index);

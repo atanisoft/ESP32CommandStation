@@ -224,10 +224,16 @@ void NextionTurnoutPage::addNewTurnoutAddress(uint32_t newAddress) {
 void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
   for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
     if(&_turnoutButtons[slot] == button) {
-      auto turnout = TurnoutManager::getTurnoutByAddress(_toAddress[slot].getTextAsNumber());
-      log_i("Turnout slot %d, address %d, orientation %d, state %d", slot, turnout->getAddress(), (turnout->getOrientation()), (turnout->isThrown()));
-      _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
-      turnout->set(!turnout->isThrown());
+      auto turnoutAddress = _toAddress[slot].getTextAsNumber();
+      log_i("Looking for address %d in slot %d", turnoutAddress, slot);
+      auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
+      if(turnout) {
+        log_i("Turnout orientation %d, state %d", slot, turnout->getAddress(), (turnout->getOrientation()), (turnout->isThrown()));
+        _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
+        turnout->set(!turnout->isThrown());
+      } else {
+        log_w("Turnout not found");
+      }
     }
   }
 }

@@ -26,6 +26,8 @@ enum TurnoutOrientation {
   MULTI=8
 };
 
+void calculateTurnoutBoardAddressAndIndex(uint16_t *boardAddress, uint8_t *boardIndex, uint16_t address);
+
 class Turnout {
 public:
   Turnout(uint16_t, uint16_t, int8_t, bool=false, TurnoutOrientation=TurnoutOrientation::LEFT);
@@ -63,10 +65,6 @@ private:
   uint16_t _boardAddress;
   bool _thrown;
   TurnoutOrientation _orientation;
-  void calculateBoardAddressAndIndex() {
-    _boardAddress = (_address + 3) / 4;
-    _index = (_address - (_boardAddress * 4)) + 3;
-  }
 };
 
 class TurnoutManager {
