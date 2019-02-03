@@ -121,11 +121,11 @@ void NextionAddressPage::addNumber(const NextionButton *button) {
 }
 void NextionAddressPage::changeOrientation(const NextionButton *button) {
   if (_orientation == 0) {
-    _orientation = 2;
+    _orientation = TurnoutOrientation::RIGHT;
     _orientationButton.setPictureID(LHTO);
   }
   else{
-    _orientation = 0;
+    _orientation = TurnoutOrientation::LEFT;
     _orientationButton.setPictureID(RHTO);
   }
   log_i("Orientation set to %d", _orientation);

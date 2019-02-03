@@ -115,6 +115,9 @@ public:
   uint32_t getNewAddress() {
     return _newAddressString.toInt();
   }
+  TurnoutOrientation getOrientation() {
+    return _orientation;
+  }
   virtual void refreshPage() {}
 protected:
   virtual void init() {}
@@ -131,7 +134,7 @@ private:
   NextionText _currentAddress;
   NextionText _newAddress;
   uint32_t _address;
-  uint8_t _orientation;
+  TurnoutOrientation _orientation;
   String _newAddressString;
 };
 

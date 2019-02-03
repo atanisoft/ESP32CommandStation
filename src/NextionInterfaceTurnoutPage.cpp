@@ -228,7 +228,7 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
       log_i("Looking for address %d in slot %d", turnoutAddress, slot);
       auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
       if(turnout) {
-        log_i("Turnout orientation %d, state %d", slot, turnout->getAddress(), (turnout->getOrientation()), (turnout->isThrown()));
+        log_i("Turnout orientation %d, state %d", turnout->getOrientation(), turnout->isThrown());
         _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
         turnout->set(!turnout->isThrown());
       } else {
