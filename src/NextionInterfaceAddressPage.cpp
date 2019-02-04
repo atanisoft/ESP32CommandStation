@@ -74,6 +74,7 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
   _currentAddress(nextion, ADDRESS_PAGE, oldaddr, "OldAddr"),
   _newAddress(nextion, ADDRESS_PAGE, newaddr, "NewAddr"),
   _address(0),
+  _orientation(TurnoutOrientation::LEFT),
   _newAddressString("") {
   for(int index = 0; index < 10; index++) {
     _buttons[index].attachCallback([](NextionEventType type, INextionTouchable *widget) {
@@ -122,12 +123,12 @@ void NextionAddressPage::addNumber(const NextionButton *button) {
   }
 }
 void NextionAddressPage::changeOrientation(const NextionButton *button) {
-  if (_orientation == 0) {
-    _orientation = TurnoutOrientation::RIGHT;
+  if (_orientation == TurnoutOrientation::RIGHT) {
+    _orientation = TurnoutOrientation::LEFT;
     _orientationButton.setPictureID(LHTO);
   }
   else{
-    _orientation = TurnoutOrientation::LEFT;
+    _orientation = TurnoutOrientation::RIGHT;
     _orientationButton.setPictureID(RHTO);
   }
   log_i("Orientation set to %d", _orientation);

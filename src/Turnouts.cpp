@@ -146,14 +146,14 @@ void TurnoutManager::showStatus() {
   }
 }
 
-Turnout *TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t subAddress, const TurnoutOrientation orientation) {
+Turnout *TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t index, const TurnoutOrientation orientation) {
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == id) {
-      turnout->update(address, subAddress, orientation);
+      turnout->update(address, index, orientation);
       return turnout;
     }
   }
-  turnouts.add(new Turnout(id, address, subAddress, false, orientation));
+  turnouts.add(new Turnout(id, address, index, false, orientation));
   return getTurnoutByID(id);
 }
 
