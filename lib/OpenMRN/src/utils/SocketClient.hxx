@@ -147,6 +147,11 @@ public:
      */
     void shutdown()
     {
+        LOG(VERBOSE,
+            "socketclient: sync shutdown isconn %d slp %d rqshut %d mdnsP %d"
+            "mdnsJ %d isShut %d",
+            isConnected_, sleeping_, requestShutdown_, mdnsPending_, mdnsJoin_,
+            is_shutdown());
         start_shutdown();
         while (true)
         {
@@ -179,6 +184,11 @@ public:
      */
     void start_shutdown()
     {
+        LOG(VERBOSE,
+            "socketclient: start shutdown isconn %d slp %d rqshut %d mdnsP %d"
+            "mdnsJ %d isShut %d",
+            isConnected_, sleeping_, requestShutdown_, mdnsPending_, mdnsJoin_,
+            is_shutdown());
         {
             AtomicHolder h(this);
             if (requestShutdown_)
