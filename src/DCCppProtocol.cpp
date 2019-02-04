@@ -34,7 +34,7 @@ public:
     configStore.clear();
     TurnoutManager::clear();
     SensorManager::clear();
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
     S88BusManager::clear();
 #endif
     OutputManager::clear();
@@ -56,7 +56,7 @@ class ConfigStore : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
     bool reEnable = stopDCCSignalGenerators();
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
     wifiInterface.printf(F("<e %d %d %d %d %d>"),
       TurnoutManager::store(),
       SensorManager::store(),

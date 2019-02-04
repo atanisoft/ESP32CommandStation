@@ -47,7 +47,7 @@ void GenericMotorBoard::powerOn(bool announce) {
   digitalWrite(_enablePin, HIGH);
   _state = true;
 	if(announce) {
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+#if LOCONET_ENABLED
     locoNet.reportPower(true);
 #endif
 		wifiInterface.printf(F("<p1 %s>"), _name.c_str());
@@ -60,12 +60,12 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
   _state = false;
 	if(announce) {
 		if(overCurrent) {
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+#if LOCONET_ENABLED
       locoNet.send(OPC_IDLE, 0, 0);
 #endif
 			wifiInterface.printf(F("<p2 %s>"), _name.c_str());
 		} else {
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+#if LOCONET_ENABLED
       locoNet.reportPower(false);
 #endif
 			wifiInterface.printf(F("<p0 %s>"), _name.c_str());

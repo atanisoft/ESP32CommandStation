@@ -78,6 +78,33 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "Config.h"
 
+// initialize default values for various pre-compiler checks to simplify logic in a lot of places
+#if (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD) || (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED)
+#define INFO_SCREEN_ENABLED true
+#else
+#define INFO_SCREEN_ENABLED false
+#endif
+
+#ifndef NEXTION_ENABLED
+#define NEXTION_ENABLED false
+#endif
+
+#ifndef HC12_RADIO_ENABLED
+#define HC12_RADIO_ENABLED false
+#endif
+
+#ifndef LCC_ENABLED
+#define LCC_ENABLED false
+#endif
+
+#ifndef LOCONET_ENABLED
+#define LOCONET_ENABLED false
+#endif
+
+#ifndef S88_ENABLED
+#define S88_ENABLED false
+#endif
+
 #include "ConfigurationManager.h"
 #include "WiFiInterface.h"
 #include "InfoScreen.h"
@@ -88,13 +115,14 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "Locomotive.h"
 #include "Outputs.h"
 #include "NextionInterface.h"
-#if defined(LCC_ENABLED) && LCC_ENABLED
+#if LCC_ENABLED
+#include <OpenMRN.h>
 #include "LCCInterface.h"
 #endif
 
 extern std::vector<uint8_t> restrictedPins;
 
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+#if LOCONET_ENABLED
 #include <LocoNet2/LocoNetESP32UART.h>
 extern LocoNetESP32Uart locoNet;
 #endif
@@ -146,11 +174,11 @@ void esp32_restart();
 #error "Invalid Configuration detected, it is not supported to include both OLED and LCD support."
 #endif
 
-#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+#if NEXTION_ENABLED
   #if NEXTION_RX_PIN == NEXTION_TX_PIN
   #error "Invalid Configuration detected, NEXTION_RX_PIN and NEXTION_TX_PIN must be unique."
   #endif
-  #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+  #if HC12_RADIO_ENABLED
     #if NEXTION_UART_NUM == HC12_UART_NUM
     #error "Invalid Configuration detected, the Nextion and HC12 can not share the UART interface."
     #endif
@@ -161,7 +189,7 @@ void esp32_restart();
     #error "Invalid Configuration detected, the Nextion and HC12 can not share the same TX Pin."
     #endif
   #endif
-  #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+  #if LOCONET_ENABLED
     #if NEXTION_UART_NUM == LOCONET_UART
     #error "Invalid Configuration detected, the Nextion and LocoNet can not share the UART interface."
     #endif
@@ -172,7 +200,7 @@ void esp32_restart();
     #error "Invalid Configuration detected, the Nextion and LocoNet can not share the same TX Pin."
     #endif
   #endif
-  #if defined(S88_ENABLED) && S88_ENABLED
+  #if S88_ENABLED
     #if S88_CLOCK_PIN == NEXTION_RX_PIN
     #error "Invalid Configuration detected, the Nextion RX Pin and S88_CLOCK_PIN must be unique."
     #endif
@@ -210,11 +238,11 @@ void esp32_restart();
   #endif
 #endif
 
-#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+#if HC12_RADIO_ENABLED
   #if HC12_RX_PIN == HC12_TX_PIN
   #error "Invalid Configuration detected, HC12_RX_PIN and HC12_TX_PIN must be unique."
   #endif
-  #if defined(S88_ENABLED) && S88_ENABLED
+  #if S88_ENABLED
     #if S88_CLOCK_PIN == HC12_RX_PIN
     #error "Invalid Configuration detected, the HC12_RX_PIN and S88_CLOCK_PIN must be unique."
     #endif
@@ -234,7 +262,7 @@ void esp32_restart();
     #error "Invalid Configuration detected, the HC12_TX_PIN and S88_LOAD_PIN must be unique."
     #endif
   #endif
-  #if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+  #if LOCONET_ENABLED
     #if LOCONET_UART == HC12_UART_NUM
     #error "Invalid Configuration detected, the LocoNet and HC12 can not share the UART interface."
     #endif
@@ -263,8 +291,8 @@ void esp32_restart();
   #endif
 #endif
 
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
-  #if defined(S88_ENABLED) && S88_ENABLED
+#if LOCONET_ENABLED
+  #if S88_ENABLED
     #if S88_CLOCK_PIN == LOCONET_RX_PIN
     #error "Invalid Configuration detected, the LOCONET_RX_PIN and S88_CLOCK_PIN must be unique."
     #endif
@@ -302,9 +330,9 @@ void esp32_restart();
   #endif
 #endif
 
-#if defined(LCC_ENABLED) && LCC_ENABLED
-  #if defined(LCC_CAN_RX_PIN) && LCC_CAN_RX_PIN != -1
-    #if defined(S88_ENABLED) && S88_ENABLED
+#if LCC_ENABLED
+  #if LCC_CAN_RX_PIN != -1
+    #if S88_ENABLED
       #if S88_CLOCK_PIN == LCC_CAN_RX_PIN
       #error "Invalid Configuration detected, LCC_CAN_RX_PIN and S88_CLOCK_PIN must be unique."
       #endif
@@ -326,8 +354,8 @@ void esp32_restart();
       #endif
     #endif
   #endif
-  #if defined(LCC_CAN_TX_PIN) && LCC_CAN_TX_PIN != -1
-    #if defined(S88_ENABLED) && S88_ENABLED
+  #if LCC_CAN_TX_PIN != -1
+    #if S88_ENABLED
       #if S88_CLOCK_PIN == LCC_CAN_TX_PIN
       #error "Invalid Configuration detected, LCC_CAN_TX_PIN and S88_CLOCK_PIN must be unique."
       #endif
@@ -349,7 +377,7 @@ void esp32_restart();
       #endif
     #endif
   #endif
-  #if defined(LCC_CAN_RX_PIN) && defined(LCC_CAN_TX_PIN) && LCC_CAN_RX_PIN == LCC_CAN_TX_PIN && LCC_CAN_RX_PIN != -1 && LCC_CAN_TX_PIN != -1
+  #if LCC_CAN_RX_PIN == LCC_CAN_TX_PIN && LCC_CAN_RX_PIN != -1 && LCC_CAN_TX_PIN != -1
     #error "Invalid Configuration detected, LCC_CAN_RX_PIN and LCC_CAN_TX_PIN must be unique."
   #endif
 #endif

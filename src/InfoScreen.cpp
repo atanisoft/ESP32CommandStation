@@ -23,10 +23,18 @@ COPYRIGHT (c) 2017,2018 Mike Dunston
 #ifndef INFO_SCREEN_SCL_PIN
 #define INFO_SCREEN_SCL_PIN SCL
 #endif
+#ifndef INFO_SCREEN_OLED
+#define INFO_SCREEN_OLED false
+#endif
+
+#ifndef INFO_SCREEN_LCD
+#define INFO_SCREEN_LCD false
+#endif
 
 #include <Wire.h>
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+#if INFO_SCREEN_OLED
 #include "InfoScreen_OLED_font.h"
+#define INFO_SCREEN_I2C_TEST_ADDRESS INFO_SCREEN_OLED_I2C_ADDRESS
 #if OLED_CHIPSET == SH1106
 #include <SH1106Wire.h>
 SH1106Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
@@ -34,14 +42,15 @@ SH1106Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, INFO_SCREEN_SDA_PIN, INFO_S
 #include <SSD1306Wire.h>
 SSD1306Wire oledDisplay(INFO_SCREEN_OLED_I2C_ADDRESS, INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
 #endif
-#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+#elif INFO_SCREEN_LCD
+#define INFO_SCREEN_I2C_TEST_ADDRESS INFO_SCREEN_LCD_I2C_ADDRESS
 #include <LiquidCrystal_PCF8574.h>
 LiquidCrystal_PCF8574 lcdDisplay(INFO_SCREEN_LCD_I2C_ADDRESS);
 #endif
 
 bool InfoScreen::_enabled;
 
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+#if INFO_SCREEN_OLED
 String infoScreenLines[INFO_SCREEN_OLED_LINES];
 void redrawOLED() {
   oledDisplay.clear();
@@ -54,15 +63,11 @@ void redrawOLED() {
 
 void InfoScreen::init() {
   _enabled = false;
-#if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD)
+#if INFO_SCREEN_ENABLED
   bool scanI2C = false;
-#endif
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
-  for(int i = 0; i < INFO_SCREEN_OLED_LINES; i++) {
-    infoScreenLines[i] = "";
-  }
   Wire.begin(INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
 
+  // if we have a reset pin defined, attempt to reset the I2C screen
 #if defined(INFO_SCREEN_RESET_PIN)
   pinMode(INFO_SCREEN_RESET_PIN, OUTPUT);
   digitalWrite(INFO_SCREEN_RESET_PIN, LOW);
@@ -70,10 +75,21 @@ void InfoScreen::init() {
   digitalWrite(INFO_SCREEN_RESET_PIN, HIGH);
 #endif
 
-  // Check that we can find the OLED screen by its address before attempting
-  // to use/configure it.
-  Wire.beginTransmission(INFO_SCREEN_OLED_I2C_ADDRESS);
+  // Check that we can find the screen by its address before attempting to
+  // use/configure it.
+  Wire.beginTransmission(INFO_SCREEN_I2C_TEST_ADDRESS);
   if(Wire.endTransmission() == 0) {
+    _enabled = true;
+  } else {
+    ::printf("OLED/LCD screen not found at 0x%x\n", INFO_SCREEN_I2C_TEST_ADDRESS);
+    scanI2C = true;
+  }
+
+#if INFO_SCREEN_OLED
+  for(int i = 0; i < INFO_SCREEN_OLED_LINES; i++) {
+    infoScreenLines[i] = "";
+  }
+  if(_enabled) {
     oledDisplay.init();
     oledDisplay.setContrast(255);
   	if(INFO_SCREEN_OLED_VERTICAL_FLIP == true) {
@@ -83,26 +99,16 @@ void InfoScreen::init() {
     // NOTE: If the InfoScreen_OLED_font.h file is modified with a new font
     // definition, the name of the font needs to be declared on the next line.
   	oledDisplay.setFont(Monospaced_plain_10);
-    _enabled = true;
-  } else {
-    ::printf("OLED screen not found at 0x%x\n", INFO_SCREEN_OLED_I2C_ADDRESS);
-    scanI2C = true;
   }
-#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
-  Wire.begin(INFO_SCREEN_SDA_PIN, INFO_SCREEN_SCL_PIN);
+#elif INFO_SCREEN_LCD
   // Check that we can find the LCD by its address before attempting to use it.
-  Wire.beginTransmission(INFO_SCREEN_LCD_I2C_ADDRESS);
-  if(Wire.endTransmission() == 0) {
+  if(_enabled) {
     lcdDisplay.begin(INFO_SCREEN_LCD_COLUMNS, INFO_SCREEN_LCD_LINES);
     lcdDisplay.setBacklight(255);
     lcdDisplay.clear();
     _enabled = true;
-  } else {
-    ::printf("LCD screen not found at 0x%x\n", INFO_SCREEN_LCD_I2C_ADDRESS);
-    scanI2C = true;
   }
 #endif
-#if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED) || (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD)
   if(!_enabled) {
     log_w("Unable to initialize InfoScreen");
     if(scanI2C) {
@@ -122,14 +128,14 @@ void InfoScreen::init() {
       }
     }
   }
-#endif
+#endif // INFO_SCREEN_ENABLED
 }
 
 void InfoScreen::clear() {
   if(_enabled) {
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+#if INFO_SCREEN_OLED
     oledDisplay.clear();
-#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+#elif INFO_SCREEN_LCD
     lcdDisplay.clear();
 #endif
   }
@@ -142,10 +148,10 @@ void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...
   vsnprintf_P(buf, sizeof(buf), (const char *)format, args);
   va_end(args);
   if(_enabled) {
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+#if INFO_SCREEN_OLED
     infoScreenLines[row] = infoScreenLines[row].substring(0, col) + buf + infoScreenLines[row].substring(col + strlen(buf));
     redrawOLED();
-#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+#elif INFO_SCREEN_LCD
     if(row <= INFO_SCREEN_LCD_LINES) {
       lcdDisplay.setCursor(col, row);
       lcdDisplay.print(buf);
@@ -155,16 +161,16 @@ void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...
 }
 
 void InfoScreen::printf(int col, int row, const String &format, ...) {
-  char buf[512] = {0};
-  va_list args;
-  va_start(args, format);
-  vsnprintf(buf, sizeof(buf), format.c_str(), args);
-  va_end(args);
   if(_enabled) {
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+    char buf[512] = {0};
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, sizeof(buf), format.c_str(), args);
+    va_end(args);
+#if INFO_SCREEN_OLED
     infoScreenLines[row] = infoScreenLines[row].substring(0, col) + buf + infoScreenLines[row].substring(col + strlen(buf));
     redrawOLED();
-#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+#elif INFO_SCREEN_LCD
     if(row <= INFO_SCREEN_LCD_LINES) {
       lcdDisplay.setCursor(col, row);
       lcdDisplay.print(buf);
@@ -174,16 +180,16 @@ void InfoScreen::printf(int col, int row, const String &format, ...) {
 }
 
 void InfoScreen::replaceLine(int row, const __FlashStringHelper *format, ...) {
-  char buf[512] = {0};
-  va_list args;
-  va_start(args, format);
-  vsnprintf_P(buf, sizeof(buf), (const char *)format, args);
-  va_end(args);
   if(_enabled) {
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+    char buf[512] = {0};
+    va_list args;
+    va_start(args, format);
+    vsnprintf_P(buf, sizeof(buf), (const char *)format, args);
+    va_end(args);
+#if INFO_SCREEN_OLED
     infoScreenLines[row] = buf;
     redrawOLED();
-#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+#elif INFO_SCREEN_LCD
     if(row <= INFO_SCREEN_LCD_LINES) {
       lcdDisplay.setCursor(0, row);
       lcdDisplay.print(buf);
@@ -198,16 +204,16 @@ void InfoScreen::replaceLine(int row, const __FlashStringHelper *format, ...) {
 }
 
 void InfoScreen::replaceLine(int row, const String &format, ...) {
-  char buf[512] = {0};
-  va_list args;
-  va_start(args, format);
-  vsnprintf(buf, sizeof(buf), format.c_str(), args);
-  va_end(args);
   if(_enabled) {
-#if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED
+    char buf[512] = {0};
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, sizeof(buf), format.c_str(), args);
+    va_end(args);
+#if INFO_SCREEN_OLED
     infoScreenLines[row] = buf;
     redrawOLED();
-#elif defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
+#elif INFO_SCREEN_LCD
     if(row <= INFO_SCREEN_LCD_LINES) {
       lcdDisplay.setCursor(0, row);
       lcdDisplay.print(buf);
@@ -221,69 +227,86 @@ void InfoScreen::replaceLine(int row, const String &format, ...) {
   }
 }
 
+#if LCC_ENABLED
+extern OpenMRN openmrn;
+#endif
+
 void InfoScreen::update() {
   static uint8_t _rotatingStatusIndex = 0;
+  static uint8_t _rotatingStatusLineCount = 3;
+  static bool _firstUpdate = true;
   static uint8_t _motorboardIndex = 0;
   static uint32_t _lastRotation = millis();
   static uint32_t _lastUpdate = millis();
+#if LOCONET_ENABLED
+  static uint8_t _firstLocoNetIndex = 0;
+  if(_firstUpdate) {
+    _firstLocoNetIndex = _rotatingStatusLineCount;
+    _rotatingStatusLineCount += 2;
+  }
+#endif
+#if LCC_ENABLED
+  static uint8_t _firstLCCIndex = 0;
+  if(_firstUpdate) {
+    _firstLCCIndex = _rotatingStatusLineCount;
+    _rotatingStatusLineCount++;
+  }
+#endif
+  _firstUpdate = false;
   // switch to next status line detail set every five seconds
   if(millis() - _lastRotation >= 5000) {
     _lastRotation = millis();
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
-    ++_rotatingStatusIndex %= 5;
-#else
-    ++_rotatingStatusIndex %= 3;
-#endif
+    ++_rotatingStatusIndex %= _rotatingStatusLineCount;
   }
   // update the status line details every second
   if(millis() - _lastUpdate >= 950) {
     _lastUpdate = millis();
     if(_enabled) {
-      switch(_rotatingStatusIndex) {
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
-        case 3: // LOCONET RX stats
-          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LN-RX: %d/%d"),
-            locoNet.getRxStats()->rxPackets, locoNet.getRxStats()->rxErrors);
-          break;
-        case 4: // LOCONET TX stats
-          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LN-TX: %d/%d/%d"),
-            locoNet.getTxStats()->txPackets, locoNet.getTxStats()->txErrors, locoNet.getTxStats()->collisions);
-          break;
-#endif
-        case 0: // free heap
-          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap:%d"),
-            ESP.getFreeHeap());
-          break;
-        case 1: // locomotive count
-          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Active Locos:%3d"),
-            LocomotiveManager::getActiveLocoCount());
-          break;
-        case 2: // motor shield
-          ++_motorboardIndex %= MotorBoardManager::getMotorBoardCount();
-          auto board = MotorBoardManager::getBoardByName(MotorBoardManager::getBoardNames()[_motorboardIndex]);
-          if(board != nullptr && (board->isOn() || board->isOverCurrent())) {
-            if(board->isOverCurrent()) {
-#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
-              replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:%2.2fA"),
-                board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+      if(_rotatingStatusIndex == 0) {
+        replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Free Heap:%d"),
+          ESP.getFreeHeap());
+      } else if (_rotatingStatusIndex == 1) {
+        replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Active Locos:%3d"),
+          LocomotiveManager::getActiveLocoCount());
+      } else if (_rotatingStatusIndex == 2) {
+        ++_motorboardIndex %= MotorBoardManager::getMotorBoardCount();
+        auto board = MotorBoardManager::getBoardByName(MotorBoardManager::getBoardNames()[_motorboardIndex]);
+        if(board != nullptr && (board->isOn() || board->isOverCurrent())) {
+          if(board->isOverCurrent()) {
+#if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
+            replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:%2.2fA"),
+              board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
 #else
-              replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Fault (%2.2f A)"),
-                board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+            replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Fault (%2.2f A)"),
+              board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
 #endif
-            } else if(board->isOn()) {
-#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
-              replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:%2.2fA"),
-                board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+          } else if(board->isOn()) {
+#if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
+            replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:%2.2fA"),
+              board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
 #else
-              replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Normal (%2.2f A)"),
-                board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
+            replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Normal (%2.2f A)"),
+              board->getName().c_str(), board->getCurrentDraw() / 1000.0f);
 #endif
-            }
-          } else if(board != nullptr) {
-            replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Off"),
-              board->getName().c_str());
           }
-          break;
+        } else if(board != nullptr) {
+          replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s:Off"),
+            board->getName().c_str());
+        }
+#if LOCONET_ENABLED
+      } else if (_rotatingStatusIndex == _firstLocoNetIndex) {
+        replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LN-RX: %d/%d"),
+          locoNet.getRxStats()->rxPackets, locoNet.getRxStats()->rxErrors);
+      } else if (_rotatingStatusIndex == _firstLocoNetIndex + 1) {
+        replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LN-TX: %d/%d/%d"),
+          locoNet.getTxStats()->txPackets, locoNet.getTxStats()->txErrors, locoNet.getTxStats()->collisions);
+#endif
+#if LCC_ENABLED
+      } else if (_rotatingStatusIndex == _firstLCCIndex) {
+        // placeholder until LCC stats can be exported and displayed
+        replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LCC: %d"),
+          openmrn.stack()->can_hub()->size());
+#endif
       }
     }
   }

@@ -208,11 +208,11 @@ void setup() {
 #if INFO_SCREEN_STATION_INFO_LINE == INFO_SCREEN_IP_ADDR_LINE
 	delay(500);
 #endif
-#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+#if NEXTION_ENABLED
   NextionInterface::init();
 #endif
   configStore.init();
-#if defined(LCC_ENABLED) && LCC_ENABLED
+#if LCC_ENABLED
   lccInterface.init();
 #endif
 	wifiInterface.begin();
@@ -227,16 +227,16 @@ void setup() {
 	OutputManager::init();
 	TurnoutManager::init();
 	SensorManager::init();
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
 	S88BusManager::init();
 #endif
 	RemoteSensorManager::init();
   LocomotiveManager::init();
-#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+#if HC12_RADIO_ENABLED
   HC12Interface::init();
 #endif
 	configureDCCSignalGenerators();
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+#if LOCONET_ENABLED
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LocoNet Init"));
   locoNet.begin();
   locoNet.onPacket(OPC_GPON, [](lnMsg *msg) {

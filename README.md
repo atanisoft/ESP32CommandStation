@@ -98,7 +98,7 @@ When configuring the motor board module you will need to pick the type of motor 
 
 | MOTORBOARD TYPE | Name | Max Current (Amps) | Current Limit (Amps) |
 | --------------- | ---- | ------------------ | -------------------- |
-| ARDUINO_SHIELD | Arduino Motor Shield (L298 compatible) | 2 Amp | 980mA |
+| ARDUINO_SHIELD | Arduino Motor Shield (L298 compatible) | 2 Amp | 1.75 Amp |
 | POLOLU | Pololu MC33926 Motor Driver (or Carrier) | 2.5 Amp | 2.25 Amp |
 | BTS7960B_5A | BTS 7960B | 43 Amp | 5 Amp |
 | BTS7960B_10A | BTS 7960B | 43 Amp | 10 Amp |

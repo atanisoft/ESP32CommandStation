@@ -18,6 +18,8 @@ COPYRIGHT (c) 2018 Mike Dunston
 
 #include "DCCppESP32.h"
 
+#if NEXTION_ENABLED
+
 constexpr uint8_t ON_PIC_OFF=54;
 constexpr uint8_t ON_PIC_ON=55;
 constexpr uint8_t OFF_PIC_OFF=56;
@@ -98,3 +100,5 @@ void DCCPPNextionPage::refreshPowerButtons() {
     _offButton.setPictureID(OFF_PIC_ON);
   }
 }
+
+#endif

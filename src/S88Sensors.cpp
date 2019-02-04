@@ -42,7 +42,7 @@ S88 Sensors are reported in the same manner as generic Sensors:
   <q ID>     - for deactivation of S88 Sensor ID.
 
 **********************************************************************/
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
 
 #ifndef S88_FIRST_SENSOR
 #define S88_FIRST_SENSOR S88_MAX_SENSORS_PER_BUS

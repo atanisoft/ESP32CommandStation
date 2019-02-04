@@ -31,7 +31,7 @@ COPYRIGHT (c) 2018 Mike Dunston
 #define NEXTION_TX_PIN 27
 #endif
 
-#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+#if NEXTION_ENABLED
 
 #if NEXTION_UART_NUM == 2
 Nextion nextion(Serial2);

@@ -62,6 +62,9 @@ where
 #ifndef REMOTE_SENSORS_FIRST_SENSOR
 #define REMOTE_SENSORS_FIRST_SENSOR 100
 #endif
+#ifndef SCAN_REMOTE_SENSORS_ON_STARTUP
+#define SCAN_REMOTE_SENSORS_ON_STARTUP false
+#endif
 
 extern LinkedList<Sensor *> sensors;
 LinkedList<RemoteSensor *> remoteSensors([](RemoteSensor *sensor) {
@@ -71,7 +74,7 @@ LinkedList<RemoteSensor *> remoteSensors([](RemoteSensor *sensor) {
 });
 
 void RemoteSensorManager::init() {
-#if defined(SCAN_REMOTE_SENSORS_ON_STARTUP) && SCAN_REMOTE_SENSORS_ON_STARTUP
+#if SCAN_REMOTE_SENSORS_ON_STARTUP
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFiScan started"));
   int8_t networksFound;
 

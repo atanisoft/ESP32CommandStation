@@ -18,9 +18,9 @@ COPYRIGHT (c) 2018 Mike Dunston
 
 #include "DCCppESP32.h"
 
+#if NEXTION_ENABLED
+
 const uint8_t SPEED_INCREMENT = 5;
-
-
 
 const uint8_t dec=4;            //Dec
 const uint8_t throttlenum=5;    //ThrottleNum
@@ -378,3 +378,5 @@ void NextionThrottlePage::refreshFunctionButtons() {
     }
   }
 }
+
+#endif

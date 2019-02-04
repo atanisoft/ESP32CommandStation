@@ -16,7 +16,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include "Turnouts.h"
 
 /**********************************************************************
 
@@ -147,14 +146,15 @@ void TurnoutManager::showStatus() {
   }
 }
 
-void TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t subAddress, const TurnoutOrientation orientation) {
+Turnout *TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t subAddress, const TurnoutOrientation orientation) {
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == id) {
       turnout->update(address, subAddress, orientation);
-      return;
+      return turnout;
     }
   }
   turnouts.add(new Turnout(id, address, subAddress));
+  return getTurnoutByID(id);
 }
 
 bool TurnoutManager::remove(const uint16_t id) {

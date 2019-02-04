@@ -32,8 +32,9 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // The format below must start with 0x and have exactly 12 characters
 // the first 10 will be the unique ID range and the last two the unique
-// node ID in the range. Using 01 is recommended for the command station.
-#define LCC_NODE_ID 0x050101013F01
+// node ID in the range. Using 00 or 01 is recommended for the command station
+// for easy identification in the JMRI LCC node list.
+#define LCC_NODE_ID 0x050101013F00
 
 // This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 R (RX) pin.
 // Recommended pin: 4, 16, 21.
@@ -44,6 +45,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // Recommended pin: 5, 17, 22.
 // to disable the CAN interface set this to -1
 #define LCC_CAN_TX_PIN -1
+
+// Uncomment the next line to allow the DCC++ESP32 Command Station to act as
+// an LCC Hub via the WiFi interface. When this is not enabled the Command
+// Station will attempt to locate a hub to connect to if the CAN interface
+// is not enabled.
+// #define LCC_ENABLE_GC_TCP_HUB true
 
 /////////////////////////////////////////////////////////////////////////////////////
 

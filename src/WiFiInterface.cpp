@@ -22,6 +22,8 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include <ESPAsyncWebServer.h>
 #include <IPAddress.h>
 #include "WebServer.h"
+#include <esp_log.h>
+#include <esp_wifi_internal.h>
 
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
 #include "HC12Interface.h"
@@ -43,7 +45,7 @@ public:
     _client.stop();
   }
 
-  void update() {
+  bool update() {
     uint8_t buf[128];
     while (_client.available()) {
       auto len = _client.available();
@@ -51,6 +53,7 @@ public:
       auto added = _client.readBytes(&buf[0], len < 128 ? len : 128);
       feed(&buf[0], added);
     }
+    return _client.connected();
   }
 
   WiFiClient getClient() {
@@ -86,17 +89,24 @@ void WiFiInterface::begin() {
 #endif
 	WiFi.config(staticIP, gatewayIP, subnetMask, dnsServer);
 #endif
+
+  //esp_log_level_set("wifi", ESP_LOG_VERBOSE);
+  //esp_wifi_internal_set_log_level(WIFI_LOG_VERBOSE);
+  //esp_wifi_internal_set_log_mod(WIFI_LOG_MODULE_ALL, WIFI_LOG_SUBMODULE_ALL, true);
+
   WiFi.mode(WIFI_STA);
-  WiFi.disconnect(true, true);
+  WiFi.disconnect(true);
   WiFi.onEvent([](system_event_id_t event) {
     if(wifiConnected) {
       return;
     }
     wifiConnected = true;
-#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+#if INFO_SCREEN_ENABLED
+  #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
     InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
-#else
+  #else
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
+  #endif
 #endif
 
     if(!MDNS.begin(HOSTNAME)) {
@@ -109,16 +119,18 @@ void WiFiInterface::begin() {
     DCCppServer.setNoDelay(true);
     DCCppServer.begin();
     dccppWebServer.begin();
-#if defined(LCC_ENABLED) && LCC_ENABLED
+#if LCC_ENABLED
     lccInterface.startWiFiDependencies();
 #endif
   }, SYSTEM_EVENT_STA_GOT_IP);
   WiFi.onEvent([](system_event_id_t event) {
     wifiConnected = false;
-#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+#if INFO_SCREEN_ENABLED
+  #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
     InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, "Disconnected");
-#else
+  #else
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, "Disconnected");
+  #endif
 #endif
   }, SYSTEM_EVENT_STA_LOST_IP);
   WiFi.onEvent([](system_event_id_t event) {
@@ -129,30 +141,27 @@ void WiFiInterface::begin() {
   }, SYSTEM_EVENT_STA_DISCONNECTED);
 
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Connecting to AP"));
-	log_i("Connecting to WiFi: %s", wifiSSID.c_str());
+  log_i("WiFi details:\nHostname:%s\nMAC address:%s\nAP name: %s", HOSTNAME, WiFi.macAddress().c_str(), wifiSSID.c_str());
   WiFi.setHostname(HOSTNAME);
 	WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
 	log_i("Waiting for WiFi to connect");
-  if(WiFi.waitForConnectResult() == WL_NO_SSID_AVAIL) {
-#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
-		InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
-    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Failed, NO AP"));
-#else
-    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
-    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("NO AP Found"));
-#endif
-		log_e("WiFI connect failed, restarting");
-		esp32_restart();
-	} else if(WiFi.status() == WL_CONNECT_FAILED) {
-#if defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD && defined(INFO_SCREEN_LCD_COLUMNS) && INFO_SCREEN_LCD_COLUMNS < 20
+  uint8_t wifiStatus = WiFi.waitForConnectResult();
+  if(wifiStatus != WL_CONNECTED) {
+#if INFO_SCREEN_ENABLED
+  #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
 		InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
     InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Failed"));
-#else
+  #else
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
-    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFi Failed"));
+    if(wifiStatus == WL_NO_SSID_AVAIL) {
+      InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("NO AP Found"));
+    } else if (wifiStatus == WL_CONNECT_FAILED) {
+      InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Generic WiFi Fail"));
+    }
+  #endif
 #endif
-		log_e("WiFI connect failed, restarting");
-		esp32_restart();
+    log_e("WiFI connect failed, restarting");
+    esp32_restart();
   }
 }
 
@@ -164,8 +173,10 @@ void WiFiInterface::update() {
     }
   }
   for (const auto& client : DCCppClients) {
-    //log_d("Checking TCP/IP Client(%p/%s) for data", client, client->getClient().remoteIP().toString().c_str());
-    client->update();
+    if(!client->update()) {
+      log_d("dropping dead connection from %s", client->getClient().remoteIP().toString().c_str());
+      DCCppClients.remove(client);
+    }
   }
 }
 
@@ -179,7 +190,7 @@ void WiFiInterface::send(const String &buf) {
     delay(1);
   }
 	dccppWebServer.broadcastToWS(buf);
-#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+#if HC12_RADIO_ENABLED
 	HC12Interface::send(buf);
 #endif
 }

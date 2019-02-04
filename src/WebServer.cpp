@@ -26,10 +26,6 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "RemoteSensors.h"
 #include "index_html.h"
 
-#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
-#include "NextionInterface.h"
-#endif
-
 enum HTTP_STATUS_CODES {
   STATUS_OK = 200,
   STATUS_NOT_MODIFIED = 304,
@@ -76,7 +72,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
   on("/features", HTTP_GET, [](AsyncWebServerRequest *request) {
     auto jsonResponse = new AsyncJsonResponse();
     JsonObject &root = jsonResponse->getRoot();
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
     root[JSON_S88_NODE] = JSON_VALUE_TRUE;
 #else
     root[JSON_S88_NODE] = JSON_VALUE_FALSE;
@@ -95,7 +91,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     std::bind(&DCCPPWebServer::handleTurnouts, this, std::placeholders::_1));
   on("/sensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleSensors, this, std::placeholders::_1));
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
   on("/s88sensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleS88Sensors, this, std::placeholders::_1));
 #endif
@@ -415,7 +411,7 @@ void DCCPPWebServer::handleConfig(AsyncWebServerRequest *request) {
   }
 }
 
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
 void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
   auto jsonResponse = new AsyncJsonResponse(true);
   if(request->method() == HTTP_GET) {
@@ -534,7 +530,7 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
       } else if(request->method() == HTTP_DELETE) {
         // Removal of an active locomotive
         LocomotiveManager::removeLocomotive(request->arg(JSON_ADDRESS_NODE.c_str()).toInt());
-#if defined(NEXTION_ENABLED) && NEXTION_ENABLED
+#if NEXTION_ENABLED
         static_cast<NextionThrottlePage *>(nextionPages[THROTTLE_PAGE])->invalidateLocomotive(request->arg(JSON_ADDRESS_NODE.c_str()).toInt());
 #endif
       }

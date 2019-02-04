@@ -44,7 +44,7 @@ private:
   void handleSensors(AsyncWebServerRequest *);
   void handleConfig(AsyncWebServerRequest *);
   void handleLocomotive(AsyncWebServerRequest *);
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
   void handleS88Sensors(AsyncWebServerRequest *);
 #endif
   void handleRemoteSensors(AsyncWebServerRequest *);

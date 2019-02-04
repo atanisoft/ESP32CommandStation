@@ -17,22 +17,36 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #include "DCCppESP32.h"
 
-#if defined(LCC_ENABLED) && LCC_ENABLED
+#if LCC_ENABLED
+
+// if either the RX or TX pin is set to -1 default to no CAN support
+#if LCC_CAN_RX_PIN != -1 || LCC_CAN_TX_PIN != -1
+#define LCC_CAN_ENABLED true
+#else
+#define LCC_CAN_ENABLED false
+#endif
 
 #include <ESPmDNS.h>
 
-#include <OpenMRN.h>
 #include <openlcb/TcpDefs.hxx>
 #include <openlcb/DccAccyConsumer.hxx>
 #include <openlcb/DccAccyProducer.hxx>
 #include <openlcb/CallbackEventHandler.hxx>
 #include <dcc/PacketFlowInterface.hxx>
+#include <openlcb/ConfiguredTcpConnection.hxx>
+
+#if !defined(LCC_ENABLE_GC_TCP_HUB)
+#define LCC_ENABLE_GC_TCP_HUB false
+#endif
 
 #include "LCCCDI.h"
 
-static constexpr uint16_t OPENMRN_TCP_PORT = 12021L;
 static constexpr uint64_t COMMAND_STATION_NODE_ID = UINT64_C(LCC_NODE_ID);
-WiFiServer openMRNServer(OPENMRN_TCP_PORT);
+
+#if LCC_ENABLE_GC_TCP_HUB
+WiFiServer openMRNServer(openlcb::TcpClientDefaultParams::DEFAULT_PORT);
+#endif
+
 OpenMRN openmrn(COMMAND_STATION_NODE_ID);
 // note the dummy string below is required due to a bug in the GCC compiler
 // for the ESP32
@@ -161,12 +175,13 @@ void lccTask(void *param) {
     // Start the OpenMRN stack
     openmrn.begin();
 
-#if LCC_CAN_RX_PIN != -1 && LCC_CAN_TX_PIN != -1
+#if LCC_CAN_ENABLED
     // Add the hardware CAN device as a bridge
     openmrn.add_can_port(
         new Esp32HardwareCan("esp32can", (gpio_num_t)LCC_CAN_RX_PIN, (gpio_num_t)LCC_CAN_TX_PIN, false));
 #endif
     while(true) {
+#if LCC_ENABLE_GC_TCP_HUB
         // if the TCP/IP listener has a new client accept it and add it
         // as a new GridConnect port.
         if (openMRNServer.hasClient())
@@ -177,7 +192,7 @@ void lccTask(void *param) {
                 openmrn.add_gridconnect_port(new Esp32WiFiClientAdapter(client));
             }
         }
-
+#endif
         // Call into the OpenMRN stack for its periodic updates
         openmrn.loop();
 
@@ -198,13 +213,16 @@ void LCCInterface::init() {
 }
 
 void LCCInterface::startWiFiDependencies() {
-    // default to a GRID CONNECT NODE
+#if LCC_ENABLE_GC_TCP_HUB
+    // Advertise the Command Station as a GC TCP hub
     MDNS.addService(openlcb::TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN, openlcb::TcpDefs::MDNS_PROTOCOL_TCP, OPENMRN_TCP_PORT);
-    // TODO: determine if the command station should be a hub, connect to a hub, connect to any nodes, etc
-
     // start the TCP/IP listener
     openMRNServer.setNoDelay(true);
     openMRNServer.begin();
+#elif !(LCC_CAN_ENABLED)
+    // CAN is diabled, search for a hub to connect to
+    // TODO: implement this after implementing generic support inside OpenMRN
+#endif
 }
 
 #endif

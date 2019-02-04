@@ -18,6 +18,8 @@ COPYRIGHT (c) 2018 Mike Dunston
 
 #include "DCCppESP32.h"
 
+#if NEXTION_ENABLED
+
 constexpr uint8_t oldaddr=7; //OldAddr
 constexpr uint8_t newaddr=8; //NewAddr
 constexpr uint8_t num1=9;    //b1 PIC 72/82
@@ -166,3 +168,5 @@ void NextionAddressPage::displayPage() {
   //_currentAddress.setTextAsNumber(_address);
   _newAddress.setTextAsNumber(0);
 }
+
+#endif

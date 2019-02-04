@@ -18,6 +18,8 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #include "DCCppESP32.h"
 
+#if NEXTION_ENABLED
+
 constexpr uint8_t LH=106;
 constexpr uint8_t RH=108;
 
@@ -119,7 +121,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     NextionButton(nextion, TURNOUT_PAGE, slot11, "Ad11"),
     NextionButton(nextion, TURNOUT_PAGE, slot12, "Ad12"),
     NextionButton(nextion, TURNOUT_PAGE, slot13, "Ad13"),
-    NextionButton(nextion, TURNOUT_PAGE, slot14, "Ad114")
+    NextionButton(nextion, TURNOUT_PAGE, slot14, "Ad14")
   }, _turnoutStartIndex(0) {
   for(int slot = 0; slot < 15; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
@@ -237,3 +239,5 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
     }
   }
 }
+
+#endif
