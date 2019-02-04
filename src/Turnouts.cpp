@@ -153,7 +153,7 @@ Turnout *TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t addres
       return turnout;
     }
   }
-  turnouts.add(new Turnout(id, address, subAddress));
+  turnouts.add(new Turnout(id, address, subAddress, false, orientation));
   return getTurnoutByID(id);
 }
 
