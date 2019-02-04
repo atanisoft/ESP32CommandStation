@@ -155,7 +155,15 @@ public:
         dir0.set_direction(p.direction_);
         p.lastSetSpeed_ = dir0.get_wire();
         p.directionChanged_ = 1;
+        /// @todo (Stuart.Baker) We should not just send a single E-Stop burst.
+        /// It is possible that the loco was on dirt and missed this.  Should
+        /// send continuous E-Stop packets until the estop condition is cleared.
         packet_processor_notify_update(this, ESTOP);
+    }
+    /// Gets the train's ESTOP state.
+    bool get_emergencystop() OVERRIDE
+    {
+        return false;
     }
     /// Sets a function to a given value. @param address is the function number
     /// (0..28), @param value is 0 for funciton OFF, 1 for function ON.

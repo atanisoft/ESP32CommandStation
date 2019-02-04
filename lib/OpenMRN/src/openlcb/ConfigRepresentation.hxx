@@ -136,9 +136,10 @@ public:
         {                                                                      \
             return openlcb::GroupBaseEntry(offset_);                           \
         }                                                                      \
-        static constexpr openlcb::GroupConfigOptions group_opts()              \
+        template <typename... Args>                                            \
+        static constexpr openlcb::GroupConfigOptions group_opts(Args... args)  \
         {                                                                      \
-            return openlcb::GroupConfigOptions(ARGS);                          \
+            return openlcb::GroupConfigOptions(args..., ##ARGS);               \
         }                                                                      \
         static constexpr unsigned size()                                       \
         {                                                                      \
@@ -190,11 +191,11 @@ public:
 #define CDI_GROUP_ENTRY_HELPER(LINE, NAME, TYPE, ...)                          \
     constexpr TYPE entry(const openlcb::EntryMarker<LINE> &) const             \
     {                                                                          \
-        static_assert(                                                         \
-            !group_opts().is_cdi() || TYPE(0).group_opts().is_segment(),       \
+        static_assert(!group_opts().is_cdi() ||                                \
+                TYPE(0).group_opts(__VA_ARGS__).is_segment(),                  \
             "May only have segments inside CDI.");                             \
         return TYPE(group_opts().is_cdi()                                      \
-                ? TYPE(0).group_opts().get_segment_offset()                    \
+                ? TYPE(0).group_opts(__VA_ARGS__).get_segment_offset()         \
                 : entry(openlcb::EntryMarker<LINE - 1>()).end_offset());       \
     }                                                                          \
     constexpr TYPE NAME() const                                                \
@@ -382,7 +383,8 @@ class ToplevelEntryBase : public ConfigEntryBase
 public:
     using base_type = ConfigEntryBase;
     INHERIT_CONSTEXPR_CONSTRUCTOR(ToplevelEntryBase, base_type)
-    static constexpr GroupConfigOptions group_opts()
+    template<typename... Args>
+    static constexpr GroupConfigOptions group_opts(Args... args)
     {
         return GroupConfigOptions(GroupConfigOptions::Segment(1000));
     }

@@ -92,7 +92,8 @@ class ConfigEntryBase : public ConfigReference
 public:
     INHERIT_CONSTEXPR_CONSTRUCTOR(ConfigEntryBase, ConfigReference)
 
-    static constexpr GroupConfigOptions group_opts()
+    template<typename... Args>
+    static constexpr GroupConfigOptions group_opts(Args... args)
     {
         return GroupConfigOptions();
     }

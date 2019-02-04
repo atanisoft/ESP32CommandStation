@@ -53,9 +53,9 @@
 #define USE_WIFI
 // #define USE_CAN
 
-// uncomment the line below to have this node advertise itself via mDNS as a
+// Uncomment the line below to have this node advertise itself via mDNS as a
 // hub. When this is enabled, other devices can find and connect to this node
-// via mDNS treating it as a hub. Note this requires USE_WIFI to be enabled
+// via mDNS, treating it as a hub. Note this requires USE_WIFI to be enabled
 // above and should only be enabled on one node which is acting as a hub.
 // #define BROADCAST_MDNS
 

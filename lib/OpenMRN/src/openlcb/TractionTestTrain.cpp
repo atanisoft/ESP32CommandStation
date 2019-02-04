@@ -55,6 +55,7 @@ void LoggingTrain::set_speed(SpeedType speed)
     LOG(INFO, "train %" PRIu32 " : set speed to %c %.0f mph.", legacyAddress_,
         speed.direction() == speed.FORWARD ? 'F' : 'R', speed.mph());
     currentSpeed_ = speed;
+    estopActive_ = false;
 }
 
 SpeedType LoggingTrain::get_speed()
@@ -69,7 +70,13 @@ SpeedType LoggingTrain::get_speed()
 void LoggingTrain::set_emergencystop()
 {
     LOG(INFO, "train %" PRIu32 " : set emergency stop.", legacyAddress_);
-    currentSpeed_ = 0;
+    estopActive_ = 0;
+}
+
+bool LoggingTrain::get_emergencystop()
+{
+    LOG(INFO, "train %" PRIu32 " : get emergency stop.", legacyAddress_);
+    return estopActive_;
 }
 
 void LoggingTrain::set_fn(uint32_t address, uint16_t value)

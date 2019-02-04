@@ -239,6 +239,7 @@ public:
     {
         send_traction_message(TractionDefs::speed_set_payload(speed));
         lastSetSpeed_ = speed;
+        estopActive_ = false;
     }
 
     SpeedType get_speed() override
@@ -251,7 +252,15 @@ public:
     void set_emergencystop() override
     {
         send_traction_message(TractionDefs::estop_set_payload());
+        estopActive_ = true;
         lastSetSpeed_.set_mph(0);
+    }
+
+    /// Get the current E-Stop state.
+    /// @return true if the train is E-Stopped, else false
+    bool get_emergencystop() override
+    {
+        return estopActive_;
     }
 
     void set_fn(uint32_t address, uint16_t value) override
@@ -576,7 +585,10 @@ private:
                 if (TractionDefs::speed_get_parse_last(p, &v))
                 {
                     lastSetSpeed_ = v;
-                    // TODO(balazs.racz): call a callback for the client.
+                    /// @todo (balazs.racz): call a callback for the client.
+
+                    /// @todo (Stuart.Baker): Do we need to do anything with
+                    /// estopActive_?
                 }
                 return;
             }
@@ -719,10 +731,20 @@ private:
                 if (TractionDefs::speed_get_parse_last(p, &v))
                 {
                     lastSetSpeed_ = v;
+                    estopActive_ = false;
                     if (updateCallback_)
                     {
                         updateCallback_(-1);
                     }
+                }
+                return;
+            }
+            case TractionDefs::REQ_EMERGENCY_STOP:
+            {
+                estopActive_ = true;
+                if (updateCallback_)
+                {
+                    updateCallback_(-1);
                 }
                 return;
             }
@@ -789,6 +811,7 @@ private:
     void clear_cache()
     {
         lastSetSpeed_ = nan_to_speed();
+        estopActive_ = false;
         lastKnownFn_.clear();
     }
 
@@ -816,6 +839,8 @@ private:
     bool assigned_{false};
     /// True if we also have a consist link with the assigned loco.
     bool listenConsist_{false};
+    /// keep track if E-Stop is active
+    bool estopActive_{false};
     NodeID dst_;
     Node *node_;
     /// Helper class for stateful query/return flows.

@@ -197,7 +197,8 @@ struct TrainService::Impl
                 case TractionDefs::REQ_EMERGENCY_STOP:
                 {
                     train_node()->train()->set_emergencystop();
-                    return release_and_exit();
+                    nextConsistIndex_ = 0;
+                    return call_immediately(STATE(maybe_forward_consist));
                 }
                 case TractionDefs::REQ_QUERY_SPEED: // fall through
                 case TractionDefs::REQ_QUERY_FN:

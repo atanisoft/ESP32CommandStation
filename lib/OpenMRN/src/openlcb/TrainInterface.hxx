@@ -67,6 +67,11 @@ public:
     /** Sets the train to emergency stop. */
     virtual void set_emergencystop() = 0;
 
+    /** Get the current E-Stop state.
+     * @return true if the train is E-Stopped, else false
+     */
+    virtual bool get_emergencystop() = 0;
+
     /** Sets the value of a function.
      * @param address is a 24-bit address of the function to set. For legacy DCC
      * locomotives, see @ref TractionDefs for the address definitions (0=light,

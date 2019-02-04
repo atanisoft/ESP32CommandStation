@@ -73,6 +73,10 @@ private:
     void set_emergencystop() override
     {
     }
+    bool get_emergencystop() override
+    {
+        return false;
+    }
     void set_fn(uint32_t address, uint16_t value) override
     {
     }
