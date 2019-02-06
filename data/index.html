@@ -718,7 +718,7 @@ function setupBSTurnout() {
 		BSTabRefresh('Turnouts');
 	});
 	$('#bs-turnout-create').on('vclick', function(event, ui) {
-		$('#bs-turnout-id').val(1);
+		$('#bs-turnout-id').val($('#bs-table-turnouts tbody tr').length + 1);
 		$('#bs-turnout-address').val(1);
 		$('#bs-turnout-index').val(-1);
 		$('#bs-turnout-orientation').val(0);
@@ -739,7 +739,7 @@ function setupBSSensor() {
 		BSTabRefresh('Sensors');
 	});
 	$('#bs-sensor-create').on('vclick', function(event, ui) {
-		$('#bs-sensor-id').val(1);
+		$('#bs-sensor-id').val($('#bs-table-sensors tbody tr').length + 1);
 		$('#bs-sensor-pin').val(1);
 		$('#bs-sensor-pullUp').prop('checked', false);
 		$('#bs-sensor-editor').popup('open', {positionTo:'window'});
@@ -758,7 +758,7 @@ function setupBSS88Sensors() {
 		BSTabRefresh('Sensors (S88)');
 	});
 	$('#bs-sensor-s88-create').on('vclick', function(event, ui) {
-		$('#bs-sensor-s88-id').val(1);
+		$('#bs-sensor-s88-id').val($('#bs-table-sensors-s88 tbody tr').length + 1);
 		$('#bs-sensor-s88-pin').val(1);
 		$('#bs-sensor-s88-count').val(0);
 		$('#bs-sensor-s88-editor').popup('open', {positionTo:'window'});
@@ -783,7 +783,7 @@ function setupBSOutput() {
 		BSTabRefresh('Outputs');
 	});
 	$('#bs-output-create').on('vclick', function() {
-		$('#bs-output-id').val(1);
+		$('#bs-output-id').val($('#bs-table-outputs tbody tr').length + 1);
 		$('#bs-output-pin').val(1);
 		$('#bs-output-logic').val(0);
 		$('#bs-output-startup-state').val(0);
