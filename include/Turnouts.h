@@ -21,9 +21,9 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 enum TurnoutOrientation {
   LEFT=0,
-  RIGHT=2,
-  Y=4,
-  MULTI=8
+  RIGHT,
+  Y,
+  MULTI
 };
 
 void calculateTurnoutBoardAddressAndIndex(uint16_t *boardAddress, uint8_t *boardIndex, uint16_t address);

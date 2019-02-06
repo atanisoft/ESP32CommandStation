@@ -140,12 +140,19 @@ void WiFiInterface::begin() {
     }
   }, SYSTEM_EVENT_STA_DISCONNECTED);
 
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Connecting to AP"));
-  log_i("WiFi details:\nHostname:%s\nMAC address:%s\nAP name: %s", HOSTNAME, WiFi.macAddress().c_str(), wifiSSID.c_str());
+  WiFi.mode(WIFI_STA);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFi Connecting"));
+  log_i("WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), wifiSSID.c_str());
   WiFi.setHostname(HOSTNAME);
 	WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
 	log_i("Waiting for WiFi to connect");
+  // this call waits up to 10sec for a result before timing out so it needs to be called a few times
+  // until we get a real final result
   uint8_t wifiStatus = WiFi.waitForConnectResult();
+  while(wifiStatus != WL_CONNECTED && wifiStatus != WL_NO_SSID_AVAIL && wifiStatus != WL_CONNECT_FAILED) {
+    log_i("WiFi not connected yet, status: %d", wifiStatus);
+    wifiStatus = WiFi.waitForConnectResult();
+  }
   if(wifiStatus != WL_CONNECTED) {
 #if INFO_SCREEN_ENABLED
   #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
@@ -154,9 +161,9 @@ void WiFiInterface::begin() {
   #else
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
     if(wifiStatus == WL_NO_SSID_AVAIL) {
-      InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("NO AP Found"));
+      InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("SSID not found"));
     } else if (wifiStatus == WL_CONNECT_FAILED) {
-      InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Generic WiFi Fail"));
+      InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Generic WiFi fail"));
     }
   #endif
 #endif

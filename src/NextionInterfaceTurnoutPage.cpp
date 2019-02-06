@@ -180,7 +180,7 @@ void NextionTurnoutPage::displayPage() {
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
     auto turnout = TurnoutManager::getTurnoutByID(_turnoutStartIndex + componentIndex);
     if(turnout) {
-      _turnoutButtons[componentIndex].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
+      _turnoutButtons[componentIndex].setPictureID(LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
       _turnoutButtons[componentIndex].show();
       _toAddress[componentIndex].setTextAsNumber(turnout->getAddress());
       _toAddress[componentIndex].show();
@@ -227,12 +227,10 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
   for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
     if(&_turnoutButtons[slot] == button) {
       auto turnoutAddress = _toAddress[slot].getTextAsNumber();
-      log_i("Looking for address %d in slot %d", turnoutAddress, slot);
       auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
       if(turnout) {
-        log_i("Turnout orientation %d, state %d", turnout->getOrientation(), turnout->isThrown());
-        _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation()) + (turnout->isThrown()));
         turnout->set(!turnout->isThrown());
+        _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
       } else {
         log_w("Turnout not found");
       }

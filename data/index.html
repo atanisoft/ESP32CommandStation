@@ -152,8 +152,8 @@
 								<thead>
 									<tr>
 										<th>ID</th>
-										<th>DCC Address</th>
-										<th>Sub Address</th>
+										<th>Address</th>
+										<th>Orientation</th>
 										<th>State</th>
 										<th>Actions</th>
 									</tr>
@@ -339,7 +339,7 @@
 				</div>
 				<div class="ui-field-contain">
 					<label for="bs-turnout-address-mode">Address Mode:</label>
-					<select id="bs-turnout-address-mode"><option value="dcc">DCC Address Only</option><option value="dcc-index">Board Address and Index</option></select>
+					<select id="bs-turnout-address-mode"><option value="dcc">DCC Address Only</option><option value="address-index">Board Address and Index</option></select>
 				</div>
 				<div class="ui-field-contain">
 					<label for="bs-turnout-address">Address:</label>
@@ -351,7 +351,7 @@
 				</div>
 				<div class="ui-field-contain">
 					<label for="bs-turnout-orientation">Orientation:</label>
-					<select id="bs-turnout-orientation"><option value="0">Left</option><option value="2">Right</option><option value="4">Y</option><option value="8">Multi (threeway/etc)</option></select>
+					<select id="bs-turnout-orientation"><option value="0">Left</option><option value="1">Right</option><option value="2">Wye</option><option value="3">Multi (threeway/etc)</option></select>
 				</div>
 			</div>
 			<div role="footer">
@@ -699,7 +699,7 @@ function setupBSTurnout() {
 	$('#bs-turnout-address-mode').change();
 	$('#bs-turnout-dialog-save').on('vclick', function(event, ui) {
 		if($('#bs-turnout-address-mode').val() === 'dcc') {
-			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val());
+			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val(), 'and orientation', $('#bs-turnout-orientation').val());
 			$.post('/turnouts', {
 				'id': $('#bs-turnout-id').val(),
 				'address' : $('#bs-turnout-address').val(),
@@ -707,7 +707,7 @@ function setupBSTurnout() {
 				'orientation' : $('#bs-turnout-orientation').val()
 			});
 		} else {
-			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val(), 'and index', $('#bs-turnout-index').val());
+			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val(), 'and index', $('#bs-turnout-index').val(), 'with orientation', $('#bs-turnout-orientation').val());
 			$.post('/turnouts', {
 				'id': $('#bs-turnout-id').val(),
 				'address' : $('#bs-turnout-address').val(),
@@ -1016,7 +1016,18 @@ function BSTabRefresh(section) {
 		});
 	} else if(section === 'Turnouts') {
 		refreshTable({table: '#bs-table-turnouts', url: '/turnouts',
-			fields: ['id', 'address', 'subAddress', 'state', function(record) {
+			fields: ['id',
+				function(record) { // convert address
+					if(record.subAddress == -1) {
+						return record.address;
+					} else {
+						return String.format("address:{0},index:{1}", record.address, record.subAddress);
+					}
+				},
+				function(record) { // convert orientation
+					var orientationStrings = ["Left", "Right", "Wye", "Multi"];
+					return orientationStrings[record.orientation];
+				}, 'state', function(record) {
 				var buttons = '';
 				buttons += createButton({type:'delete', id:String.format("turnout-{0}-delete", record.id)});
 				buttons += createButton({type:'edit', id:String.format("turnout-{0}-edit", record.id)});
@@ -1044,9 +1055,9 @@ function BSTabRefresh(section) {
 								$('#bs-turnout-id').val(data.id);
 								$('#bs-turnout-address').val(data.address);
 								$('#bs-turnout-index').val(data.subAddress);
-								$('#bs-turnout-orientation').val(data.orientation);
+								$('#bs-turnout-orientation').val(data.orientation).change();
 								if(data.subAddress != -1) {
-									$('#bs-turnout-address-mode').val('dcc-index').change();
+									$('#bs-turnout-address-mode').val('address-index').change();
 								} else {
 									// default to dcc addressing only.
 									$('#bs-turnout-address-mode').val('dcc').change();
