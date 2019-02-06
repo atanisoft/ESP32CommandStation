@@ -122,7 +122,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     NextionButton(nextion, TURNOUT_PAGE, slot12, "Ad12"),
     NextionButton(nextion, TURNOUT_PAGE, slot13, "Ad13"),
     NextionButton(nextion, TURNOUT_PAGE, slot14, "Ad14")
-  }, _turnoutStartIndex(0), _addModeActive(false), _deleteModeActive(false) {
+  } {
   for(int slot = 0; slot < 15; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
@@ -170,17 +170,29 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 }
 
 void NextionTurnoutPage::deleteButtonHandler() {
-  if(_deleteModeActive) {
+  if(_pageMode == PAGE_MODE::DELETION) {
     // TODO: cleanup any selected turnouts
   } else {
-    _deleteModeActive = true;
+    // track that we are now in deletion mode so we do not toggle turnouts when touched
+    _pageMode = PAGE_MODE::DELETION;
     // TODO: make sure all turnouts are deselected
   }
 }
 
-void NextionTurnoutPage::displayPage() {
+void NextionTurnoutPage::refreshPage() {
   // make sure that we only ever display a maximum of TURNOUTS_PER_PAGE turnouts per page
   uint16_t turnoutsToDisplay = min(TurnoutManager::getTurnoutCount() - _turnoutStartIndex, TURNOUTS_PER_PAGE);
+
+  while(turnoutsToDisplay == 0 && _turnoutStartIndex >= TURNOUTS_PER_PAGE) {
+    // we have overrun the list of turnouts (possibly from deletion)
+    _turnoutStartIndex -= TURNOUTS_PER_PAGE;
+    if(_turnoutStartIndex < 0) {
+      _turnoutStartIndex = 0;
+    }
+    // recalcuate the number of turnouts to display
+    turnoutsToDisplay = min(TurnoutManager::getTurnoutCount() - _turnoutStartIndex, TURNOUTS_PER_PAGE);
+  }
+
   // update the number of turnouts we can display on the page
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
     auto turnout = TurnoutManager::getTurnoutByID(_turnoutStartIndex + componentIndex);
@@ -191,6 +203,7 @@ void NextionTurnoutPage::displayPage() {
       _toAddress[componentIndex].show();
     } 
   }
+
   // check if we need to show/hide any components on the page
   if(turnoutsToDisplay < TURNOUTS_PER_PAGE) {
     // we are displaying a partial page of turnouts, so hide the remaining
@@ -209,6 +222,7 @@ void NextionTurnoutPage::displayPage() {
     _nextButton.setPictureID(NEXT_BUTTON_ENABLED);
     _nextButton.enable();
   }
+
   // if we are not on the first page of turnouts display the previous page button
   if(_turnoutStartIndex) {
     _prevButton.setPictureID(PREV_BUTTON_ENABLED);
@@ -221,27 +235,33 @@ void NextionTurnoutPage::displayPage() {
 }
 
 void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
-  if(_addModeActive) {
-    uint16_t address = static_cast<NextionAddressPage *>(previousPage)->getNewAddress();
-    _addModeActive = false;
-  }
-  // TODO add handler for update turnout?
+  NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(previousPage);
+  TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount(),
+    addressPage->getNewAddress(), -1, addressPage->getOrientation());
+  // reset page mode for normal operations
+  _pageMode = PAGE_MODE::NORMAL;
+  refresh();
 }
 
 void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
   for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
     if(&_turnoutButtons[slot] == button) {
-      if(_deleteModeActive) {
-        // TODO: select / deselect turnout for deletion
-      } else {
-        auto turnoutAddress = _toAddress[slot].getTextAsNumber();
-        auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
-        if(turnout) {
+      auto turnoutAddress = _toAddress[slot].getTextAsNumber();
+      auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
+      if(turnout) {
+        if(_pageMode == PAGE_MODE::DELETION) {
+          // TODO: select / deselect turnout for deletion
+        } else if(_pageMode == PAGE_MODE::EDIT) {
+          // TODO: pop up address page for edits
+        } else if(_pageMode == PAGE_MODE::NORMAL) {
           turnout->set(!turnout->isThrown());
           _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
-        } else {
-          log_w("Turnout not found");
         }
+      } else {
+        log_w("Touched Turnout (slot:%d, addr:%d) was not found, refreshing page", slot, turnoutAddress);
+        // since we couldn't find the touched turnout, reset the page mode and refresh the page
+        _pageMode = PAGE_MODE::NORMAL;
+        refreshPage();
       }
     }
   }

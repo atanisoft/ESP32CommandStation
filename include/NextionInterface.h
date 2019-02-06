@@ -74,10 +74,10 @@ protected:
   virtual void previousPageCallback(DCCPPNextionPage *previousPage) {}
 private:
   NextionButton _onButton;
-  NextionButton _offButton;
   NextionButton _stopButton;
-  bool _pageInitialized;
-  uint8_t _returnPageID;
+  NextionButton _offButton;
+  bool _pageInitialized{false};
+  uint8_t _returnPageID{0};
   void refreshPowerButtons();
 };
 
@@ -135,9 +135,9 @@ private:
   NextionButton _undoButton;
   NextionText _currentAddress;
   NextionText _newAddress;
-  uint32_t _address;
-  TurnoutOrientation _orientation;
-  String _newAddressString;
+  uint32_t _address{0};
+  TurnoutOrientation _orientation{TurnoutOrientation::LEFT};
+  String _newAddressString{""};
 };
 
 class NextionThrottlePage : public DCCPPNextionPage {
@@ -188,20 +188,20 @@ public:
   NextionTurnoutPage(Nextion &);
   void toggleTurnout(const NextionButton *);
   
-  virtual void refreshPage() {}
+  virtual void refreshPage();
   void incrementTurnoutPage() {
     _turnoutStartIndex += TURNOUTS_PER_PAGE;
-    displayPage();
+    refreshPage();
   }
   void decrementTurnoutPage() {
     _turnoutStartIndex -= TURNOUTS_PER_PAGE;
     if(_turnoutStartIndex < 0) {
       _turnoutStartIndex = 0;
     }
-    displayPage();
+    refreshPage();
   }
   void addNewTurnout() {
-    _addModeActive = true;
+    _pageMode = PAGE_MODE::ADDITION;
     NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
     addressPage->setPreviousPage(TURNOUT_PAGE);
     addressPage->display();
@@ -209,7 +209,9 @@ public:
   void deleteButtonHandler();
 protected:
   virtual void init() {}
-  virtual void displayPage();
+  virtual void displayPage() {
+    refreshPage();
+  }
   void previousPageCallback(DCCPPNextionPage *);
 private:
   NextionButton _turnoutButtons[15];
@@ -220,8 +222,10 @@ private:
   NextionButton _delButton;
   NextionButton _routesButton;
   NextionButton _toAddress[15];
-  int16_t _turnoutStartIndex;
-  bool _addModeActive;
-  bool _deleteModeActive;
+  enum PAGE_MODE {
+    NORMAL, ADDITION, DELETION, EDIT
+  };
+  int16_t _turnoutStartIndex{0};
+  PAGE_MODE _pageMode{PAGE_MODE::NORMAL};
 };
 

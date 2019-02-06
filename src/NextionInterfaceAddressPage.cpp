@@ -72,10 +72,7 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
   _quitButton(nextion, ADDRESS_PAGE, quit1, "Quit"),
   _undoButton(nextion, ADDRESS_PAGE, undo, "Undo"),
   _currentAddress(nextion, ADDRESS_PAGE, oldaddr, "OldAddr"),
-  _newAddress(nextion, ADDRESS_PAGE, newaddr, "NewAddr"),
-  _address(0),
-  _orientation(TurnoutOrientation::LEFT),
-  _newAddressString("") {
+  _newAddress(nextion, ADDRESS_PAGE, newaddr, "NewAddr") {
   for(int index = 0; index < 10; index++) {
     _buttons[index].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
@@ -106,7 +103,7 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
 }
 
 void NextionAddressPage::addNumber(const NextionButton *button) {
-  const uint8_t buttonMap[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+  static const uint8_t buttonMap[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
   for(int index = 0; index < 10; index++) {
     if(button == &_buttons[index]) {
       _newAddressString += String(buttonMap[index]);
@@ -126,8 +123,7 @@ void NextionAddressPage::changeOrientation(const NextionButton *button) {
   if (_orientation == TurnoutOrientation::RIGHT) {
     _orientation = TurnoutOrientation::LEFT;
     _orientationButton.setPictureID(LHTO);
-  }
-  else{
+  } else {
     _orientation = TurnoutOrientation::RIGHT;
     _orientationButton.setPictureID(RHTO);
   }
@@ -153,9 +149,7 @@ void NextionAddressPage::displayPage() {
     _indexAddress.hide();
     _currentAddress.hide();
     _orientationButton.hide();
-  }
-  else
-  {
+  } else {
     _address = 0;
     _addressPic.setPictureID(TURNOUT_PIC);
     _boardAddress.setTextAsNumber(0);

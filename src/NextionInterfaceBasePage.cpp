@@ -28,14 +28,11 @@ constexpr uint8_t OFF_PIC_ON=57;
 DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const String &pageName) :
   NextionPage(nextion, pageID, 0, pageName),
   _onButton(nextion, pageID, 1, "On"),
-  _offButton(nextion, pageID, 2, "Off"),
-  _stopButton(nextion, pageID, 3, "Stop"),
-  _pageInitialized(false),
-  _returnPageID(0) {
+  _stopButton(nextion, pageID, 2, "Stop"),
+  _offButton(nextion, pageID, 3, "Off") {
   _stopButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       nextionPages[widget->getPageID()]->sendEStop();
-      nextionPages[widget->getPageID()]->refresh();
     }
   });
   _onButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
@@ -52,9 +49,9 @@ DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const
 
 void DCCPPNextionPage::display() {
   if(!show()) {
-    printf("display of page %s was not successful.\n", m_name.c_str());
+    log_e("display of page %s was not successful.\n", m_name.c_str());
   } else {
-    printf("displayed page %s\n", m_name.c_str());
+    log_i("displayed page %s\n", m_name.c_str());
   }
   if(!_pageInitialized) {
     init();
@@ -80,6 +77,7 @@ void DCCPPNextionPage::setTrackPower(bool on) {
 
 void DCCPPNextionPage::sendEStop() {
   LocomotiveManager::emergencyStop();
+  refresh();
 }
 
 void DCCPPNextionPage::displayPreviousPage(bool invokeCallback) {
