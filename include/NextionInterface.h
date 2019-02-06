@@ -118,13 +118,14 @@ public:
     return _newAddressString.toInt();
   }
   TurnoutOrientation getOrientation() {
-    return _orientation;
+    return (TurnoutOrientation)_orientation;
   }
   virtual void refreshPage() {}
 protected:
   virtual void init() {}
   virtual void displayPage();
 private:
+  void refreshOrientationButton();
   NextionButton _addressPic;
   NextionText _boardAddress;
   NextionText _indexAddress;
@@ -136,7 +137,7 @@ private:
   NextionText _currentAddress;
   NextionText _newAddress;
   uint32_t _address{0};
-  TurnoutOrientation _orientation{TurnoutOrientation::LEFT};
+  uint8_t _orientation{TurnoutOrientation::LEFT};
   String _newAddressString{""};
 };
 
@@ -191,18 +192,19 @@ public:
   virtual void refreshPage();
   void incrementTurnoutPage() {
     _turnoutStartIndex += TURNOUTS_PER_PAGE;
-    refreshPage();
+    refresh();
   }
   void decrementTurnoutPage() {
     _turnoutStartIndex -= TURNOUTS_PER_PAGE;
     if(_turnoutStartIndex < 0) {
       _turnoutStartIndex = 0;
     }
-    refreshPage();
+    refresh();
   }
   void addNewTurnout() {
     _pageMode = PAGE_MODE::ADDITION;
     NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
+    addressPage->setCurrentAddress(0);
     addressPage->setPreviousPage(TURNOUT_PAGE);
     addressPage->display();
   }

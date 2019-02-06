@@ -119,14 +119,14 @@ void NextionAddressPage::addNumber(const NextionButton *button) {
     }
   }
 }
+
 void NextionAddressPage::changeOrientation(const NextionButton *button) {
-  if (_orientation == TurnoutOrientation::RIGHT) {
+  _orientation++;
+  // TODO: update this from RIGHT to MULTI once pics are available
+  if(_orientation > TurnoutOrientation::RIGHT) {
     _orientation = TurnoutOrientation::LEFT;
-    _orientationButton.setPictureID(LHTO);
-  } else {
-    _orientation = TurnoutOrientation::RIGHT;
-    _orientationButton.setPictureID(RHTO);
   }
+  refreshOrientationButton();
   log_i("Orientation set to %d", _orientation);
 }
 
@@ -143,25 +143,38 @@ void NextionAddressPage::removeNumber(const NextionButton *button) {
 }
 
 void NextionAddressPage::displayPage() {
+  if(_address) {
+    _currentAddress.setTextAsNumber(_address);
+    _currentAddress.show();
+  }
+  _newAddressString = "";
+  _newAddress.setTextAsNumber(0);
   if (getReturnPage() == THROTTLE_PAGE) {
     _addressPic.setPictureID(LOCO_PIC);
     _boardAddress.hide();
     _indexAddress.hide();
-    _currentAddress.hide();
     _orientationButton.hide();
   } else {
-    _address = 0;
     _addressPic.setPictureID(TURNOUT_PIC);
     _boardAddress.setTextAsNumber(0);
     _indexAddress.setTextAsNumber(0);
     _boardAddress.show();
     _indexAddress.show();
-    _orientationButton.show();
-    _currentAddress.hide();
+    refreshOrientationButton();
   }
-  _newAddressString = "";
-  //_currentAddress.setTextAsNumber(_address);
-  _newAddress.setTextAsNumber(0);
+}
+
+void NextionAddressPage::refreshOrientationButton() {
+  switch(_orientation) {
+    case TurnoutOrientation::LEFT:
+      _orientationButton.setPictureID(LHTO);
+      break;
+    case TurnoutOrientation::RIGHT:
+      _orientationButton.setPictureID(RHTO);
+      break;
+    // TODO: add WYE and MULTI once pic is available
+  }
+  _orientationButton.show();
 }
 
 #endif
