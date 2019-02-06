@@ -81,6 +81,8 @@ private:
   void refreshPowerButtons();
 };
 
+extern DCCPPNextionPage *nextionPages[MAX_PAGES];
+
 class NextionTitlePage : public DCCPPNextionPage {
 public:
   NextionTitlePage(Nextion &nextion) : DCCPPNextionPage(nextion, TITLE_PAGE, "0"),
@@ -185,7 +187,6 @@ class NextionTurnoutPage : public DCCPPNextionPage {
 public:
   NextionTurnoutPage(Nextion &);
   void toggleTurnout(const NextionButton *);
-  void addNewTurnoutAddress(uint32_t);
   
   virtual void refreshPage() {}
   void incrementTurnoutPage() {
@@ -199,6 +200,13 @@ public:
     }
     displayPage();
   }
+  void addNewTurnout() {
+    _addModeActive = true;
+    NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
+    addressPage->setPreviousPage(TURNOUT_PAGE);
+    addressPage->display();
+  }
+  void deleteButtonHandler();
 protected:
   virtual void init() {}
   virtual void displayPage();
@@ -213,6 +221,7 @@ private:
   NextionButton _routesButton;
   NextionButton _toAddress[15];
   int16_t _turnoutStartIndex;
+  bool _addModeActive;
+  bool _deleteModeActive;
 };
 
-extern DCCPPNextionPage *nextionPages[MAX_PAGES];

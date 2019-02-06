@@ -122,7 +122,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     NextionButton(nextion, TURNOUT_PAGE, slot12, "Ad12"),
     NextionButton(nextion, TURNOUT_PAGE, slot13, "Ad13"),
     NextionButton(nextion, TURNOUT_PAGE, slot14, "Ad14")
-  }, _turnoutStartIndex(0) {
+  }, _turnoutStartIndex(0), _addModeActive(false), _deleteModeActive(false) {
   for(int slot = 0; slot < 15; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
@@ -152,17 +152,13 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
   _addButton.attachCallback([](NextionEventType type, INextionTouchable *widget)
   {
     if(type == NEX_EVENT_PUSH) {
-      NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
-      addressPage->setPreviousPage(TURNOUT_PAGE);
-      addressPage->display();
+      static_cast<NextionTurnoutPage*>(nextionPages[TURNOUT_PAGE])->addNewTurnout();
     }
   });
 
   _delButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
-      printf("Del Button Pressed\n");
-      //auto turnout = TurnoutManager::getTurnoutByAddress(1);
-      //turnout->setOrientation(LEFT);
+      static_cast<NextionTurnoutPage*>(nextionPages[TURNOUT_PAGE])->deleteButtonHandler();
     }
   });
 
@@ -171,6 +167,15 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
       nextionPages[widget->getPageID()]->returnToPreviousPage();
     }
   });
+}
+
+void NextionTurnoutPage::deleteButtonHandler() {
+  if(_deleteModeActive) {
+    // TODO: cleanup any selected turnouts
+  } else {
+    _deleteModeActive = true;
+    // TODO: make sure all turnouts are deselected
+  }
 }
 
 void NextionTurnoutPage::displayPage() {
@@ -216,23 +221,27 @@ void NextionTurnoutPage::displayPage() {
 }
 
 void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
-  addNewTurnoutAddress(static_cast<NextionAddressPage *>(previousPage)->getNewAddress());
-}
-
-void NextionTurnoutPage::addNewTurnoutAddress(uint32_t newAddress) {
-  log_i("and the received address is:- %d", newAddress);
+  if(_addModeActive) {
+    uint16_t address = static_cast<NextionAddressPage *>(previousPage)->getNewAddress();
+    _addModeActive = false;
+  }
+  // TODO add handler for update turnout?
 }
 
 void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
   for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
     if(&_turnoutButtons[slot] == button) {
-      auto turnoutAddress = _toAddress[slot].getTextAsNumber();
-      auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
-      if(turnout) {
-        turnout->set(!turnout->isThrown());
-        _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
+      if(_deleteModeActive) {
+        // TODO: select / deselect turnout for deletion
       } else {
-        log_w("Turnout not found");
+        auto turnoutAddress = _toAddress[slot].getTextAsNumber();
+        auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
+        if(turnout) {
+          turnout->set(!turnout->isThrown());
+          _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
+        } else {
+          log_w("Turnout not found");
+        }
       }
     }
   }
