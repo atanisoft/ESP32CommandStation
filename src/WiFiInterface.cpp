@@ -71,6 +71,17 @@ WiFiServer DCCppServer(DCCPP_JMRI_CLIENT_PORT);
 LinkedList<WiFiClientWrapper *> DCCppClients([](WiFiClientWrapper *consumer) {consumer->stop(); delete consumer; });
 bool wifiConnected = false;
 
+static constexpr const char *WIFI_STATUS_STRINGS[] =
+{
+    "WiFi Idle",            // WL_IDLE_STATUS
+    "SSID not found",       // WL_NO_SSID_AVAIL
+    "SSID scan completed",  // WL_SCAN_COMPLETED
+    "WiFi connected",       // WL_CONNECTED
+    "SSID connect failed",  // WL_CONNECT_FAILED
+    "WiFi connection lost", // WL_CONNECTION_LOST
+    "WiFi disconnected"     // WL_DISCONNECTED
+};
+
 WiFiInterface::WiFiInterface() {
 }
 
@@ -108,11 +119,12 @@ void WiFiInterface::begin() {
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
   #endif
 #endif
+    log_i("WiFi IP: %s", WiFi.localIP().toString().c_str());
 
     if(!MDNS.begin(HOSTNAME)) {
       log_e("Failed to start mDNS");
     } else {
-      log_d("Adding dccpp.tcp service to mDNS advertiser");
+      log_i("Adding dccpp.tcp service to mDNS advertiser");
       MDNS.addService("dccpp", "tcp", DCCPP_JMRI_CLIENT_PORT);
     }
 
@@ -144,25 +156,28 @@ void WiFiInterface::begin() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFi Connecting"));
   log_i("WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), wifiSSID.c_str());
   WiFi.setHostname(HOSTNAME);
-	WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
-	log_i("Waiting for WiFi to connect");
-  // this call waits up to 10sec for a result before timing out so it needs to be called a few times
-  // until we get a real final result
-  uint8_t wifiStatus = WiFi.waitForConnectResult();
-  while(wifiStatus != WL_CONNECTED && wifiStatus != WL_NO_SSID_AVAIL && wifiStatus != WL_CONNECT_FAILED) {
-    log_i("WiFi not connected yet, status: %d", wifiStatus);
-    wifiStatus = WiFi.waitForConnectResult();
+  if(WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()) != WL_CONNECT_FAILED) {
+    log_i("Waiting for WiFi to connect");
+    // this call waits up to 10sec for a result before timing out so it needs to be called a few times
+    // until we get a real final result
+    uint8_t attemptsRemaining = 10;
+    uint8_t wifiStatus = WiFi.waitForConnectResult();
+    while(wifiStatus != WL_CONNECTED && wifiStatus != WL_NO_SSID_AVAIL && wifiStatus != WL_CONNECT_FAILED && attemptsRemaining--) {
+      esp_task_wdt_reset();
+      log_i("WiFi not connected yet, status: %d (%s), attempts remaining: %d", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus], attemptsRemaining);
+      wifiStatus = WiFi.waitForConnectResult();
+    }
   }
-  if(wifiStatus != WL_CONNECTED) {
+  if(WiFi.status() != WL_CONNECTED) {
 #if INFO_SCREEN_ENABLED
   #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
 		InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
     InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Failed"));
   #else
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
-    if(wifiStatus == WL_NO_SSID_AVAIL) {
+    if(WiFi.status() == WL_NO_SSID_AVAIL) {
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("SSID not found"));
-    } else if (wifiStatus == WL_CONNECT_FAILED) {
+    } else {
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Generic WiFi fail"));
     }
   #endif
