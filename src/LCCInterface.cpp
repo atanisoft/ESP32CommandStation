@@ -72,8 +72,8 @@ public:
     void factory_reset(int fd) override
     {
         log_i("Factory Reset Helper invoked");
-        cfg.userinfo().name().write(fd, openlcb::SNIP_STATIC_DATA.model_name);
-        cfg.userinfo().description().write(fd, "Command Station");
+        cfg.userinfo().name().write(fd, "DCC++ESP32 Command Station");
+        cfg.userinfo().description().write(fd, "");
     }
 } factory_reset_helper;
 
