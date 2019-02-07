@@ -191,6 +191,7 @@ bool OutputManager::remove(const uint16_t id) {
     }
   }
   if(outputToRemove != nullptr) {
+    log_i("Removing Output(%d)", outputToRemove->getID());
     outputs.remove(outputToRemove);
     return true;
   }

@@ -173,6 +173,7 @@ bool SensorManager::remove(const uint16_t id) {
     }
   }
   if(sensorToRemove != nullptr) {
+    log_i("Removing Sensor(%d)", sensorToRemove->getID());
     sensors.remove(sensorToRemove);
     MUTEX_UNLOCK(_lock);
     return true;

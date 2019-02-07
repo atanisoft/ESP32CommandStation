@@ -172,6 +172,7 @@ bool S88BusManager::removeBus(const uint8_t id) {
     }
   }
   if(sensorBusToRemove != nullptr) {
+    log_i("Removing S88 Sensor Bus(%d)", sensorBusToRemove->getID());
     s88SensorBus.remove(sensorBusToRemove);
     MUTEX_UNLOCK(_s88SensorLock);
     return true;

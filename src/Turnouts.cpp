@@ -172,6 +172,7 @@ bool TurnoutManager::remove(const uint16_t id) {
     }
   }
   if(turnoutToRemoved != nullptr) {
+    log_i("Removing Turnout(%d)", turnoutToRemoved->getID());
     turnouts.remove(turnoutToRemoved);
     return true;
   }
