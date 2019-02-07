@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <functional>
 #include <algorithm>
-#include "LocoNet2/LocoNet.h"
-#include "LocoNet2/LocoNetESP32.h"
+#include "LocoNet.h"
+#include "LocoNetESP32.h"
 
 #include <EEPROM.h>
 

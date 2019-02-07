@@ -63,7 +63,7 @@
  *
  *****************************************************************************/
 #include <string.h>
-#include "LocoNet2/LocoNet.h"
+#include "LocoNet.h"
 
 constexpr uint16_t FC_FRAC_MIN_BASE   				    = 0x3FFF;
 constexpr uint8_t FC_FRAC_RESET_HIGH              = 0x78;

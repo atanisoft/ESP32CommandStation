@@ -65,7 +65,7 @@
 
 #include <string.h>
 
-#include "LocoNet2/LocoNet.h"
+#include "LocoNet.h"
 
 const char * LoconetStatusStrings[] = {
 	"CD Backoff",

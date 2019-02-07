@@ -34,7 +34,7 @@
  *
  *****************************************************************************/
 
-#include "LocoNet2/LocoNetAvrICP.h"
+#include "LocoNetAvrICP.h"
 #ifndef ESP32
 
 bool LocoNetAvrIcp::begin(uint8_t txPin)

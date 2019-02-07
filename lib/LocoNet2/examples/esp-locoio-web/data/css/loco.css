@@ -1,0 +1,29 @@
+
+
+.ipOptions {
+  display: block;
+}
+
+.optConfigIP{
+  display: none;
+}
+
+.optConfigOP{
+  display: none;
+}
+.optHelp{
+  display: none;
+}
+
+.opOptions {
+  display: none;
+}
+
+.u-half-width {
+  width: 50%;
+  box-sizing: border-box; }
+
+
+p#help {
+  text-align: justify;
+}

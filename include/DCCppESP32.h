@@ -123,7 +123,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 extern std::vector<uint8_t> restrictedPins;
 
 #if LOCONET_ENABLED
-#include <LocoNet2/LocoNetESP32UART.h>
+#include <LocoNetESP32UART.h>
 extern LocoNetESP32Uart locoNet;
 #endif
 

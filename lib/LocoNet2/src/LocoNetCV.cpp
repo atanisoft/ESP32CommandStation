@@ -51,7 +51,7 @@
  *
  *****************************************************************************/
 
-#include "LocoNet2/LocoNet.h"
+#include "LocoNet.h"
 #include <Arduino.h>
 
 // Adresses for the 'SRC' part of an UhlenbrockMsg

@@ -1,4 +1,4 @@
-#include "LocoNet2/LocoNetUART.h"
+#include "LocoNetUART.h"
 #ifndef ESP32
 
 LN_STATUS LocoNetUartClass::sendLocoNetPacketTry(lnMsg *txData, unsigned char ucPrioDelay)

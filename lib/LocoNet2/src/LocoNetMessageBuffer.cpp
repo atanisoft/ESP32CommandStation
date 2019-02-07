@@ -55,8 +55,8 @@
  *
  *****************************************************************************/
 
-#include "LocoNet2/LocoNet.h"
-#include "LocoNet2/LocoNetMessageBuffer.h"
+#include "LocoNet.h"
+#include "LocoNetMessageBuffer.h"
 
 #define		LN_CHECKSUM_SEED        (uint8_t)0xFF
 

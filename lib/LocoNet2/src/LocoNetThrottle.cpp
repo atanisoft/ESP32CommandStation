@@ -63,7 +63,7 @@
  *
  *****************************************************************************/
 
-#include "LocoNet2/LocoNet.h"
+#include "LocoNet.h"
 
 LocoNetThrottle::LocoNetThrottle(LocoNet &locoNet, uint8_t userData, uint8_t options, uint16_t throttleId) :
   _locoNet(locoNet), _state(TH_ST_FREE), _ticksSinceLastAction(0), _throttleId(throttleId),

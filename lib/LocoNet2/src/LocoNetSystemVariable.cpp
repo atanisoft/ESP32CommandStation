@@ -63,7 +63,7 @@
  *
  *****************************************************************************/
 
-#include "LocoNet2/LocoNet.h"
+#include "LocoNet.h"
 
 LocoNetSystemVariable::LocoNetSystemVariable(LocoNet &locoNet, uint8_t mfgId, uint8_t devId, uint16_t productId, uint8_t swVersion) :
   _locoNet(locoNet), _mfgId(mfgId), _devId(devId), _productId(productId), _swVersion(swVersion), _deferredProcessingRequired(false), _deferredSrcAddr(0) {
