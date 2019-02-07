@@ -1252,11 +1252,7 @@ function changeLocomotive(newAddress) {
 			fireLocoEvents = false;
 			$("#selected-loco-address").val(newAddress);
 			$("#throttle-speed").val(data.speed).slider("refresh");
-			if('FWD'.localeCompare(data.dir)) {
-				$("#throttle-direction").prop("checked", false).flipswitch("refresh");
-			} else {
-				$("#throttle-direction").prop("checked", true).flipswitch("refresh");
-			}
+			$("#throttle-direction").prop("checked", data.dir == 'FWD').flipswitch("refresh");
 			$.each(data.functions, function(index, item) {
 				console.log('function:', item.id, 'state:', item.state);
 				$(String.format("#funct_{0}", item.id)).prop('checked', item.state).flipswitch("refresh");
