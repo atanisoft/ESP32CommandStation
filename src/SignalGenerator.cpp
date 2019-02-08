@@ -377,7 +377,7 @@ bool SignalGenerator::isEnabled() {
   return _enabled;
 }
 
-bool beginProgrammingMode() {
+bool enterProgrammingMode() {
   progTrackBusy = true;
   const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
   const uint16_t milliAmpStartupLimit = (4096 * 100 / motorBoard->getMaxMilliAmps());

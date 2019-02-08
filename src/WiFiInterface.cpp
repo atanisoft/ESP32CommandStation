@@ -24,6 +24,7 @@ COPYRIGHT (c) 2017 Mike Dunston
 #include "WebServer.h"
 #include <esp_log.h>
 #include <esp_wifi_internal.h>
+#include <esp_task_wdt.h>
 
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
 #include "HC12Interface.h"
