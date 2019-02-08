@@ -205,6 +205,18 @@ public:
   }
 };
 
+// <F> command handler, this command sends the current free heap space as response.
+class FreeHeapCommand : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String> arguments) {
+    wifiInterface.printf(F("<f %d>"), ESP.getFreeHeap());
+  }
+
+  String getID() {
+    return "F";
+  }
+};
+
 void DCCPPProtocolHandler::init() {
   registerCommand(new ThrottleCommandAdapter());
   registerCommand(new FunctionCommandAdapter());
@@ -228,6 +240,7 @@ void DCCPPProtocolHandler::init() {
   registerCommand(new S88BusCommandAdapter());
 #endif
   registerCommand(new RemoteSensorsCommandAdapter());
+  registerCommand(new FreeHeapCommand());
 }
 
 void DCCPPProtocolHandler::process(const String &commandString) {

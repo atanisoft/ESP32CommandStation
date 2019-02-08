@@ -14,24 +14,7 @@ update when it should.
 - [ ] Compile: verify pre-processor checks are all correct
 
 ### Bugs in JMRI
-- [ ] JMRI interprets <H ID ADDR IDX STATE> as <H ID STATE>, need to reorganize order of regex checks:
-https://github.com/JMRI/JMRI/blob/master/java/src/jmri/jmrix/dccpp/DCCppReply.java#L247-L253
-and fix https://github.com/JMRI/JMRI/blob/92dd1e94fd500aefac2718300c99a592ce8ca4a5/java/src/jmri/jmrix/dccpp/DCCppReply.java#L617-L625 to correctly reference alternative state position.
-[TX: s]   Status Cmd 
-[RX: iDCC++ BASE STATION FOR ESP32: V-1.2.0 / Feb  7 2019 16:54:29]   Base Station Status: 
-	Version: 1.2.0
-	Build: Feb  7 2019 16:54:29
-[RX: p0 OPS]   Power Status: 
-	Name:OPS	Status:OFF
-[RX: p0 PROG]   Power Status: 
-	Name:PROG	Status:OFF
-[RX: H 1 1 0 0]   Turnout Reply: 
-	T/O Number: 1
-	Direction: THROWN
-[RX: H 2 2 1 1]   Turnout Reply: 
-	T/O Number: 2
-	Direction: CLOSED
-[RX: N1: 10.0.0.234]   Comm Type Reply Type: 1 Port: 10.0.0.234
+- [x] JMRI interprets <H ID ADDR IDX STATE> as <H ID STATE>. PR submitted https://github.com/JMRI/JMRI/pull/6537
 
 ## After v1.2.0:
 
