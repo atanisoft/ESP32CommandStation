@@ -4,7 +4,7 @@
 
 - [x] Dcc: verify and stabilize signal generation
 - [x] Dcc: verify programming track operation
-- [ ] Doc: document configuration options further
+- [x] Doc: document configuration options further
 - [x] Web: drop websocket from web interface (html only) as it is not used today.
 - [ ] Web: test web interface end-to-end
 - [x] Web: test jmri connection to ensure it still works as expected
@@ -12,6 +12,7 @@
 update when it should.
 - [x] Misc: extend the InfoScreen rotating line to display LCC details, it is a bit hacky right now to add new details.
 - [ ] Compile: verify pre-processor checks are all correct
+- [ ] Nextion: add notification of turnout state change when changed external to the nextion code
 
 ### Bugs in JMRI
 - [x] JMRI interprets <H ID ADDR IDX STATE> as <H ID STATE>. PR submitted https://github.com/JMRI/JMRI/pull/6537

@@ -43,7 +43,7 @@ The DCC++ESP32 Command Station consists of multiple modules, some of which are r
 ## Configuring the required modules
 With only two modules being required out-of-box the configuration is relatively painless.
 
-### Configuring the WiFi module
+### Configuring the WiFi module (Required)
 Open include/Config_WiFi.h and set the values for the following parameters as required:
 
 | PARAM | Description |
@@ -72,7 +72,7 @@ By default the Command Station supports remote sensors reporting their status vi
 | REMOTE_SENSORS_DECAY | This controls the lifespan of a remote sensor's "active" status, if the sensor does not report an update within this number of milliseconds the sensor will automatically transition to inactive status. |
 | REMOTE_SENSORS_FIRST_SENSOR | This is the first sensor ID that will be used for any remote sensors the Command Station manages and reports via the ```<S>``` command. |
 
-### Configuring the MotorBoard module
+### Configuring the MotorBoard module (Required)
 Open include/Config_MotorBoard.h and adjust values to match your configuration, the defaults are set for an Arduino Uno form factor ESP32 with an attached Arduino motor shield.
 
 | PARAM | Description |
@@ -115,13 +115,48 @@ With the ESP32 there are 16 analog inputs, unfortunately many of these are not r
 | ADC1_CHANNEL_6 | 34 |
 | ADC1_CHANNEL_7 | 35 |
 
-Note that on the Arduino Uno form factor ESP32 boards, the A0 and A1 pins connect to GPIO 0 and GPIO 4 typically and a jumper from A0 to A4 and A1 to A5 will be required to use ADC1_CHANNEL_0 and ADC1_CHANNEL_3 as listed above. Optionally you can jumper A0 to A2 and use ADC1_CHANNEL_7 for OPS and A1 to A3 and use ADC1_CHANNEL_6 for PROG.
+Note that on the Arduino Uno form factor ESP32 boards, the A0 and A1 pins may connect to GPIO 0 and GPIO 4 and a pair of jumpers will be required for successful current sense reporting. On these boards a jump from A0 to A4 and A1 to A5 will work for ADC1_CHANNEL_0 and ADC1_CHANNEL_3 as listed above, or a jumper A0 to A2 and use ADC1_CHANNEL_7 for OPS and A1 to A3 and use ADC1_CHANNEL_6 for PROG.
+
+##### Pololu Motor Driver Shield connections
+For the [Pololu MC33926 Motor Driver](https://www.pololu.com/product/2503) Shield you will need to make the following connections:
+
+| ESP32 pin | Pololu pin |
+| --------- | ---------- |
+| 5V | VDD |
+| GND | GND |
+| MOTORBOARD_ENABLE_PIN_MAIN (25) | D2 and M1PWM |
+| MOTORBOARD_CURRENT_SENSE_MAIN (36/SVP/VP) | M1FB |
+| DCC_SIGNAL_PIN_OPERATIONS (19) | M1DIR |
+| MOTORBOARD_ENABLE_PIN_PROG (23) | M2PWM |
+| MOTORBOARD_CURRENT_SENSE_PROG (39/SVN/VN) | M2FB |
+| DCC_SIGNAL_PIN_PROGRAMMING (18) | M2DIR |
+
+WARNING: Be sure to remove the VIN/VOUT jumper otherwise the ESP32 may be damaged by the track power supply.
+
+##### Pololu Motor Driver Carrier connections
+For the [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213) you will need to make the following connections:
+
+| ESP32 pin | Pololu pin |
+| --------- | ---------- |
+| 5V | VDD |
+| GND | GND |
+| 5V | EN |
+| MOTORBOARD_ENABLE_PIN_MAIN (25) | M1 PWM / INV D2 and M1 INV PWM / D1 (see note below) |
+| MOTORBOARD_CURRENT_SENSE_MAIN (36/SVP/VP) | M1 FB |
+| DCC_SIGNAL_PIN_OPERATIONS (19) | M1 IN1 |
+| DCC_SIGNAL_PIN_OPERATIONS_INVERTED (26) | M1 IN2 |
+| MOTORBOARD_ENABLE_PIN_PROG (23) | M2 PWM / INV D2 and M2 INV PWM / D1 (see note below) |
+| MOTORBOARD_CURRENT_SENSE_PROG (39/SVN/VN) | M2 FB |
+| DCC_SIGNAL_PIN_PROGRAMMING (18) | M2 IN1 |
+| DCC_SIGNAL_PIN_PROGRAMMING_INVERTED (13) | M1 IN2 |
+
+Note: The M1 D1 and M2 D1 pins need to be pulled LOW when the PWM pin is pulled HIGH, this can be accomplished in a number of ways with the easiest likely being an NPN transistor. Failure to connect these pins will result in the track outputs remaining OFF.
 
 ### Configuring the OLED or LCD Module (Optional)
-Only one of these modules can be included at a time. Both will provide similar information about the health and status of the Command Station
+Only one of these modules can be included at a time. Each option provides similar information about the health and status of the Command Station
 
 #### OLED Configuration
-If the ESP32 board has a built in OLED screen it may automatically be usable, this depends on the board being configured correctly in the [arduino-esp32](https://github.com/espressif/arduino-esp32) release. Currently only ome of the Heltec, TTGO or D-Duino-32 boards provide the automatic configuration. If the OLED does not work out-of-box with these boards or if your board does not define OLED_SDA and OLED_SCL, you can configure it via the parameters below.
+If the ESP32 board has a built in OLED screen it may automatically be usable, this depends on the board being configured correctly in the [arduino-esp32](https://github.com/espressif/arduino-esp32) release. Currently only ome of the Heltec (see note below), TTGO or D-Duino-32 boards provide the automatic configuration. If the OLED does not work out-of-box with these boards or if your board does not define OLED_SDA and OLED_SCL, you can configure it via the parameters below.
 
 | PARAM | Description |
 | ----- | ----------- |
@@ -133,7 +168,21 @@ If the ESP32 board has a built in OLED screen it may automatically be usable, th
 | INFO_SCREEN_SCL_PIN | If your ESP32 does not use a standard SCL pin (defined in the pins_arduino.h from arduino-esp32) you can define it here. |
 | INFO_SCREEN_RESET_PIN | If your OLED screen requires a reset pin to be used you can enable it by defining this parameter. Only a few OLED displays require this option and they are often attached to the ESP32 board directly in which case this option should automatically be enabled with the correct board type being selected. |
 
+##### Heltec WiFi Kit 32 / Heltec WiFi Lora 32 Configuration
+These boards have on-board OLED screens, if the automatic configuration does not work for these boards try the following settings:
+
+| PARAM | Description |
+| ----- | ----------- |
+| OLED_CHIPSET | SSD1306 |
+| INFO_SCREEN_OLED_I2C_ADDRESS | 0x3C |
+| INFO_SCREEN_SDA_PIN | 4 |
+| INFO_SCREEN_SCL_PIN | 15 |
+| INFO_SCREEN_RESET_PIN | 16 |
+
+All other parameters can be left as their defaults.
+
 #### LCD Configuration
+
 | PARAM | Description |
 | ----- | ----------- |
 | INFO_SCREEN_LCD_I2C_ADDRESS | This is the I2C address of the LCD screen, often it is 0x27. |
@@ -163,6 +212,7 @@ The following are not implemented but are planned:
 | OPC_SW_REP | Turnout report |
 
 #### LocoNet Configuration
+
 | PARAM | Description |
 | ----- | ----------- |
 | LOCONET_RX_PIN | This should be connected to the RX input from the LocoNet interface. |
@@ -176,10 +226,27 @@ John Plocher created the circuit shown below, it works great for a DIY interface
 Newer versions of this circuit can be found on his [website](http://www.spcoast.com/wiki/index.php/LocoShield), they use a different IC and have not been tested.
 
 ### Configuring the Nextion module (Optional)
-TBD
+The Nextion interface is an optional module that allows to control up to three trains and manage turnouts. In the future it will be possible to use this as a general command station management interface.
+
+| PARAM | Description |
+| ----- | ----------- |
+| NEXTION_UART_NUM | This defines which of the built in hardware UART devices will be used, this can be set to 1 or 2. UART 0 is used internally for the serial console logging. |
+| NEXTION_UART_BAUD | This is the speed at which the ESP32 will talk to the Nextion screen, this should remain at 115200 unless the HMI file is also updated to reflect a different speed. |
+| NEXTION_RX_PIN | This is the ESP32 pin connected to the Nextion RX pin. Default is 14, any unused pin can be used. |
+| NEXTION_TX_PIN | This is the ESP32 pin connected to the Nextion TX pin. Default is 27, any unused pin can be used. |
+
+Note: currently only Nextion 3.2" displays are supported and the nextion/DCCppESP32.hmi file will need to be compiled and uploaded to the Nextion screen via the Nextion Editor.
 
 ### Configuring the S88 module (Optional)
-TBD
+The S88 module allows reading of multiple S88 sensor buses. Each bus will have a unique data pin but shares the clock, reset and load pins.
+
+| PARAM | Description |
+| ----- | ----------- |
+| S88_CLOCK_PIN | This is the ESP32 pin that is connected to the S88 Bus Clock line. |
+| S88_RESET_PIN | This is the ESP32 pin that is connected to the S88 Bus Reset line. |
+| S88_LOAD_PIN | This is the ESP32 pin that is connected to the S88 Bus Load line. |
+
+All buses will share the above three lines but have a unique data line connected to individual pins on the ESP32. The buses will need to be configured through the web interface after startup.
 
 ### Configuring the LCC module (Optional but recommended)
 LCC is the Layout Command Control standard from the NMRA. The LCC module allows the DCC++ESP32 Command Station to interface with LCC devices either via WiFi or physical CAN bus connections.
