@@ -50,11 +50,9 @@ struct Packet {
 };
 
 struct SignalGenerator {
-  void configureSignal(String, uint8_t, uint8_t, uint16_t, uint8_t);
+  void configureSignal(String, uint16_t, uint8_t);
   void startSignal(bool=true);
   void stopSignal();
-
-  bool IRAM_ATTR advancePacketBit();
   void loadBytePacket(const uint8_t *, uint8_t, uint8_t, bool=false);
   void loadPacket(std::vector<uint8_t>, int, bool=false);
   void waitForQueueEmpty();
@@ -63,17 +61,15 @@ struct SignalGenerator {
 
   hw_timer_t *_timer;
   uint8_t _timerNumber;
-  bool _topOfWave;
   String _name;
-  uint8_t _signalPin;
-  uint8_t _invertedSignalPin;
   int _currentMonitorPin;
-  bool _enabled;
+  bool _topOfWave{true};
+  bool _enabled{false};
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
   Packet *_currentPacket;
   // pre-encoded idle packet that gets sent when the _toSend queue is empty.
-  Packet _idlePacket = {
+  Packet _idlePacket{
     { 0xFF, 0xFF, 0xFD, 0xFE, 0x00, 0x7F, 0x80, 0x00, 0x00, 0x00 }, // packet bytes
     49, // number of bits
     0, // number of repeats
@@ -90,7 +86,9 @@ bool isDCCSignalEnabled();
 void sendDCCEmergencyStop();
 
 extern bool progTrackBusy;
-int16_t readCV(const uint16_t, const uint8_t=3);
+bool enterProgrammingMode();
+void leaveProgrammingMode();
+int16_t readCV(const uint16_t);
 bool writeProgCVByte(const uint16_t, const uint8_t);
 bool writeProgCVBit(const uint16_t, const uint8_t, const bool);
 void writeOpsCVByte(const uint16_t, const uint16_t, const uint8_t);

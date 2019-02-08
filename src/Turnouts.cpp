@@ -73,7 +73,7 @@ by a separate interface or GUI program.
 
 LinkedList<Turnout *> turnouts([](Turnout *turnout) {delete turnout; });
 
-static constexpr char *ORIENTATION_STRINGS[] = {
+static constexpr const char *ORIENTATION_STRINGS[] = {
   "LEFT",
   "RIGHT",
   "WYE",
@@ -295,7 +295,7 @@ void Turnout::set(bool thrown, bool sendDCCPacket) {
     args.push_back(String(_thrown));
     DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   }
-  wifiInterface.printf(F("<H %d %d>"), _turnoutID, !_thrown);
+  wifiInterface.printf(F("<H %d %d>"), _turnoutID, _thrown);
   log_i("Turnout(%d) %s", _turnoutID, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
 }
 

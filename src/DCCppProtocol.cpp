@@ -86,11 +86,13 @@ class ReadCVCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
     int cvNumber = arguments[0].toInt();
+    enterProgrammingMode();
     wifiInterface.printf(F("<r%d|%d|%d %d>"),
       arguments[1].toInt(),
       arguments[2].toInt(),
       cvNumber,
       readCV(cvNumber));
+    leaveProgrammingMode();
   }
 
   String getID() {
@@ -107,6 +109,7 @@ public:
   void process(const std::vector<String> arguments) {
     int cvNumber = arguments[0].toInt();
     uint8_t cvValue = arguments[1].toInt();
+    enterProgrammingMode();
     if(!writeProgCVByte(cvNumber, cvValue)) {
       cvValue = -1;
     }
@@ -115,6 +118,7 @@ public:
       arguments[3].toInt(),
       cvNumber,
       cvValue);
+    leaveProgrammingMode();
   }
 
   String getID() {
@@ -132,6 +136,7 @@ public:
     int cvNumber = arguments[0].toInt();
     uint8_t bit = arguments[1].toInt();
     int8_t bitValue = arguments[1].toInt();
+    enterProgrammingMode();
     if(!writeProgCVBit(cvNumber, bit, bitValue == 1)) {
       bitValue = -1;
     }
@@ -141,6 +146,7 @@ public:
       cvNumber,
       bit,
       bitValue);
+    leaveProgrammingMode();
   }
 
   String getID() {

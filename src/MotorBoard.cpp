@@ -117,7 +117,7 @@ uint16_t GenericMotorBoard::captureSample(uint8_t sampleCount, bool logResults) 
   }
   auto avgReading = std::accumulate(readings.begin(), readings.end(), 0) / readings.size();
   if(logResults) {
-    log_d("ADC(%d) average: %d, samples: %d", _senseChannel, avgReading, readings.size());
+    log_i("ADC(%d) average: %d, samples: %d", _senseChannel, avgReading, readings.size());
   }
   return avgReading;
 }

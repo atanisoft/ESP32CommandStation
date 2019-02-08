@@ -144,6 +144,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
 			jsonResponse->setCode(STATUS_NOT_ALLOWED);
 		} else if(request->hasArg(JSON_IDENTIFY_NODE.c_str())) {
       JsonObject &node = jsonResponse->getRoot();
+      enterProgrammingMode();
       int16_t decoderConfig = readCV(CV_NAMES::DECODER_CONFIG);
       uint16_t decoderAddress = 0;
       if(decoderConfig > 0) {
@@ -215,8 +216,10 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
         log_w("Failed to read decoder configuration");
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
+      leaveProgrammingMode();
     } else {
       uint16_t cvNumber = request->arg(JSON_CV_NODE.c_str()).toInt();
+      enterProgrammingMode();
       int16_t cvValue = readCV(cvNumber);
 			JsonObject &node = jsonResponse->getRoot();
 			node[JSON_CV_NODE] = cvNumber;
@@ -226,6 +229,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
       } else {
         jsonResponse->setCode(STATUS_OK);
      }
+     leaveProgrammingMode();
 		}
   } else if(request->method() == HTTP_POST && request->hasArg(JSON_PROG_ON_MAIN.c_str())) {
     if (request->arg(JSON_PROG_ON_MAIN.c_str()).equalsIgnoreCase(JSON_VALUE_TRUE)) {
@@ -239,6 +243,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
 			jsonResponse->setCode(STATUS_OK);
 		} else {
       bool writeSuccess = false;
+      enterProgrammingMode();
       if(request->hasArg(JSON_CV_BIT_NODE.c_str())) {
         writeSuccess = writeProgCVBit(request->arg(JSON_CV_NODE.c_str()).toInt(), request->arg(JSON_CV_BIT_NODE.c_str()).toInt(),
           request->arg(JSON_VALUE_NODE.c_str()).equalsIgnoreCase(JSON_VALUE_TRUE));
@@ -250,6 +255,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
       } else {
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
+      leaveProgrammingMode();
 		}
   } else {
     jsonResponse->setCode(STATUS_BAD_REQUEST);
