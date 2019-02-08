@@ -12,13 +12,13 @@
 update when it should.
 - [x] Misc: extend the InfoScreen rotating line to display LCC details, it is a bit hacky right now to add new details.
 - [ ] Compile: verify pre-processor checks are all correct
-- [ ] Nextion: add notification of turnout state change when changed external to the nextion code
 
 ### Bugs in JMRI
 - [x] JMRI interprets <H ID ADDR IDX STATE> as <H ID STATE>. PR submitted https://github.com/JMRI/JMRI/pull/6537
 
 ## After v1.2.0:
 
+- [ ] Nextion: add notification of turnout state change when changed external to the nextion code
 - [ ] Web: investigate tcp/ip hang
 - [ ] Doc: write up arduino IDE build instructions
 - [ ] Web: add busy/wait spinner for when data is loading (or being refreshed) in the web interface
