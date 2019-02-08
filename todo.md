@@ -30,3 +30,4 @@ not sure)
 fixed somehow but I haven't found a working solution yet. It will very likely require a ground up re-write with streaming packet data to the ISR.
 - [ ] Lcc: adjust InfoScreen LCC details so they are actually useful, right now it is a placeholder.
 - [ ] Nextion: replace Routes page with a Setup page which will include route creation
+- [ ] Web: SoftAP support (https://github.com/atanisoft/DCCppESP32/issues/4)
