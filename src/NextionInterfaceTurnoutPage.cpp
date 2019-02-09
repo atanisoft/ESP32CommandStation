@@ -195,13 +195,13 @@ void NextionTurnoutPage::refreshPage() {
 
   // update the number of turnouts we can display on the page
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
-    auto turnout = TurnoutManager::getTurnoutByID(_turnoutStartIndex + componentIndex);
+    auto turnout = TurnoutManager::getTurnoutByIndex(_turnoutStartIndex + componentIndex);
     if(turnout) {
       _turnoutButtons[componentIndex].setPictureID(LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
       _turnoutButtons[componentIndex].show();
       _toAddress[componentIndex].setTextAsNumber(turnout->getAddress());
       _toAddress[componentIndex].show();
-    } 
+    }
   }
 
   // check if we need to show/hide any components on the page

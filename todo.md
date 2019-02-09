@@ -20,6 +20,7 @@ update when it should.
 
 - [ ] Nextion: add notification of turnout state change when changed external to the nextion code
 - [ ] Web: investigate tcp/ip hang
+- [ ] Web: auto-refresh of status pages
 - [ ] Doc: write up arduino IDE build instructions
 - [ ] Web: add busy/wait spinner for when data is loading (or being refreshed) in the web interface
 - [ ] Dcc: add support for RailCom cut-out. This is a lower priority item as I still need to read up on it further, but in short the dcc signal goes OFF

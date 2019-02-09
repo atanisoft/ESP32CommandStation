@@ -179,6 +179,18 @@ bool TurnoutManager::remove(const uint16_t id) {
   return false;
 }
 
+Turnout *TurnoutManager::getTurnoutByIndex(const uint16_t index) {
+  Turnout *retval = nullptr;
+  uint16_t currentIndex = 0;
+  for (const auto& turnout : turnouts) {
+    if(currentIndex == index) {
+      retval = turnout;
+    }
+    currentIndex++;
+  }
+  return retval;
+}
+
 Turnout *TurnoutManager::getTurnoutByID(const uint16_t id) {
   Turnout *retval = nullptr;
   for (const auto& turnout : turnouts) {
