@@ -378,9 +378,16 @@ bool SignalGenerator::isEnabled() {
 }
 
 bool enterProgrammingMode() {
-  progTrackBusy = true;
   const auto motorBoard = MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG);
   const uint16_t milliAmpStartupLimit = (4096 * 100 / motorBoard->getMaxMilliAmps());
+
+  // check if the programming track is already in use
+  if(progTrackBusy) {
+    return false;
+  }
+
+  // flag that we are currently using the programming track
+  progTrackBusy = true;
 
   // energize the programming track
   motorBoard->powerOn(false);
@@ -399,6 +406,8 @@ bool enterProgrammingMode() {
 
   // delay for a short bit before entering programming mode
   vTaskDelay(pdMS_TO_TICKS(40));
+
+  return true;
 }
 
 void leaveProgrammingMode() {
@@ -406,6 +415,7 @@ void leaveProgrammingMode() {
   MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->powerOff(false);
   dccSignal[DCC_SIGNAL_PROGRAMMING].stopSignal();
 
+  // reset flag to indicate the programming track is free
   progTrackBusy = false;
 }
 

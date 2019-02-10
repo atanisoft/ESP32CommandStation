@@ -86,13 +86,16 @@ class ReadCVCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
     int cvNumber = arguments[0].toInt();
-    enterProgrammingMode();
+    int16_t cvValue = -1;
+    if(enterProgrammingMode()) {
+      cvValue = readCV(cvNumber);
+      leaveProgrammingMode();
+    }
     wifiInterface.printf(F("<r%d|%d|%d %d>"),
       arguments[1].toInt(),
       arguments[2].toInt(),
       cvNumber,
-      readCV(cvNumber));
-    leaveProgrammingMode();
+      cvValue);
   }
 
   String getID() {
@@ -108,9 +111,13 @@ class WriteCVByteProgCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
     int cvNumber = arguments[0].toInt();
-    uint8_t cvValue = arguments[1].toInt();
-    enterProgrammingMode();
-    if(!writeProgCVByte(cvNumber, cvValue)) {
+    int16_t cvValue = arguments[1].toInt();
+    if(enterProgrammingMode()) {
+      if(!writeProgCVByte(cvNumber, cvValue)) {
+        cvValue = -1;
+      }
+      leaveProgrammingMode();
+    } else {
       cvValue = -1;
     }
     wifiInterface.printf(F("<r%d|%d|%d %d>"),
@@ -118,7 +125,6 @@ public:
       arguments[3].toInt(),
       cvNumber,
       cvValue);
-    leaveProgrammingMode();
   }
 
   String getID() {
@@ -136,8 +142,12 @@ public:
     int cvNumber = arguments[0].toInt();
     uint8_t bit = arguments[1].toInt();
     int8_t bitValue = arguments[1].toInt();
-    enterProgrammingMode();
-    if(!writeProgCVBit(cvNumber, bit, bitValue == 1)) {
+    if(enterProgrammingMode()) {
+      if(!writeProgCVBit(cvNumber, bit, bitValue == 1)) {
+        bitValue = -1;
+      }
+      leaveProgrammingMode();
+    } else {
       bitValue = -1;
     }
     wifiInterface.printf(F("<r%d|%d|%d %d %d>"),
@@ -146,7 +156,6 @@ public:
       cvNumber,
       bit,
       bitValue);
-    leaveProgrammingMode();
   }
 
   String getID() {

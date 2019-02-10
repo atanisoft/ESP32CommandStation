@@ -144,92 +144,100 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
 			jsonResponse->setCode(STATUS_NOT_ALLOWED);
 		} else if(request->hasArg(JSON_IDENTIFY_NODE.c_str())) {
       JsonObject &node = jsonResponse->getRoot();
-      enterProgrammingMode();
-      int16_t decoderConfig = readCV(CV_NAMES::DECODER_CONFIG);
-      uint16_t decoderAddress = 0;
-      if(decoderConfig > 0) {
-        if(bitRead(decoderConfig, DECODER_CONFIG_BITS::DECODER_TYPE)) {
-          uint8_t decoderManufacturer = readCV(CV_NAMES::DECODER_MANUFACTURER);
-          int16_t addrMSB = readCV(CV_NAMES::ACCESSORY_DECODER_MSB_ADDRESS);
-          int16_t addrLSB = readCV(CV_NAMES::SHORT_ADDRESS);
-          if(addrMSB >= 0 && addrLSB >= 0) {
-            if(decoderManufacturer == 0xA5) { // MERG uses 7 bit LSB
-              decoderAddress = (uint16_t)(((addrMSB & 0x07) << 7) | (addrLSB & 0x7F));
-            } else if(decoderManufacturer == 0x19) { // Team Digital uses 8 bit LSB and 4 bit MSB
-              decoderAddress = (uint16_t)(((addrMSB & 0x0F) << 8) | addrLSB);
-            } else { // NMRA spec shows 6 bit LSB
-              decoderAddress = (uint16_t)(((addrMSB & 0x07) << 6) | (addrLSB & 0x1F));
+      if(enterProgrammingMode()) {
+        int16_t decoderConfig = readCV(CV_NAMES::DECODER_CONFIG);
+        uint16_t decoderAddress = 0;
+        if(decoderConfig > 0) {
+          if(bitRead(decoderConfig, DECODER_CONFIG_BITS::DECODER_TYPE)) {
+            uint8_t decoderManufacturer = readCV(CV_NAMES::DECODER_MANUFACTURER);
+            int16_t addrMSB = readCV(CV_NAMES::ACCESSORY_DECODER_MSB_ADDRESS);
+            int16_t addrLSB = readCV(CV_NAMES::SHORT_ADDRESS);
+            if(addrMSB >= 0 && addrLSB >= 0) {
+              if(decoderManufacturer == 0xA5) { // MERG uses 7 bit LSB
+                decoderAddress = (uint16_t)(((addrMSB & 0x07) << 7) | (addrLSB & 0x7F));
+              } else if(decoderManufacturer == 0x19) { // Team Digital uses 8 bit LSB and 4 bit MSB
+                decoderAddress = (uint16_t)(((addrMSB & 0x0F) << 8) | addrLSB);
+              } else { // NMRA spec shows 6 bit LSB
+                decoderAddress = (uint16_t)(((addrMSB & 0x07) << 6) | (addrLSB & 0x1F));
+              }
+              node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_LONG_ADDRESS;
+            } else {
+              log_w("Failed to read address MSB/LSB");
+              jsonResponse->setCode(STATUS_SERVER_ERROR);
             }
-            node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_LONG_ADDRESS;
           } else {
-            log_w("Failed to read address MSB/LSB");
+            if(bitRead(decoderConfig, DECODER_CONFIG_BITS::SHORT_OR_LONG_ADDRESS)) {
+              int16_t addrMSB = readCV(CV_NAMES::LONG_ADDRESS_MSB_ADDRESS);
+              int16_t addrLSB = readCV(CV_NAMES::LONG_ADDRESS_LSB_ADDRESS);
+              if(addrMSB >= 0 && addrLSB >= 0) {
+                decoderAddress = (uint16_t)(((addrMSB & 0xFF) << 8) | (addrLSB & 0xFF));
+                node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_LONG_ADDRESS;
+              } else {
+                log_w("Unable to read address MSB/LSB");
+                jsonResponse->setCode(STATUS_SERVER_ERROR);
+              }
+            } else {
+              int16_t shortAddr = readCV(CV_NAMES::SHORT_ADDRESS);
+              if(shortAddr > 0) {
+                decoderAddress = shortAddr;
+                node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_SHORT_ADDRESS;
+              } else {
+                log_w("Unable to read short address CV");
+                jsonResponse->setCode(STATUS_SERVER_ERROR);
+              }
+            }
+            if(bitRead(decoderConfig, DECODER_CONFIG_BITS::SPEED_TABLE)) {
+              node[JSON_SPEED_TABLE_NODE] = JSON_VALUE_ON;
+            } else {
+              node[JSON_SPEED_TABLE_NODE] = JSON_VALUE_OFF;
+            }
+          }
+          if(decoderAddress > 0) {
+            node[JSON_ADDRESS_NODE] = decoderAddress;
+            auto roster = LocomotiveManager::getRosterEntry(decoderAddress, false);
+            if(roster) {
+              node[JSON_LOCO_NODE] = roster;
+            } else if(request->hasArg(JSON_CREATE_NODE.c_str()) && request->arg(JSON_CREATE_NODE).equalsIgnoreCase(JSON_VALUE_TRUE)) {
+              roster = LocomotiveManager::getRosterEntry(decoderAddress);
+              if(decoderConfig > 0) {
+                if(bitRead(decoderConfig, DECODER_CONFIG_BITS::DECODER_TYPE)) {
+                  roster->setType(JSON_VALUE_STATIONARY_DECODER);
+                } else {
+                  roster->setType(JSON_VALUE_MOBILE_DECODER);
+                }
+              }
+              node[JSON_LOCO_NODE] = roster;
+            }
+          } else {
+            log_w("Failed to read decoder address");
             jsonResponse->setCode(STATUS_SERVER_ERROR);
           }
         } else {
-          if(bitRead(decoderConfig, DECODER_CONFIG_BITS::SHORT_OR_LONG_ADDRESS)) {
-            int16_t addrMSB = readCV(CV_NAMES::LONG_ADDRESS_MSB_ADDRESS);
-            int16_t addrLSB = readCV(CV_NAMES::LONG_ADDRESS_LSB_ADDRESS);
-            if(addrMSB >= 0 && addrLSB >= 0) {
-              decoderAddress = (uint16_t)(((addrMSB & 0xFF) << 8) | (addrLSB & 0xFF));
-              node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_LONG_ADDRESS;
-            } else {
-              log_w("Unable to read address MSB/LSB");
-              jsonResponse->setCode(STATUS_SERVER_ERROR);
-            }
-          } else {
-            int16_t shortAddr = readCV(CV_NAMES::SHORT_ADDRESS);
-            if(shortAddr > 0) {
-              decoderAddress = shortAddr;
-              node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_SHORT_ADDRESS;
-            } else {
-              log_w("Unable to read short address CV");
-              jsonResponse->setCode(STATUS_SERVER_ERROR);
-            }
-          }
-          if(bitRead(decoderConfig, DECODER_CONFIG_BITS::SPEED_TABLE)) {
-            node[JSON_SPEED_TABLE_NODE] = JSON_VALUE_ON;
-          } else {
-            node[JSON_SPEED_TABLE_NODE] = JSON_VALUE_OFF;
-          }
-        }
-        if(decoderAddress > 0) {
-          node[JSON_ADDRESS_NODE] = decoderAddress;
-          auto roster = LocomotiveManager::getRosterEntry(decoderAddress, false);
-          if(roster) {
-            node[JSON_LOCO_NODE] = roster;
-          } else if(request->hasArg(JSON_CREATE_NODE.c_str()) && request->arg(JSON_CREATE_NODE).equalsIgnoreCase(JSON_VALUE_TRUE)) {
-            roster = LocomotiveManager::getRosterEntry(decoderAddress);
-            if(decoderConfig > 0) {
-              if(bitRead(decoderConfig, DECODER_CONFIG_BITS::DECODER_TYPE)) {
-                roster->setType(JSON_VALUE_STATIONARY_DECODER);
-              } else {
-                roster->setType(JSON_VALUE_MOBILE_DECODER);
-              }
-            }
-            node[JSON_LOCO_NODE] = roster;
-          }
-        } else {
-          log_w("Failed to read decoder address");
+          log_w("Failed to read decoder configuration");
           jsonResponse->setCode(STATUS_SERVER_ERROR);
         }
+        leaveProgrammingMode();
       } else {
-        log_w("Failed to read decoder configuration");
+        log_w("Programmer already in use");
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
-      leaveProgrammingMode();
     } else {
       uint16_t cvNumber = request->arg(JSON_CV_NODE.c_str()).toInt();
-      enterProgrammingMode();
-      int16_t cvValue = readCV(cvNumber);
-			JsonObject &node = jsonResponse->getRoot();
-			node[JSON_CV_NODE] = cvNumber;
-      node[JSON_VALUE_NODE] = cvValue;
-      if(cvValue < 0) {
-        jsonResponse->setCode(STATUS_SERVER_ERROR);
+      if(enterProgrammingMode()) {
+        int16_t cvValue = readCV(cvNumber);
+        JsonObject &node = jsonResponse->getRoot();
+        node[JSON_CV_NODE] = cvNumber;
+        node[JSON_VALUE_NODE] = cvValue;
+        if(cvValue < 0) {
+          jsonResponse->setCode(STATUS_SERVER_ERROR);
+        } else {
+          jsonResponse->setCode(STATUS_OK);
+        }
+        leaveProgrammingMode();
       } else {
-        jsonResponse->setCode(STATUS_OK);
-     }
-     leaveProgrammingMode();
+        log_w("Programmer already in use");
+        jsonResponse->setCode(STATUS_SERVER_ERROR);
+      }
 		}
   } else if(request->method() == HTTP_POST && request->hasArg(JSON_PROG_ON_MAIN.c_str())) {
     if (request->arg(JSON_PROG_ON_MAIN.c_str()).equalsIgnoreCase(JSON_VALUE_TRUE)) {
@@ -243,19 +251,20 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
 			jsonResponse->setCode(STATUS_OK);
 		} else {
       bool writeSuccess = false;
-      enterProgrammingMode();
-      if(request->hasArg(JSON_CV_BIT_NODE.c_str())) {
-        writeSuccess = writeProgCVBit(request->arg(JSON_CV_NODE.c_str()).toInt(), request->arg(JSON_CV_BIT_NODE.c_str()).toInt(),
-          request->arg(JSON_VALUE_NODE.c_str()).equalsIgnoreCase(JSON_VALUE_TRUE));
-      } else {
-        writeSuccess = writeProgCVByte(request->arg(JSON_CV_NODE.c_str()).toInt(), request->arg(JSON_VALUE_NODE.c_str()).toInt());
+      if(enterProgrammingMode()) {
+        if(request->hasArg(JSON_CV_BIT_NODE.c_str())) {
+          writeSuccess = writeProgCVBit(request->arg(JSON_CV_NODE.c_str()).toInt(), request->arg(JSON_CV_BIT_NODE.c_str()).toInt(),
+            request->arg(JSON_VALUE_NODE.c_str()).equalsIgnoreCase(JSON_VALUE_TRUE));
+        } else {
+          writeSuccess = writeProgCVByte(request->arg(JSON_CV_NODE.c_str()).toInt(), request->arg(JSON_VALUE_NODE.c_str()).toInt());
+        }
+        leaveProgrammingMode();
       }
       if(writeSuccess) {
         jsonResponse->setCode(STATUS_OK);
       } else {
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
-      leaveProgrammingMode();
 		}
   } else {
     jsonResponse->setCode(STATUS_BAD_REQUEST);
