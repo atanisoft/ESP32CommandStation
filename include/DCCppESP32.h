@@ -279,6 +279,22 @@ void esp32_restart();
       #error "Invalid Configuration detected, LCC_CAN_RX_PIN and S88_CLOCK_PIN must be unique."
       #endif
     #endif
+    #if LOCONET_ENABLED
+      #if LCC_CAN_RX_PIN == LOCONET_RX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_RX_PIN and LOCONET_RX_PIN must be unique."
+      #endif
+      #if LCC_CAN_RX_PIN == LOCONET_TX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_RX_PIN and LOCONET_TX_PIN must be unique."
+      #endif
+    #endif
+    #if NEXTION_ENABLED
+      #if LCC_CAN_RX_PIN == NEXTION_RX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_RX_PIN and NEXTION_RX_PIN must be unique."
+      #endif
+      #if LCC_CAN_RX_PIN == NEXTION_TX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_RX_PIN and NEXTION_TX_PIN must be unique."
+      #endif
+    #endif
   #endif
   #if LCC_CAN_TX_PIN != -1
     #if S88_ENABLED
@@ -290,6 +306,22 @@ void esp32_restart();
       #endif
       #if S88_RESET_PIN == LCC_CAN_TX_PIN
       #error "Invalid Configuration detected, LCC_CAN_TX_PIN and S88_CLOCK_PIN must be unique."
+      #endif
+    #endif
+    #if LOCONET_ENABLED
+      #if LCC_CAN_TX_PIN == LOCONET_RX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_TX_PIN and LOCONET_RX_PIN must be unique."
+      #endif
+      #if LCC_CAN_TX_PIN == LOCONET_TX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_TX_PIN and LOCONET_TX_PIN must be unique."
+      #endif
+    #endif
+    #if NEXTION_ENABLED
+      #if LCC_CAN_TX_PIN == NEXTION_RX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_TX_PIN and NEXTION_RX_PIN must be unique."
+      #endif
+      #if LCC_CAN_TX_PIN == NEXTION_TX_PIN
+      #error "Invalid Configuration detected, LCC_CAN_TX_PIN and NEXTION_TX_PIN must be unique."
       #endif
     #endif
   #endif
