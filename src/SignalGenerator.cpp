@@ -62,23 +62,12 @@ bool progTrackBusy = false;
   digitalWrite(signalPin, LOW); \
   pinMode(signalPin, OUTPUT);
 
-#define INVERTED_SIGNAL_PIN_CONFIG(name, invertedSignalPin) \
-  log_i("[%s] Configuring inverted signal pin %d", name, invertedSignalPin); \
-  pinMode(invertedSignalPin, INPUT); \
-  digitalWrite(invertedSignalPin, LOW); \
-  pinMode(invertedSignalPin, OUTPUT); \
 
 void configureDCCSignalGenerators() {
   SIGNAL_PIN_CONFIG("OPS", DCC_SIGNAL_PIN_OPERATIONS)
-#if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
-  INVERTED_SIGNAL_PIN_CONFIG("OPS", DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
-#endif
   dccSignal[DCC_SIGNAL_OPERATIONS].configureSignal("OPS", 512, DCC_TIMER_OPERATIONS);
 
   SIGNAL_PIN_CONFIG("PROG", DCC_SIGNAL_PIN_PROGRAMMING)
-#if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
-  INVERTED_SIGNAL_PIN_CONFIG("PROG", DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
-#endif
   dccSignal[DCC_SIGNAL_PROGRAMMING].configureSignal("PROG", 64, DCC_TIMER_PROGRAMMING);
 }
 
@@ -231,41 +220,14 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
   timerWrite(G._timer, 0); \
   timerAlarmEnable(G._timer);
 
-#define DCC_SIGNAL_ISR_IMPL_WITH_INVERTED_SIGNAL_PIN(G, S, I) \
-  if(G._topOfWave) { \
-    UPDATE_DCC_PACKET(G) \
-    digitalWrite(S, HIGH); \
-    digitalWrite(I, LOW); \
-    if(G._currentPacket->buffer[G._currentPacket->currentBit / 8] & DCC_PACKET_BIT_MASK[G._currentPacket->currentBit % 8]) { \
-      timerAlarmWrite(G._timer, DCC_ONE_BIT_PULSE_DURATION, false); \
-    } else { \
-      timerAlarmWrite(G._timer, DCC_ZERO_BIT_PULSE_DURATION, false); \
-    } \
-    G._currentPacket->currentBit++; \
-  } else { \
-    digitalWrite(S, LOW); \
-    digitalWrite(I, HIGH); \
-  } \
-  G._topOfWave = !G._topOfWave; \
-  timerWrite(G._timer, 0); \
-  timerAlarmEnable(G._timer);
-
 void IRAM_ATTR signalGeneratorTimerISR_OPS(void)
 {
-#if defined(DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
-  DCC_SIGNAL_ISR_IMPL_WITH_INVERTED_SIGNAL_PIN(dccSignal[DCC_SIGNAL_OPERATIONS], DCC_SIGNAL_PIN_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS_INVERTED)
-#else
   DCC_SIGNAL_ISR_IMPL(dccSignal[DCC_SIGNAL_OPERATIONS], DCC_SIGNAL_PIN_OPERATIONS)
-#endif
 }
 
 void IRAM_ATTR signalGeneratorTimerISR_PROG(void)
 {
-#if defined(DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
-  DCC_SIGNAL_ISR_IMPL_WITH_INVERTED_SIGNAL_PIN(dccSignal[DCC_SIGNAL_PROGRAMMING], DCC_SIGNAL_PIN_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING_INVERTED)
-#else
   DCC_SIGNAL_ISR_IMPL(dccSignal[DCC_SIGNAL_PROGRAMMING], DCC_SIGNAL_PIN_PROGRAMMING)
-#endif
 }
 
 void SignalGenerator::configureSignal(String name, uint16_t maxPackets, uint8_t timerNumber) {

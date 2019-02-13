@@ -82,7 +82,6 @@ Open include/Config_MotorBoard.h and adjust values to match your configuration, 
 | MOTORBOARD_CURRENT_SENSE_OPS | This is the ESP32 Analog input channel as defined below that is connected to the motor shield's current sense output pin, for Arduino motor shields this is usually A0. |
 | MOTORBOARD_TYPE_OPS | This tells the Command Station what type of motor board is connected for the Operations track, this controls the current limiting configuration. Details for supported values are below. |
 | DCC_SIGNAL_PIN_OPERATIONS | This is the DCC signal pin for the Operations track, this should be connected to the "direction" pin of the motor board, for Arduino motor shields this is the "DIRA" pin. |
-| DCC_SIGNAL_PIN_OPERATIONS_INVERTED | This is the inverted DCC signal pin, when DCC_SIGNAL_PIN_OPERATIONS output is HIGH this will be LOW and vice-versa. This is not enabled by default and should be enabled if you are using a motor shield that has multiple input pins to control the H-Bridge. This is not required for the Arduino motor shields, but is required for LCC support. |
 
 | PARAM | Description |
 | ----- | ----------- |
@@ -91,7 +90,6 @@ Open include/Config_MotorBoard.h and adjust values to match your configuration, 
 | MOTORBOARD_CURRENT_SENSE_PROG | This is the ESP32 Analog input channel as defined below that is connected to the motor shield's current sense output pin, for Arduino motor shields this is usually A1. |
 | MOTORBOARD_TYPE_PROG | This tells the Command Station what type of motor board is connected for the Programming track, this controls the current limiting configuration. Details for supported values are below. |
 | DCC_SIGNAL_PIN_PROGRAMMING | This is the DCC signal pin for the Programming track, this should be connected to the "direction" pin of the motor board, for Arduino motor shields this is the "DIRB" pin. |
-| DCC_SIGNAL_PIN_PROGRAMMING_INVERTED | This is the inverted DCC signal pin, when DCC_SIGNAL_PIN_PROGRAMMING output is HIGH this will be LOW and vice-versa. This is not enabled by default and should be enabled if you are using a motor shield that has multiple input pins to control the H-Bridge. This is not required for the Arduino motor shields. |
 
 #### Supported Motor Boards
 When configuring the motor board module you will need to pick the type of motor board that is being used, the following table shows the supported options and their current limits:
@@ -117,6 +115,19 @@ With the ESP32 there are 16 analog inputs, unfortunately many of these are not r
 
 Note that on the Arduino Uno form factor ESP32 boards, the A0 and A1 pins may connect to GPIO 0 and GPIO 4 and a pair of jumpers will be required for successful current sense reporting. On these boards a jump from A0 to A4 and A1 to A5 will work for ADC1_CHANNEL_0 and ADC1_CHANNEL_3 as listed above, or a jumper A0 to A2 and use ADC1_CHANNEL_7 for OPS and A1 to A3 and use ADC1_CHANNEL_6 for PROG.
 
+##### BTS7960B connections
+The BTS7960B motor driver, also known at IBT_2, is a high amperage half h-bridge based motor driver. It is best suited as a standalone booster for the OPS DCC signal but can be used directly connected to the DCC++ESP32 Command Station. It is not known if this motor driver is suitable for use on the PROG track.
+
+| ESP32 pin | BTS7960B pin |
+| --------- | ---------- |
+| 5V | VCC |
+| GND | GND |
+| MOTORBOARD_ENABLE_PIN_MAIN (25) | R_EN and L_EN |
+| MOTORBOARD_CURRENT_SENSE_MAIN (36/SVP/VP) | R_IS and L_IS |
+| DCC_SIGNAL_PIN_OPERATIONS (19) | see note below |
+
+Note: The DCC signal needs to be split into R and L for the BTS7960B, this can be done using a circuit similar to this: ![DCC Signal Split](docs/dcc-signal-split.png)
+
 ##### Pololu Motor Driver Shield connections
 For the [Pololu MC33926 Motor Driver](https://www.pololu.com/product/2503) Shield you will need to make the following connections:
 
@@ -141,16 +152,17 @@ For the [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/121
 | 5V | VDD |
 | GND | GND |
 | 5V | EN |
-| MOTORBOARD_ENABLE_PIN_MAIN (25) | M1 PWM / INV D2 and M1 INV PWM / D1 (see note below) |
+| MOTORBOARD_ENABLE_PIN_MAIN (25) | M1 PWM / INV D2 and M1 INV PWM / D1 (see note #1) |
 | MOTORBOARD_CURRENT_SENSE_MAIN (36/SVP/VP) | M1 FB |
 | DCC_SIGNAL_PIN_OPERATIONS (19) | M1 IN1 |
-| DCC_SIGNAL_PIN_OPERATIONS_INVERTED (26) | M1 IN2 |
-| MOTORBOARD_ENABLE_PIN_PROG (23) | M2 PWM / INV D2 and M2 INV PWM / D1 (see note below) |
+| see note #2 | M1 IN2 |
+| MOTORBOARD_ENABLE_PIN_PROG (23) | M2 PWM / INV D2 and M2 INV PWM / D1 (see note #1) |
 | MOTORBOARD_CURRENT_SENSE_PROG (39/SVN/VN) | M2 FB |
 | DCC_SIGNAL_PIN_PROGRAMMING (18) | M2 IN1 |
-| DCC_SIGNAL_PIN_PROGRAMMING_INVERTED (13) | M1 IN2 |
+| see note #2 | M1 IN2 |
 
-Note: The M1 D1 and M2 D1 pins need to be pulled LOW when the PWM pin is pulled HIGH, this can be accomplished in a number of ways with the easiest likely being an NPN transistor. Failure to connect these pins will result in the track outputs remaining OFF.
+Note #1: The M1 D1 and M2 D1 pins need to be pulled LOW when the PWM pin is pulled HIGH, this can be accomplished in a number of ways with the easiest likely being an NPN transistor. Failure to connect these pins will result in the track outputs remaining OFF.
+Note #2: Similar to the BTS7960B motor driver, the [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213) requires an inverted input to be provided, this can be done using a circuit similar to this: ![DCC Signal Split](docs/dcc-signal-split.png)
 
 ### Configuring the OLED or LCD Module (Optional)
 Only one of these modules can be included at a time. Each option provides similar information about the health and status of the Command Station

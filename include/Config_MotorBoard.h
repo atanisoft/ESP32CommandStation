@@ -62,16 +62,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // OPERATIONS TRACK DCC SIGNAL PIN
 #define DCC_SIGNAL_PIN_OPERATIONS 19
 
-// If you are using a motor shield that requires a second pin for the DCC signal that
-// is inverted of DCC_SIGNAL_PIN_OPERATIONS uncomment the line below.
-//#define DCC_SIGNAL_PIN_OPERATIONS_INVERTED 26
-
 // PROGRAMMING TRACK DCC SIGNAL PIN
 #define DCC_SIGNAL_PIN_PROGRAMMING 18
-
-// If you are using a motor shield that requires a second pin for the DCC signal that
-// is inverted of DCC_SIGNAL_PIN_PROGRAMMING uncomment the line below.
-//#define DCC_SIGNAL_PIN_PROGRAMMING_INVERTED 13
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
