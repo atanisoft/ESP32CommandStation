@@ -310,31 +310,41 @@ void setup() {
         uint8_t value = PROG_DATA(msg->pt);
         if((msg->pt.command & DIR_BYTE_ON_SRVC_TRK) == 0 &&
           (msg->pt.command & PCMD_RW) == 1) { // CV Write on PROG
-          locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
-          msg->pt.command = OPC_SL_RD_DATA;
-          if(!writeProgCVByte(cv, value)) {
-            msg->pt.pstat = PSTAT_WRITE_FAIL;
-          } else {
-            msg->pt.data7 = value;
-            if(value & 0x80) {
-              msg->pt.cvh |= CVH_D7;
+          if(enterProgrammingMode()) {
+            locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
+            msg->pt.command = OPC_SL_RD_DATA;
+            if(!writeProgCVByte(cv, value)) {
+              msg->pt.pstat = PSTAT_WRITE_FAIL;
+            } else {
+              msg->pt.data7 = value;
+              if(value & 0x80) {
+                msg->pt.cvh |= CVH_D7;
+              }
             }
+            leaveProgrammingMode();
+            locoNet.send(msg);
+          } else {
+            locoNet.send(OPC_LONG_ACK, OPC_MASK, 0);
           }
-          locoNet.send(msg);
         } else if((msg->pt.command & DIR_BYTE_ON_SRVC_TRK) == 0 &&
           (msg->pt.command & PCMD_RW) == 0) { // CV Read on PROG
-          locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
-          msg->pt.command = OPC_SL_RD_DATA;
-          int16_t value = readCV(cv);
-          if(value == -1) {
-            msg->pt.pstat = PSTAT_READ_FAIL;
-          } else {
-            msg->pt.data7 = value & 0x7F;
-            if(value & 0x80) {
-              msg->pt.cvh |= CVH_D7;
+          if(enterProgrammingMode()) {
+            locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
+            msg->pt.command = OPC_SL_RD_DATA;
+            int16_t value = readCV(cv);
+            if(value == -1) {
+              msg->pt.pstat = PSTAT_READ_FAIL;
+            } else {
+              msg->pt.data7 = value & 0x7F;
+              if(value & 0x80) {
+                msg->pt.cvh |= CVH_D7;
+              }
             }
+            leaveProgrammingMode();
+            locoNet.send(msg);
+          } else {
+            locoNet.send(OPC_LONG_ACK, OPC_MASK, 0);
           }
-          locoNet.send(msg);
         } else if ((msg->pt.command & OPS_BYTE_NO_FEEDBACK) == 0) {
           // CV Write on OPS, no feedback
           locoNet.send(OPC_LONG_ACK, OPC_MASK, 0x40);

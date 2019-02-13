@@ -373,6 +373,9 @@ bool enterProgrammingMode() {
 }
 
 void leaveProgrammingMode() {
+  if(!progTrackBusy) {
+    return;
+  }
   // deenergize the programming track
   MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->powerOff(false);
   dccSignal[DCC_SIGNAL_PROGRAMMING].stopSignal();
