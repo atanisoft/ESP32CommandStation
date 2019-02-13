@@ -33,6 +33,8 @@ constexpr uint8_t NEXT_BUTTON_DISABLED=126;
 constexpr uint8_t PREV_BUTTON_ENABLED=111;
 constexpr uint8_t PREV_BUTTON_DISABLED=125;
 
+constexpr uint8_t TO_DELETED=142;
+
 constexpr uint8_t slot0=4;
 constexpr uint8_t slot1=5;
 constexpr uint8_t slot2=6;
@@ -172,10 +174,14 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 void NextionTurnoutPage::deleteButtonHandler() {
   if(_pageMode == PAGE_MODE::DELETION) {
     // TODO: cleanup any selected turnouts
+
+    // return to normal turnout touch mode
+    _pageMode = PAGE_MODE::NORMAL;
   } else {
-    // track that we are now in deletion mode so we do not toggle turnouts when touched
-    _pageMode = PAGE_MODE::DELETION;
     // TODO: make sure all turnouts are deselected
+
+    // switch to turnout deletion mode
+    _pageMode = PAGE_MODE::DELETION;
   }
 }
 
@@ -250,7 +256,7 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
       auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
       if(turnout) {
         if(_pageMode == PAGE_MODE::DELETION) {
-          // TODO: select / deselect turnout for deletion
+          _turnoutButtons[slot].setPictureID(TO_DELETED);
         } else if(_pageMode == PAGE_MODE::EDIT) {
           // TODO: pop up address page for edits
         } else if(_pageMode == PAGE_MODE::NORMAL) {
