@@ -140,6 +140,14 @@ void NextionAddressPage::removeNumber(const NextionButton *button) {
     _newAddressString.concat("0");
   }
   _newAddress.setTextAsNumber(_newAddressString.toInt());
+
+  if(_addressPic.getPictureID() == TURNOUT_PIC) {
+    uint16_t boardAddress = 0;
+    uint8_t boardIndex = 0;
+    calculateTurnoutBoardAddressAndIndex(&boardAddress, &boardIndex, _newAddressString.toInt());
+    _boardAddress.setTextAsNumber(boardAddress);
+    _indexAddress.setTextAsNumber(boardIndex);
+  }
 }
 
 void NextionAddressPage::displayPage() {
