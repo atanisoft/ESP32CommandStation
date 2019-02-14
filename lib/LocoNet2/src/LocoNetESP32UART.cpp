@@ -1,5 +1,6 @@
 #include "LocoNetESP32UART.h"
 #include <esp_task_wdt.h>
+#include <soc/uart_struct.h>
 
 constexpr UBaseType_t LocoNetRXTXThreadPriority = 2;
 constexpr uint32_t LocoNetRXTXThreadStackSize = 1600;
@@ -16,6 +17,16 @@ constexpr uint32_t CDBackoffTimeoutIncrement = LocoNetTickTime * LN_CARRIER_TICK
 #define LOCONET_TX_LOCK()    do {} while (xSemaphoreTake(_txQueuelock, portMAX_DELAY) != pdPASS)
 #define LOCONET_TX_UNLOCK()  xSemaphoreGive(_txQueuelock)
 
+// declare the full struct as it is not exported from esp32-hal-uart.c
+struct uart_struct_t {
+    uart_dev_t * dev;
+#if !CONFIG_DISABLE_HAL_LOCKS
+    xSemaphoreHandle lock;
+#endif
+    uint8_t num;
+    xQueueHandle queue;
+    intr_handle_t intr_handle;
+};
 
 LocoNetESP32Uart::LocoNetESP32Uart(uint8_t rxPin, uint8_t txPin, uint8_t uartNum, bool inverted, const BaseType_t preferedCore) :
 	LocoNet(), _rxPin(rxPin), _txPin(txPin), _inverted(inverted), _preferedCore(preferedCore), _state(IDLE) {
@@ -114,7 +125,10 @@ void LocoNetESP32Uart::rxtxTask() {
 			if(_txQueue && uxQueueMessagesWaiting(_txQueue) > 0) {
 				DEBUG("TX Begin");
 				// last chance check for TX_COLLISION before starting TX
-				if(digitalRead(_rxPin) == !_inverted ? LOW : HIGH) {
+				// st_urx_out contains the status of the UART RX state machine,
+				// any value other than zero indicates it is active.
+				if(_uart->dev->status.st_urx_out ||
+					digitalRead(_rxPin) == !_inverted ? LOW : HIGH) {
 					startCollisionTimer();
 				} else {
 					// no collision, start TX
