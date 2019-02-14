@@ -174,7 +174,7 @@ private:
   NextionButton _revButton;
   NextionButton _functionButtons[10];
   NextionButton _locoAddress;
-  NextionButton _routes;
+  NextionButton _setup;
   NextionButton _accessories;
   NextionButton _downButton;
   NextionButton _upButton;
@@ -216,13 +216,14 @@ protected:
   }
   void previousPageCallback(DCCPPNextionPage *);
 private:
+  uint8_t getDefaultTurnoutPictureID(Turnout *);
   NextionButton _turnoutButtons[15];
   NextionButton _backButton;
   NextionButton _prevButton;
   NextionButton _nextButton;
   NextionButton _addButton;
   NextionButton _delButton;
-  NextionButton _routesButton;
+  NextionButton _setupButton;
   NextionButton _toAddress[15];
   enum PAGE_MODE {
     NORMAL, ADDITION, DELETION, EDIT

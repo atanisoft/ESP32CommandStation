@@ -118,7 +118,7 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(ne
     NextionButton(nextion, THROTTLE_PAGE, clearFunctions, "Clear")
   },
   _locoAddress(nextion, THROTTLE_PAGE, locoaddr, "LocoAddr"),
-  _routes(nextion, THROTTLE_PAGE, 34, "b2"),
+  _setup(nextion, THROTTLE_PAGE, 34, "b2"),
   _accessories(nextion, THROTTLE_PAGE, acc, "Acc"),
   _downButton(nextion, THROTTLE_PAGE, dec, "Dec"),
   _upButton(nextion, THROTTLE_PAGE, inc, "Inc"),

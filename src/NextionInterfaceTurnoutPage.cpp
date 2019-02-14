@@ -34,6 +34,8 @@ constexpr uint8_t PREV_BUTTON_ENABLED=111;
 constexpr uint8_t PREV_BUTTON_DISABLED=125;
 
 constexpr uint8_t TO_DELETED=142;
+constexpr uint8_t DELETE_INACTIVE = 121;
+constexpr uint8_t DELETE_ACTIVE = 123;
 
 constexpr uint8_t slot0=4;
 constexpr uint8_t slot1=5;
@@ -53,30 +55,30 @@ constexpr uint8_t slot12=16;
 constexpr uint8_t slot13=17;
 constexpr uint8_t slot14=18;
 
-constexpr uint8_t ad0=25;
-constexpr uint8_t ad1=26;
-constexpr uint8_t ad2=27;
-constexpr uint8_t ad3=28;
-constexpr uint8_t ad4=29;
+constexpr uint8_t ad0=24;
+constexpr uint8_t ad1=25;
+constexpr uint8_t ad2=26;
+constexpr uint8_t ad3=27;
+constexpr uint8_t ad4=28;
 
-constexpr uint8_t ad5=30;
-constexpr uint8_t ad6=31;
-constexpr uint8_t ad7=32;
-constexpr uint8_t ad8=33;
-constexpr uint8_t ad9=34;
+constexpr uint8_t ad5=29;
+constexpr uint8_t ad6=30;
+constexpr uint8_t ad7=31;
+constexpr uint8_t ad8=32;
+constexpr uint8_t ad9=33;
 
-constexpr uint8_t ad10=35;
-constexpr uint8_t ad11=36;
-constexpr uint8_t ad12=37;
-constexpr uint8_t ad13=38;
-constexpr uint8_t ad14=39;
+constexpr uint8_t ad10=34;
+constexpr uint8_t ad11=35;
+constexpr uint8_t ad12=36;
+constexpr uint8_t ad13=37;
+constexpr uint8_t ad14=38;
 
 constexpr uint8_t prev=19;
 constexpr uint8_t addto=20;
 constexpr uint8_t next=21;
 constexpr uint8_t back=22;
-constexpr uint8_t del=23;
-constexpr uint8_t routes=24;
+constexpr uint8_t del=39;
+constexpr uint8_t setup=23;
 
 //
 /************************************************************************************************************/
@@ -107,7 +109,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
   _nextButton(nextion, TURNOUT_PAGE, next, "Next"),
   _addButton(nextion, TURNOUT_PAGE, addto, "Add"),
   _delButton(nextion, TURNOUT_PAGE, del, "Del"),
-  _routesButton(nextion, TURNOUT_PAGE, routes, "Routes"),
+  _setupButton(nextion, TURNOUT_PAGE, setup, "Setup"),
   _toAddress {
     NextionButton(nextion, TURNOUT_PAGE, slot0, "Ad0"),
     NextionButton(nextion, TURNOUT_PAGE, slot1, "Ad1"),
@@ -133,9 +135,9 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     });
   };
 
-  _routesButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+  _setupButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
-      printf("Routes Button Pressed\n");
+      printf("Setup Button Pressed\n");
     }
   });
 
@@ -173,16 +175,18 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 
 void NextionTurnoutPage::deleteButtonHandler() {
   if(_pageMode == PAGE_MODE::DELETION) {
-    // TODO: cleanup any selected turnouts
-
-    // return to normal turnout touch mode
+    for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
+      if(_turnoutButtons[slot].getPictureID() == TO_DELETED) {
+        TurnoutManager::removeByAddress(_toAddress[slot].getTextAsNumber());
+      }
+    }
+    _delButton.setPictureID(DELETE_INACTIVE);
     _pageMode = PAGE_MODE::NORMAL;
   } else {
-    // TODO: make sure all turnouts are deselected
-
-    // switch to turnout deletion mode
+    _delButton.setPictureID(DELETE_ACTIVE);
     _pageMode = PAGE_MODE::DELETION;
   }
+  refresh();
 }
 
 void NextionTurnoutPage::refreshPage() {
@@ -203,7 +207,7 @@ void NextionTurnoutPage::refreshPage() {
   for(uint8_t componentIndex = 0; componentIndex < turnoutsToDisplay; componentIndex++) {
     auto turnout = TurnoutManager::getTurnoutByIndex(_turnoutStartIndex + componentIndex);
     if(turnout) {
-      _turnoutButtons[componentIndex].setPictureID(LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
+      _turnoutButtons[componentIndex].setPictureID(getDefaultTurnoutPictureID(turnout));
       _turnoutButtons[componentIndex].show();
       _toAddress[componentIndex].setTextAsNumber(turnout->getAddress());
       _toAddress[componentIndex].show();
@@ -256,12 +260,16 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
       auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
       if(turnout) {
         if(_pageMode == PAGE_MODE::DELETION) {
-          _turnoutButtons[slot].setPictureID(TO_DELETED);
+          if(_turnoutButtons[slot].getPictureID() == TO_DELETED){
+            _turnoutButtons[slot].setPictureID(getDefaultTurnoutPictureID(turnout));
+          }else{
+            _turnoutButtons[slot].setPictureID(TO_DELETED);
+          }
         } else if(_pageMode == PAGE_MODE::EDIT) {
           // TODO: pop up address page for edits
         } else if(_pageMode == PAGE_MODE::NORMAL) {
           turnout->set(!turnout->isThrown());
-          _turnoutButtons[slot].setPictureID(LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
+          _turnoutButtons[slot].setPictureID(getDefaultTurnoutPictureID(turnout));
         }
       } else {
         log_w("Touched Turnout (slot:%d, addr:%d) was not found, refreshing page", slot, turnoutAddress);
@@ -273,4 +281,7 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
   }
 }
 
+uint8_t NextionTurnoutPage::getDefaultTurnoutPictureID(Turnout *turnout) {
+  return (LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
+}
 #endif
