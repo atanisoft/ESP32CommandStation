@@ -253,7 +253,7 @@ void NextionThrottlePage::toggleFunction(const NextionButton *button) {
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(_activeFunctionGroup * 8 + function + 1, true);
           } else {
             _functionButtons[function].setPictureID(functionPicOff);
-            LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(_activeFunctionGroup * 8 + function + 1, true);
+            LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(_activeFunctionGroup * 8 + function + 1, false);
           }
         }
       }
