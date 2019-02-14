@@ -179,6 +179,21 @@ bool TurnoutManager::remove(const uint16_t id) {
   return false;
 }
 
+bool TurnoutManager::removeByAddress(const uint16_t address) {
+  Turnout *turnoutToRemoved = nullptr;
+  for (const auto& turnout : turnouts) {
+    if(turnout->getAddress() == address) {
+      turnoutToRemoved = turnout;
+    }
+  }
+  if(turnoutToRemoved != nullptr) {
+    log_i("Removing Turnout(%d)", turnoutToRemoved->getID());
+    turnouts.remove(turnoutToRemoved);
+    return true;
+  }
+  return false;
+}
+
 Turnout *TurnoutManager::getTurnoutByIndex(const uint16_t index) {
   Turnout *retval = nullptr;
   uint16_t currentIndex = 0;
