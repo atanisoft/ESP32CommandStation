@@ -58,6 +58,7 @@ struct SignalGenerator {
   void waitForQueueEmpty();
   bool isQueueEmpty();
   bool isEnabled();
+  void drainQueue();
 
   hw_timer_t *_timer;
   uint8_t _timerNumber;

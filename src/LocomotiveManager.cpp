@@ -113,20 +113,22 @@ void LocomotiveManager::showConsistStatus() {
 
 void LocomotiveManager::updateTask(void *param) {
   while(true) {
-    MUTEX_LOCK(_lock);
-    for (const auto& loco : _locos) {
-      // if it has been more than 50ms we should send a loco update packet
-      if(millis() > loco->getLastUpdate() + 50) {
-        loco->sendLocoUpdate();
+    if(dccSignal[DCC_SIGNAL_OPERATIONS].isEnabled()) {
+      MUTEX_LOCK(_lock);
+      for (const auto& loco : _locos) {
+        // if it has been more than 50ms we should send a loco update packet
+        if(millis() > loco->getLastUpdate() + 50) {
+          loco->sendLocoUpdate();
+        }
       }
-    }
-    for (const auto& loco : _consists) {
-      // if it has been more than 50ms we should send a loco update packet
-      if(millis() > loco->getLastUpdate() + 50) {
-        loco->sendLocoUpdate();
+      for (const auto& loco : _consists) {
+        // if it has been more than 50ms we should send a loco update packet
+        if(millis() > loco->getLastUpdate() + 50) {
+          loco->sendLocoUpdate();
+        }
       }
+      MUTEX_UNLOCK(_lock);
     }
-    MUTEX_UNLOCK(_lock);
     vTaskDelay(pdMS_TO_TICKS(25));
   }
 }

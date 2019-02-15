@@ -347,16 +347,19 @@ void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
 }
 
 void AccessoryCommand::process(const std::vector<String> arguments) {
-  std::vector<uint8_t> packetBuffer;
-  uint16_t accessoryAddress = arguments[0].toInt();
-  uint8_t accessoryIndex = arguments[1].toInt();
-  bool activate = arguments[2].toInt() == 1;
-  // first byte is of the form 10AAAAAA, where AAAAAA represent 6 least
-  // signifcant bits of accessory address
-  packetBuffer.push_back(0x80 + accessoryAddress % 64);
-  // second byte is of the form 1AAACDDD, where C should be 1, and the least
-  // significant D represent activate/deactivate
-  packetBuffer.push_back(((((accessoryAddress / 64) % 8) << 4) +
-    (accessoryIndex % 4 << 1) + activate) ^ 0xF8);
-  dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 1);
+  if(dccSignal[DCC_SIGNAL_OPERATIONS].isEnabled()) {
+    std::vector<uint8_t> packetBuffer;
+    uint16_t boardAddress = arguments[0].toInt();
+    uint8_t boardIndex = arguments[1].toInt();
+    bool activate = arguments[2].toInt() == 1;
+    log_v("DCC Accessory Packet %d:%d state: %d", boardAddress, boardIndex, activate);
+    // first byte is of the form 10AAAAAA, where AAAAAA represent 6 least
+    // signifcant bits of accessory address
+    packetBuffer.push_back(0x80 + boardAddress % 64);
+    // second byte is of the form 1AAACDDD, where C should be 1, and the least
+    // significant D represent activate/deactivate
+    packetBuffer.push_back(((((boardAddress / 64) % 8) << 4) +
+      (boardIndex % 4 << 1) + activate) ^ 0xF8);
+    dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 1);
+  }
 }

@@ -255,9 +255,9 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
       auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
       if(turnout) {
         if(_pageMode == PAGE_MODE::DELETION) {
-          if(_turnoutButtons[slot].getPictureID() == TURNOUT_IMAGE_IDS::TURNOUT_DELETED){
+          if(_turnoutButtons[slot].getPictureID() == TURNOUT_IMAGE_IDS::TURNOUT_DELETED) {
             _turnoutButtons[slot].setPictureID(getDefaultTurnoutPictureID(turnout));
-          }else{
+          } else {
             _turnoutButtons[slot].setPictureID(TURNOUT_IMAGE_IDS::TURNOUT_DELETED);
           }
         } else if(_pageMode == PAGE_MODE::EDIT) {
@@ -295,9 +295,9 @@ uint8_t NextionTurnoutPage::getDefaultTurnoutPictureID(Turnout *turnout) {
       return TURNOUT_IMAGE_IDS::WYE_THROWN_LEFT;
     case TurnoutOrientation::MULTI:
       if(turnout->isThrown()) {
-        return TURNOUT_IMAGE_IDS::LEFT_HAND_THROWN;
+        return TURNOUT_IMAGE_IDS::MULTI_STRAIGHT;
       }
-      return TURNOUT_IMAGE_IDS::LEFT_HAND_CLOSED;
+      return TURNOUT_IMAGE_IDS::MULTI_CROSS_OVER;
   }
   // TODO: update this with a better image like a ?
   return TURNOUT_IMAGE_IDS::LEFT_HAND_CLOSED;

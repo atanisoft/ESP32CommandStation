@@ -115,16 +115,9 @@ void SignalGenerator::loadBytePacket(const uint8_t *data, uint8_t length, uint8_
 
 void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats, bool drainToSendQueue) {
   if(drainToSendQueue) {
-    portENTER_CRITICAL(&_sendQueueMUX);
-    while(!isQueueEmpty()) {
-      // pull the first packet from the pending to send queue
-      Packet *packet = _toSend.front();
-      _toSend.pop();
-      // make that packet available for re-use
-      _availablePackets.push(packet);
-    }
-    portEXIT_CRITICAL(&_sendQueueMUX);
+    drainQueue();
   }
+  log_v("[%s] queue: %d / %d", _name.c_str(), _toSend.size(), _availablePackets.size());
   while(_availablePackets.empty()) {
     delay(2);
   }
@@ -152,17 +145,17 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
   packet->buffer[5] = data[2] >> 1;
   packet->buffer[6] = data[2] << 7;
 
-  if(data.size() == 3){
+  if(data.size() == 3) {
     packet->numberOfBits = 49;
   } else{
     packet->buffer[6] += data[3] >> 2;
     packet->buffer[7] = data[3] << 6;
-    if(data.size() == 4){
+    if(data.size() == 4) {
       packet->numberOfBits = 58;
     } else{
       packet->buffer[7] += data[4] >> 3;
       packet->buffer[8] = data[4] << 5;
-      if(data.size() == 5){
+      if(data.size() == 5) {
         packet->numberOfBits = 67;
       } else{
         packet->buffer[8] += data[5] >> 4;
@@ -245,14 +238,9 @@ void SignalGenerator::startSignal(bool sendIdlePackets) {
   if(_enabled) {
     return;
   }
-  // drain any pending packets before we start the signal so we start with an empty queue
-  while(!isQueueEmpty()) {
-    _currentPacket = _toSend.front();
-    _toSend.pop();
-    // make sure the packet is zeroed before pushing it back to the queue
-    memset(_currentPacket, 0, sizeof(Packet));
-    _availablePackets.push(_currentPacket);
-  }
+
+  // drain any pending packets from the queue before starting the signal
+  drainQueue();
 
   // reset to initial state
   _topOfWave = true;
@@ -289,9 +277,6 @@ void SignalGenerator::startSignal(bool sendIdlePackets) {
 }
 
 void SignalGenerator::stopSignal() {
-  // prevent ISR from getting another packet while we are shutting down
-  portENTER_CRITICAL(&_sendQueueMUX);
-
   log_i("[%s] Shutting down Timer(%d)", _name.c_str(), _timerNumber);
   timerStop(_timer);
   timerAlarmDisable(_timer);
@@ -313,16 +298,9 @@ void SignalGenerator::stopSignal() {
 
   // drain any remaining packets that were not sent back into the available
   // to use packets.
-  while(!isQueueEmpty()) {
-    _currentPacket = _toSend.front();
-    _toSend.pop();
-    // make sure the packet is zeroed before pushing it back to the queue
-    memset(_currentPacket, 0, sizeof(Packet));
-    _availablePackets.push(_currentPacket);
-  }
+  drainQueue();
 
   _enabled = false;
-  portEXIT_CRITICAL(&_sendQueueMUX);
 }
 
 void SignalGenerator::waitForQueueEmpty() {
@@ -337,6 +315,24 @@ bool SignalGenerator::isQueueEmpty() {
 
 bool SignalGenerator::isEnabled() {
   return _enabled;
+}
+
+void SignalGenerator::drainQueue() {
+  // drain any pending packets before we start the signal so we start with an empty queue
+  if(!isQueueEmpty()) {
+    // lock the queue so we can drain it
+    portENTER_CRITICAL(&_sendQueueMUX);
+    log_i("[%s] Draining packet queue", _name.c_str());
+    while(!isQueueEmpty()) {
+      _currentPacket = _toSend.front();
+      _toSend.pop();
+      // make sure the packet is zeroed before pushing it back to the queue
+      memset(_currentPacket, 0, sizeof(Packet));
+      _availablePackets.push(_currentPacket);
+    }
+    // unlock the queue
+    portEXIT_CRITICAL(&_sendQueueMUX);
+  }
 }
 
 bool enterProgrammingMode() {
