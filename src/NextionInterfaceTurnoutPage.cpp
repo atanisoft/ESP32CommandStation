@@ -104,12 +104,6 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     NextionButton(nextion, TURNOUT_PAGE, slot13ButtonID, "To13"),
     NextionButton(nextion, TURNOUT_PAGE, slot14ButtonID, "To14")
   },
-  _backButton(nextion, TURNOUT_PAGE, backButtonID, "Back"),
-  _prevButton(nextion, TURNOUT_PAGE, prevButtonID, "Prev"),
-  _nextButton(nextion, TURNOUT_PAGE, nextButtonID, "Next"),
-  _addButton(nextion, TURNOUT_PAGE, addtoButtonID, "Add"),
-  _delButton(nextion, TURNOUT_PAGE, delButtonID, "Del"),
-  _setupButton(nextion, TURNOUT_PAGE, setupButtonID, "Setup"),
   _toAddress {
     NextionButton(nextion, TURNOUT_PAGE, ad0ButtonID, "Ad0"),
     NextionButton(nextion, TURNOUT_PAGE, ad1ButtonID, "Ad1"),
@@ -126,7 +120,13 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     NextionButton(nextion, TURNOUT_PAGE, ad12ButtonID, "Ad12"),
     NextionButton(nextion, TURNOUT_PAGE, ad13ButtonID, "Ad13"),
     NextionButton(nextion, TURNOUT_PAGE, ad14ButtonID, "Ad14")
-  } {
+  },
+  _backButton(nextion, TURNOUT_PAGE, backButtonID, "Back"),
+  _prevButton(nextion, TURNOUT_PAGE, prevButtonID, "Prev"),
+  _nextButton(nextion, TURNOUT_PAGE, nextButtonID, "Next"),
+  _addButton(nextion, TURNOUT_PAGE, addtoButtonID, "Add"),
+  _delButton(nextion, TURNOUT_PAGE, delButtonID, "Del"),
+  _setupButton(nextion, TURNOUT_PAGE, setupButtonID, "Setup") {
   for(int slot = 0; slot < 15; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {

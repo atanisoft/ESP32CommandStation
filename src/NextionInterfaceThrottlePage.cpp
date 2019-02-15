@@ -103,8 +103,6 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(ne
     NextionButton(nextion, THROTTLE_PAGE, fgp2, "F916"),
     NextionButton(nextion, THROTTLE_PAGE, fgp3, "F1724")
   },
-  _fwdButton(nextion, THROTTLE_PAGE, fwd, "Fwd"),
-  _revButton(nextion, THROTTLE_PAGE, rev, "Rev"),
   _functionButtons {
     NextionButton(nextion, THROTTLE_PAGE, f1, "F1"),
     NextionButton(nextion, THROTTLE_PAGE, f2, "F2"),
@@ -117,6 +115,8 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(ne
     NextionButton(nextion, THROTTLE_PAGE, f0, "F0"),
     NextionButton(nextion, THROTTLE_PAGE, clearFunctions, "Clear")
   },
+  _fwdButton(nextion, THROTTLE_PAGE, fwd, "Fwd"),
+  _revButton(nextion, THROTTLE_PAGE, rev, "Rev"),
   _locoAddress(nextion, THROTTLE_PAGE, locoaddr, "LocoAddr"),
   _setup(nextion, THROTTLE_PAGE, 34, "b2"),
   _accessories(nextion, THROTTLE_PAGE, acc, "Acc"),

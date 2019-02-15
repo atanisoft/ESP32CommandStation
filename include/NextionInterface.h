@@ -126,11 +126,11 @@ protected:
   virtual void displayPage();
 private:
   void refreshOrientationButton();
+  NextionButton _buttons[10];
   NextionButton _addressPic;
   NextionText _boardAddress;
   NextionText _indexAddress;
   NextionButton _orientationButton;
-  NextionButton _buttons[10];
   NextionButton _saveButton;
   NextionButton _quitButton;
   NextionButton _undoButton;
@@ -170,9 +170,9 @@ private:
   uint32_t _locoNumbers[3];
   NextionButton _locoButtons[3];
   NextionButton _fgroupButtons[3];
+  NextionButton _functionButtons[10];
   NextionButton _fwdButton;
   NextionButton _revButton;
-  NextionButton _functionButtons[10];
   NextionButton _locoAddress;
   NextionButton _setup;
   NextionButton _accessories;
@@ -218,13 +218,13 @@ protected:
 private:
   uint8_t getDefaultTurnoutPictureID(Turnout *);
   NextionButton _turnoutButtons[15];
+  NextionButton _toAddress[15];
   NextionButton _backButton;
   NextionButton _prevButton;
   NextionButton _nextButton;
   NextionButton _addButton;
   NextionButton _delButton;
   NextionButton _setupButton;
-  NextionButton _toAddress[15];
   enum PAGE_MODE {
     NORMAL, ADDITION, DELETION, EDIT
   };
