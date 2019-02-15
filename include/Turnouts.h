@@ -52,7 +52,7 @@ public:
   const bool isThrown() {
     return _thrown;
   }
-  const toggle() {
+  const void toggle() {
     set(!_thrown);
   }
   void showStatus();
