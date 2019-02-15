@@ -22,8 +22,9 @@ COPYRIGHT (c) 2017 Mike Dunston
 enum TurnoutOrientation {
   LEFT=0,
   RIGHT,
-  Y,
-  MULTI
+  WYE,
+  MULTI,
+  MAX_TURNOUT_TYPES // NOTE: this must be the last entry in the enum.
 };
 
 void calculateTurnoutBoardAddressAndIndex(uint16_t *boardAddress, uint8_t *boardIndex, uint16_t address);
@@ -50,6 +51,9 @@ public:
   }
   const bool isThrown() {
     return _thrown;
+  }
+  const toggle() {
+    set(!_thrown);
   }
   void showStatus();
   const TurnoutOrientation getOrientation() {

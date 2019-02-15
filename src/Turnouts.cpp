@@ -130,7 +130,7 @@ bool TurnoutManager::toggle(uint16_t turnoutID) {
   bool found = false;
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == turnoutID) {
-      turnout->set(!turnout->isThrown());
+      turnout->toggle();
       found = true;
     }
   }
@@ -312,12 +312,7 @@ void Turnout::set(bool thrown, bool sendDCCPacket) {
   _thrown = thrown;
   if(sendDCCPacket) {
     std::vector<String> args;
-    // if we are in DCC address mode use the calculated board address instead of address
-    if(_boardAddress) {
-      args.push_back(String(_boardAddress));
-    } else {
-      args.push_back(String(_address));
-    }
+    args.push_back(String(_boardAddress));
     args.push_back(String(_index));
     args.push_back(String(_thrown));
     DCCPPProtocolHandler::getCommandHandler("a")->process(args);

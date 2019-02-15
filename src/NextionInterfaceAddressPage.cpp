@@ -40,11 +40,8 @@ constexpr uint8_t boardaddress=5;
 constexpr uint8_t indexaddress=6;
 constexpr uint8_t orientation=23;
 
-constexpr uint8_t LHTO=107;
-constexpr uint8_t RHTO=109;
-
-constexpr uint8_t LOCO_PIC=129;
-constexpr uint8_t TURNOUT_PIC=130;
+constexpr uint8_t LOCO_PIC=140;
+constexpr uint8_t TURNOUT_PIC=141;
 //
 /************************************************************************************************************/
 // Address Page
@@ -122,10 +119,7 @@ void NextionAddressPage::addNumber(const NextionButton *button) {
 
 void NextionAddressPage::changeOrientation(const NextionButton *button) {
   _orientation++;
-  // TODO: update this from RIGHT to MULTI once pics are available
-  if(_orientation > TurnoutOrientation::RIGHT) {
-    _orientation = TurnoutOrientation::LEFT;
-  }
+  _orientation %= TurnoutOrientation::MAX_TURNOUT_TYPES;
   refreshOrientationButton();
   log_i("Orientation set to %d", _orientation);
 }
@@ -175,12 +169,17 @@ void NextionAddressPage::displayPage() {
 void NextionAddressPage::refreshOrientationButton() {
   switch(_orientation) {
     case TurnoutOrientation::LEFT:
-      _orientationButton.setPictureID(LHTO);
+      _orientationButton.setPictureID(TURNOUT_IMAGE_IDS::LEFT_HAND_THROWN);
       break;
     case TurnoutOrientation::RIGHT:
-      _orientationButton.setPictureID(RHTO);
+      _orientationButton.setPictureID(TURNOUT_IMAGE_IDS::RIGHT_HAND_THROWN);
       break;
-    // TODO: add WYE and MULTI once pic is available
+    case TurnoutOrientation::WYE:
+      _orientationButton.setPictureID(TURNOUT_IMAGE_IDS::WYE_THROWN_LEFT);
+      break;
+    case TurnoutOrientation::MULTI:
+      _orientationButton.setPictureID(TURNOUT_IMAGE_IDS::MULTI_STRAIGHT);
+      break;
   }
   _orientationButton.show();
 }

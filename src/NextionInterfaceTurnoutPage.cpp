@@ -23,19 +23,13 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 constexpr uint8_t LH=106;
 constexpr uint8_t RH=108;
 
-constexpr uint8_t TO_LH_CLOSED=106;
-constexpr uint8_t TO_LH_THROWN=107;
-constexpr uint8_t TO_RH_CLOSED=108;
-constexpr uint8_t TO_RH_THROWN=109;
-
-constexpr uint8_t NEXT_BUTTON_ENABLED=110;
-constexpr uint8_t NEXT_BUTTON_DISABLED=126;
-constexpr uint8_t PREV_BUTTON_ENABLED=111;
+constexpr uint8_t NEXT_BUTTON_DISABLED=122;
+constexpr uint8_t NEXT_BUTTON_ENABLED=123;
 constexpr uint8_t PREV_BUTTON_DISABLED=125;
+constexpr uint8_t PREV_BUTTON_ENABLED=126;
 
-constexpr uint8_t TO_DELETED=142;
-constexpr uint8_t DELETE_INACTIVE = 121;
-constexpr uint8_t DELETE_ACTIVE = 123;
+constexpr uint8_t DELETE_INACTIVE=136;
+constexpr uint8_t DELETE_ACTIVE=137;
 
 constexpr uint8_t slot0ButtonID=4;
 constexpr uint8_t slot1ButtonID=5;
@@ -176,8 +170,9 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 void NextionTurnoutPage::deleteButtonHandler() {
   if(_pageMode == PAGE_MODE::DELETION) {
     for(uint8_t slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
-      if(_turnoutButtons[slot].getPictureID() == TO_DELETED) {
+      if(_turnoutButtons[slot].getPictureID() == TURNOUT_IMAGE_IDS::TURNOUT_DELETED) {
         TurnoutManager::removeByAddress(_toAddress[slot].getTextAsNumber());
+        log_i("Turnout(%d) deleted from slot(%d)", _toAddress[slot].getTextAsNumber(), slot);
       }
     }
     _delButton.setPictureID(DELETE_INACTIVE);
@@ -260,15 +255,15 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
       auto turnout = TurnoutManager::getTurnoutByAddress(turnoutAddress);
       if(turnout) {
         if(_pageMode == PAGE_MODE::DELETION) {
-          if(_turnoutButtons[slot].getPictureID() == TO_DELETED){
+          if(_turnoutButtons[slot].getPictureID() == TURNOUT_IMAGE_IDS::TURNOUT_DELETED){
             _turnoutButtons[slot].setPictureID(getDefaultTurnoutPictureID(turnout));
           }else{
-            _turnoutButtons[slot].setPictureID(TO_DELETED);
+            _turnoutButtons[slot].setPictureID(TURNOUT_IMAGE_IDS::TURNOUT_DELETED);
           }
         } else if(_pageMode == PAGE_MODE::EDIT) {
           // TODO: pop up address page for edits
         } else if(_pageMode == PAGE_MODE::NORMAL) {
-          turnout->set(!turnout->isThrown());
+          turnout->toggle();
           _turnoutButtons[slot].setPictureID(getDefaultTurnoutPictureID(turnout));
         }
       } else {
@@ -282,6 +277,29 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
 }
 
 uint8_t NextionTurnoutPage::getDefaultTurnoutPictureID(Turnout *turnout) {
-  return (LH + (turnout->getOrientation() * 2) + (turnout->isThrown()));
+  switch(turnout->getOrientation()) {
+    case TurnoutOrientation::LEFT:
+      if(turnout->isThrown()) {
+        return TURNOUT_IMAGE_IDS::LEFT_HAND_THROWN;
+      }
+      return TURNOUT_IMAGE_IDS::LEFT_HAND_CLOSED;
+    case TurnoutOrientation::RIGHT:
+      if(turnout->isThrown()) {
+        return TURNOUT_IMAGE_IDS::RIGHT_HAND_THROWN;
+      }
+      return TURNOUT_IMAGE_IDS::RIGHT_HAND_CLOSED;
+    case TurnoutOrientation::WYE:
+      if(turnout->isThrown()) {
+        return TURNOUT_IMAGE_IDS::WYE_THROWN_RIGHT;
+      }
+      return TURNOUT_IMAGE_IDS::WYE_THROWN_LEFT;
+    case TurnoutOrientation::MULTI:
+      if(turnout->isThrown()) {
+        return TURNOUT_IMAGE_IDS::LEFT_HAND_THROWN;
+      }
+      return TURNOUT_IMAGE_IDS::LEFT_HAND_CLOSED;
+  }
+  // TODO: update this with a better image like a ?
+  return TURNOUT_IMAGE_IDS::LEFT_HAND_CLOSED;
 }
 #endif
