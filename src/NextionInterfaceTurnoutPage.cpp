@@ -121,7 +121,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
   _addButton(nextion, TURNOUT_PAGE, addtoButtonID, "Add"),
   _delButton(nextion, TURNOUT_PAGE, delButtonID, "Del"),
   _setupButton(nextion, TURNOUT_PAGE, setupButtonID, "Setup") {
-  for(int slot = 0; slot < 15; slot++) {
+  for(int slot = 0; slot < TURNOUTS_PER_PAGE; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
         static_cast<NextionTurnoutPage*>(nextionPages[TURNOUT_PAGE])->toggleTurnout(static_cast<NextionButton *>(widget));

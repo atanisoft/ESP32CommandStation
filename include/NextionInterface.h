@@ -182,8 +182,6 @@ private:
   NextionText _speedNumber;
 };
 
-constexpr int TURNOUTS_PER_PAGE = 15;
-
 class NextionTurnoutPage : public DCCPPNextionPage {
 public:
   NextionTurnoutPage(Nextion &);
@@ -216,9 +214,10 @@ protected:
   }
   void previousPageCallback(DCCPPNextionPage *);
 private:
+  static constexpr int TURNOUTS_PER_PAGE = 15;
   uint8_t getDefaultTurnoutPictureID(Turnout *);
-  NextionButton _turnoutButtons[15];
-  NextionButton _toAddress[15];
+  NextionButton _turnoutButtons[TURNOUTS_PER_PAGE];
+  NextionButton _toAddress[TURNOUTS_PER_PAGE];
   NextionButton _backButton;
   NextionButton _prevButton;
   NextionButton _nextButton;
