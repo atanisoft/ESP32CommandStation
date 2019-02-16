@@ -174,6 +174,8 @@ std::vector<uint8_t> restrictedPins;
 LocoNetESP32Uart locoNet(LOCONET_RX_PIN, LOCONET_TX_PIN, LOCONET_UART);
 #endif
 
+bool otaComplete = false;
+
 // esp32 doesn't have a true restart method exposed so use the watchdog to
 // force a restart
 void esp32_restart() {
@@ -389,6 +391,11 @@ void setup() {
 }
 
 void loop() {
+  if(otaComplete) {
+    log_i("OTA binary has been received, preparing to reboot!");
+    delay(5000);
+    esp32_restart();
+  }
 	wifiInterface.update();
 	InfoScreen::update();
 	MotorBoardManager::check();

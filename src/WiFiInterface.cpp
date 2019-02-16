@@ -185,6 +185,8 @@ void WiFiInterface::begin() {
 #endif
     log_e("WiFI connect failed, restarting");
     esp32_restart();
+  } else {
+    log_i("WiFi connected!");
   }
 }
 

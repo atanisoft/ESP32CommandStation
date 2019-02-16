@@ -18,6 +18,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include "DCCppESP32.h"
 #include <ESPAsyncWebServer.h>
 #include <AsyncJson.h>
+#include <Update.h>
 
 #include "WebServer.h"
 #include "Outputs.h"
@@ -127,6 +128,31 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
         if(clientNode->getID() == client->id()) {
           clientNode->feed(data, len);
         }
+      }
+    }
+  });
+  on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", (Update.hasError())?"FAIL":"OK");
+    response->addHeader("Connection", "close");
+    response->addHeader("Access-Control-Allow-Origin", "*");
+  }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+    if (!index) {
+      log_i("OTA starting: %s", filename.c_str());
+      MotorBoardManager::powerOffAll();
+      stopDCCSignalGenerators();
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) { //start with max available size
+        Update.printError(Serial);
+      }
+    }
+    if (Update.write(data, len) != len) {
+      Update.printError(Serial);
+    }
+    if (final) {
+      if (Update.end(true)) { //true to set the size to the current progress
+        log_i("OTA Success: %u\nRebooting...\n", index + len);
+        otaComplete = true;
+      } else {
+        Update.printError(Serial);
       }
     }
   });

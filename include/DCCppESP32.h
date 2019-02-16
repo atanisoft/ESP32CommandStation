@@ -106,6 +106,8 @@ extern LocoNetESP32Uart locoNet;
 
 void esp32_restart();
 
+extern bool otaComplete;
+
 #define MUTEX_LOCK(mutex)    do {} while (xSemaphoreTake(mutex, portMAX_DELAY) != pdPASS)
 #define MUTEX_UNLOCK(mutex)  xSemaphoreGive(mutex)
 

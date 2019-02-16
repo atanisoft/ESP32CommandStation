@@ -297,6 +297,13 @@
 							<div class="ui-block-a"><textarea id="bs-prog-result"></textarea></div>
 						</div>
 					</div>
+					<h3>Web Update (OTA)</h3>
+					<div id="cs-ota">
+						<form method="POST" action="/update" enctype="multipart/form-data" data-ajax="false">
+							OTA Binary (firmware.bin):<input type="file" name="image" value="" required>
+							<input type="submit" value="Upload" name="submit" class="btn">
+						</form>
+					</div>
 				</div>
 			</div>
 		</div>
