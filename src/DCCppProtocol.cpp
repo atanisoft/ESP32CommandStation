@@ -1,7 +1,7 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
-COPYRIGHT (c) 2017, 2018 Mike Dunston
+COPYRIGHT (c) 2017-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -13,6 +13,11 @@ COPYRIGHT (c) 2017, 2018 Mike Dunston
   GNU General Public License for more details.
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses
+
+The DCC++ protocol specification is
+COPYRIGHT (c) 2013-2016 Gregg E. Berman
+and has been adapter for use in DCC++ESP32.
+
 **********************************************************************/
 
 #include "DCCppESP32.h"

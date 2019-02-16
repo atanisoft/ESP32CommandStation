@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -14,7 +14,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
-
 
 /////////////////////////////////////////////////////////////////////////////////////
 //

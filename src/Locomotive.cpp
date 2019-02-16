@@ -1,7 +1,7 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
-COPYRIGHT (c) 2017,2018 Mike Dunston
+COPYRIGHT (c) 2017-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

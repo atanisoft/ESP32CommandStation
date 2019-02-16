@@ -1,7 +1,7 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ REFERENCES:
 
 BRIEF NOTES ON THE THEORY AND OPERATION OF DCC++ BASE STATION:
 
-DCC++ESP32 BASE STATION for the ESP32 configures the four hardware timers, to
+DCC++ESP32 BASE STATION for the ESP32 configures two of the four hardware timers, to
 generate separate 0-3.3V unipolar signals that each properly encode zero and one
 bits conforming with DCC timing standards.
 

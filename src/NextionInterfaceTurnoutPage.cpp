@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
 COPYRIGHT (c) 2018-2019 NormHal
 COPYRIGHT (c) 2018-2019 Mike Dunston
