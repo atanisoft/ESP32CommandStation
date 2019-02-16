@@ -40,7 +40,13 @@ Nextion nextion(Serial1);
 #else
 Nextion nextion(Serial);
 #endif
-TaskHandle_t NextionInterface::_taskHandle;
+
+TaskHandle_t _nextionTaskHandle;
+
+constexpr uint16_t TITLE_SCREEN_TRANSITION_DELAY = 2500;
+constexpr TickType_t NEXTION_INTERFACE_UPDATE_INTERVAL = pdMS_TO_TICKS(50);
+constexpr uint8_t NEXTION_INTERFACE_TASK_PRIORITY = 2;
+constexpr uint16_t NEXTION_INTERFACE_TASK_STACK_SIZE = DEFAULT_THREAD_STACKSIZE;
 
 DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   new NextionTitlePage(nextion),
@@ -51,7 +57,21 @@ DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   nullptr
 };
 
-void NextionInterface::init() {
+void nextionTask(void *param) {
+  nextionPages[TITLE_PAGE]->display();
+  bool showingTitlePage = true;
+  uint64_t startupTransition = millis() + TITLE_SCREEN_TRANSITION_DELAY;
+  while(true) {
+    if(showingTitlePage && startupTransition <= millis()) {
+      showingTitlePage = false;
+      nextionPages[THROTTLE_PAGE]->display();
+    }
+    nextion.poll();
+    vTaskDelay(NEXTION_INTERFACE_UPDATE_INTERVAL);
+  }
+}
+
+void nextionInterfaceInit() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init Nextion"));
 #if NEXTION_UART_NUM == 2
   Serial2.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
@@ -61,23 +81,10 @@ void NextionInterface::init() {
   Serial.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
 #endif
   if(nextion.init()) {
-    xTaskCreate(nextionTask, "NextionInterface", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
+    xTaskCreate(nextionTask, "Nextion", NEXTION_INTERFACE_TASK_STACK_SIZE,
+      NULL, NEXTION_INTERFACE_TASK_PRIORITY, &_nextionTaskHandle);
   } else {
     log_e("Nextion init failed");
-  }
-}
-
-void NextionInterface::nextionTask(void *param) {
-  nextionPages[TITLE_PAGE]->display();
-  bool showingTitlePage = true;
-  uint64_t startupTransition = millis() + 2500;
-  while(true) {
-    if(showingTitlePage && startupTransition <= millis()) {
-      showingTitlePage = false;
-      nextionPages[THROTTLE_PAGE]->display();
-    }
-    nextion.poll();
-    vTaskDelay(pdMS_TO_TICKS(50));
   }
 }
 

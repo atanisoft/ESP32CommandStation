@@ -209,7 +209,7 @@ void setup() {
 	delay(500);
 #endif
 #if NEXTION_ENABLED
-  NextionInterface::init();
+  nextionInterfaceInit();
 #endif
   configStore.init();
 #if LCC_ENABLED

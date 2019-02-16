@@ -28,13 +28,7 @@ COPYRIGHT (c) 2018 Mike Dunston
 #include <NextionSlider.h>
 #include <NextionNumber.h>
 
-class NextionInterface {
-public:
-  static void init();
-  static void nextionTask(void *param);
-private:
-  static TaskHandle_t _taskHandle;
-};
+void nextionInterfaceInit();
 
 enum NEXTION_PAGES {
   TITLE_PAGE = 0,
