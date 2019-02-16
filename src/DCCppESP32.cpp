@@ -379,6 +379,10 @@ void setup() {
   });
 #endif
 
+#if ENERGIZE_OPS_TRACK_ON_STARTUP
+  MotorBoardManager::powerOnAll();
+#endif
+
 	log_i("DCC++ESP32 READY!");
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("DCC++ESP READY!"));
 }

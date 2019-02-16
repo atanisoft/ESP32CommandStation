@@ -15,38 +15,63 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The WiFi interface is part of the DCC++ESP32 core functionality
 // and will require modification in the Config_WiFi.h file.
 #include "Config_WiFi.h"
 
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The Config_MotorBoard.h file will likely require modifications
 // to define pins and motor board type(s)
 #include "Config_MotorBoard.h"
 
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// The following line alters the default behavior of the DCC++ESP32 Command Station
+// in such that it will automatically energize the OPS track power on startup. This
+// may not be desirable and is left disabled by default. Uncomment the next line to
+// enable this functionality.
+//#define ENERGIZE_OPS_TRACK_ON_STARTUP true
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The S88 module is optional and if enabled will allow communication with
 // one (or more) S88 buses. To utilize this functionality uncomment the
 // include below and edit the Config_S88.h file to match your configuration.
 //#include "Config_S88.h"
 
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The InfoScreen module is optional and displays base station information on either
 // an OLED or LCD screen.
 //#include "Config_OLED.h"
 //#include "Config_LCD.h"
 
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The Nextion interface is an optional module that allows a Nextion display to
 // be connected directly to the base station as a throttle and programming interface.
 //#include "Config_Nextion.h"
 
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The HC12 interface is an optional module which allows for an HC12 to be connected
 // to the base station allowing the text based protocol to be utilized by external
 // devices via an HC12.
 //#include "Config_HC12.h"
 
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The LocoNet interface is an optional module, if you wish to interface with LocoNet
 // you must uncomment the next line and edit the Config_LocoNet.h file to match your
 // configuration.
 //#include "Config_LocoNet.h"
 
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The LCC interface is an optional module, by default the WiFi interface is available
 // uncomment the line below if you wish to have a hardware CAN interface used as well.
 //#include "Config_LCC.h"

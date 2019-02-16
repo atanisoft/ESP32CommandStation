@@ -105,6 +105,10 @@ COPYRIGHT (c) 2017 Mike Dunston
 #define S88_ENABLED false
 #endif
 
+#ifndef ENERGIZE_OPS_TRACK_ON_STARTUP
+#define ENERGIZE_OPS_TRACK_ON_STARTUP false
+#endif
+
 #include "ConfigurationManager.h"
 #include "WiFiInterface.h"
 #include "InfoScreen.h"
