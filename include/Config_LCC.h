@@ -15,8 +15,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include <stdint.h>
-
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // DEFINE WHICH PINS ARE USED FOR LCC INTERFACE
