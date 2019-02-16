@@ -44,7 +44,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// The InfoScreen module is optional and displays base station information on either
+// The InfoScreen module is optional and displays command station information on either
 // an OLED or LCD screen.
 //#include "Config_OLED.h"
 //#include "Config_LCD.h"
@@ -52,13 +52,13 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // The Nextion interface is an optional module that allows a Nextion display to
-// be connected directly to the base station as a throttle and programming interface.
+// be connected directly to the command station as a throttle and programming interface.
 //#include "Config_Nextion.h"
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // The HC12 interface is an optional module which allows for an HC12 to be connected
-// to the base station allowing the text based protocol to be utilized by external
+// to the command station allowing the text based protocol to be utilized by external
 // devices via an HC12.
 //#include "Config_HC12.h"
 

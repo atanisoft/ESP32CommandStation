@@ -201,12 +201,13 @@ public:
 };
 
 // <s> command handler, this command sends the current status for all parts of
-// the DCC++ESP32 BASE STATION. JMRI uses this command as a keep-alive heartbeat
+// the DCC++ESP32 COMMAND STATION. JMRI uses this command as a keep-alive heartbeat
 // command.
 class StatusCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    wifiInterface.printf(F("<iDCC++ BASE STATION FOR ESP32: V-%s / %s %s>"), VERSION, __DATE__, __TIME__);
+    wifiInterface.printf(F("<iDCC++ COMMAND STATION FOR ESP32: V-%s / %s %s>"),
+      VERSION, __DATE__, __TIME__);
     MotorBoardManager::showStatus();
     LocomotiveManager::showStatus();
     TurnoutManager::showStatus();

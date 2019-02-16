@@ -228,7 +228,7 @@ void SignalGenerator::configureSignal(String name, uint16_t maxPackets, uint8_t 
   _timerNumber = timerNumber;
 
   // create packets for this signal generator up front, they will be reused until
-  // the base station is shutdown
+  // the command station is shutdown
   for(int index = 0; index < maxPackets; index++) {
     _availablePackets.push(new Packet());
   }
@@ -249,7 +249,7 @@ void SignalGenerator::startSignal(bool sendIdlePackets) {
   // inject the required reset and idle packets into the queue
   // this is required as part of S-9.2.4 section A
   // at least 20 reset packets and 10 idle packets must be sent upon initialization
-  // of the base station to force decoders to exit service mode.
+  // of the command station to force decoders to exit service mode.
   log_i("[%s] Adding reset packet (25 repeats) to packet queue", _name.c_str());
   loadBytePacket(resetPacket, 2, 25);
   if(sendIdlePackets) {

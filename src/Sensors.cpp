@@ -19,18 +19,18 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /**********************************************************************
 
-DCC++ESP32 BASE STATION supports Sensor inputs that can be connected to any
+DCC++ESP32 COMMAND STATION supports Sensor inputs that can be connected to any
 unused ESP32 pin. Sensors can be of any type (infrared, magentic, mechanical...).
 The only requirement is that when "activated" the Sensor must force the
 specified pin LOW (i.e. to ground), and when not activated, this pin should
 remain HIGH (e.g. 3.3V), or be allowed to float HIGH if use of the pin's
 internal pull-up resistor is specified.  In addition to this type of sensor
-the base station also supports S88-n connected sensors.
+the command station also supports S88-n connected sensors.
 
 To ensure proper voltage levels, some part of the Sensor circuitry
 MUST be tied back to the same ground as used by the ESP32.
 
-To have the base station monitor one or more GPIO pins for sensor triggers, first
+To have the command station monitor one or more GPIO pins for sensor triggers, first
 define/edit/delete sensor definitions using the following variation of the "S"
 command:
 

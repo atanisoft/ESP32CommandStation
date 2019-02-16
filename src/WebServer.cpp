@@ -480,7 +480,7 @@ void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
   auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->params());
   jsonResponse->setCode(STATUS_OK);
   // check if we have an eStop command, we don't care how this gets sent to the
-  // base station (method) so check it first
+  // command station (method) so check it first
   if(url.endsWith("/estop")) {
     LocomotiveManager::emergencyStop();
   } else if(url.indexOf("/roster") > 0) {

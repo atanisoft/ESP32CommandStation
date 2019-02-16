@@ -19,10 +19,10 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /**********************************************************************
 
-DCC++ESP32 BASE STATION supports optional OUTPUT control of any unused pins for
-custom purposes. Pins can be activited or de-activated. The default is to set
-ACTIVE pins HIGH and INACTIVE pins LOW. However, this default behavior can be
-inverted for any pin in which case ACTIVE=LOW and INACTIVE=HIGH.
+DCC++ESP32 COMMAND STATION supports optional OUTPUT control of any unused pins
+for custom purposes. Pins can be activited or de-activated. The default is to
+set ACTIVE pins HIGH and INACTIVE pins LOW. However, this default behavior can
+be inverted for any pin in which case ACTIVE=LOW and INACTIVE=HIGH.
 
 Definitions and state (ACTIVE/INACTIVE) for pins are retained on the ESP32 and
 restored on power-up. The default is to set each defined pin to active or

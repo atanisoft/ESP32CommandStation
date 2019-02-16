@@ -17,8 +17,8 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// The Nextion is an interface to the base station that provides a connected
-// throttle, turnout control, programming track and general base station status.
+// The Nextion is an interface to the command station that provides a connected
+// throttle, turnout control, programming track and general command station status.
 
 #define NEXTION_UART_NUM 2
 #define NEXTION_UART_BAUD 115200

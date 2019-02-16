@@ -18,7 +18,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // The HC12 is a radio receiver that was previously used by some throttles to
-// wirelessly send packet data to the base station. Uncomment the define below
+// wirelessly send packet data to the command station. Uncomment the define below
 // to enable this functionality.
 
 #define HC12_RADIO_BAUD 19200

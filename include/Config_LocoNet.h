@@ -18,7 +18,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // The LocoNet interface allows using many of the available LocoNet sensors, throttles,
-// accessories, etc with this base station. It is still under active development, if
+// accessories, etc with this command station. It is still under active development, if
 // you find a device that does not work please let us know.
 //
 

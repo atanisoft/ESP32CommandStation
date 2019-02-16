@@ -20,10 +20,10 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /**********************************************************************
 
-DCC++ESP32 BASE STATION supports multiple S88 Sensor busses.
+DCC++ESP32 COMMAND STATION supports multiple S88 Sensor busses.
 
-To have the base station monitor an S88 sensor, first define/edit/delete an S88
-Sensor Bus using the following variations on the "S88" command:
+To have the command station monitor an S88 sensor, first define/edit/delete
+an S88 Sensor Bus using the following variations on the "S88" command:
   <S88 ID DATAPIN COUNT> : Creates an S88 Sensor Bus with the specified
                            ID, DATA PIN, SENSOR COUNT.
         returns: <O> if successful and <X> if unsuccessful.

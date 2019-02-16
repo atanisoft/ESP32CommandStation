@@ -27,7 +27,7 @@
 			<div data-role="navbar">
 				<ul>
 					<li><a href="#throttlePage" data-icon="ui-icon-home">Throttle</a></li>
-					<li><a href="#baseStationPage" data-icon="ui-icon-gear">Base Station</a></li>
+					<li><a href="#baseStationPage" data-icon="ui-icon-gear">Command Station</a></li>
 				</ul>
 			</div>
 			<div id="throttlePage">
@@ -515,7 +515,7 @@ function registerStringFormat() {
 function initPage() {
 	if(!$.mobile.path.getDocumentBase().startsWith("file://")) {
 		$.mobile.loading("show", {
-			text: 'Connecting to Base Station',
+			text: 'Connecting to Command Station',
 			textVisible: true,
 			textonly: false});
 		$.get({
@@ -578,7 +578,7 @@ function setupThrottle() {
 				return record.defaultOnThrottles;
 			},
 			failureHandler: function(jqxhr, status, error) {
-				console.log('Failed to retrieve locomotive list from base station, switching to manual');
+				console.log('Failed to retrieve locomotive list from command station, switching to manual');
 				$("#throttle-loco-list").hide();
 				$("#throttle-loco-select-manual").show();
 				$("#throttle-loco-select").popup("open");
@@ -655,7 +655,7 @@ function setupBaseStation() {
 		BSTabRefresh(ui.newHeader.text());
 	});
 	$("#tabs").on("tabsactivate", function(event, ui) {
-		if(ui.newTab.text() == "Base Station") {
+		if(ui.newTab.text() == "Command Station") {
 			const sections = ["Status", "Turnouts", "Sensors", "Sensors (S88)", "Outputs", "Locomotive Roster", "Programmer"];
 			var currentSection = $("#bs-accordion").accordion("option", "active");
 			BSTabRefresh(sections[currentSection]);
@@ -1261,8 +1261,8 @@ function changeLocomotive(newAddress) {
 			fireLocoEvents = true;
 		},
 		error : function(xhr, status, error) {
-			alert("The base station reported a failure in aquiring locomotive:" + newAddress);
-			console.log("Failed to retrieve locomotive details from base station:", error);
+			alert("The command station reported a failure in aquiring locomotive:" + newAddress);
+			console.log("Failed to retrieve locomotive details from command station:", error);
 		}
 	});
 }

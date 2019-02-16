@@ -18,7 +18,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 #include "DCCppESP32.h"
 
 /**********************************************************************
-DCC++ESP32 BASE STATION supports multiple Locomotive Consists, using either
+DCC++ESP32 COMMAND STATION supports multiple Locomotive Consists, using either
 command station consisting or decoder assisted consisting.
 
   <C ID LEAD TRAIL [{OTHER}]> : Creates a consist using ID with LEAD and TRAIL

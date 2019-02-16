@@ -39,33 +39,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define S88_SENSOR_READ_TIME 25
 #define S88_MAX_SENSORS_PER_BUS 512
 
-/////////////////////////////////////////////////////////////////////////////////////
-// SET WHETHER TO SHOW PACKETS - DIAGNOSTIC MODE ONLY
-/////////////////////////////////////////////////////////////////////////////////////
-
-// If SHOW_DCC_PACKETS is set to 1, the DCC++ BASE STATION will return the
-// DCC packet contents in the following format:
-
-//    <* B1 B2 ... Bn CSUM / NUM_BITS / REPEAT>
-//
-//    B1: the first hexidecimal byte of the DCC packet
-//    B2: the second hexidecimal byte of the DCC packet
-//    Bn: the nth hexidecimal byte of the DCC packet
-//    CSUM: a checksum byte that is required to be the final byte in any DCC packet
-//    NUM_BITS: the number of bits in the DCC packet
-//    REPEAT: the number of times the DCC packet was re-transmitted to the tracks after its iniital transmission
-
-// Set to one to enable printing of all DCC packets as described above
-#define SHOW_DCC_PACKETS  0
-
-// set to zero to disable diagnostic logging of packets in the signal generator queue
-// WARNING: Enabling this can cause the ESP32 to crash due to Serial buffer overflow
-#define DEBUG_SIGNAL_GENERATOR 0
-
-// set to zero to disable diagnostic logging of packets in the ADC Sampling code
-// WARNING: Enabling this can cause the ESP32 to crash due to Serial buffer overflow
-#define DEBUG_ADC_SAMPLING 0
-
 #include <Arduino.h>
 #include <algorithm>
 #include <functional>

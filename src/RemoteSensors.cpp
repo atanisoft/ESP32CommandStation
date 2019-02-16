@@ -21,25 +21,25 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 /**********************************************************************
 
-DCC++ESP32 BASE STATION supports remote sensor inputs that are connected via a
+DCC++ESP32 COMMAND STATION supports remote sensor inputs that are connected via a
 WiFi connection. Remote Sensors are dynamically created during startup or by a
 remote sensor reporting its state.
 
-During startup, the base station scans for Access Points that have a name
+During startup, the command station scans for Access Points that have a name
 starting with REMOTE_SENSORS_PREFIX defined in Config.h, ie: "sensor01". If no
 Access Points are found matching this prefix during startup they will be created
-automatically when the sensor reports its state to the base station.
+automatically when the sensor reports its state to the command station.
 
 Note: Remote Sensors should not maintain a persistent connection. Instead they
 should connect when a change occurs that should be reported. It is not necessary
 for Remote Sensors to report when they are INACTIVE. If a Remote Sensor does not
-report within REMOTE_SENSORS_DECAY milliseconds the base station will
+report within REMOTE_SENSORS_DECAY milliseconds the command station will
 automatically transition the Remote Sensor to INACTIVE state if it was
 previously ACTIVE.
 
 The following varations of the "RS" command :
 
-  <RS ID STATE>:      Informs the base station of the status of a remote sensor.
+  <RS ID STATE>:      Informs the command station of the status of a remote sensor.
   <RS ID>:            Deletes remote sensor ID.
   <RS>:               Lists all defined remote sensors.
                       returns: <RS ID STATE> for each defined remote sensor or

@@ -19,10 +19,10 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /**********************************************************************
 
-DCC++ESP32 BASE STATION can keep track of the direction of any turnout that is
+DCC++ESP32 COMMAND STATION can keep track of the direction of any turnout that is
 controlled by a DCC stationary accessory decoder.  All turnouts, as well as any
 other DCC accessories connected in this fashion, can always be operated using
-the DCC BASE STATION Accessory command:
+the DCC COMMAND STATION Accessory command:
 
   <a ADDRESS SUBADDRESS ACTIVATE>
 

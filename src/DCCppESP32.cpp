@@ -17,15 +17,15 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /**********************************************************************
 
-DCC++ESP32 BASE STATION is a C++ program written for the ESP32 using
+DCC++ESP32 COMMAND STATION is a C++ program written for the ESP32 using
 PlatformIO IDE.
 
 It allows an ESP32 with an Arduino Motor Shield (as well as others) to be used
-as a fully-functioning digital command and control (DCC) base station for
+as a fully-functioning digital command and control (DCC) command station for
 controlling model train layouts that conform to current National Model Railroad
 Association (NMRA) DCC standards.
 
-This version of DCC++ BASE STATION supports:
+This version of DCC++ COMMAND STATION supports:
   * 2-byte and 4-byte locomotive addressing
   * Simultaneous control of multiple locomotives
   * 128-step speed throttling
@@ -40,8 +40,8 @@ This version of DCC++ BASE STATION supports:
       - set/clear specific configuration variable bits
       - read configuration variable bytes
 
-DCC++ESP32 BASE STATION is controlled with simple text commands received via
-a WiFi interface.  Users can control the base station via a built in web
+DCC++ESP32 COMMAND STATION is controlled with simple text commands received via
+a WiFi interface.  Users can control the command station via a built in web
 interface accessible via mobile devices or a web browser.
 
 With the exception of a standard 15V power supply that can be purchased in
@@ -54,9 +54,10 @@ REFERENCES:
   Processing:                  http://processing.org/
   GNU General Public License:  http://opensource.org/licenses/GPL-3.0
 
-BRIEF NOTES ON THE THEORY AND OPERATION OF DCC++ BASE STATION:
+BRIEF NOTES ON THE THEORY AND OPERATION OF DCC++ESP32 COMMAND STATION, originally based
+off the DCC++ BASE STATION:
 
-DCC++ESP32 BASE STATION for the ESP32 configures two of the four hardware timers, to
+DCC++ESP32 COMMAND STATION for the ESP32 configures two of the four hardware timers, to
 generate separate 0-3.3V unipolar signals that each properly encode zero and one
 bits conforming with DCC timing standards.
 
@@ -74,7 +75,7 @@ momentarily lose electrical connectivity with the tracks, it will very quickly
 receive another throttle control signal as soon as connectivity is restored
 (such as when a trin passes over  rough portion of track or the frog of a turnout).
 
-DCC++ESP32 BASE STATION therefore sequentially loops through each locomotive
+DCC++ESP32 COMMAND STATION therefore sequentially loops through each locomotive
 register in use every 50ms. As it loops through the locomotive registers, each
 locomotive will be converted to a throttle control DCC packet and placed in the
 Signal Generator queue for delivery. Each locomotive register should be for a
@@ -95,7 +96,8 @@ may be connected directly to the tracks. This software assumes CHANNEL A is
 connected to the Main Operations Track, and CHANNEL B is connected to the
 Programming Track.
 
-DCC++ESP32 BASE STATION in split into multiple modules, each with its own header file:
+DCC++ESP32 COMMAND STATION in split into multiple modules, each with its own
+header file:
 
   DCCppESP32:       declares required global objects and contains initial
 										setup() and loop() functions.
@@ -141,13 +143,12 @@ DCC++ESP32 BASE STATION in split into multiple modules, each with its own header
 	WebSocketClient:  contains adapter code for WebSockets used by the web based
 										throttle.
 
-  WiFiInterface:		contains methods to connect the DCC++ESP32 BASE STATION to
+  WiFiInterface:		contains methods to connect the DCC++ESP32 COMMAND STATION to
 										a wireless access point and manages the WebServer and
 										WebSocket clients.
 
-DCC++ESP32 BASE STATION is configured through the Config.h file that contains
-all user-definable parameters except for Motor Shield declarations which are
-present in DCCppESP32.cpp in the setup() method.
+DCC++ESP32 COMMAND STATION is configured through the Config.h file that contains
+all user-definable parameters.
 **********************************************************************/
 
 #include "DCCppESP32.h"
