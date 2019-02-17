@@ -282,7 +282,7 @@ When this module is enabled the Command Station will receive and respond to cert
 #### LCC Configuration
 | PARAM | Description |
 | ----- | ----------- |
-| LCC_NODE_ID | This is the unique 64bit node ID for the DCC++ESP32 Command Station. You are encouraged to have your own unique ID but it is not mandatory. You can get a unique ID range [here](https://registry.openlcb.org/requestuniqueidrange) and assign one ID from the range here. The default value is 05.01.01.01.3F.01 (without dots) which indicates it is the second ID in the 05.01.01.01.3F.{00-FF} range. |
+| LCC_NODE_ID | This is the unique 64bit node ID for the DCC++ESP32 Command Station. You are encouraged to have your own unique ID but it is not mandatory. You can get a unique ID range [here](https://registry.openlcb.org/requestuniqueidrange) and assign one ID from the range here. The default value is 05.01.01.01.3F.00 (without dots) which indicates it is the first ID in the 05.01.01.01.3F.{00-FF} range. |
 | LCC_CAN_RX_PIN | This is the pin connected to the CAN transceiver RX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 | LCC_CAN_TX_PIN | This is the pin connected to the CAN transceiver TX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 
