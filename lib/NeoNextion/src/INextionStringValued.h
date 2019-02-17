@@ -32,9 +32,9 @@ public:
    * \return Actual length of string
    * \see INextionStringValued::setText
    */
-  size_t getText(char *buffer, size_t len)
+  size_t getText(String &buffer)
   {
-    return getStringProperty("txt", buffer, len);
+    return getStringProperty("txt", buffer);
   }
 
   /*!
@@ -66,10 +66,10 @@ public:
    */
   uint32_t getTextAsNumber()
   {
-    char buffer[8];
-    if (getStringProperty("txt", buffer, 8))
+    String buffer;
+    if (getStringProperty("txt", buffer))
     {
-      return atol(buffer);
+      return buffer.toInt();
     }
     else
       return 0;

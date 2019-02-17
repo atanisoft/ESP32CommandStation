@@ -80,11 +80,10 @@ bool INextionWidget::setStringProperty(const String &propertyName, const String 
  * \param len Maximum length of value
  * \return Actual length of value
  */
-size_t INextionWidget::getStringProperty(const String &propertyName, char *value,
-                                         size_t len)
+size_t INextionWidget::getStringProperty(const String &propertyName, String &buffer)
 {
   sendCommand("get %s.%s", m_name.c_str(), propertyName.c_str());
-  return m_nextion.receiveString(value, len);
+  return m_nextion.receiveString(buffer);
 }
 
 void INextionWidget::sendCommand(const String &format, ...)

@@ -396,55 +396,8 @@ bool Nextion::receiveNumber(uint32_t *number)
 /*!
  * \brief Receive a string from the device.
  * \param buffer Pointer to buffer to store string in
- * \param len Maximum length of data to receive
  * \return Actual length of string received
  */
-size_t Nextion::receiveString(char *buffer, size_t len)
-{
-  memset(buffer, 0, len);
-
-  bool have_header_flag = false;
-  uint8_t flag_count = 0;
-  size_t pos = 0;
-
-  if (!buffer || len == 0)
-    return false;
-
-  uint32_t start = millis();
-  while (millis() - start <= m_timeout)
-  {
-    while (m_serialPort.available())
-    {
-      char c = m_serialPort.read();
-      if (have_header_flag)
-      {
-        if (c == 0xFF || c == 0xFFFFFFFF)
-        {
-          flag_count++;
-          if (flag_count >= 3)
-            break;
-        }
-        else
-        {
-          buffer[pos] = c;
-          pos++;
-          if (pos == len - 1)
-            break;
-        }
-      }
-      else if (c == NEX_RET_STRING_HEAD)
-        have_header_flag = true;
-    }
-
-    if (flag_count >= 3)
-      break;
-  }
-
-  pos++;
-  buffer[pos] = '\0';
-  return pos;
-}
-
 size_t Nextion::receiveString(String &buffer, bool stringHeader) {
   bool have_header_flag = !stringHeader;
   uint8_t flag_count = 0;

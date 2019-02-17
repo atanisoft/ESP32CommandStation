@@ -70,7 +70,6 @@ public:
   void sendCommand(const char *format, va_list args);
   bool checkCommandComplete();
   bool receiveNumber(uint32_t *number);
-  size_t receiveString(char *buffer, size_t len);
   size_t receiveString(String &buffer, bool stringHeader=true);
 
 private:

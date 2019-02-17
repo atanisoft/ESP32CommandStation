@@ -25,7 +25,7 @@ public:
   uint32_t getNumberProperty(const String &propertyName);
   bool setPropertyCommand(const String &command, uint32_t value);
   bool setStringProperty(const String &propertyName, const String &value);
-  size_t getStringProperty(const String &propertyName, char *value, size_t len);
+  size_t getStringProperty(const String &propertyName, String &buffer);
 
   bool show();
   bool hide();
