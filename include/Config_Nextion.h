@@ -25,6 +25,11 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 #define NEXTION_RX_PIN 14
 #define NEXTION_TX_PIN 27
 
+// This defines the type of Nextion display that has been attached to the
+// command station.
+// supported values: BASIC_3_2_DISPLAY, BASIC_3_5_DISPLAY, ENHANCED_3_2_DISPLAY, ENHANCED_3_5_DISPLAY
+#define NEXTION_TYPE BASIC_3_2_DISPLAY
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 #define NEXTION_ENABLED true

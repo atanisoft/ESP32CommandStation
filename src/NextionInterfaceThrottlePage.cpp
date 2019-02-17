@@ -51,6 +51,9 @@ const uint8_t fgp1=26;          //F18
 const uint8_t fgp2=27;          //F916
 const uint8_t fgp3=28;          //F1724
 
+const uint8_t FUNC_LIGHT_INDEX = 8;
+const uint8_t FUNC_CLEAR_INDEX = 9;
+
 const uint8_t F0_PIC_OFF=28;
 const uint8_t F0_PIC_ON=53;
 const uint8_t F1_PIC_OFF=4;
@@ -235,15 +238,15 @@ void NextionThrottlePage::toggleFunction(const NextionButton *button) {
       uint16_t functionPicOff = _activeFunctionGroup * 8 + function + F1_PIC_OFF;
       uint16_t functionPicOn = _activeFunctionGroup * 8 + function + F1_PIC_ON;
       if(&_functionButtons[function] == button) {
-        if(function == 8) { // Front Light
-          if(_functionButtons[8].getPictureID() == F0_PIC_OFF) {
-            _functionButtons[8].setPictureID(F0_PIC_ON);
+        if(function == FUNC_LIGHT_INDEX) { // Front Light
+          if(_functionButtons[FUNC_LIGHT_INDEX].getPictureID() == F0_PIC_OFF) {
+            _functionButtons[FUNC_LIGHT_INDEX].setPictureID(F0_PIC_ON);
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(0, true);
           } else {
-            _functionButtons[8].setPictureID(F0_PIC_OFF);
+            _functionButtons[FUNC_LIGHT_INDEX].setPictureID(F0_PIC_OFF);
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(0, false);
           }
-        } else if(function == 9) { // Clear all 28 functions... 29?
+        } else if(function == FUNC_CLEAR_INDEX) { // Clear all 28 functions... 29?
           for(uint8_t index = 0; index < 28; index++) {
             LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setFunction(index, false);
           }
@@ -363,19 +366,35 @@ void NextionThrottlePage::refreshLocomotiveDetails()
     _speedNumber.setTextAsNumber(0);
     _fwdButton.setPictureID(FWD_PIC_ON);
     _revButton.setPictureID(REV_PIC_OFF);
-    for(int index = 0; index < 8; index++) {
+    for(int index = 0; index < FUNC_LIGHT_INDEX; index++) {
       _functionButtons[index].setPictureID(_activeFunctionGroup * 8 + index + F1_PIC_OFF);
     }
+    _functionButtons[FUNC_LIGHT_INDEX].setPictureID(F0_PIC_OFF);
   }
 }
 
 void NextionThrottlePage::refreshFunctionButtons() {
-  for(int index = 0; index < 8; index++) {
-    if(_locoNumbers[_activeLoco] > 0 && LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->isFunctionEnabled(_activeFunctionGroup * 8 + index + 1)) {
-      _functionButtons[index].setPictureID(_activeFunctionGroup * 8 + index + F1_PIC_ON);
-    } else {
-      _functionButtons[index].setPictureID(_activeFunctionGroup * 8 + index + F1_PIC_OFF);
+  auto loco = LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco]);
+  if(loco) {
+    for(int index = 0; index < FUNC_LIGHT_INDEX; index++) {
+      uint8_t functionIndex = _activeFunctionGroup * 8 + index;
+      if(loco->isFunctionEnabled(functionIndex + 1)) {
+        _functionButtons[index].setPictureID(functionIndex + F1_PIC_ON);
+      } else {
+        _functionButtons[index].setPictureID(functionIndex + F1_PIC_OFF);
+      }
     }
+    if(loco->isFunctionEnabled(0)) {
+      _functionButtons[FUNC_LIGHT_INDEX].setPictureID(F0_PIC_ON);
+    } else {
+      _functionButtons[FUNC_LIGHT_INDEX].setPictureID(F0_PIC_OFF);
+    }
+  } else {
+    for(int index = 0; index < FUNC_LIGHT_INDEX; index++) {
+      uint8_t functionIndex = _activeFunctionGroup * 8 + index;
+      _functionButtons[index].setPictureID(functionIndex + F1_PIC_OFF);
+    }
+    _functionButtons[FUNC_LIGHT_INDEX].setPictureID(F0_PIC_OFF);
   }
 }
 

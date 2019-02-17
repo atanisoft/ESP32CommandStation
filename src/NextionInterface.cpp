@@ -57,7 +57,7 @@ DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   nullptr
 };
 
-NEXTION_DEVICE_TYPE nextionDeviceType = NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY;
+NEXTION_DEVICE_TYPE nextionDeviceType = NEXTION_TYPE;
 
 void nextionTask(void *param) {
   nextionPages[TITLE_PAGE]->display();
@@ -83,6 +83,7 @@ void nextionInterfaceInit() {
   Serial.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
 #endif
   if(nextion.init()) {
+#if 0
     // identify nextion display
     nextion.sendCommand("");
     nextion.sendCommand("connect");
@@ -106,6 +107,7 @@ void nextionInterfaceInit() {
         log_w("Unable to determine Nextion device type: %s", screenID.c_str());
       }
     }
+#endif
     xTaskCreate(nextionTask, "Nextion", NEXTION_INTERFACE_TASK_STACK_SIZE,
       NULL, NEXTION_INTERFACE_TASK_PRIORITY, &_nextionTaskHandle);
   } else {
