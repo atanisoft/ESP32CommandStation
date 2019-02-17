@@ -205,7 +205,7 @@ void LocomotiveManager::init() {
   JsonObject &root = configStore.load(ROSTER_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t locoCount = count.success() ? count.as<int>() : 0;
-  log_i("Found %d RosterEntries", locoCount);
+  log_v("Found %d RosterEntries", locoCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Locos"), locoCount);
   if(locoCount > 0) {
     for(auto loco : root.get<JsonArray>(JSON_LOCOS_NODE)) {
@@ -215,7 +215,7 @@ void LocomotiveManager::init() {
   JsonObject &consistRoot = configStore.load(CONSISTS_JSON_FILE);
   count = consistRoot[JSON_COUNT_NODE];
   uint16_t consistCount = count.success() ? count.as<int>() : 0;
-  log_i("Found %d Consists", consistCount);
+  log_v("Found %d Consists", consistCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Consists"), consistCount);
   if(locoCount > 0) {
     for(auto consist : consistRoot.get<JsonArray>(JSON_CONSISTS_NODE)) {
@@ -362,7 +362,7 @@ RosterEntry *LocomotiveManager::getRosterEntry(uint16_t address, bool create) {
     }
   }
   if(instance == nullptr && create) {
-    log_i("No roster entry for address %d, creating", address);
+    log_v("No roster entry for address %d, creating", address);
     instance = new RosterEntry(address);
     _roster.add(instance);
   }
@@ -377,10 +377,10 @@ void LocomotiveManager::removeRosterEntry(uint16_t address) {
     }
   }
   if(entryToRemove != nullptr) {
-    log_i("Removing roster entry for address %d", address);
+    log_v("Removing roster entry for address %d", address);
     _roster.remove(entryToRemove);
   } else {
-    log_i("Roster entry for address %d doesn't exist, ignoring delete request", address);
+    log_w("Roster entry for address %d doesn't exist, ignoring delete request", address);
   }
 }
 

@@ -40,6 +40,14 @@ enum NEXTION_PAGES {
   MAX_PAGES
 };
 
+enum NEXTION_DEVICE_TYPE {
+  BASIC_3_2_DISPLAY,
+  BASIC_3_5_DISPLAY,
+  ENHANCED_3_2_DISPLAY,
+  ENHANCED_3_5_DISPLAY,
+  UNKOWN_DISPLAY
+};
+
 class DCCPPNextionPage : public NextionPage {
 public:
   DCCPPNextionPage(Nextion &, uint8_t, const String &);
@@ -76,6 +84,7 @@ private:
 };
 
 extern DCCPPNextionPage *nextionPages[MAX_PAGES];
+extern NEXTION_DEVICE_TYPE nextionDeviceType;
 
 class NextionTitlePage : public DCCPPNextionPage {
 public:
@@ -186,11 +195,11 @@ public:
   
   virtual void refreshPage();
   void incrementTurnoutPage() {
-    _turnoutStartIndex += TURNOUTS_PER_PAGE;
+    _turnoutStartIndex += getTurnoutsPerPageCount();
     refresh();
   }
   void decrementTurnoutPage() {
-    _turnoutStartIndex -= TURNOUTS_PER_PAGE;
+    _turnoutStartIndex -= getTurnoutsPerPageCount();
     if(_turnoutStartIndex < 0) {
       _turnoutStartIndex = 0;
     }
@@ -211,10 +220,12 @@ protected:
   }
   void previousPageCallback(DCCPPNextionPage *);
 private:
-  static constexpr int TURNOUTS_PER_PAGE = 15;
+  static constexpr int TURNOUTS_PER_PAGE_3_2_DISPLAY = 15;
+  static constexpr int TURNOUTS_PER_PAGE_3_5_DISPLAY = 24;
   uint8_t getDefaultTurnoutPictureID(Turnout *);
-  NextionButton _turnoutButtons[TURNOUTS_PER_PAGE];
-  NextionButton _toAddress[TURNOUTS_PER_PAGE];
+  uint8_t getTurnoutsPerPageCount();
+  NextionButton _turnoutButtons[TURNOUTS_PER_PAGE_3_5_DISPLAY];
+  NextionButton _toAddress[TURNOUTS_PER_PAGE_3_5_DISPLAY];
   NextionButton _backButton;
   NextionButton _prevButton;
   NextionButton _nextButton;

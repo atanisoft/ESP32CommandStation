@@ -81,11 +81,11 @@ xSemaphoreHandle SensorManager::_lock;
 
 void SensorManager::init() {
   _lock = xSemaphoreCreateMutex();
-  log_i("Initializing sensors list");
+  log_v("Initializing sensors list");
   JsonObject &root = configStore.load(SENSORS_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t sensorCount = count.success() ? count.as<int>() : 0;
-  log_i("Found %d sensors", sensorCount);
+  log_v("Found %d sensors", sensorCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Sensors"), sensorCount);
   if(sensorCount > 0) {
     for(auto sensor : root.get<JsonArray>(JSON_SENSORS_NODE)) {
@@ -173,7 +173,7 @@ bool SensorManager::remove(const uint16_t id) {
     }
   }
   if(sensorToRemove != nullptr) {
-    log_i("Removing Sensor(%d)", sensorToRemove->getID());
+    log_v("Removing Sensor(%d)", sensorToRemove->getID());
     sensors.remove(sensorToRemove);
     MUTEX_UNLOCK(_lock);
     return true;
@@ -193,7 +193,7 @@ uint8_t SensorManager::getSensorPin(const uint16_t id) {
 
 Sensor::Sensor(uint16_t sensorID, int8_t pin, bool pullUp, bool announce) : _sensorID(sensorID), _pin(pin), _pullUp(pullUp), _lastState(false) {
   if(announce) {
-    log_i("Sensor(%d) on pin %d created, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+    log_v("Sensor(%d) on pin %d created, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
     if(_pullUp) {
       pinMode(_pin, INPUT_PULLUP);
     } else {
@@ -206,7 +206,7 @@ Sensor::Sensor(JsonObject &json) : _lastState(false) {
   _sensorID = json[JSON_ID_NODE];
   _pin = json[JSON_PIN_NODE];
   _pullUp = json[JSON_PULLUP_NODE];
-  log_i("Sensor(%d) on pin %d loaded, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+  log_v("Sensor(%d) on pin %d loaded, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
   if(_pullUp) {
     pinMode(_pin, INPUT_PULLUP);
   } else {
@@ -226,7 +226,7 @@ void Sensor::toJson(JsonObject &json, bool includeState) {
 void Sensor::update(uint8_t pin, bool pullUp) {
   _pin = pin;
   _pullUp = pullUp;
-  log_i("Sensor(%d) on pin %d updated, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
+  log_v("Sensor(%d) on pin %d updated, pullup %s", _sensorID, _pin, _pullUp ? "Enabled" : "Disabled");
   if(_pullUp) {
     pinMode(_pin, INPUT_PULLUP);
   } else {

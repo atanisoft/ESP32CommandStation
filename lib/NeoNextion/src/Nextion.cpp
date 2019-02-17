@@ -444,3 +444,32 @@ size_t Nextion::receiveString(char *buffer, size_t len)
   buffer[pos] = '\0';
   return pos;
 }
+
+size_t Nextion::receiveString(String &buffer, bool stringHeader) {
+  bool have_header_flag = !stringHeader;
+  uint8_t flag_count = 0;
+  uint32_t start = millis();
+  while (millis() - start <= m_timeout)
+  {
+    while (m_serialPort.available())
+    {
+      char c = m_serialPort.read();
+      if (!have_header_flag && c == NEX_RET_STRING_HEAD) {
+        have_header_flag = true;
+      } else if (have_header_flag) {
+        if (c == 0xFF) {
+          flag_count++;
+        } else if (c == 0x05) {
+          flag_count = 4;
+        } else {
+          buffer += c;
+        }
+      }
+    }
+
+    if (flag_count >= 3) {
+      break;
+    }
+  }
+  return buffer.length();
+}

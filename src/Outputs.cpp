@@ -96,11 +96,11 @@ or GUI program.
 LinkedList<Output *> outputs([](Output *output) {delete output; });
 
 void OutputManager::init() {
-  log_i("Initializing outputs");
+  log_v("Initializing outputs");
   JsonObject &root = configStore.load(OUTPUTS_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t outputCount = count.success() ? count.as<int>() : 0;
-  log_i("Found %d outputs", outputCount);
+  log_v("Found %d outputs", outputCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Outputs"), outputCount);
   if(outputCount > 0) {
     for(auto output : root.get<JsonArray>(JSON_OUTPUTS_NODE)) {
@@ -191,7 +191,7 @@ bool OutputManager::remove(const uint16_t id) {
     }
   }
   if(outputToRemove != nullptr) {
-    log_i("Removing Output(%d)", outputToRemove->getID());
+    log_v("Removing Output(%d)", outputToRemove->getID());
     outputs.remove(outputToRemove);
     return true;
   }
@@ -208,7 +208,7 @@ Output::Output(uint16_t id, uint8_t pin, uint8_t flags) : _id(id), _pin(pin), _f
   } else {
     set(false, false);
   }
-  log_i("Output(%d) on pin %d created, flags: %s", _id, _pin, getFlagsAsString().c_str());
+  log_v("Output(%d) on pin %d created, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
@@ -229,7 +229,7 @@ Output::Output(JsonObject &json) {
       set(false, false);
     }
   }
-  log_i("Output(%d) on pin %d loaded, flags: %s", _id, _pin, getFlagsAsString().c_str());
+  log_v("Output(%d) on pin %d loaded, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
@@ -254,7 +254,7 @@ void Output::update(uint8_t pin, uint8_t flags) {
       set(false, false);
     }
   }
-  log_i("Output(%d) on pin %d updated, flags: %s", _id, _pin, getFlagsAsString().c_str());
+  log_v("Output(%d) on pin %d updated, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 

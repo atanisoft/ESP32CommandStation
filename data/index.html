@@ -700,10 +700,19 @@ function setupBaseStation() {
 						$.mobile.loading('hide');
 					}, 1);
 					if(status == 'success') {
+						// display new spinner for reboot
+						setTimeout(function () {
+							$.mobile.loading('show', {
+								text: 'Firmware upload Successful! Command Station restarting...',
+								textVisible: true,
+								textonly: false});
+						}, 2);
+						// set reload of webpage for 20sec
 						setTimeout(function() {
 							location.reload();
-						}, 10000);
+						}, 20000);
 					} else {
+						// something failed
 						setTimeout(function() {
 							alert('Firmware update failed: ' + request.responseText);
 						}, 500);

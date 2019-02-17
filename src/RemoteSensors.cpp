@@ -68,7 +68,7 @@ where
 
 extern LinkedList<Sensor *> sensors;
 LinkedList<RemoteSensor *> remoteSensors([](RemoteSensor *sensor) {
-  log_i("RemoteSensor(%d) removed", sensor->getID());
+  log_v("RemoteSensor(%d) removed", sensor->getID());
   // NOTE: No delete is being done here as the sensors cleanup handler will
   // handle the actual delete.
 });
@@ -78,7 +78,7 @@ void RemoteSensorManager::init() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFiScan started"));
   int8_t networksFound;
 
-  log_i("Scanning for RemoteSensors");
+  log_v("Scanning for RemoteSensors");
   WiFi.scanNetworks(true);
   while((networksFound = WiFi.scanComplete()) < 0) {
     delay(100);
@@ -95,7 +95,7 @@ void RemoteSensorManager::init() {
     }
   }
 #else
-  log_i("Scanning for RemoteSensors DISABLED, remote sensors will only be created after reporting state");
+  log_v("Scanning for RemoteSensors DISABLED, remote sensors will only be created after reporting state");
 #endif
 }
 
@@ -148,7 +148,7 @@ void RemoteSensorManager::show() {
 RemoteSensor::RemoteSensor(uint16_t id, uint16_t value) :
   Sensor(id + REMOTE_SENSORS_FIRST_SENSOR, NON_STORED_SENSOR_PIN, false, false), _rawID(id) {
   setSensorValue(value);
-  log_i("RemoteSensor(%d) created with Sensor(%d), active: %s, value: %d",
+  log_v("RemoteSensor(%d) created with Sensor(%d), active: %s, value: %d",
     getRawID(), getID(), isActive() ? "true" : "false", value);
 }
 

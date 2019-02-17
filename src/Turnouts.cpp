@@ -81,11 +81,11 @@ static constexpr const char *ORIENTATION_STRINGS[] = {
 };
 
 void TurnoutManager::init() {
-  log_i("Initializing turnout list");
+  log_v("Initializing turnout list");
   JsonObject &root = configStore.load(TURNOUTS_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t turnoutCount = count.success() ? count.as<int>() : 0;
-  log_i("Found %d turnouts", turnoutCount);
+  log_v("Found %d turnouts", turnoutCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Turnouts"), turnoutCount);
   if(turnoutCount > 0) {
     for(auto turnout : root.get<JsonArray>(JSON_TURNOUTS_NODE)) {
@@ -172,7 +172,7 @@ bool TurnoutManager::remove(const uint16_t id) {
     }
   }
   if(turnoutToRemoved != nullptr) {
-    log_i("Removing Turnout(%d)", turnoutToRemoved->getID());
+    log_v("Removing Turnout(%d)", turnoutToRemoved->getID());
     turnouts.remove(turnoutToRemoved);
     return true;
   }
@@ -187,7 +187,7 @@ bool TurnoutManager::removeByAddress(const uint16_t address) {
     }
   }
   if(turnoutToRemoved != nullptr) {
-    log_i("Removing Turnout(%d)", turnoutToRemoved->getID());
+    log_v("Removing Turnout(%d)", turnoutToRemoved->getID());
     turnouts.remove(turnoutToRemoved);
     return true;
   }
@@ -262,7 +262,7 @@ Turnout::Turnout(JsonObject &json) {
   if(json.get<int>(JSON_SUB_ADDRESS_NODE) == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    log_i("Loaded Turnout(%d): DCC Address: %d, orientation: %d (%s), state: %d (%s)",
+    log_v("Loaded Turnout(%d): DCC Address: %d, orientation: %d (%s), state: %d (%s)",
       _turnoutID, _address, _orientation, ORIENTATION_STRINGS[_orientation],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   } else {
@@ -279,10 +279,10 @@ void Turnout::update(uint16_t address, int8_t index, TurnoutOrientation orientat
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    log_i("Turnout %d updated to address: %d, orientation: %d (%s)",
+    log_v("Turnout %d updated to address: %d, orientation: %d (%s)",
       _turnoutID, _address, _orientation, ORIENTATION_STRINGS[_orientation]);
   } else {
-    log_i("Turnout %d updated to address: %d/%d, orientation: %d (%s)",
+    log_v("Turnout %d updated to address: %d/%d, orientation: %d (%s)",
       _turnoutID, _address, _index, _orientation, ORIENTATION_STRINGS[_orientation]);
   }
 }

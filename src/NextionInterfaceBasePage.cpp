@@ -51,7 +51,7 @@ void DCCPPNextionPage::display() {
   if(!show()) {
     log_e("display of page %s was not successful.\n", m_name.c_str());
   } else {
-    log_i("displayed page %s\n", m_name.c_str());
+    log_d("displayed page %s\n", m_name.c_str());
   }
   if(!_pageInitialized) {
     init();

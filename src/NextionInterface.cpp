@@ -57,6 +57,8 @@ DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   nullptr
 };
 
+NEXTION_DEVICE_TYPE nextionDeviceType = NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY;
+
 void nextionTask(void *param) {
   nextionPages[TITLE_PAGE]->display();
   bool showingTitlePage = true;
@@ -81,6 +83,29 @@ void nextionInterfaceInit() {
   Serial.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
 #endif
   if(nextion.init()) {
+    // identify nextion display
+    nextion.sendCommand("");
+    nextion.sendCommand("connect");
+    String screenID;
+    size_t res = nextion.receiveString(screenID, false);
+    if(res) {
+      // if we got back a valid string, check its content
+      if(screenID.indexOf("comok") != -1 && screenID.indexOf("NX4024T032") != -1) {
+        log_i("Nextion device is a 3.2\" basic display");
+        nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_2_DISPLAY;
+      } else if(screenID.indexOf("comok") != -1 && screenID.indexOf("NX4832T035") != -1) {
+        log_i("Nextion device is a 3.5\" basic display");
+        nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY;
+      } else if(screenID.indexOf("comok") != -1 && screenID.indexOf("NX4024K032") != -1) {
+        log_i("Nextion device is a 3.2\" enhanced display");
+        nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_2_DISPLAY;
+      } else if(screenID.indexOf("comok") != -1 && screenID.indexOf("NX4832K035") != -1) {
+        log_i("Nextion device is a 3.5\" enhanced display");
+        nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_5_DISPLAY;
+      } else {
+        log_w("Unable to determine Nextion device type: %s", screenID.c_str());
+      }
+    }
     xTaskCreate(nextionTask, "Nextion", NEXTION_INTERFACE_TASK_STACK_SIZE,
       NULL, NEXTION_INTERFACE_TASK_PRIORITY, &_nextionTaskHandle);
   } else {
