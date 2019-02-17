@@ -56,6 +56,37 @@ private:
 };
 LinkedList<WebSocketClient *> webSocketClients([](WebSocketClient *client) {delete client;});
 
+
+static const char * _err2str(uint8_t _error){
+    if(_error == UPDATE_ERROR_OK){
+        return ("No Error");
+    } else if(_error == UPDATE_ERROR_WRITE){
+        return ("Flash Write Failed");
+    } else if(_error == UPDATE_ERROR_ERASE){
+        return ("Flash Erase Failed");
+    } else if(_error == UPDATE_ERROR_READ){
+        return ("Flash Read Failed");
+    } else if(_error == UPDATE_ERROR_SPACE){
+        return ("Not Enough Space");
+    } else if(_error == UPDATE_ERROR_SIZE){
+        return ("Bad Size Given");
+    } else if(_error == UPDATE_ERROR_STREAM){
+        return ("Stream Read Timeout");
+    } else if(_error == UPDATE_ERROR_MD5){
+        return ("MD5 Check Failed");
+    } else if(_error == UPDATE_ERROR_MAGIC_BYTE){
+        return ("Wrong Magic Byte");
+    } else if(_error == UPDATE_ERROR_ACTIVATE){
+        return ("Could Not Activate The Firmware");
+    } else if(_error == UPDATE_ERROR_NO_PARTITION){
+        return ("Partition Could Not be Found");
+    } else if(_error == UPDATE_ERROR_BAD_ARGUMENT){
+        return ("Bad Argument");
+    } else if(_error == UPDATE_ERROR_ABORT){
+        return ("Aborted");
+    }
+    return ("UNKNOWN");
+}
 DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
   rewrite("/", "/index.html");
   on("/index.html", HTTP_GET,
@@ -132,26 +163,52 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     }
   });
   on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", (Update.hasError())?"FAIL":"OK");
-    response->addHeader("Connection", "close");
-    response->addHeader("Access-Control-Allow-Origin", "*");
+    request->send(STATUS_OK, "text/plain", _err2str(Update.getError()));
   }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
     if (!index) {
-      log_i("OTA starting: %s", filename.c_str());
+#if NEXTION_ENABLED
+      nextionPages[TITLE_PAGE]->show();
+      static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(0, "Firmware Upload Started...");
+#endif
+      InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, "Update starting");
       MotorBoardManager::powerOffAll();
       stopDCCSignalGenerators();
-      if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) { //start with max available size
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
+#if NEXTION_ENABLED
+        static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(1, _err2str(Update.getError()));
+#endif
+        InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, _err2str(Update.getError()));
+        request->send(STATUS_BAD_REQUEST, "text/plain", _err2str(Update.getError()));
         Update.printError(Serial);
       }
     }
     if (Update.write(data, len) != len) {
+#if NEXTION_ENABLED
+      static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(1, _err2str(Update.getError()));
+#endif
+      InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, _err2str(Update.getError()));
+      request->send(STATUS_BAD_REQUEST, "text/plain", _err2str(Update.getError()));
       Update.printError(Serial);
+    } else {
+      InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, "Updating: %d", Update.progress());
+#if NEXTION_ENABLED
+      static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(1, String("Progress: ") + String(Update.progress()));
+#endif
     }
     if (final) {
-      if (Update.end(true)) { //true to set the size to the current progress
-        log_i("OTA Success: %u\nRebooting...\n", index + len);
+      if (Update.end(true)) {
+#if NEXTION_ENABLED
+        static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(1, "Update Complete");
+        static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(2, "Rebooting");
+#endif
+        InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, "Update Complete");
         otaComplete = true;
       } else {
+#if NEXTION_ENABLED
+        static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(1, _err2str(Update.getError()));
+#endif
+        InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, _err2str(Update.getError()));
+        request->send(STATUS_BAD_REQUEST, "text/plain", _err2str(Update.getError()));
         Update.printError(Serial);
       }
     }

@@ -299,9 +299,9 @@
 					</div>
 					<h3>Web Update (OTA)</h3>
 					<div id="cs-ota">
-						<form method="POST" action="/update" enctype="multipart/form-data" data-ajax="false">
-							OTA Binary (firmware.bin):<input type="file" name="image" value="" required>
-							<input type="submit" value="Upload" name="submit" class="btn">
+						<form id="cs-ota-form" data-ajax="false">
+							OTA Binary (firmware.bin):<input type="file" name="cs-ota-firmware" value="">
+							<input type="button" id="cs-ota-upload" value="Upload"/>
 						</form>
 					</div>
 				</div>
@@ -675,6 +675,45 @@ function setupBaseStation() {
 	setupBSOutput();
 	setupBSRoster();
 	setupProgrammer();
+
+	$('#cs-ota-upload').on('vclick', function(event, ui) {
+		if($('#cs-ota-firmware').val() != '') {
+			var data = new FormData($('#cs-ota-form')[0]);
+			$.ajax({
+				url: '/update',
+				enctype: 'multipart/form-data',
+				type: 'POST',
+				data: data,
+				cache: false,
+				processData: false,
+				contentType: false,
+				timeout: 120000,
+				beforeSend: function() {
+					$.mobile.loading('show', {
+						text: 'Firmware upload in progress...',
+						textVisible: true,
+						textonly: false});
+				},
+				complete: function(request, status) {
+					console.log(request, status);
+					setTimeout(function () {
+						$.mobile.loading('hide');
+					}, 1);
+					if(status == 'success') {
+						setTimeout(function() {
+							location.reload();
+						}, 10000);
+					} else {
+						setTimeout(function() {
+							alert('Firmware update failed: ' + request.responseText);
+						}, 500);
+					}
+				}
+			})
+		} else {
+			alert('Firmware image not provided!');
+		}
+	});
 }
 function setupBSStatus() {
 	$("#bs-persist-config").on("vclick", function() {

@@ -89,6 +89,9 @@ public:
       NextionText(nextion, TITLE_PAGE, 8, "Status5")
      } {}
   virtual void refreshPage() {}
+  void setStatusText(int line, String text) {
+    _statusText[line].setText(text);
+  }
 protected:
   virtual void init() {
     _versionText.setText(VERSION);

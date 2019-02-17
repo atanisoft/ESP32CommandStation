@@ -393,7 +393,7 @@ void setup() {
 void loop() {
   if(otaComplete) {
     log_i("OTA binary has been received, preparing to reboot!");
-    delay(5000);
+    delay(250);
     esp32_restart();
   }
 	wifiInterface.update();
