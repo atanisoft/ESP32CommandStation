@@ -175,6 +175,7 @@ LocoNetESP32Uart locoNet(LOCONET_RX_PIN, LOCONET_TX_PIN, LOCONET_UART);
 #endif
 
 bool otaComplete = false;
+bool otaInProgress = false;
 
 // esp32 doesn't have a true restart method exposed so use the watchdog to
 // force a restart
@@ -396,7 +397,9 @@ void loop() {
     delay(250);
     esp32_restart();
   }
-	wifiInterface.update();
-	InfoScreen::update();
-	MotorBoardManager::check();
+  wifiInterface.update();
+  if(!otaInProgress) {
+    InfoScreen::update();
+  }
+  MotorBoardManager::check();
 }

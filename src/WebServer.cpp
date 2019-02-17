@@ -170,6 +170,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
       nextionPages[TITLE_PAGE]->show();
       static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(0, "Firmware Upload Started...");
 #endif
+      otaInProgress = true;
       log_i("Update starting...");
       InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, "Update starting");
       MotorBoardManager::powerOffAll();
