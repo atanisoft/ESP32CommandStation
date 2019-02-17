@@ -1,7 +1,7 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -16,14 +16,13 @@ COPYRIGHT (c) 2017 Mike Dunston
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include "Outputs.h"
 
 /**********************************************************************
 
-DCC++ESP32 BASE STATION supports optional OUTPUT control of any unused pins for
-custom purposes. Pins can be activited or de-activated. The default is to set
-ACTIVE pins HIGH and INACTIVE pins LOW. However, this default behavior can be
-inverted for any pin in which case ACTIVE=LOW and INACTIVE=HIGH.
+DCC++ESP32 COMMAND STATION supports optional OUTPUT control of any unused pins
+for custom purposes. Pins can be activited or de-activated. The default is to
+set ACTIVE pins HIGH and INACTIVE pins LOW. However, this default behavior can
+be inverted for any pin in which case ACTIVE=LOW and INACTIVE=HIGH.
 
 Definitions and state (ACTIVE/INACTIVE) for pins are retained on the ESP32 and
 restored on power-up. The default is to set each defined pin to active or
@@ -97,25 +96,34 @@ or GUI program.
 LinkedList<Output *> outputs([](Output *output) {delete output; });
 
 void OutputManager::init() {
-  log_i("Initializing outputs");
-  uint16_t outputCount = configStore.getUShort("OutputCount", 0);
-  log_i("Found %d outputs", outputCount);
-  for(int index = 0; index < outputCount; index++) {
-    outputs.add(new Output(index));
+  log_v("Initializing outputs");
+  JsonObject &root = configStore.load(OUTPUTS_JSON_FILE);
+  JsonVariant count = root[JSON_COUNT_NODE];
+  uint16_t outputCount = count.success() ? count.as<int>() : 0;
+  log_v("Found %d outputs", outputCount);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Outputs"), outputCount);
+  if(outputCount > 0) {
+    for(auto output : root.get<JsonArray>(JSON_OUTPUTS_NODE)) {
+      outputs.add(new Output(output.as<JsonObject &>()));
+    }
   }
 }
 
 void OutputManager::clear() {
-  configStore.putUShort("OutputCount", 0);
   outputs.free();
+  store();
 }
 
 uint16_t OutputManager::store() {
+  JsonObject &root = configStore.createRootNode();
+  JsonArray &array = root.createNestedArray(JSON_OUTPUTS_NODE);
   uint16_t outputStoredCount = 0;
   for (const auto& output : outputs) {
-    output->store(outputStoredCount++);
+    output->toJson(array.createNestedObject());
+    outputStoredCount++;
   }
-  configStore.putUShort("OutputCount", outputStoredCount);
+  root[JSON_COUNT_NODE] = outputStoredCount;
+  configStore.store(OUTPUTS_JSON_FILE, root);
   return outputStoredCount;
 }
 
@@ -127,6 +135,15 @@ bool OutputManager::set(uint16_t id, bool active) {
     }
   }
   return false;
+}
+
+Output *OutputManager::getOutput(uint16_t id) {
+  for (const auto& output : outputs) {
+    if(output->getID() == id) {
+      return output;
+    }
+  }
+  return nullptr;
 }
 
 bool OutputManager::toggle(uint16_t id) {
@@ -142,29 +159,7 @@ bool OutputManager::toggle(uint16_t id) {
 void OutputManager::getState(JsonArray & array) {
   for (const auto& output : outputs) {
     JsonObject &outputJson = array.createNestedObject();
-    outputJson[F("id")] = output->getID();
-    outputJson[F("pin")] = output->getPin();
-    String flagsString = "";
-    if(bitRead(output->getFlags(), OUTPUT_IFLAG_INVERT)) {
-      flagsString += "activeLow";
-    } else {
-      flagsString += "activeHigh";
-    }
-    if(bitRead(output->getFlags(), OUTPUT_IFLAG_RESTORE_STATE)) {
-      if(bitRead(output->getFlags(), OUTPUT_IFLAG_FORCE_STATE)) {
-        flagsString += ",force(on)";
-      } else {
-        flagsString += ",force(off)";
-      }
-    } else {
-      flagsString += ",restoreState";
-    }
-    outputJson[F("flags")] = flagsString;
-    if(output->isActive()) {
-      outputJson[F("active")] = "On";
-    } else {
-      outputJson[F("active")] = "Off";
-    }
+    output->toJson(outputJson, true);
   }
 }
 
@@ -174,24 +169,29 @@ void OutputManager::showStatus() {
   }
 }
 
-void OutputManager::createOrUpdate(const uint16_t id, const uint8_t pin, const uint8_t flags) {
+bool OutputManager::createOrUpdate(const uint16_t id, const uint8_t pin, const uint8_t flags) {
   for (const auto& output : outputs) {
     if(output->getID() == id) {
       output->update(pin, flags);
-      return;
+      return true;
     }
   }
+  if(std::find(restrictedPins.begin(), restrictedPins.end(), pin) != restrictedPins.end()) {
+    return false;
+  }
   outputs.add(new Output(id, pin, flags));
+  return true;
 }
 
 bool OutputManager::remove(const uint16_t id) {
-  Output *outputToRemove = NULL;
+  Output *outputToRemove = nullptr;
   for (const auto& output : outputs) {
     if(output->getID() == id) {
       outputToRemove = output;
     }
   }
-  if(outputToRemove != NULL) {
+  if(outputToRemove != nullptr) {
+    log_v("Removing Output(%d)", outputToRemove->getID());
     outputs.remove(outputToRemove);
     return true;
   }
@@ -199,67 +199,44 @@ bool OutputManager::remove(const uint16_t id) {
 }
 
 Output::Output(uint16_t id, uint8_t pin, uint8_t flags) : _id(id), _pin(pin), _flags(flags), _active(false) {
-  String flagsString = "";
-  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
-    flagsString += "activeLow";
-  } else {
-    flagsString += "activeHigh";
-  }
   if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",force(off)";
       set(false, false);
     }
   } else {
-    flagsString += ",restoreState";
     set(false, false);
   }
-  log_i("Output(%d) on pin %d created, flags: %s", _id, _pin, flagsString.c_str());
+  log_v("Output(%d) on pin %d created, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
-Output::Output(uint16_t index) {
-  String outputIDKey = String("O_") + String(index);
-  String outputPinKey = outputIDKey + String("_p");
-  String outputFlagsKey = outputIDKey + String("_f");
-  _id = configStore.getUShort(outputIDKey.c_str(), index);
-  _pin = configStore.getUChar(outputPinKey.c_str(), 0);
-  _flags = configStore.getUChar(outputFlagsKey.c_str(), 0);
-  String flagsString = "";
-  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
-    flagsString += "activeLow";
-  } else {
-    flagsString += "activeHigh";
-  }
+Output::Output(JsonObject &json) {
+  _id = json[JSON_ID_NODE];
+  _pin = json[JSON_PIN_NODE];
+  _flags = json[JSON_FLAGS_NODE];
   if(bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",force(off)";
       set(false, false);
     }
   } else {
-    String outputStateKey = outputIDKey + String("_s");
-    if(configStore.getBool(outputStateKey.c_str(), false)) {
-      flagsString += ",restoreState(on)";
+    if(json.get<bool>(JSON_STATE_NODE)) {
       set(true, false);
     } else {
-      flagsString += ",restoreState(off)";
       set(false, false);
     }
   }
-  log_i("Output(%d) on pin %d loaded, flags: %s", _id, _pin, flagsString.c_str());
+  log_v("Output(%d) on pin %d loaded, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
 void Output::set(bool active, bool announce) {
   _active = active;
   digitalWrite(_pin, _active);
-  log_i("Output(%d) set to %s", _id, _active ? "ON" : "OFF");
+  log_i("Output(%d) set to %s", _id, _active ? JSON_VALUE_ON : JSON_VALUE_OFF);
   if(announce) {
     wifiInterface.printf(F("<Y %d %d>"), _id, !_active);
   }
@@ -268,37 +245,34 @@ void Output::set(bool active, bool announce) {
 void Output::update(uint8_t pin, uint8_t flags) {
   _pin = pin;
   _flags = flags;
-  String flagsString = "";
-  if(bitRead(_flags, OUTPUT_IFLAG_INVERT)) {
-    flagsString += "activeLow";
-  } else {
-    flagsString += "activeHigh";
-  }
   if(!bitRead(_flags, OUTPUT_IFLAG_RESTORE_STATE)) {
-    flagsString += ",restoreState";
     set(false, false);
   } else {
     if(bitRead(_flags, OUTPUT_IFLAG_FORCE_STATE)) {
-      flagsString += ",force(on)";
       set(true, false);
     } else {
-      flagsString += ",force(off)";
       set(false, false);
     }
   }
-  log_i("Output(%d) on pin %d updated, flags: %s", _id, _pin, flagsString.c_str());
+  log_v("Output(%d) on pin %d updated, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
-void Output::store(uint16_t index) {
-  String outputIDKey = String("O_") + String(index);
-  String outputPinKey = outputIDKey + String("_p");
-  String outputFlagsKey = outputIDKey + String("_f");
-  String outputStateKey = outputIDKey + String("_s");
-  configStore.putUShort(outputIDKey.c_str(), _id);
-  configStore.putUChar(outputPinKey.c_str(), _pin);
-  configStore.putUChar(outputFlagsKey.c_str(), _flags);
-  configStore.putBool(outputStateKey.c_str(), _active);
+void Output::toJson(JsonObject &json, bool readableStrings) {
+  json[JSON_ID_NODE] = _id;
+  json[JSON_PIN_NODE] = _pin;
+  if(readableStrings) {
+    json[JSON_FLAGS_NODE] = getFlagsAsString();
+    if(isActive()) {
+      json[JSON_STATE_NODE] = JSON_VALUE_ON;
+    } else {
+      json[JSON_STATE_NODE] = JSON_VALUE_OFF;
+    }
+  } else {
+    json[JSON_FLAGS_NODE] = _flags;
+    json[JSON_STATE_NODE] = _active;
+  }
+
 }
 
 void Output::showStatus() {
@@ -313,15 +287,15 @@ void OutputCommandAdapter::process(const std::vector<String> arguments) {
     uint16_t outputID = arguments[0].toInt();
     if (arguments.size() == 1 && OutputManager::remove(outputID)) {
       // delete output
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else if (arguments.size() == 2 && OutputManager::set(outputID, arguments[1].toInt() == 1)) {
       // set output state
     } else if (arguments.size() == 3) {
       // create output
       OutputManager::createOrUpdate(outputID, arguments[1].toInt(), arguments[2].toInt());
-      wifiInterface.printf(F("<O>"));
+      wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
     } else {
-      wifiInterface.printf(F("<X>"));
+      wifiInterface.send(COMMAND_FAILED_RESPONSE);
     }
   }
 }
