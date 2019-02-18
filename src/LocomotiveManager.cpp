@@ -23,6 +23,7 @@ LinkedList<LocomotiveConsist *> LocomotiveManager::_consists([](LocomotiveConsis
 
 TaskHandle_t LocomotiveManager::_taskHandle;
 xSemaphoreHandle LocomotiveManager::_lock;
+static constexpr UBaseType_t LOCOMOTIVE_MANAGER_TASK_PRIORITY = 3;
 
 void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
   int registerNumber = arguments[0].toInt();
@@ -224,7 +225,7 @@ void LocomotiveManager::init() {
       _consists.add(new LocomotiveConsist(consist.as<JsonObject &>()));
     }
   }
-  xTaskCreate(updateTask, "LocomotiveManager", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
+  xTaskCreate(updateTask, "LocomotiveManager", DEFAULT_THREAD_STACKSIZE, NULL, LOCOMOTIVE_MANAGER_TASK_PRIORITY, &_taskHandle);
 }
 
 void LocomotiveManager::clear() {

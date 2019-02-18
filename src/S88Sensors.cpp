@@ -53,6 +53,8 @@ extern LinkedList<Sensor *> sensors;
 TaskHandle_t S88BusManager::_taskHandle;
 xSemaphoreHandle S88BusManager::_s88SensorLock;
 
+static constexpr UBaseType_t S88_SENSOR_TASK_PRIORITY = 1;
+
 LinkedList<S88SensorBus *> s88SensorBus([](S88SensorBus *sensorBus) {
   sensorBus->removeSensors(-1);
   log_v("S88SensorBus(%d) removed", sensorBus->getID());
@@ -76,7 +78,7 @@ void S88BusManager::init() {
     }
   }
   _s88SensorLock = xSemaphoreCreateMutex();
-  xTaskCreate(s88SensorTask, "S88SensorManager", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
+  xTaskCreate(s88SensorTask, "S88SensorManager", DEFAULT_THREAD_STACKSIZE, NULL, S88_SENSOR_TASK_PRIORITY, &_taskHandle);
 }
 
 void S88BusManager::clear() {

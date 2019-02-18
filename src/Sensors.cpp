@@ -78,6 +78,7 @@ LinkedList<Sensor *> sensors([](Sensor *sensor) {delete sensor; });
 
 TaskHandle_t SensorManager::_taskHandle;
 xSemaphoreHandle SensorManager::_lock;
+static constexpr UBaseType_t SENSOR_TASK_PRIORITY = 1;
 
 void SensorManager::init() {
   _lock = xSemaphoreCreateMutex();
@@ -92,7 +93,7 @@ void SensorManager::init() {
       sensors.add(new Sensor(sensor.as<JsonObject &>()));
     }
   }
-  xTaskCreate(sensorTask, "SensorManager", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
+  xTaskCreate(sensorTask, "SensorManager", DEFAULT_THREAD_STACKSIZE, NULL, SENSOR_TASK_PRIORITY, &_taskHandle);
 }
 
 void SensorManager::clear() {
