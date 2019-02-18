@@ -17,11 +17,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #pragma once
 
 #include <Arduino.h>
-#include <driver/timer.h>
-#include <vector>
 #include <queue>
-#include <stack>
-#include <driver/adc.h>
+#include <stdint.h>
 
 #define MAX_BYTES_IN_PACKET 10
 
@@ -49,8 +46,8 @@ struct Packet {
   uint8_t currentBit;
 };
 
-struct SignalGenerator {
-  void configureSignal(String, uint16_t, uint8_t);
+class SignalGenerator {
+public:
   void startSignal(bool=true);
   void stopSignal();
   void loadBytePacket(const uint8_t *, uint8_t, uint8_t, bool=false);
@@ -59,90 +56,71 @@ struct SignalGenerator {
   bool isQueueEmpty();
   bool isEnabled();
   void drainQueue();
+  virtual Packet *getPacket();
 
-  hw_timer_t *_timer;
-  uint8_t _timerNumber;
-  String _name;
-  int _currentMonitorPin;
-  bool _topOfWave{true};
-  bool _enabled{false};
+protected:
+  SignalGenerator(String, uint16_t, uint8_t, uint8_t);
+  virtual void enable() = 0;
+  virtual void disable() = 0;
+  void lockSendQueue() {
+    portENTER_CRITICAL(&_sendQueueMUX);
+  }
+  void unlockSendQueue() {
+    portEXIT_CRITICAL(&_sendQueueMUX);
+  }
+  virtual void lockSendQueueISR() {
+    lockSendQueue();
+  }
+  virtual void unlockSendQueueISR() {
+    unlockSendQueue();
+  }
+
+  const String _name;
+  const uint8_t _signalID;
+  portMUX_TYPE _sendQueueMUX = portMUX_INITIALIZER_UNLOCKED;
+private:
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
   Packet *_currentPacket;
+
   // pre-encoded idle packet that gets sent when the _toSend queue is empty.
-  Packet _idlePacket{
+  Packet _idlePacket {
     { 0xFF, 0xFF, 0xFD, 0xFE, 0x00, 0x7F, 0x80, 0x00, 0x00, 0x00 }, // packet bytes
     49, // number of bits
     0, // number of repeats
     0 // current bit
   };
-  portMUX_TYPE _sendQueueMUX = portMUX_INITIALIZER_UNLOCKED;
+
+  bool _enabled{false};
 };
 
-extern SignalGenerator dccSignal[2];
-void configureDCCSignalGenerators();
-void startDCCSignalGenerators();
-bool stopDCCSignalGenerators();
-bool isDCCSignalEnabled();
-void sendDCCEmergencyStop();
+// S-9.2 baseline packet (idle)
+static constexpr DRAM_ATTR uint8_t idlePacket[] = {0xFF, 0x00};
+// S-9.2 baseline packet (decoder reset)
+static constexpr DRAM_ATTR uint8_t resetPacket[] = {0x00, 0x00};
+// S-9.2 baseline packet (eStop, direction bit ignored)
+static constexpr DRAM_ATTR uint8_t eStopPacket[] = {0x00, 0x41};
 
-extern bool progTrackBusy;
-bool enterProgrammingMode();
-void leaveProgrammingMode();
-int16_t readCV(const uint16_t);
-bool writeProgCVByte(const uint16_t, const uint8_t);
-bool writeProgCVBit(const uint16_t, const uint8_t, const bool);
-void writeOpsCVByte(const uint16_t, const uint16_t, const uint8_t);
-void writeOpsCVBit(const uint16_t, const uint16_t, const uint8_t, const bool);
+// number of microseconds for each half of the DCC signal for a zero
+static constexpr uint64_t DCC_ZERO_BIT_PULSE_DURATION=98;
+// number of microseconds for each half of the DCC signal for a one
+static constexpr uint64_t DCC_ONE_BIT_PULSE_DURATION=58;
+
+// this controls the timer tick frequency, this results in a 1uS tick frequency.
+static constexpr uint16_t DCC_TIMER_PRESCALE=80;
+
+// bitmask used by signal generator when processing DCC packet bytes
+static constexpr DRAM_ATTR uint8_t DCC_PACKET_BIT_MASK[] = {
+  0x80, 0x40, 0x20, 0x10,
+  0x08, 0x04, 0x02, 0x01
+};
 
 #define DCC_SIGNAL_OPERATIONS 0
 #define DCC_SIGNAL_PROGRAMMING 1
 #define MAX_DCC_SIGNAL_GENERATORS 2
-#define DCC_TIMER_OPERATIONS 1
-#define DCC_TIMER_PROGRAMMING 2
 
-enum CV_NAMES {
-  SHORT_ADDRESS=1,
-  DECODER_VERSION=7,
-  DECODER_MANUFACTURER=8,
-  ACCESSORY_DECODER_MSB_ADDRESS=9,
-  LONG_ADDRESS_MSB_ADDRESS=17,
-  LONG_ADDRESS_LSB_ADDRESS=18,
-  CONSIST_ADDRESS=19,
-  CONSIST_FUNCTION_CONTROL_F1_F8=21,
-  CONSIST_FUNCTION_CONTROL_FL_F9_F12=22,
-  DECODER_CONFIG=29
-};
-
-const uint8_t CONSIST_ADDRESS_REVERSED_ORIENTATION = 0x80;
-const uint8_t CONSIST_ADDRESS_NO_ADDRESS = 0x00;
-
-enum DECODER_CONFIG_BITS {
-  LOCOMOTIVE_DIRECTION=0,
-  FL_CONTROLLED_BY_SPEED=1,
-  POWER_CONVERSION=2,
-  BIDIRECTIONAL_COMMUNICATION=3,
-  SPEED_TABLE=4,
-  SHORT_OR_LONG_ADDRESS=5,
-  ACCESSORY_ADDRESS_MODE=6,
-  DECODER_TYPE=7
-};
-
-enum CONSIST_FUNCTION_CONTROL_F1_F8_BITS {
-  F1_BIT=0,
-  F2_BIT=1,
-  F3_BIT=2,
-  F4_BIT=3,
-  F5_BIT=4,
-  F6_BIT=5,
-  F7_BIT=6,
-  F8_BIT=7
-};
-
-enum CONSIST_FUNCTION_CONTROL_FL_F9_F12_BITS {
-  FL_BIT=0,
-  F9_BIT=1,
-  F10_BIT=2,
-  F11_BIT=3,
-  F12_BIT=4
-};
+extern SignalGenerator *dccSignal[MAX_DCC_SIGNAL_GENERATORS];
+void startDCCSignalGenerators();
+bool stopDCCSignalGenerators();
+bool isDCCSignalEnabled();
+void sendDCCEmergencyStop();

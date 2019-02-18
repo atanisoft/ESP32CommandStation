@@ -86,7 +86,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include "WiFiInterface.h"
 #include "InfoScreen.h"
 #include "DCCppProtocol.h"
-#include "SignalGenerator.h"
+#include "DCCSignalGenerator.h"
+#include "DCCSignalGenerator_Timer.h"
+#if 0
+#include "DCCSignalGenerator_RMT.h"
+#endif
+#include "DCCProgrammer.h"
 #include "MotorBoard.h"
 #include "Sensors.h"
 #include "Locomotive.h"

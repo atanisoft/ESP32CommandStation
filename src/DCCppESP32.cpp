@@ -152,12 +152,8 @@ all user-definable parameters.
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include "Locomotive.h"
-#include "Outputs.h"
 #include "Turnouts.h"
-#include "Sensors.h"
 #include "S88Sensors.h"
-#include "SignalGenerator.h"
 #include "RemoteSensors.h"
 #include "HC12Interface.h"
 #include "NextionInterface.h"
@@ -216,6 +212,13 @@ void setup() {
   nextionInterfaceInit();
 #endif
   configStore.init();
+#if 1
+  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_HardwareTimer("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS);
+  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_HardwareTimer("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING);
+#else
+  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_RMT("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS);
+  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_RMT("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING);
+#endif
 #if LCC_ENABLED
   lccInterface.init();
 #endif
@@ -239,7 +242,6 @@ void setup() {
 #if HC12_RADIO_ENABLED
   HC12Interface::init();
 #endif
-	configureDCCSignalGenerators();
 #if LOCONET_ENABLED
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LocoNet Init"));
   locoNet.begin();

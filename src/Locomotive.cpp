@@ -50,13 +50,13 @@ void Locomotive::sendLocoUpdate() {
   } else {
     packetBuffer.push_back((uint8_t)(_speed + (_speed > 0) + _direction * 128));
   }
-  dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 0);
+  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(packetBuffer, 0);
   if(_functionsChanged) {
     _functionsChanged = false;
     createFunctionPackets();
   }
   for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
-    dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(_functionPackets[functionPacket], 0);
+    dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[functionPacket], 0);
   }
   _lastUpdate = millis();
 }
