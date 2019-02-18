@@ -113,7 +113,7 @@ void LocomotiveManager::showConsistStatus() {
 
 void LocomotiveManager::updateTask(void *param) {
   while(true) {
-    if(dccSignal[DCC_SIGNAL_OPERATIONS].isEnabled()) {
+    if(dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
       MUTEX_LOCK(_lock);
       for (const auto& loco : _locos) {
         // if it has been more than 50ms we should send a loco update packet
@@ -142,16 +142,18 @@ void LocomotiveManager::emergencyStop() {
 
 Locomotive *LocomotiveManager::getLocomotive(const uint16_t locoAddress, const bool managed) {
   Locomotive *instance = nullptr;
-  for (const auto& loco : _locos) {
-    if(loco->getLocoAddress() == locoAddress) {
-      instance = loco;
+  if(locoAddress) {
+    for (const auto& loco : _locos) {
+      if(loco->getLocoAddress() == locoAddress) {
+        instance = loco;
+      }
     }
-	}
-  if(instance == nullptr) {
-    instance = new Locomotive(_locos.length());
-    instance->setLocoAddress(locoAddress);
-    if(managed) {
-      _locos.add(instance);
+    if(instance == nullptr) {
+      instance = new Locomotive(_locos.length());
+      instance->setLocoAddress(locoAddress);
+      if(managed) {
+        _locos.add(instance);
+      }
     }
   }
   return instance;

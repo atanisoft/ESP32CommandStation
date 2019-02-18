@@ -220,7 +220,7 @@ void NextionThrottlePage::activateFunctionGroup(const NextionButton *button) {
 }
 
 void NextionThrottlePage::setLocoDirection(bool direction) {
-  if(_locoNumbers[_activeLoco] > 0) {
+  if(_locoNumbers[_activeLoco]) {
     LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setDirection(direction);
     if(direction) {
       _fwdButton.setPictureID(FWD_PIC_ON);
@@ -233,7 +233,7 @@ void NextionThrottlePage::setLocoDirection(bool direction) {
 }
 
 void NextionThrottlePage::toggleFunction(const NextionButton *button) {
-  if(_locoNumbers[_activeLoco] > 0) {
+  if(_locoNumbers[_activeLoco]) {
     for(uint8_t function = 0; function < 10; function++) {
       uint16_t functionPicOff = _activeFunctionGroup * 8 + function + F1_PIC_OFF;
       uint16_t functionPicOn = _activeFunctionGroup * 8 + function + F1_PIC_ON;
@@ -271,14 +271,11 @@ void NextionThrottlePage::changeLocoAddress(uint32_t newAddress) {
 }
 
 uint32_t NextionThrottlePage::getCurrentLocoAddress() {
-  if(_locoNumbers[_activeLoco] > 0) {
-    return _locoNumbers[_activeLoco];
-  }
-  return 0;
+  return _locoNumbers[_activeLoco];
 }
 
 void NextionThrottlePage::decreaseLocoSpeed() {
-  if(_locoNumbers[_activeLoco] > 0) {
+  if(_locoNumbers[_activeLoco]) {
     int8_t speed = _speedNumber.getTextAsNumber() - SPEED_INCREMENT;
     if(speed < 0) {
       speed = 0;
@@ -290,7 +287,7 @@ void NextionThrottlePage::decreaseLocoSpeed() {
 }
 
 void NextionThrottlePage::increaseLocoSpeed() {
-  if(_locoNumbers[_activeLoco] > 0) {
+  if(_locoNumbers[_activeLoco]) {
     int8_t speed = _speedNumber.getTextAsNumber() + SPEED_INCREMENT;
     if(speed < 0) {
       speed = 0;
@@ -302,7 +299,7 @@ void NextionThrottlePage::increaseLocoSpeed() {
 }
 
 void NextionThrottlePage::setLocoSpeed(uint8_t speed) {
-  if(_locoNumbers[_activeLoco] > 0) {
+  if(_locoNumbers[_activeLoco]) {
     LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setSpeed(speed);
     _speedNumber.setTextAsNumber(speed);
     _speedSlider.setValue(speed);
@@ -312,7 +309,7 @@ void NextionThrottlePage::setLocoSpeed(uint8_t speed) {
 void NextionThrottlePage::invalidateLocomotive(uint32_t address) {
   for(int index = 0; index < 3; index++) {
     if(_locoNumbers[index] == address) {
-      _locoNumbers[index] = -1;
+      _locoNumbers[index] = 0;
     }
   }
   refreshLocomotiveDetails();
@@ -343,13 +340,13 @@ void NextionThrottlePage::previousPageCallback(DCCPPNextionPage *previousPage) {
 void NextionThrottlePage::refreshLocomotiveDetails()
 {
   for(int index = 0; index < 3; index++) {
-    if(_locoNumbers[index] > 0) {
+    if(_locoNumbers[index]) {
       _locoButtons[index].setTextAsNumber(_locoNumbers[index]);
     } else {
       _locoButtons[index].setText("");
     }
   }
-  if(_locoNumbers[_activeLoco] > 0) {
+  if(_locoNumbers[_activeLoco]) {
     auto loco = LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco]);
     _speedSlider.setValue(loco->getSpeed());
     _speedNumber.setTextAsNumber(loco->getSpeed());
