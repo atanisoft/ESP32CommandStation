@@ -117,7 +117,7 @@ class DccPacketQueueInjector : public dcc::PacketFlowInterface {
         void send(Buffer<dcc::Packet> *b, unsigned prio)
         {
             dcc::Packet *pkt = b->data();
-            dccSignal[DCC_SIGNAL_OPERATIONS].loadBytePacket(pkt->payload, pkt->dlc, pkt->packet_header.rept_count);
+            dccSignal[DCC_SIGNAL_OPERATIONS]->loadBytePacket(pkt->payload, pkt->dlc, pkt->packet_header.rept_count);
             // check if the packet looks like an accessories decoder packet
             if(pkt->packet_header.is_marklin == 0 && pkt->dlc == 2 && pkt->payload[0] & 0x80 && pkt->payload[1] & 0x80) {
                 // the second byte of the payload contains part of the address and is stored in ones complement format
@@ -215,7 +215,9 @@ void LCCInterface::init() {
 void LCCInterface::startWiFiDependencies() {
 #if LCC_ENABLE_GC_TCP_HUB
     // Advertise the Command Station as a GC TCP hub
-    MDNS.addService(openlcb::TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN, openlcb::TcpDefs::MDNS_PROTOCOL_TCP, OPENMRN_TCP_PORT);
+    MDNS.addService(openlcb::TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN,
+        openlcb::TcpDefs::MDNS_PROTOCOL_TCP,
+        openlcb::TcpClientDefaultParams::DEFAULT_PORT);
     // start the TCP/IP listener
     openMRNServer.setNoDelay(true);
     openMRNServer.begin();
