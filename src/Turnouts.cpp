@@ -347,7 +347,7 @@ void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
 }
 
 void AccessoryCommand::process(const std::vector<String> arguments) {
-  if(dccSignal[DCC_SIGNAL_OPERATIONS].isEnabled()) {
+  if(dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
     std::vector<uint8_t> packetBuffer;
     uint16_t boardAddress = arguments[0].toInt();
     uint8_t boardIndex = arguments[1].toInt();
@@ -360,6 +360,6 @@ void AccessoryCommand::process(const std::vector<String> arguments) {
     // significant D represent activate/deactivate
     packetBuffer.push_back(((((boardAddress / 64) % 8) << 4) +
       (boardIndex % 4 << 1) + activate) ^ 0xF8);
-    dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 1);
+    dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(packetBuffer, 1);
   }
 }

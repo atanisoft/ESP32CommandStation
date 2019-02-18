@@ -22,7 +22,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
 #include "DCCppProtocol.h"
-#include "SignalGenerator.h"
+#include "DCCSignalGenerator.h"
 
 enum MOTOR_BOARD_TYPE { ARDUINO_SHIELD, POLOLU, BTS7960B_5A, BTS7960B_10A };
 
