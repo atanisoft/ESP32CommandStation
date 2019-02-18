@@ -36,6 +36,7 @@ fixed somehow but I haven't found a working solution yet. It will very likely re
 - [ ] auto-refresh of status pages
 - [ ] add busy/wait spinner for when data is loading (or being refreshed) in the web interface
 - [ ] investigate tcp/ip hang (AsyncTCP LwIP crash?)
+- [ ] WiThrottle support (https://github.com/atanisoft/DCCppESP32/issues/15)
 
 ### LCC Integration
 
