@@ -73,6 +73,14 @@ void nextionTask(void *param) {
   }
 }
 
+static constexpr char const * NEXTION_DISPLAY_TYPE_STRINGS[] = {
+  "basic 3.2\"",
+  "basic 3.5\"",
+  "enhanced 3.2\"",
+  "enhanced 3.5\"",
+  "Unknown"
+};
+
 void nextionInterfaceInit() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init Nextion"));
 #if NEXTION_UART_NUM == 2
@@ -83,31 +91,79 @@ void nextionInterfaceInit() {
   Serial.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
 #endif
   if(nextion.init()) {
-#if 0
-    // identify nextion display
-    nextion.sendCommand("");
-    nextion.sendCommand("connect");
-    String screenID;
-    size_t res = nextion.receiveString(screenID, false);
-    if(res) {
-      // if we got back a valid string, check its content
-      if(screenID.indexOf("comok") != -1 && screenID.indexOf("NX4024T032") != -1) {
-        log_i("Nextion device is a 3.2\" basic display");
-        nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_2_DISPLAY;
-      } else if(screenID.indexOf("comok") != -1 && screenID.indexOf("NX4832T035") != -1) {
-        log_i("Nextion device is a 3.5\" basic display");
-        nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY;
-      } else if(screenID.indexOf("comok") != -1 && screenID.indexOf("NX4024K032") != -1) {
-        log_i("Nextion device is a 3.2\" enhanced display");
-        nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_2_DISPLAY;
-      } else if(screenID.indexOf("comok") != -1 && screenID.indexOf("NX4832K035") != -1) {
-        log_i("Nextion device is a 3.5\" enhanced display");
-        nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_5_DISPLAY;
+    // attempt to identify the nextion display.
+    constexpr uint8_t MAX_ATTEMPTS = 3;
+    uint8_t attempt = 0;
+    while(attempt++ <= MAX_ATTEMPTS && nextionDeviceType == NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY) {
+      log_i("[%d/%d] Attempting to identify the attached Nextion display", attempt, MAX_ATTEMPTS);
+      // if we haven't identified it with the basic command try and force the display out of
+      // protocol reparse mode.
+      if(attempt > 1) {
+        nextion.sendCommand("DRAKJHSUYDGBNCJHGJKSHBDN");
+      }
+      if(attempt > 2) {
+        // attempt to send a broadcast packet to the nextion to see if it responds to that instead
+        nextion.sendCommand("%c%cconnect", 0xFF, 0xFF);
+      } else {
+        // send the default connect command
+        nextion.sendCommand("connect");
+      }
+      String screenID = "";
+      size_t res = nextion.receiveString(screenID, false);
+      if(res && screenID.indexOf("comok") >= 0) {
+        // break the returned string into its comma delimited chunks
+        // start after the first space
+        int index = screenID.indexOf(' ') + 1;
+        std::vector<String> parts;
+        while(index < screenID.length()) {
+          int previousIndex = index;
+          index = screenID.indexOf(',', previousIndex);
+          if(index < 0) {
+            index = screenID.length();
+          }
+          parts.push_back(screenID.substring(previousIndex, index));
+        }
+        for(auto s : parts) {
+          log_i("part: %s", s.c_str());
+        }
+        // check the screen capabilities
+        if(parts[0] != "1") {
+          log_w("Attached Nextion does not appear to support touch!");
+        }
+        // detect screen address
+        if(parts[1].indexOf("-") > 0 && parts[1].substring(parts[1].indexOf('-') + 1).toInt()) {
+          log_i("Address: %d", parts[1].substring(parts[1].indexOf('-') + 1).toInt());
+        }
+
+        // attempt to parse device model
+        if(parts[2].startsWith("NX4024")) {
+          if(parts[2].indexOf("K") > 0) {
+            nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_2_DISPLAY;
+          } else {
+            nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_2_DISPLAY;
+          }
+        } else if(parts[2].startsWith("NX4832")) {
+          if(parts[2].indexOf("K") > 0) {
+            nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_5_DISPLAY;
+          } else {
+            nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY;
+          }
+        } else {
+          log_w("Unreognized Nextion Device model: %s", parts[2].c_str());
+        }
+        log_i("Device type: %s", NEXTION_DISPLAY_TYPE_STRINGS[nextionDeviceType]);
+        log_i("Firmware Version: %S", parts[3].c_str());
+        log_i("MCU Code: %S", parts[4].c_str());
+        log_i("Serial #: %s", parts[5].c_str());
+        log_i("Flash size: %d bytes", parts[6].toInt());
       } else {
         log_w("Unable to determine Nextion device type: %s", screenID.c_str());
       }
     }
-#endif
+    if(nextionDeviceType == NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY) {
+      log_w("Failed to identify the attached Nextion display, defaulting to 3.2\" basic display");
+      nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_2_DISPLAY;
+    }
     xTaskCreate(nextionTask, "Nextion", NEXTION_INTERFACE_TASK_STACK_SIZE,
       NULL, NEXTION_INTERFACE_TASK_PRIORITY, &_nextionTaskHandle);
   } else {
