@@ -406,14 +406,24 @@ size_t Nextion::receiveString(String &buffer, bool stringHeader) {
   {
     while (m_serialPort.available())
     {
-      char c = m_serialPort.read();
+      uint8_t c = m_serialPort.read();
       if (!have_header_flag && c == NEX_RET_STRING_HEAD) {
         have_header_flag = true;
       } else if (have_header_flag) {
-        if (c == 0xFF) {
+        if (c == NEX_RET_CMD_FINISHED) {
+          // it appears that we received a "previous command completed successfully"
+          // response. Discard the next three bytes which will be 0xFF so we can
+          // advance to the actual response we are wanting.
+          m_serialPort.read();
+          m_serialPort.read();
+          m_serialPort.read();
+        } else if (c == 0xFF) {
           flag_count++;
-        } else if (c == 0x05) {
-          flag_count = 4;
+        } else if (c == 0x05 && !stringHeader) {
+          // this is a special case for the "connect" command
+          flag_count = 3;
+        } else if (c < 0x20 || c > 0x7F) {
+          // discard non-printable character
         } else {
           buffer += c;
         }
