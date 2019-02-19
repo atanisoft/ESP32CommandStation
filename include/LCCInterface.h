@@ -22,6 +22,7 @@ public:
 	LCCInterface();
   void init();
 	void startWiFiDependencies();
+  void update();
 };
 
 extern LCCInterface lccInterface;

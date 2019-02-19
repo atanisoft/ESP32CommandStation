@@ -34,22 +34,16 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 HardwareSerial hc12Serial(HC12_UART_NUM);
 DCCPPProtocolConsumer hc12Consumer;
 
-TaskHandle_t HC12Interface::_taskHandle;
-
 void HC12Interface::init() {
-  xTaskCreate(hc12Task, "HC12", DEFAULT_THREAD_STACKSIZE, NULL, DEFAULT_THREAD_PRIO, &_taskHandle);
+  hc12Serial.begin(HC12_RADIO_BAUD, SERIAL_8N1, HC12_RX_PIN, HC12_TX_PIN);
 }
 
-void HC12Interface::hc12Task(void *param) {
-  hc12Serial.begin(HC12_RADIO_BAUD, SERIAL_8N1, HC12_RX_PIN, HC12_TX_PIN);
+void HC12Interface::update() {
   uint8_t buf[128];
-  while(1) {
-    while (hc12Serial.available()) {
-      auto len = hc12Serial.available();
-      auto added = hc12Serial.readBytes(&buf[0], len < 128 ? len : 128);
-      hc12Consumer.feed(&buf[0], added);
-    }
-    vTaskDelay(pdMS_TO_TICKS(50));
+  while (hc12Serial.available()) {
+    auto len = hc12Serial.available();
+    auto added = hc12Serial.readBytes(&buf[0], len < 128 ? len : 128);
+    hc12Consumer.feed(&buf[0], added);
   }
 }
 

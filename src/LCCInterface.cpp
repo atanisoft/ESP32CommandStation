@@ -164,7 +164,13 @@ LCCInterface lccInterface;
 LCCInterface::LCCInterface() {
 }
 
-void lccTask(void *param) {
+
+void LCCInterface::init() {
+    SPIFFS.mkdir("/LCC");
+    // uncomment the next two lines to force a factory reset on startup
+    //SPIFFS.remove("/LCC/config");
+    //SPIFFS.remove("/LCC/cdi.xml");
+
     // Create the CDI.xml dynamically
     openmrn.create_config_descriptor_xml(cfg, openlcb::CDI_FILENAME);
 
@@ -174,42 +180,11 @@ void lccTask(void *param) {
 
     // Start the OpenMRN stack
     openmrn.begin();
-
 #if LCC_CAN_ENABLED
     // Add the hardware CAN device as a bridge
     openmrn.add_can_port(
         new Esp32HardwareCan("esp32can", (gpio_num_t)LCC_CAN_RX_PIN, (gpio_num_t)LCC_CAN_TX_PIN, false));
 #endif
-    while(true) {
-#if LCC_ENABLE_GC_TCP_HUB
-        // if the TCP/IP listener has a new client accept it and add it
-        // as a new GridConnect port.
-        if (openMRNServer.hasClient())
-        {
-            WiFiClient client = openMRNServer.available();
-            if (client)
-            {
-                openmrn.add_gridconnect_port(new Esp32WiFiClientAdapter(client));
-            }
-        }
-#endif
-        // Call into the OpenMRN stack for its periodic updates
-        openmrn.loop();
-
-        // allow task scheduler to run another task if any are pending
-        vTaskDelay(1);
-    }
-}
-
-void LCCInterface::init() {
-    SPIFFS.mkdir("/LCC");
-    // uncomment the next two lines to force a factory reset on startup
-    //SPIFFS.remove("/LCC/config");
-    //SPIFFS.remove("/LCC/cdi.xml");
-
-    // this creates a background task with the same priority as the primary
-    // arduino loop() task.
-    xTaskCreate(lccTask, "LCC", 4096, nullptr, 1, nullptr);
 }
 
 void LCCInterface::startWiFiDependencies() {
@@ -225,6 +200,23 @@ void LCCInterface::startWiFiDependencies() {
     // CAN is diabled, search for a hub to connect to
     // TODO: implement this after implementing generic support inside OpenMRN
 #endif
+}
+
+void LCCInterface::update() {
+#if LCC_ENABLE_GC_TCP_HUB
+    // if the TCP/IP listener has a new client accept it and add it
+    // as a new GridConnect port.
+    if (openMRNServer.hasClient())
+    {
+        WiFiClient client = openMRNServer.available();
+        if (client)
+        {
+            openmrn.add_gridconnect_port(new Esp32WiFiClientAdapter(client));
+        }
+    }
+#endif
+    // Call into the OpenMRN stack for its periodic updates
+    openmrn.loop();
 }
 
 #endif

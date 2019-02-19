@@ -30,6 +30,15 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include "HC12Interface.h"
 #endif
 
+static constexpr char const * WIFI_ENC_TYPES[] = {
+  "OPEN",
+  "WEP",
+  "WPA (PSK)",
+  "WPA2 (PSK)",
+  "WPA/WPA2 (PSK)",
+  "WPA2 Enterprise"
+};
+
 class WiFiClientWrapper : public DCCPPProtocolConsumer {
 public:
   WiFiClientWrapper(WiFiClient client) : _client(client) {
@@ -109,7 +118,7 @@ void WiFiInterface::begin() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(true);
   WiFi.onEvent([](system_event_id_t event) {
-    if(wifiConnected) {
+    if (wifiConnected) {
       return;
     }
     wifiConnected = true;
@@ -122,7 +131,7 @@ void WiFiInterface::begin() {
 #endif
     log_i("WiFi IP: %s", WiFi.localIP().toString().c_str());
 
-    if(!MDNS.begin(HOSTNAME)) {
+    if (!MDNS.begin(HOSTNAME)) {
       log_e("Failed to start mDNS");
     } else {
       log_i("Adding dccpp.tcp service to mDNS advertiser");
@@ -157,7 +166,7 @@ void WiFiInterface::begin() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFi Connecting"));
   log_i("WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), wifiSSID.c_str());
   WiFi.setHostname(HOSTNAME);
-  if(WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()) != WL_CONNECT_FAILED) {
+  if (WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()) != WL_CONNECT_FAILED) {
     log_i("Waiting for WiFi to connect");
     // this call waits up to 10sec for a result before timing out so it needs to be called a few times
     // until we get a real final result
@@ -169,20 +178,34 @@ void WiFiInterface::begin() {
       wifiStatus = WiFi.waitForConnectResult();
     }
   }
-  if(WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED) {
 #if INFO_SCREEN_ENABLED
   #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
 		InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
     InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Failed"));
   #else
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
-    if(WiFi.status() == WL_NO_SSID_AVAIL) {
+    if (WiFi.status() == WL_NO_SSID_AVAIL) {
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("SSID not found"));
     } else {
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Generic WiFi fail"));
     }
   #endif
 #endif
+    if (WiFi.status() == WL_NO_SSID_AVAIL) {
+      // since we couldn't find the configured SSID, perform a scan to help in
+      // troubleshooting.
+      int networks = WiFi.scanNetworks();
+      if(networks) {
+        log_i("Available WiFi networks:");
+        for(int index = 0; index < networks; index++) {
+          log_i("SSID: %s (RSSI: %d) Encryption: %s",
+            WiFi.SSID(index), WiFi.RSSI(index), WIFI_ENC_TYPES[WiFi.encryptionType(index)]);
+        }
+      } else {
+        log_w("Unable to find any WiFi networks!");
+      }
+    }
     log_e("WiFI connect failed, restarting");
     esp32_restart();
   } else {

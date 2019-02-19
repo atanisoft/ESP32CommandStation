@@ -404,4 +404,10 @@ void loop() {
     InfoScreen::update();
   }
   MotorBoardManager::check();
+#if LCC_ENABLED
+  lccInterface.update();
+#endif
+#if HC12_RADIO_ENABLED
+  HC12Interface::update();
+#endif
 }
