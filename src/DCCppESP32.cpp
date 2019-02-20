@@ -1,7 +1,7 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,15 +17,15 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 /**********************************************************************
 
-DCC++ESP32 BASE STATION is a C++ program written for the ESP32 using
+DCC++ESP32 COMMAND STATION is a C++ program written for the ESP32 using
 PlatformIO IDE.
 
 It allows an ESP32 with an Arduino Motor Shield (as well as others) to be used
-as a fully-functioning digital command and control (DCC) base station for
+as a fully-functioning digital command and control (DCC) command station for
 controlling model train layouts that conform to current National Model Railroad
 Association (NMRA) DCC standards.
 
-This version of DCC++ BASE STATION supports:
+This version of DCC++ COMMAND STATION supports:
   * 2-byte and 4-byte locomotive addressing
   * Simultaneous control of multiple locomotives
   * 128-step speed throttling
@@ -40,8 +40,8 @@ This version of DCC++ BASE STATION supports:
       - set/clear specific configuration variable bits
       - read configuration variable bytes
 
-DCC++ESP32 BASE STATION is controlled with simple text commands received via
-a WiFi interface.  Users can control the base station via a built in web
+DCC++ESP32 COMMAND STATION is controlled with simple text commands received via
+a WiFi interface.  Users can control the command station via a built in web
 interface accessible via mobile devices or a web browser.
 
 With the exception of a standard 15V power supply that can be purchased in
@@ -54,9 +54,10 @@ REFERENCES:
   Processing:                  http://processing.org/
   GNU General Public License:  http://opensource.org/licenses/GPL-3.0
 
-BRIEF NOTES ON THE THEORY AND OPERATION OF DCC++ BASE STATION:
+BRIEF NOTES ON THE THEORY AND OPERATION OF DCC++ESP32 COMMAND STATION, originally based
+off the DCC++ BASE STATION:
 
-DCC++ESP32 BASE STATION for the ESP32 configures the four hardware timers, to
+DCC++ESP32 COMMAND STATION for the ESP32 configures two of the four hardware timers, to
 generate separate 0-3.3V unipolar signals that each properly encode zero and one
 bits conforming with DCC timing standards.
 
@@ -74,7 +75,7 @@ momentarily lose electrical connectivity with the tracks, it will very quickly
 receive another throttle control signal as soon as connectivity is restored
 (such as when a trin passes over  rough portion of track or the frog of a turnout).
 
-DCC++ESP32 BASE STATION therefore sequentially loops through each locomotive
+DCC++ESP32 COMMAND STATION therefore sequentially loops through each locomotive
 register in use every 50ms. As it loops through the locomotive registers, each
 locomotive will be converted to a throttle control DCC packet and placed in the
 Signal Generator queue for delivery. Each locomotive register should be for a
@@ -95,7 +96,8 @@ may be connected directly to the tracks. This software assumes CHANNEL A is
 connected to the Main Operations Track, and CHANNEL B is connected to the
 Programming Track.
 
-DCC++ESP32 BASE STATION in split into multiple modules, each with its own header file:
+DCC++ESP32 COMMAND STATION in split into multiple modules, each with its own
+header file:
 
   DCCppESP32:       declares required global objects and contains initial
 										setup() and loop() functions.
@@ -119,7 +121,11 @@ DCC++ESP32 BASE STATION in split into multiple modules, each with its own header
 
 	Sensor:           contains methods to monitor and report on the status of
 										optionally-defined sensors connected to various pins on the
-										ESP32.
+										ESP32
+
+	RemoteSensors:    contains methods to monitor and report on the status of
+										optionally-defined remote sensors connected by wifi to the
+										ESP32
 
 	SignalGenerator:  contains methods to generate the DCC signal for PROGRAMMING
 										and OPERATIONS tracks, additional methods are present for
@@ -137,47 +143,90 @@ DCC++ESP32 BASE STATION in split into multiple modules, each with its own header
 	WebSocketClient:  contains adapter code for WebSockets used by the web based
 										throttle.
 
-  WiFiInterface:		contains methods to connect the DCC++ESP32 BASE STATION to
+  WiFiInterface:		contains methods to connect the DCC++ESP32 COMMAND STATION to
 										a wireless access point and manages the WebServer and
 										WebSocket clients.
 
-DCC++ESP32 BASE STATION is configured through the Config.h file that contains
-all user-definable parameters except for Motor Shield declarations which are
-present in DCCppESP32.cpp in the setup() method.
+DCC++ESP32 COMMAND STATION is configured through the Config.h file that contains
+all user-definable parameters.
 **********************************************************************/
 
 #include "DCCppESP32.h"
-#include "MotorBoard.h"
-#include "Locomotive.h"
-#include "Outputs.h"
 #include "Turnouts.h"
-#include "Sensors.h"
 #include "S88Sensors.h"
-#include "SignalGenerator.h"
+#include "RemoteSensors.h"
+#include "HC12Interface.h"
+#include "NextionInterface.h"
+
+#include <esp_int_wdt.h>
+#include <esp_task_wdt.h>
 
 const char * buildTime = __DATE__ " " __TIME__;
-Preferences configStore;
 WiFiInterface wifiInterface;
+
+std::vector<uint8_t> restrictedPins;
+
+#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+LocoNetESP32Uart locoNet(LOCONET_RX_PIN, LOCONET_TX_PIN, LOCONET_UART);
+#endif
+
+bool otaComplete = false;
+bool otaInProgress = false;
+
+// esp32 doesn't have a true restart method exposed so use the watchdog to
+// force a restart
+void esp32_restart() {
+  esp_task_wdt_init(1, true);
+  esp_task_wdt_add(NULL);
+  while(true);
+}
 
 void setup() {
 	Serial.begin(115200L);
+	Serial.setDebugOutput(true);
 	log_i("DCC++ ESP starting up");
+#ifndef ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
+  restrictedPins.push_back(0);
+  restrictedPins.push_back(2);
+  restrictedPins.push_back(5);
+  restrictedPins.push_back(6);
+  restrictedPins.push_back(7);
+  restrictedPins.push_back(8);
+  restrictedPins.push_back(9);
+  restrictedPins.push_back(10);
+  restrictedPins.push_back(11);
+  restrictedPins.push_back(12);
+  restrictedPins.push_back(15);
+#endif
+
 	// set up ADC1 here since we use it for all motor boards
 	adc1_config_width(ADC_WIDTH_BIT_12);
 
-	// Initialize the Configuration storage
-	configStore.begin("DCCpp");
-
 	InfoScreen::init();
 	InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, F("DCC++ESP: v%s"), VERSION);
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Starting Up"));
 #if INFO_SCREEN_STATION_INFO_LINE == INFO_SCREEN_IP_ADDR_LINE
-	delay(250);
+	delay(500);
+#endif
+#if NEXTION_ENABLED
+  nextionInterfaceInit();
+#endif
+  configStore.init();
+#if 1
+  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_HardwareTimer("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS);
+  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_HardwareTimer("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING);
+#else
+  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_RMT("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS);
+  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_RMT("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING);
+#endif
+#if LCC_ENABLED
+  lccInterface.init();
 #endif
 	wifiInterface.begin();
-  MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_MAIN,
-		MOTORBOARD_ENABLE_PIN_MAIN, MOTORBOARD_TYPE_MAIN, MOTORBOARD_NAME_MAIN);
+  MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_OPS,
+		MOTORBOARD_ENABLE_PIN_OPS, MOTORBOARD_TYPE_OPS, MOTORBOARD_NAME_OPS);
   MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_PROG,
-		MOTORBOARD_ENABLE_PIN_PROG, MOTORBOARD_TYPE_PROG, MOTORBOARD_NAME_PROG);
+		MOTORBOARD_ENABLE_PIN_PROG, MOTORBOARD_TYPE_PROG, MOTORBOARD_NAME_PROG, true);
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
 	InfoScreen::replaceLine(INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
 #endif
@@ -185,20 +234,174 @@ void setup() {
 	OutputManager::init();
 	TurnoutManager::init();
 	SensorManager::init();
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
 	S88BusManager::init();
 #endif
-	configureDCCSignalGenerators();
-	log_i("DCC++ READY!");
+	RemoteSensorManager::init();
+  LocomotiveManager::init();
+#if HC12_RADIO_ENABLED
+  HC12Interface::init();
+#endif
+#if LOCONET_ENABLED
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("LocoNet Init"));
+  locoNet.begin();
+  locoNet.onPacket(OPC_GPON, [](lnMsg *msg) {
+    MotorBoardManager::powerOnAll();
+  });
+  locoNet.onPacket(OPC_GPOFF, [](lnMsg *msg) {
+    MotorBoardManager::powerOffAll();
+  });
+  locoNet.onPacket(OPC_IDLE, [](lnMsg *msg) {
+    LocomotiveManager::emergencyStop();
+  });
+  locoNet.onPacket(OPC_LOCO_ADR, [](lnMsg *msg) {
+    lnMsg response = {0};
+    auto loco = LocomotiveManager::getLocomotive(msg->la.adr_lo + (msg->la.adr_hi << 7));
+    response.sd.command = OPC_SL_RD_DATA;
+    response.sd.mesg_size = 0x0E;
+    response.sd.slot = loco->getRegister();
+    response.sd.stat = LOCO_IDLE | DEC_MODE_128;
+    response.sd.adr = msg->la.adr_lo;
+    response.sd.adr2 = msg->la.adr_hi;
+    response.sd.dirf = DIRF_F0;
+    response.sd.trk = GTRK_MLOK1;
+    if(MotorBoardManager::isTrackPowerOn()) {
+      response.sd.trk |= GTRK_POWER;
+    }
+    if(progTrackBusy) {
+      response.sd.trk |= GTRK_PROG_BUSY;
+    }
+    locoNet.send(&response);
+  });
+  locoNet.onPacket(OPC_LOCO_SPD, [](lnMsg *msg) {
+    auto loco = LocomotiveManager::getLocomotiveByRegister(msg->lsp.slot);
+    if(loco) {
+      loco->setSpeed(msg->lsp.spd);
+    } else {
+      locoNet.send(OPC_LONG_ACK, OPC_LOCO_SPD, 0);
+    }
+  });
+  locoNet.onPacket(OPC_LOCO_DIRF, [](lnMsg *msg) {
+    auto loco = LocomotiveManager::getLocomotiveByRegister(msg->ldf.slot);
+    if(loco) {
+      loco->setDirection(msg->ldf.dirf & DIRF_DIR);
+      loco->setFunction(0, msg->ldf.dirf & DIRF_F0);
+      loco->setFunction(1, msg->ldf.dirf & DIRF_F1);
+      loco->setFunction(2, msg->ldf.dirf & DIRF_F2);
+      loco->setFunction(3, msg->ldf.dirf & DIRF_F3);
+      loco->setFunction(4, msg->ldf.dirf & DIRF_F4);
+    } else {
+      locoNet.send(OPC_LONG_ACK, OPC_LOCO_DIRF, 0);
+    }
+  });
+  locoNet.onPacket(OPC_LOCO_SND, [](lnMsg *msg) {
+    auto loco = LocomotiveManager::getLocomotiveByRegister(msg->ls.slot);
+    if(loco) {
+      loco->setFunction(5, msg->ls.snd & SND_F5);
+      loco->setFunction(6, msg->ls.snd & SND_F6);
+      loco->setFunction(7, msg->ls.snd & SND_F7);
+      loco->setFunction(8, msg->ls.snd & SND_F8);
+    } else {
+      locoNet.send(OPC_LONG_ACK, OPC_LOCO_SND, 0);
+    }
+  });
+  locoNet.onPacket(OPC_WR_SL_DATA, [](lnMsg *msg) {
+    if(msg->pt.slot == PRG_SLOT) {
+      if(msg->pt.command == 0x00) {
+        // Cancel / abort request, currently ignored
+      } else if (progTrackBusy) {
+        locoNet.send(OPC_LONG_ACK, OPC_MASK, 0);
+      } else {
+        uint16_t cv = PROG_CV_NUM(msg->pt);
+        uint8_t value = PROG_DATA(msg->pt);
+        if((msg->pt.command & DIR_BYTE_ON_SRVC_TRK) == 0 &&
+          (msg->pt.command & PCMD_RW) == 1) { // CV Write on PROG
+          if(enterProgrammingMode()) {
+            locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
+            msg->pt.command = OPC_SL_RD_DATA;
+            if(!writeProgCVByte(cv, value)) {
+              msg->pt.pstat = PSTAT_WRITE_FAIL;
+            } else {
+              msg->pt.data7 = value;
+              if(value & 0x80) {
+                msg->pt.cvh |= CVH_D7;
+              }
+            }
+            leaveProgrammingMode();
+            locoNet.send(msg);
+          } else {
+            locoNet.send(OPC_LONG_ACK, OPC_MASK, 0);
+          }
+        } else if((msg->pt.command & DIR_BYTE_ON_SRVC_TRK) == 0 &&
+          (msg->pt.command & PCMD_RW) == 0) { // CV Read on PROG
+          if(enterProgrammingMode()) {
+            locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
+            msg->pt.command = OPC_SL_RD_DATA;
+            int16_t value = readCV(cv);
+            if(value == -1) {
+              msg->pt.pstat = PSTAT_READ_FAIL;
+            } else {
+              msg->pt.data7 = value & 0x7F;
+              if(value & 0x80) {
+                msg->pt.cvh |= CVH_D7;
+              }
+            }
+            leaveProgrammingMode();
+            locoNet.send(msg);
+          } else {
+            locoNet.send(OPC_LONG_ACK, OPC_MASK, 0);
+          }
+        } else if ((msg->pt.command & OPS_BYTE_NO_FEEDBACK) == 0) {
+          // CV Write on OPS, no feedback
+          locoNet.send(OPC_LONG_ACK, OPC_MASK, 0x40);
+          uint16_t locoAddr = ((msg->pt.hopsa & 0x7F) << 7) + (msg->pt.lopsa & 0x7F);
+          writeOpsCVByte(locoAddr, cv, value);
+        } else if ((msg->pt.command & OPS_BYTE_FEEDBACK) == 0) {
+          // CV Write on OPS
+          locoNet.send(OPC_LONG_ACK, OPC_MASK, 1);
+          uint16_t locoAddr = ((msg->pt.hopsa & 0x7F) << 7) + (msg->pt.lopsa & 0x7F);
+          writeOpsCVByte(locoAddr, cv, value);
+          msg->pt.command = OPC_SL_RD_DATA;
+          if(value & 0x80) {
+            msg->pt.cvh |= CVH_D7;
+          }
+          msg->pt.data7 = value & 0x7F;
+          locoNet.send(msg);
+        } else {
+          // not implemented
+          locoNet.send(OPC_LONG_ACK, OPC_MASK, OPC_MASK);
+        }
+      }
+    }
+  });
+  locoNet.onPacket(OPC_INPUT_REP, [](lnMsg *msg) {
+    log_i("LocoNet INPUT_REPORT %02x : %02x", msg->ir.in1, msg->ir.in2);
+  });
+  locoNet.onPacket(OPC_SW_REQ, [](lnMsg *msg) {
+    log_i("LocoNet SW_REQ %02x : %02x", msg->srq.sw1, msg->srq.sw2);
+  });
+  locoNet.onPacket(OPC_SW_REP, [](lnMsg *msg) {
+    log_i("LocoNet SW_REP %02x : %02x", msg->srp.sn1, msg->srp.sn2);
+  });
+#endif
+
+#if ENERGIZE_OPS_TRACK_ON_STARTUP
+  MotorBoardManager::powerOnAll();
+#endif
+
+	log_i("DCC++ESP32 READY!");
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("DCC++ESP READY!"));
 }
 
 void loop() {
-	wifiInterface.update();
-	InfoScreen::update();
-	MotorBoardManager::check();
-	SensorManager::check();
-	#if defined(S88_ENABLED) && S88_ENABLED
-	S88BusManager::update();
-	#endif
-	LocomotiveManager::update();
+  if(otaComplete) {
+    log_i("OTA binary has been received, preparing to reboot!");
+    delay(250);
+    esp32_restart();
+  }
+  wifiInterface.update();
+  if(!otaInProgress) {
+    InfoScreen::update();
+  }
+  MotorBoardManager::check();
 }

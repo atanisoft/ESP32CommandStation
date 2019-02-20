@@ -1,7 +1,7 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -13,17 +13,19 @@ COPYRIGHT (c) 2017 Mike Dunston
   GNU General Public License for more details.
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses
+
+The DCC++ protocol specification is
+COPYRIGHT (c) 2013-2016 Gregg E. Berman
+and has been adapter for use in DCC++ESP32.
+
 **********************************************************************/
 
 #include "DCCppESP32.h"
 
-#include "MotorBoard.h"
-#include "SignalGenerator.h"
-#include "Locomotive.h"
 #include "Turnouts.h"
 #include "Outputs.h"
-#include "Sensors.h"
 #include "S88Sensors.h"
+#include "RemoteSensors.h"
 
 LinkedList<DCCPPProtocolCommand *> registeredCommands([](DCCPPProtocolCommand *command) {delete command; });
 
@@ -33,16 +35,19 @@ LinkedList<DCCPPProtocolCommand *> registeredCommands([](DCCPPProtocolCommand *c
 class ConfigErase : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    stopDCCSignalGenerators();
+    bool reEnable = stopDCCSignalGenerators();
     configStore.clear();
     TurnoutManager::clear();
     SensorManager::clear();
-#if defined(S88_ENABLED) && S88_ENABLED
+#if S88_ENABLED
     S88BusManager::clear();
 #endif
     OutputManager::clear();
-    wifiInterface.printf(F("<O>"));
-    startDCCSignalGenerators();
+    LocomotiveManager::clear();
+    wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
+    if(reEnable) {
+      startDCCSignalGenerators();
+    }
   }
   String getID() {
     return "e";
@@ -50,25 +55,29 @@ public:
 };
 
 // <E> command handler, this command stores all currently defined Turnouts,
-// Sensors, S88 Sensors (if enabled) and  Outputs into the ESP32 for use on
+// Sensors, S88 Sensors (if enabled), Outputs and locomotives into the ESP32 for use on
 // subsequent startups.
 class ConfigStore : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    stopDCCSignalGenerators();
-#if defined(S88_ENABLED) && S88_ENABLED
-    wifiInterface.printf(F("<e %d %d %d %d>"),
+    bool reEnable = stopDCCSignalGenerators();
+#if S88_ENABLED
+    wifiInterface.printf(F("<e %d %d %d %d %d>"),
       TurnoutManager::store(),
       SensorManager::store(),
       OutputManager::store(),
-      S88BusManager::store());
+      S88BusManager::store(),
+      LocomotiveManager::store());
 #else
-    wifiInterface.printf(F("<e %d %d %d>"),
+    wifiInterface.printf(F("<e %d %d %d 0 %d>"),
       TurnoutManager::store(),
       SensorManager::store(),
-      OutputManager::store());
+      OutputManager::store(),
+      LocomotiveManager::store());
 #endif
-    startDCCSignalGenerators();
+    if(reEnable) {
+      startDCCSignalGenerators();
+    }
   }
   String getID() {
     return "E";
@@ -82,11 +91,16 @@ class ReadCVCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
     int cvNumber = arguments[0].toInt();
+    int16_t cvValue = -1;
+    if(enterProgrammingMode()) {
+      cvValue = readCV(cvNumber);
+      leaveProgrammingMode();
+    }
     wifiInterface.printf(F("<r%d|%d|%d %d>"),
       arguments[1].toInt(),
       arguments[2].toInt(),
       cvNumber,
-      readCV(cvNumber));
+      cvValue);
   }
 
   String getID() {
@@ -102,8 +116,13 @@ class WriteCVByteProgCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
     int cvNumber = arguments[0].toInt();
-    uint8_t cvValue = arguments[1].toInt();
-    if(!writeProgCVByte(cvNumber, cvValue)) {
+    int16_t cvValue = arguments[1].toInt();
+    if(enterProgrammingMode()) {
+      if(!writeProgCVByte(cvNumber, cvValue)) {
+        cvValue = -1;
+      }
+      leaveProgrammingMode();
+    } else {
       cvValue = -1;
     }
     wifiInterface.printf(F("<r%d|%d|%d %d>"),
@@ -128,7 +147,12 @@ public:
     int cvNumber = arguments[0].toInt();
     uint8_t bit = arguments[1].toInt();
     int8_t bitValue = arguments[1].toInt();
-    if(!writeProgCVBit(cvNumber, bit, bitValue == 1)) {
+    if(enterProgrammingMode()) {
+      if(!writeProgCVBit(cvNumber, bit, bitValue == 1)) {
+        bitValue = -1;
+      }
+      leaveProgrammingMode();
+    } else {
       bitValue = -1;
     }
     wifiInterface.printf(F("<r%d|%d|%d %d %d>"),
@@ -149,7 +173,7 @@ public:
 class WriteCVByteOpsCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    writeOpsCVByte(arguments[1].toInt(),
+    writeOpsCVByte(arguments[0].toInt(),
       arguments[1].toInt(),
       arguments[2].toInt());
   }
@@ -165,7 +189,7 @@ public:
 class WriteCVBitOpsCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    writeOpsCVBit(arguments[1].toInt(),
+    writeOpsCVBit(arguments[0].toInt(),
       arguments[1].toInt(),
       arguments[2].toInt(),
       arguments[3].toInt() == 1);
@@ -177,12 +201,13 @@ public:
 };
 
 // <s> command handler, this command sends the current status for all parts of
-// the DCC++ESP32 BASE STATION. JMRI uses this command as a keep-alive heartbeat
+// the DCC++ESP32 COMMAND STATION. JMRI uses this command as a keep-alive heartbeat
 // command.
 class StatusCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    wifiInterface.printf(F("<iDCC++ BASE STATION FOR ESP32: V-%s / %s %s>"), VERSION, __DATE__, __TIME__);
+    wifiInterface.printf(F("<iDCC++ COMMAND STATION FOR ESP32: V-%s / %s %s>"),
+      VERSION, __DATE__, __TIME__);
     MotorBoardManager::showStatus();
     LocomotiveManager::showStatus();
     TurnoutManager::showStatus();
@@ -195,9 +220,22 @@ public:
   }
 };
 
+// <F> command handler, this command sends the current free heap space as response.
+class FreeHeapCommand : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String> arguments) {
+    wifiInterface.printf(F("<f %d>"), ESP.getFreeHeap());
+  }
+
+  String getID() {
+    return "F";
+  }
+};
+
 void DCCPPProtocolHandler::init() {
   registerCommand(new ThrottleCommandAdapter());
   registerCommand(new FunctionCommandAdapter());
+  registerCommand(new ConsistCommandAdapter());
   registerCommand(new AccessoryCommand());
   registerCommand(new PowerOnCommand());
   registerCommand(new PowerOffCommand());
@@ -216,9 +254,11 @@ void DCCPPProtocolHandler::init() {
 #if defined(S88_ENABLED) && S88_ENABLED
   registerCommand(new S88BusCommandAdapter());
 #endif
+  registerCommand(new RemoteSensorsCommandAdapter());
+  registerCommand(new FreeHeapCommand());
 }
 
-void DCCPPProtocolHandler::process(const String commandString) {
+void DCCPPProtocolHandler::process(const String &commandString) {
   std::vector<String> parts;
   if(commandString.indexOf(' ') > 0) {
     int index = 0;
@@ -247,7 +287,7 @@ void DCCPPProtocolHandler::process(const String commandString) {
   }
   if(!processed) {
     log_e("No command handler for [%s]", commandID.c_str());
-    wifiInterface.printf(F("<X>"));
+    wifiInterface.send(COMMAND_FAILED_RESPONSE);
   }
 }
 
@@ -263,11 +303,42 @@ void DCCPPProtocolHandler::registerCommand(DCCPPProtocolCommand *cmd) {
   registeredCommands.add(cmd);
 }
 
-DCCPPProtocolCommand *DCCPPProtocolHandler::getCommandHandler(const String id) {
+DCCPPProtocolCommand *DCCPPProtocolHandler::getCommandHandler(const String &id) {
   for (const auto& command : registeredCommands) {
     if(command->getID() == id) {
       return command;
     }
   }
-  return NULL;
+  return nullptr;
+}
+
+DCCPPProtocolConsumer::DCCPPProtocolConsumer() {
+  _buffer.reserve(256);
+}
+
+void DCCPPProtocolConsumer::feed(uint8_t *data, size_t len) {
+  for(int i = 0; i < len; i++) {
+    _buffer.emplace_back(data[i]);
+  }
+  processData();
+}
+
+void DCCPPProtocolConsumer::processData() {
+  auto s = _buffer.begin();
+  auto consumed = _buffer.begin();
+  for(; s != _buffer.end();) {
+    s = std::find(s, _buffer.end(), '<');
+    auto e = std::find(s, _buffer.end(), '>');
+    if(s != _buffer.end() && e != _buffer.end()) {
+      // discard the <
+      s++;
+      // discard the >
+      *e = 0;
+      String str(reinterpret_cast<char*>(&*s));
+      DCCPPProtocolHandler::process(std::move(str));
+      consumed = e;
+    }
+    s = e;
+  }
+  _buffer.erase(_buffer.begin(), consumed); // drop everything we used from the buffer.
 }

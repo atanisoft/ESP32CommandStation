@@ -1,7 +1,7 @@
 /**********************************************************************
-DCC++ BASE STATION FOR ESP32
+DCC COMMAND STATION FOR ESP32
 
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,22 +17,32 @@ COPYRIGHT (c) 2017 Mike Dunston
 
 #include "DCCppESP32.h"
 
-#include "Locomotive.h"
-#include "SignalGenerator.h"
-
-LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete loco; });
-
 Locomotive::Locomotive(uint8_t registerNumber) :
-  _registerNumber(registerNumber), _locoNumber(0), _speed(0), _direction(0),
-  _lastUpdate(0) {
+  _registerNumber(registerNumber), _locoAddress(0), _speed(0), _direction(true),
+  _lastUpdate(0), _functionsChanged(true) {
+  for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
+    _functionState[funcID] = false;
+  }
+}
+
+Locomotive::Locomotive(JsonObject &json) : _registerNumber(-1), _lastUpdate(0), _functionsChanged(true) {
+  for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
+    _functionState[funcID] = false;
+  }
+  _locoAddress = json[JSON_ADDRESS_NODE];
+  _speed = json[JSON_SPEED_NODE];
+  _direction = json[JSON_DIRECTION_NODE] == JSON_VALUE_FORWARD;
+  _orientation = json[JSON_ORIENTATION_NODE] == JSON_VALUE_FORWARD;
 }
 
 void Locomotive::sendLocoUpdate() {
   std::vector<uint8_t> packetBuffer;
-  if(_locoNumber > 127) {
-    packetBuffer.push_back((uint8_t)(0xC0 | highByte(_locoNumber)));
+  if(_locoAddress > 127) {
+    packetBuffer.push_back((uint8_t)(0xC0 | highByte(_locoAddress)));
   }
-  packetBuffer.push_back(lowByte(_locoNumber));
+  packetBuffer.push_back(lowByte(_locoAddress));
+  // S-9.2.1 Advanced Operations instruction
+  // using 128 speed steps
   packetBuffer.push_back(0x3F);
   if(_speed < 0) {
     _speed = 0;
@@ -40,71 +50,109 @@ void Locomotive::sendLocoUpdate() {
   } else {
     packetBuffer.push_back((uint8_t)(_speed + (_speed > 0) + _direction * 128));
   }
-  dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 0);
+  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(packetBuffer, 0);
+  if(_functionsChanged) {
+    _functionsChanged = false;
+    createFunctionPackets();
+  }
+  for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
+    dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[functionPacket], 0);
+  }
   _lastUpdate = millis();
 }
 
 void Locomotive::showStatus() {
   log_i("Loco(%d) locoNumber: %d, speed: %d, direction: %s",
-    _registerNumber, _locoNumber, _speed, _direction ? "FWD" : "REV");
+    _registerNumber, _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD.c_str() : JSON_VALUE_REVERSE.c_str());
   wifiInterface.printf(F("<T %d %d %d>"), _registerNumber, _speed, _direction);
 }
 
-void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
-  int registerNumber = arguments[0].toInt();
-  Locomotive *instance = NULL;
-  for (const auto& loco : _locos) {
-    if(loco->getRegister() == registerNumber) {
-      instance = loco;
+void Locomotive::toJson(JsonObject &jsonObject, bool includeSpeedDir, bool includeFunctions) {
+  jsonObject[JSON_ADDRESS_NODE] = _locoAddress;
+  if(includeSpeedDir) {
+    jsonObject[JSON_SPEED_NODE] = _speed;
+    jsonObject[JSON_DIRECTION_NODE] = _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE;
+  }
+  jsonObject[JSON_ORIENTATION_NODE] = _orientation ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE;
+  if(includeFunctions) {
+    JsonArray &functions = jsonObject.createNestedArray(JSON_FUNCTIONS_NODE);
+    for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
+      JsonObject &node = functions.createNestedObject();
+      node[JSON_ID_NODE] = funcID;
+      node[JSON_STATE_NODE] = _functionState[funcID];
     }
   }
-  if(instance == NULL) {
-    instance = new Locomotive(registerNumber);
-    _locos.add(instance);
-  }
-  instance->setLocoNumber(arguments[1].toInt());
-  instance->setSpeed(arguments[2].toInt());
-  instance->setDirection(arguments[3].toInt() == 1);
-  instance->sendLocoUpdate();
-  instance->showStatus();
 }
 
-void LocomotiveManager::processFunction(const std::vector<String> arguments) {
-  std::vector<uint8_t> packetBuffer;
-  int locoNumber = arguments[0].toInt();
-  int functionByte = arguments[1].toInt();
-  if(locoNumber > 127) {
-    // convert train number into a two-byte address
-    packetBuffer.push_back(highByte(locoNumber) | 0xC0);
-  }
-  packetBuffer.push_back(lowByte(locoNumber));
-  // check this is a request for functions F13-F28
-  if(arguments.size() > 2) {
-    int secondaryFunctionByte = arguments[2].toInt();
-    // for safety this guarantees that first byte will either be 0xDE (for
-    // F13-F20) or 0xDF (for F21-F28)
-    packetBuffer.push_back((functionByte | 0xDE) & 0xDF);
-    packetBuffer.push_back(secondaryFunctionByte);
-  } else {
-    // this is a request for functions FL,F1-F12
-    // for safety this guarantees that first nibble of function byte will always
-    // be of binary form 10XX which should always be the case for FL,F1-F12
-    packetBuffer.push_back((functionByte | 0x80) & 0xBF);
-  }
-  dccSignal[DCC_SIGNAL_OPERATIONS].loadPacket(packetBuffer, 4);
-}
-
-void LocomotiveManager::showStatus() {
-  for (const auto& loco : _locos) {
-		loco->showStatus();
-	}
-}
-
-void LocomotiveManager::update() {
-  for (const auto& loco : _locos) {
-    // if it has been more than 50ms we should send a loco update packet
-    if(millis() > loco->getLastUpdate() + 50) {
-      loco->sendLocoUpdate();
+void Locomotive::createFunctionPackets() {
+  // seed functions packets with locomotive numbers
+  for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
+    _functionPackets[functionPacket].clear();
+    if(_locoAddress > 127) {
+      // convert train number into a two-byte address
+      _functionPackets[functionPacket].push_back((uint8_t)(0xC0 | highByte(_locoAddress)));
     }
-	}
+    _functionPackets[functionPacket].push_back(lowByte(_locoAddress));
+  }
+
+  uint8_t packetByte[2] = {0x80, 0x00};
+  // convert functions 0 - 4
+  for(uint8_t funcID = 0; funcID <= 4; funcID++) {
+    if(funcID && _functionState[funcID]) {
+      bitSet(packetByte[0], funcID-1);
+    } else if(funcID) {
+      bitClear(packetByte[0], funcID-1);
+    } else if(_functionState[funcID]) {
+      bitSet(packetByte[0], 4);
+    } else {
+      bitClear(packetByte[0], 4);
+    }
+  }
+  _functionPackets[0].push_back((packetByte[0] | 0x80) & 0xBF);
+
+  // convert functions 5 - 8
+  packetByte[0] = 0xB0;
+  for(uint8_t funcID = 5; funcID <= 8; funcID++) {
+    if(_functionState[funcID]) {
+      bitSet(packetByte[0], funcID-5);
+    } else {
+      bitClear(packetByte[0], funcID-5);
+    }
+  }
+  _functionPackets[1].push_back((packetByte[0] | 0x80) & 0xBF);
+
+  // convert functions 9 - 12
+  packetByte[0] = 0xA0;
+  for(uint8_t funcID = 9; funcID <= 12; funcID++) {
+    if(_functionState[funcID]) {
+      bitSet(packetByte[0], funcID-9);
+    } else {
+      bitClear(packetByte[0], funcID-9);
+    }
+  }
+  _functionPackets[2].push_back((packetByte[0] | 0x80) & 0xBF);
+
+  // convert functions 13 - 20
+  packetByte[0] = 0xDE;
+  for(uint8_t funcID = 13; funcID <= 20; funcID++) {
+    if(_functionState[funcID]) {
+      bitSet(packetByte[1], funcID-13);
+    } else {
+      bitClear(packetByte[1], funcID-13);
+    }
+  }
+  _functionPackets[3].push_back((packetByte[0] | 0xDE) & 0xDF);
+  _functionPackets[3].push_back(packetByte[1]);
+
+  // convert functions 21 - 28
+  packetByte[0] = 0xDF;
+  for(uint8_t funcID = 21; funcID <= 28; funcID++) {
+    if(_functionState[funcID]) {
+      bitSet(packetByte[1], funcID-21);
+    } else {
+      bitClear(packetByte[1], funcID-21);
+    }
+  }
+  _functionPackets[4].push_back((packetByte[0] | 0xDE) & 0xDF);
+  _functionPackets[4].push_back(packetByte[1]);
 }
