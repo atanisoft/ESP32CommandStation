@@ -425,7 +425,7 @@ size_t Nextion::receiveString(String &buffer, bool stringHeader) {
         } else if (c < 0x20 || c > 0x7F) {
           // discard non-printable character
         } else {
-          buffer += c;
+          buffer += (char)c;
         }
       }
     }
