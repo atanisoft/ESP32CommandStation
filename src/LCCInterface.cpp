@@ -119,7 +119,7 @@ class DccPacketQueueInjector : public dcc::PacketFlowInterface {
             dcc::Packet *pkt = b->data();
             dccSignal[DCC_SIGNAL_OPERATIONS]->loadBytePacket(pkt->payload, pkt->dlc, pkt->packet_header.rept_count);
             // check if the packet looks like an accessories decoder packet
-            if(pkt->packet_header.is_marklin == 0 && pkt->dlc == 2 && pkt->payload[0] & 0x80 && pkt->payload[1] & 0x80) {
+            if(!pkt->packet_header.is_marklin && pkt->dlc == 2 && pkt->payload[0] & 0x80 && pkt->payload[1] & 0x80) {
                 // the second byte of the payload contains part of the address and is stored in ones complement format
                 uint8_t onesComplementByteTwo = (pkt->payload[1] ^ 0xF8);
                 // decode the accessories decoder address and update the TurnoutManager metadata
@@ -163,7 +163,6 @@ LCCInterface lccInterface;
 
 LCCInterface::LCCInterface() {
 }
-
 
 void LCCInterface::init() {
     SPIFFS.mkdir("/LCC");

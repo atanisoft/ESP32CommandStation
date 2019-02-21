@@ -1,26 +1,27 @@
 # DCC++ESP32 Feature/Bug Tracking list
 This document tracks features and bug fixes that are planned.
 
-## v1.2.1
-Version 1.2.1 will primarily be a bugfix release for v1.2.0.
-
-### Updates from v1.2.0
-- [x] Split DCC SignalGenerator to "common" and "hardware timer" specific sections as prep for alternative DCC signal generation.
-- [x] Nextion Interface would request loco address "65535" when a loco was invalidated by the web interface callback (loco removed from being active).
-- [x] Added guard code for attempting to request loco address of zero.
-
 ## v1.3.0
 The primary focus for this will be improving the LCC integration and solve the crash caused by the DCC signal generation code.
 
-### DCC System
+### Updates from v1.2.1
 
-- [ ] fix signal generation so it doesn't crash up when spi_flash disables cache. This is the hardest and biggest issue by far and needs to be fixed somehow but I haven't found a working solution yet. It will very likely require a ground up re-write with streaming packet data to the ISR.
+#### DCC System
 
-### LCC Integration
+- [x] fix signal generation so it doesn't crash up when spi_flash disables cache. This is the hardest and biggest issue by far and needs to be fixed somehow but I haven't found a working solution yet. It will very likely require a ground up re-write with streaming packet data to the ISR.
+
+#### LCC Integration
 
 - [ ] Traction proxy impl.
 - [ ] Broadcast events for turnout state change.
 - [ ] Discard turnout events when turnout already in expected state (drop duplicate events).
+
+#### Nextion Interface
+
+- [ ] fix screen type detection
+
+#### Web Interface
+- [x] Add space in footer for clock so date/time are not smashed together.
 
 ## Future planning:
 The entries below are not tracked to a specific release or in any particular priority order.
