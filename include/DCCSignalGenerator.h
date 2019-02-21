@@ -56,7 +56,7 @@ public:
   bool isQueueEmpty();
   bool isEnabled();
   void drainQueue();
-  virtual Packet *getPacket();
+  Packet *getPacket();
 
 protected:
   SignalGenerator(String, uint16_t, uint8_t, uint8_t);
@@ -100,14 +100,6 @@ static constexpr DRAM_ATTR uint8_t idlePacket[] = {0xFF, 0x00};
 static constexpr DRAM_ATTR uint8_t resetPacket[] = {0x00, 0x00};
 // S-9.2 baseline packet (eStop, direction bit ignored)
 static constexpr DRAM_ATTR uint8_t eStopPacket[] = {0x00, 0x41};
-
-// number of microseconds for each half of the DCC signal for a zero
-static constexpr uint64_t DCC_ZERO_BIT_PULSE_DURATION=98;
-// number of microseconds for each half of the DCC signal for a one
-static constexpr uint64_t DCC_ONE_BIT_PULSE_DURATION=58;
-
-// this controls the timer tick frequency, this results in a 1uS tick frequency.
-static constexpr uint16_t DCC_TIMER_PRESCALE=80;
 
 // bitmask used by signal generator when processing DCC packet bytes
 static constexpr DRAM_ATTR uint8_t DCC_PACKET_BIT_MASK[] = {

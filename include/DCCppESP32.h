@@ -19,7 +19,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // RELEASE VERSION
 /////////////////////////////////////////////////////////////////////////////////////
 
-#define VERSION "1.2.1"
+#define VERSION "1.3.0"
 
 /////////////////////////////////////////////////////////////////////////////////////
 // PERFORMANCE CONFIGURATION
@@ -82,15 +82,15 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define ENERGIZE_OPS_TRACK_ON_STARTUP false
 #endif
 
+#define USE_RMT_FOR_DCC true
+
 #include "ConfigurationManager.h"
 #include "WiFiInterface.h"
 #include "InfoScreen.h"
 #include "DCCppProtocol.h"
 #include "DCCSignalGenerator.h"
 #include "DCCSignalGenerator_Timer.h"
-#if 0
 #include "DCCSignalGenerator_RMT.h"
-#endif
 #include "DCCProgrammer.h"
 #include "MotorBoard.h"
 #include "Sensors.h"

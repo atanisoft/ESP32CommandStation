@@ -20,6 +20,13 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
 
+// number of microseconds for each half of the DCC signal for a zero
+static constexpr uint64_t DCC_ZERO_BIT_PULSE_DURATION=98;
+// number of microseconds for each half of the DCC signal for a one
+static constexpr uint64_t DCC_ONE_BIT_PULSE_DURATION=58;
+// this controls the timer tick frequency, this results in a 1uS tick frequency.
+static constexpr uint16_t DCC_TIMER_PRESCALE=80;
+
 #define DCC_SIGNAL_ISR_IMPL(G, S) \
   if(G->_topOfWave) { \
     auto pkt = G->getPacket(); \
