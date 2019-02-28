@@ -192,19 +192,27 @@ void WiFiInterface::begin() {
     }
   #endif
 #endif
-    if (WiFi.status() == WL_NO_SSID_AVAIL) {
-      // since we couldn't find the configured SSID, perform a scan to help in
-      // troubleshooting.
-      int networks = WiFi.scanNetworks();
-      if(networks) {
-        log_i("Available WiFi networks:");
-        for(int index = 0; index < networks; index++) {
-          log_i("SSID: %s (RSSI: %d) Encryption: %s",
-            WiFi.SSID(index), WiFi.RSSI(index), WIFI_ENC_TYPES[WiFi.encryptionType(index)]);
+    // since we couldn't connect to the configured SSID, perform a scan to help in
+    // troubleshooting.
+    int networks = WiFi.scanNetworks();
+    if(networks) {
+      bool ssidMatch = false;
+      log_i("Available WiFi networks:");
+      for(int index = 0; index < networks; index++) {
+        log_i("SSID: %s (RSSI: %d) Encryption: %s",
+          WiFi.SSID(index), WiFi.RSSI(index), WIFI_ENC_TYPES[WiFi.encryptionType(index)]);
+        if(WiFi.SSID(index).equalsIgnoreCase(wifiSSID)) {
+          ssidMatch = true;
         }
-      } else {
-        log_w("Unable to find any WiFi networks!");
       }
+      if(ssidMatch) {
+        log_w("Expected SSID was found, perhaps an incorrect value was provided in Config_WiFi.h WIFI_PASSWORD?");
+#if INFO_SCREEN_ENABLED && (INFO_SCREEN_OLED || (INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS >= 20))
+        InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("BAD SSID PASSWORD!"));
+#endif
+      }
+    } else {
+      log_w("Unable to find any WiFi networks!");
     }
     log_e("WiFI connect failed, restarting");
     esp32_restart();

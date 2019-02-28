@@ -54,8 +54,16 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // initialize default values for various pre-compiler checks to simplify logic in a lot of places
 #if (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD) || (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED)
 #define INFO_SCREEN_ENABLED true
+#if (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD)
+#define INFO_SCREEN_OLED false
+#endif
+#if (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED)
+#define INFO_SCREEN_LCD false
+#endif
 #else
 #define INFO_SCREEN_ENABLED false
+#define INFO_SCREEN_LCD false
+#define INFO_SCREEN_OLED false
 #endif
 
 #ifndef NEXTION_ENABLED
