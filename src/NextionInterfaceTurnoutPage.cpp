@@ -31,55 +31,47 @@ constexpr uint8_t PREV_BUTTON_ENABLED=126;
 constexpr uint8_t DELETE_INACTIVE=136;
 constexpr uint8_t DELETE_ACTIVE=137;
 
-constexpr uint8_t prevButtonID=19;
-constexpr uint8_t addtoButtonID=20;
-constexpr uint8_t nextButtonID=21;
-constexpr uint8_t backButtonID=22;
-constexpr uint8_t delButtonID=39;
-constexpr uint8_t setupButtonID=23;
+constexpr uint8_t prevButtonID=4;
+constexpr uint8_t addtoButtonID=5;
+constexpr uint8_t nextButtonID=6;
+constexpr uint8_t backButtonID=7;
+constexpr uint8_t delButtonID=8;
+constexpr uint8_t setupButtonID=9;
 
 // 3.2" and 3.5" display
-constexpr uint8_t slot0ButtonID=4;
-constexpr uint8_t slot1ButtonID=5;
-constexpr uint8_t slot2ButtonID=6;
-constexpr uint8_t slot3ButtonID=7;
-constexpr uint8_t slot4ButtonID=8;
-constexpr uint8_t slot5ButtonID=9;
-constexpr uint8_t slot6ButtonID=10;
-constexpr uint8_t slot7ButtonID=11;
-constexpr uint8_t slot8ButtonID=12;
-constexpr uint8_t slot9ButtonID=13;
-constexpr uint8_t slot10ButtonID=14;
-constexpr uint8_t slot11ButtonID=15;
-constexpr uint8_t slot12ButtonID=16;
-constexpr uint8_t slot13ButtonID=17;
-constexpr uint8_t slot14ButtonID=18;
-constexpr uint8_t ad0ButtonID=24;
-constexpr uint8_t ad1ButtonID=25;
-constexpr uint8_t ad2ButtonID=26;
-constexpr uint8_t ad3ButtonID=27;
-constexpr uint8_t ad4ButtonID=28;
-constexpr uint8_t ad5ButtonID=29;
-constexpr uint8_t ad6ButtonID=30;
-constexpr uint8_t ad7ButtonID=31;
-constexpr uint8_t ad8ButtonID=32;
-constexpr uint8_t ad9ButtonID=33;
-constexpr uint8_t ad10ButtonID=34;
-constexpr uint8_t ad11ButtonID=35;
-constexpr uint8_t ad12ButtonID=36;
-constexpr uint8_t ad13ButtonID=37;
-constexpr uint8_t ad14ButtonID=38;
+constexpr uint8_t ad0ButtonID=10;
+constexpr uint8_t ad1ButtonID=11;
+constexpr uint8_t ad2ButtonID=12;
+constexpr uint8_t ad3ButtonID=13;
+constexpr uint8_t ad4ButtonID=14;
+constexpr uint8_t ad5ButtonID=15;
+constexpr uint8_t ad6ButtonID=16;
+constexpr uint8_t ad7ButtonID=17;
+constexpr uint8_t ad8ButtonID=18;
+constexpr uint8_t ad9ButtonID=19;
+constexpr uint8_t ad10ButtonID=20;
+constexpr uint8_t ad11ButtonID=21;
+constexpr uint8_t ad12ButtonID=22;
+constexpr uint8_t ad13ButtonID=23;
+constexpr uint8_t ad14ButtonID=24;
+
+constexpr uint8_t slot0ButtonID=25;
+constexpr uint8_t slot1ButtonID=26;
+constexpr uint8_t slot2ButtonID=27;
+constexpr uint8_t slot3ButtonID=28;
+constexpr uint8_t slot4ButtonID=29;
+constexpr uint8_t slot5ButtonID=30;
+constexpr uint8_t slot6ButtonID=31;
+constexpr uint8_t slot7ButtonID=32;
+constexpr uint8_t slot8ButtonID=33;
+constexpr uint8_t slot9ButtonID=34;
+constexpr uint8_t slot10ButtonID=35;
+constexpr uint8_t slot11ButtonID=36;
+constexpr uint8_t slot12ButtonID=37;
+constexpr uint8_t slot13ButtonID=38;
+constexpr uint8_t slot14ButtonID=39;
 
 // 3.5" display only
-constexpr uint8_t slot15ButtonID=49;
-constexpr uint8_t slot16ButtonID=50;
-constexpr uint8_t slot17ButtonID=51;
-constexpr uint8_t slot18ButtonID=52;
-constexpr uint8_t slot19ButtonID=53;
-constexpr uint8_t slot20ButtonID=54;
-constexpr uint8_t slot21ButtonID=55;
-constexpr uint8_t slot22ButtonID=56;
-constexpr uint8_t slot23ButtonID=57;
 constexpr uint8_t ad15ButtonID=40;
 constexpr uint8_t ad16ButtonID=41;
 constexpr uint8_t ad17ButtonID=42;
@@ -89,6 +81,91 @@ constexpr uint8_t ad20ButtonID=45;
 constexpr uint8_t ad21ButtonID=46;
 constexpr uint8_t ad22ButtonID=47;
 constexpr uint8_t ad23ButtonID=48;
+
+constexpr uint8_t slot15ButtonID=49;
+constexpr uint8_t slot16ButtonID=50;
+constexpr uint8_t slot17ButtonID=51;
+constexpr uint8_t slot18ButtonID=52;
+constexpr uint8_t slot19ButtonID=53;
+constexpr uint8_t slot20ButtonID=54;
+constexpr uint8_t slot21ButtonID=55;
+constexpr uint8_t slot22ButtonID=56;
+constexpr uint8_t slot23ButtonID=57;
+
+// 5.0" display only
+constexpr uint8_t ad24ButtonID=58;
+constexpr uint8_t ad25ButtonID=59;
+constexpr uint8_t ad26ButtonID=60;
+constexpr uint8_t ad27ButtonID=61;
+constexpr uint8_t ad28ButtonID=62;
+constexpr uint8_t ad29ButtonID=63;
+constexpr uint8_t ad30ButtonID=64;
+constexpr uint8_t ad31ButtonID=65;
+constexpr uint8_t ad32ButtonID=66;
+constexpr uint8_t ad33ButtonID=67;
+constexpr uint8_t ad34ButtonID=68;
+constexpr uint8_t ad35ButtonID=69;
+constexpr uint8_t ad36ButtonID=70;
+constexpr uint8_t ad37ButtonID=71;
+constexpr uint8_t ad38ButtonID=72;
+constexpr uint8_t ad39ButtonID=73;
+constexpr uint8_t ad40ButtonID=74;
+constexpr uint8_t ad41ButtonID=75;
+constexpr uint8_t ad42ButtonID=76;
+constexpr uint8_t ad43ButtonID=77;
+constexpr uint8_t ad44ButtonID=78;
+constexpr uint8_t ad45ButtonID=79;
+constexpr uint8_t ad46ButtonID=80;
+constexpr uint8_t ad47ButtonID=81;
+constexpr uint8_t ad48ButtonID=82;
+constexpr uint8_t ad49ButtonID=83;
+constexpr uint8_t ad50ButtonID=84;
+constexpr uint8_t ad51ButtonID=85;
+constexpr uint8_t ad52ButtonID=86;
+constexpr uint8_t ad53ButtonID=87;
+constexpr uint8_t ad54ButtonID=88;
+constexpr uint8_t ad55ButtonID=89;
+constexpr uint8_t ad56ButtonID=90;
+constexpr uint8_t ad57ButtonID=91;
+constexpr uint8_t ad58ButtonID=92;
+constexpr uint8_t ad59ButtonID=93;
+
+constexpr uint8_t slot24ButtonID=94;
+constexpr uint8_t slot25ButtonID=95;
+constexpr uint8_t slot26ButtonID=96;
+constexpr uint8_t slot27ButtonID=97;
+constexpr uint8_t slot28ButtonID=98;
+constexpr uint8_t slot29ButtonID=99;
+constexpr uint8_t slot30ButtonID=100;
+constexpr uint8_t slot31ButtonID=101;
+constexpr uint8_t slot32ButtonID=102;
+constexpr uint8_t slot33ButtonID=103;
+constexpr uint8_t slot34ButtonID=104;
+constexpr uint8_t slot35ButtonID=105;
+constexpr uint8_t slot36ButtonID=106;
+constexpr uint8_t slot37ButtonID=107;
+constexpr uint8_t slot38ButtonID=108;
+constexpr uint8_t slot39ButtonID=109;
+constexpr uint8_t slot40ButtonID=110;
+constexpr uint8_t slot41ButtonID=111;
+constexpr uint8_t slot42ButtonID=112;
+constexpr uint8_t slot43ButtonID=113;
+constexpr uint8_t slot44ButtonID=114;
+constexpr uint8_t slot45ButtonID=115;
+constexpr uint8_t slot46ButtonID=116;
+constexpr uint8_t slot47ButtonID=117;
+constexpr uint8_t slot48ButtonID=118;
+constexpr uint8_t slot49ButtonID=119;
+constexpr uint8_t slot50ButtonID=120;
+constexpr uint8_t slot51ButtonID=121;
+constexpr uint8_t slot52ButtonID=122;
+constexpr uint8_t slot53ButtonID=123;
+constexpr uint8_t slot54ButtonID=124;
+constexpr uint8_t slot55ButtonID=125;
+constexpr uint8_t slot56ButtonID=126;
+constexpr uint8_t slot57ButtonID=127;
+constexpr uint8_t slot58ButtonID=128;
+constexpr uint8_t slot59ButtonID=129;
 
 //
 /************************************************************************************************************/
@@ -121,7 +198,43 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     NextionButton(nextion, TURNOUT_PAGE, slot20ButtonID, "To20"),
     NextionButton(nextion, TURNOUT_PAGE, slot21ButtonID, "To21"),
     NextionButton(nextion, TURNOUT_PAGE, slot22ButtonID, "To22"),
-    NextionButton(nextion, TURNOUT_PAGE, slot23ButtonID, "To23")
+    NextionButton(nextion, TURNOUT_PAGE, slot23ButtonID, "To23"),
+    NextionButton(nextion, TURNOUT_PAGE, slot24ButtonID, "To24"),
+    NextionButton(nextion, TURNOUT_PAGE, slot25ButtonID, "To25"),
+    NextionButton(nextion, TURNOUT_PAGE, slot26ButtonID, "To26"),
+    NextionButton(nextion, TURNOUT_PAGE, slot27ButtonID, "To27"),
+    NextionButton(nextion, TURNOUT_PAGE, slot28ButtonID, "To28"),
+    NextionButton(nextion, TURNOUT_PAGE, slot29ButtonID, "To29"),
+    NextionButton(nextion, TURNOUT_PAGE, slot30ButtonID, "To30"),
+    NextionButton(nextion, TURNOUT_PAGE, slot31ButtonID, "To31"),
+    NextionButton(nextion, TURNOUT_PAGE, slot32ButtonID, "To32"),
+    NextionButton(nextion, TURNOUT_PAGE, slot33ButtonID, "To33"),
+    NextionButton(nextion, TURNOUT_PAGE, slot34ButtonID, "To34"),
+    NextionButton(nextion, TURNOUT_PAGE, slot35ButtonID, "To35"),
+    NextionButton(nextion, TURNOUT_PAGE, slot36ButtonID, "To36"),
+    NextionButton(nextion, TURNOUT_PAGE, slot37ButtonID, "To37"),
+    NextionButton(nextion, TURNOUT_PAGE, slot38ButtonID, "To38"),
+    NextionButton(nextion, TURNOUT_PAGE, slot39ButtonID, "To39"),
+    NextionButton(nextion, TURNOUT_PAGE, slot40ButtonID, "To40"),
+    NextionButton(nextion, TURNOUT_PAGE, slot41ButtonID, "To41"),
+    NextionButton(nextion, TURNOUT_PAGE, slot42ButtonID, "To42"),
+    NextionButton(nextion, TURNOUT_PAGE, slot43ButtonID, "To43"),
+    NextionButton(nextion, TURNOUT_PAGE, slot44ButtonID, "To44"),
+    NextionButton(nextion, TURNOUT_PAGE, slot45ButtonID, "To45"),
+    NextionButton(nextion, TURNOUT_PAGE, slot46ButtonID, "To46"),
+    NextionButton(nextion, TURNOUT_PAGE, slot47ButtonID, "To47"),
+    NextionButton(nextion, TURNOUT_PAGE, slot48ButtonID, "To48"),
+    NextionButton(nextion, TURNOUT_PAGE, slot49ButtonID, "To49"),
+    NextionButton(nextion, TURNOUT_PAGE, slot50ButtonID, "To50"),
+    NextionButton(nextion, TURNOUT_PAGE, slot51ButtonID, "To51"),
+    NextionButton(nextion, TURNOUT_PAGE, slot52ButtonID, "To52"),
+    NextionButton(nextion, TURNOUT_PAGE, slot53ButtonID, "To53"),
+    NextionButton(nextion, TURNOUT_PAGE, slot54ButtonID, "To54"),
+    NextionButton(nextion, TURNOUT_PAGE, slot55ButtonID, "To55"),
+    NextionButton(nextion, TURNOUT_PAGE, slot56ButtonID, "To56"),
+    NextionButton(nextion, TURNOUT_PAGE, slot57ButtonID, "To57"),
+    NextionButton(nextion, TURNOUT_PAGE, slot58ButtonID, "To58"),
+    NextionButton(nextion, TURNOUT_PAGE, slot59ButtonID, "To59")
   },
   _toAddress {
     NextionButton(nextion, TURNOUT_PAGE, ad0ButtonID, "Ad0"),
@@ -147,7 +260,43 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     NextionButton(nextion, TURNOUT_PAGE, ad20ButtonID, "Ad20"),
     NextionButton(nextion, TURNOUT_PAGE, ad21ButtonID, "Ad21"),
     NextionButton(nextion, TURNOUT_PAGE, ad22ButtonID, "Ad22"),
-    NextionButton(nextion, TURNOUT_PAGE, ad23ButtonID, "Ad23")
+    NextionButton(nextion, TURNOUT_PAGE, ad23ButtonID, "Ad23"),
+    NextionButton(nextion, TURNOUT_PAGE, ad24ButtonID, "Ad24"),
+    NextionButton(nextion, TURNOUT_PAGE, ad25ButtonID, "Ad25"),
+    NextionButton(nextion, TURNOUT_PAGE, ad26ButtonID, "Ad26"),
+    NextionButton(nextion, TURNOUT_PAGE, ad27ButtonID, "Ad27"),
+    NextionButton(nextion, TURNOUT_PAGE, ad28ButtonID, "Ad28"),
+    NextionButton(nextion, TURNOUT_PAGE, ad29ButtonID, "Ad29"),
+    NextionButton(nextion, TURNOUT_PAGE, ad30ButtonID, "Ad30"),
+    NextionButton(nextion, TURNOUT_PAGE, ad31ButtonID, "Ad31"),
+    NextionButton(nextion, TURNOUT_PAGE, ad32ButtonID, "Ad32"),
+    NextionButton(nextion, TURNOUT_PAGE, ad33ButtonID, "Ad33"),
+    NextionButton(nextion, TURNOUT_PAGE, ad34ButtonID, "Ad34"),
+    NextionButton(nextion, TURNOUT_PAGE, ad35ButtonID, "Ad35"),
+    NextionButton(nextion, TURNOUT_PAGE, ad36ButtonID, "Ad36"),
+    NextionButton(nextion, TURNOUT_PAGE, ad37ButtonID, "Ad37"),
+    NextionButton(nextion, TURNOUT_PAGE, ad38ButtonID, "Ad38"),
+    NextionButton(nextion, TURNOUT_PAGE, ad39ButtonID, "Ad39"),
+    NextionButton(nextion, TURNOUT_PAGE, ad40ButtonID, "Ad40"),
+    NextionButton(nextion, TURNOUT_PAGE, ad41ButtonID, "Ad41"),
+    NextionButton(nextion, TURNOUT_PAGE, ad42ButtonID, "Ad42"),
+    NextionButton(nextion, TURNOUT_PAGE, ad43ButtonID, "Ad43"),
+    NextionButton(nextion, TURNOUT_PAGE, ad44ButtonID, "Ad44"),
+    NextionButton(nextion, TURNOUT_PAGE, ad45ButtonID, "Ad45"),
+    NextionButton(nextion, TURNOUT_PAGE, ad46ButtonID, "Ad46"),
+    NextionButton(nextion, TURNOUT_PAGE, ad47ButtonID, "Ad47"),
+    NextionButton(nextion, TURNOUT_PAGE, ad48ButtonID, "Ad48"),
+    NextionButton(nextion, TURNOUT_PAGE, ad49ButtonID, "Ad49"),
+    NextionButton(nextion, TURNOUT_PAGE, ad50ButtonID, "Ad50"),
+    NextionButton(nextion, TURNOUT_PAGE, ad51ButtonID, "Ad51"),
+    NextionButton(nextion, TURNOUT_PAGE, ad52ButtonID, "Ad52"),
+    NextionButton(nextion, TURNOUT_PAGE, ad53ButtonID, "Ad53"),
+    NextionButton(nextion, TURNOUT_PAGE, ad54ButtonID, "Ad54"),
+    NextionButton(nextion, TURNOUT_PAGE, ad55ButtonID, "Ad55"),
+    NextionButton(nextion, TURNOUT_PAGE, ad56ButtonID, "Ad56"),
+    NextionButton(nextion, TURNOUT_PAGE, ad57ButtonID, "Ad57"),
+    NextionButton(nextion, TURNOUT_PAGE, ad58ButtonID, "Ad58"),
+    NextionButton(nextion, TURNOUT_PAGE, ad59ButtonID, "Ad59")
   },
   _backButton(nextion, TURNOUT_PAGE, backButtonID, "Back"),
   _prevButton(nextion, TURNOUT_PAGE, prevButtonID, "Prev"),
@@ -155,7 +304,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
   _addButton(nextion, TURNOUT_PAGE, addtoButtonID, "Add"),
   _delButton(nextion, TURNOUT_PAGE, delButtonID, "Del"),
   _setupButton(nextion, TURNOUT_PAGE, setupButtonID, "Setup") {
-  for(int slot = 0; slot < TURNOUTS_PER_PAGE_3_5_DISPLAY; slot++) {
+  for(int slot = 0; slot < TURNOUTS_PER_PAGE_5_0_DISPLAY; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
         static_cast<NextionTurnoutPage*>(nextionPages[TURNOUT_PAGE])->toggleTurnout(static_cast<NextionButton *>(widget));

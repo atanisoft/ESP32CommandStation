@@ -43,8 +43,10 @@ enum NEXTION_PAGES {
 enum NEXTION_DEVICE_TYPE {
   BASIC_3_2_DISPLAY,
   BASIC_3_5_DISPLAY,
+  BASIC_5_0_DISPLAY,
   ENHANCED_3_2_DISPLAY,
   ENHANCED_3_5_DISPLAY,
+  ENHANCED_5_0_DISPLAY,
   UNKOWN_DISPLAY
 };
 
@@ -222,10 +224,11 @@ protected:
 private:
   static constexpr int TURNOUTS_PER_PAGE_3_2_DISPLAY = 15;
   static constexpr int TURNOUTS_PER_PAGE_3_5_DISPLAY = 24;
+  static constexpr int TURNOUTS_PER_PAGE_5_0_DISPLAY = 60;
   uint8_t getDefaultTurnoutPictureID(Turnout *);
   uint8_t getTurnoutsPerPageCount();
-  NextionButton _turnoutButtons[TURNOUTS_PER_PAGE_3_5_DISPLAY];
-  NextionButton _toAddress[TURNOUTS_PER_PAGE_3_5_DISPLAY];
+  NextionButton _turnoutButtons[TURNOUTS_PER_PAGE_5_0_DISPLAY];
+  NextionButton _toAddress[TURNOUTS_PER_PAGE_5_0_DISPLAY];
   NextionButton _backButton;
   NextionButton _prevButton;
   NextionButton _nextButton;
