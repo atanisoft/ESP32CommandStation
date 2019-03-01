@@ -183,6 +183,7 @@ bool TurnoutManager::removeByAddress(const uint16_t address) {
   Turnout *turnoutToRemoved = nullptr;
   for (const auto& turnout : turnouts) {
     if(turnout->getAddress() == address) {
+      log_v("Turnout(%d) uses address %d", turnout->getID(), address);
       turnoutToRemoved = turnout;
     }
   }
@@ -318,7 +319,8 @@ void Turnout::set(bool thrown, bool sendDCCPacket) {
     DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   }
   wifiInterface.printf(F("<H %d %d>"), _turnoutID, _thrown);
-  log_i("Turnout(%d) %s", _turnoutID, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+  log_i("Turnout(%d addr: %d, board:%d, index:%d) %s", _turnoutID, _address, _boardAddress, _index,
+    _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
 }
 
 void Turnout::showStatus() {
