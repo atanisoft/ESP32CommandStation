@@ -17,7 +17,11 @@ NextionPage::NextionPage(Nextion &nex, uint8_t page, uint8_t component,
  */
 bool NextionPage::show()
 {
-  return sendCommandWithWait("page %s", m_name.c_str());
+  if(!isShown())
+  {
+    return sendCommandWithWait("page %s", m_name.c_str());
+  }
+  return true;
 }
 
 /*!
