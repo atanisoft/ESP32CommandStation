@@ -322,7 +322,9 @@ void Nextion::sendCommand(const String &command)
 {
   if (m_flushSerialBeforeTx)
   {
-    m_serialPort.flush();
+    while(m_serialPort.available()) {
+      m_serialPort.read();
+    }
   }
   //printf("TX: %s\n", command.c_str());
 
@@ -363,10 +365,10 @@ bool Nextion::checkCommandComplete()
   {
     ret = true;
   }
-  //if(!ret)
-  //{
-  //  printf("%02x %02x %02x %02x\n", temp[0], temp[1], temp[2], temp[3]);
-  //}
+  if(!ret)
+  {
+    printf("\nNextion: %02x %02x %02x %02x\n", temp[0], temp[1], temp[2], temp[3]);
+  }
 
   return ret;
 }
