@@ -41,7 +41,20 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #include "LCCCDI.h"
 
-static constexpr uint64_t COMMAND_STATION_NODE_ID = UINT64_C(LCC_NODE_ID);
+using dcc::PacketFlowInterface;
+using openlcb::DccAccyConsumer;
+using openlcb::Defs;
+using openlcb::EventRegistry;
+using openlcb::EventRegistryEntry;
+using openlcb::EventReport;
+using openlcb::Node;
+using openlcb::NodeID;
+using openlcb::ConfigDef;
+using openlcb::CallbackEventHandler;
+using openlcb::SimpleEventHandler;
+using openlcb::WriteHelper;
+
+static constexpr NodeID COMMAND_STATION_NODE_ID = UINT64_C(LCC_NODE_ID);
 
 #if LCC_ENABLE_GC_TCP_HUB
 WiFiServer openMRNServer(openlcb::TcpClientDefaultParams::DEFAULT_PORT);
@@ -56,7 +69,7 @@ string dummystring("abcdef");
 // target. It defines the layout of the configuration memory space and is also
 // used to generate the cdi.xml file. Here we instantiate the configuration
 // layout. The argument of offset zero is ignored and will be removed later.
-static constexpr openlcb::ConfigDef cfg(0);
+static constexpr ConfigDef cfg(0);
 
 // when the command station starts up the first time the config is blank
 // and needs to be reset to factory settings. This class being declared here
@@ -77,42 +90,42 @@ public:
     }
 } factory_reset_helper;
 
-class SimpleEventCallbackHandler : public openlcb::CallbackEventHandler {
+class SimpleEventCallbackHandler : public CallbackEventHandler {
 public:
     SimpleEventCallbackHandler(uint64_t eventID, uint32_t callbackType,
-        openlcb::Node *node, openlcb::CallbackEventHandler::EventReportHandlerFn report_handler,
-        openlcb::CallbackEventHandler::EventStateHandlerFn state_handler) :
-        openlcb::CallbackEventHandler(node, report_handler, state_handler) {
+        Node *node, CallbackEventHandler::EventReportHandlerFn report_handler,
+        CallbackEventHandler::EventStateHandlerFn state_handler) :
+        CallbackEventHandler(node, report_handler, state_handler) {
             add_entry(eventID, callbackType);
         }
 };
 
-SimpleEventCallbackHandler emergencyPowerOffHandler(openlcb::Defs::EMERGENCY_OFF_EVENT,
-    openlcb::CallbackEventHandler::RegistryEntryBits::IS_CONSUMER,
+SimpleEventCallbackHandler emergencyPowerOffHandler(Defs::EMERGENCY_OFF_EVENT,
+    CallbackEventHandler::RegistryEntryBits::IS_CONSUMER,
     openmrn.stack()->node(),
-    [](const openlcb::EventRegistryEntry &registry_entry, openlcb::EventReport *report, BarrierNotifiable *done) {
+    [](const EventRegistryEntry &registry_entry, EventReport *report, BarrierNotifiable *done) {
         stopDCCSignalGenerators();
         // shutdown all track power outputs
         MotorBoardManager::powerOffAll();
     }, nullptr);
 
-SimpleEventCallbackHandler emergencyPowerOffClearHandler(openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
-    openlcb::CallbackEventHandler::RegistryEntryBits::IS_CONSUMER,
+SimpleEventCallbackHandler emergencyPowerOffClearHandler(Defs::CLEAR_EMERGENCY_OFF_EVENT,
+    CallbackEventHandler::RegistryEntryBits::IS_CONSUMER,
     openmrn.stack()->node(),
-    [](const openlcb::EventRegistryEntry &registry_entry, openlcb::EventReport *report, BarrierNotifiable *done) {
+    [](const EventRegistryEntry &registry_entry, EventReport *report, BarrierNotifiable *done) {
         startDCCSignalGenerators();
         // Note this will not power on the PROG track as that is only managed via the programming interface
         MotorBoardManager::powerOnAll();
     }, nullptr);
 
-SimpleEventCallbackHandler emergencyStopHandler(openlcb::Defs::EMERGENCY_STOP_EVENT,
-    openlcb::CallbackEventHandler::RegistryEntryBits::IS_CONSUMER,
+SimpleEventCallbackHandler emergencyStopHandler(Defs::EMERGENCY_STOP_EVENT,
+    CallbackEventHandler::RegistryEntryBits::IS_CONSUMER,
     openmrn.stack()->node(),
-    [](const openlcb::EventRegistryEntry &registry_entry, openlcb::EventReport *report, BarrierNotifiable *done) {
+    [](const EventRegistryEntry &registry_entry, EventReport *report, BarrierNotifiable *done) {
         LocomotiveManager::emergencyStop();
     }, nullptr);
 
-class DccPacketQueueInjector : public dcc::PacketFlowInterface {
+class DccPacketQueueInjector : public PacketFlowInterface {
     public:
         void send(Buffer<dcc::Packet> *b, unsigned prio)
         {
@@ -138,7 +151,7 @@ class DccPacketQueueInjector : public dcc::PacketFlowInterface {
 };
 DccPacketQueueInjector dccPacketInjector;
 
-openlcb::DccAccyConsumer dccAccessoryConsumer{openmrn.stack()->node(), &dccPacketInjector};
+DccAccyConsumer dccAccessoryConsumer{openmrn.stack()->node(), &dccPacketInjector};
 
 namespace openlcb
 {
@@ -219,3 +232,4 @@ void LCCInterface::update() {
 }
 
 #endif
+

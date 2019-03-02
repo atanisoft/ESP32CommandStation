@@ -20,6 +20,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 #include "DCCppESP32.h"
 #include <openlcb/ConfigRepresentation.hxx>
 #include <openlcb/MemoryConfig.hxx>
+#include <openlcb/TractionCvCdi.hxx>
 
 namespace openlcb {
     const SimpleNodeStaticValues SNIP_STATIC_DATA = {
@@ -36,10 +37,12 @@ namespace openlcb {
 
     /// Defines the main segment in the configuration CDI. This is laid out at
     /// origin 128 to give space for the ACDI user data at the beginning.
-    CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
+    CDI_GROUP(CommandStationSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
     /// Each entry declares the name of the current entry, then the type and then
     /// optional arguments list.
     CDI_GROUP_ENTRY(internal_config, InternalConfigData);
+    /// CV Access via MemoryConfig protocol.
+    //CDI_GROUP_ENTRY(cv, TractionShortCvSpace);
     CDI_GROUP_END();
 
     /// This segment is only needed temporarily until there is program code to set
@@ -61,7 +64,7 @@ namespace openlcb {
     /// space. UserInfoSegment is defined in the system header.
     CDI_GROUP_ENTRY(userinfo, UserInfoSegment);
     /// Adds the main configuration segment.
-    CDI_GROUP_ENTRY(seg, IoBoardSegment);
+    CDI_GROUP_ENTRY(seg, CommandStationSegment);
     /// Adds the versioning segment.
     CDI_GROUP_ENTRY(version, VersionSeg);
     CDI_GROUP_END();
