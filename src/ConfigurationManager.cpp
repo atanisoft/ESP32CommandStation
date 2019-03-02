@@ -125,41 +125,22 @@ void ConfigurationManager::clear() {
 
 JsonObject &ConfigurationManager::load(const String &name) {
   log_i("Loading /DCCppESP32/%s", name.c_str());
-  bool restartDCC = false;
-  if(isDCCSignalEnabled()) {
-    stopDCCSignalGenerators();
-    restartDCC = true;
-  }
   File configFile = SPIFFS.open("/DCCppESP32/" + name, FILE_READ);
   jsonConfigBuffer.clear();
   JsonObject &root = jsonConfigBuffer.parseObject(configFile);
   configFile.close();
-  if(restartDCC) {
-    startDCCSignalGenerators();
-  }
   return root;
 }
 
 void ConfigurationManager::store(const String &name, const JsonObject &json) {
   log_i("Storing /DCCppESP32/%s", name.c_str());
-  bool restartDCC = false;
-  if(isDCCSignalEnabled()) {
-    stopDCCSignalGenerators();
-    restartDCC = true;
-  }
   File configFile = SPIFFS.open("/DCCppESP32/" + name, FILE_WRITE);
   if(!configFile) {
     log_e("Failed to open /DCCppESP32/%s", name.c_str());
-    if(restartDCC) {
-      startDCCSignalGenerators();
-    }
     return;
   }
   json.printTo(configFile);
   configFile.close();
-  if(restartDCC) {
-    startDCCSignalGenerators();
-  }
 }
 
 JsonObject &ConfigurationManager::createRootNode(bool clearBuffer) {
