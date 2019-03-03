@@ -396,23 +396,21 @@ private:
     }
 
     /** Configuration option. See constructor. */
-    unsigned maxBytesPerMessage_ : 8;
+    uint8_t maxBytesPerMessage_;
     /** Configuration option. See constructor. */
-    unsigned useContinueBits_ : 1;
+    uint8_t useContinueBits_ : 1;
 
     /** Whether this is the first reply message we are sending out. Used with
      * the continuation feature. */
-    unsigned isFirstMessage_ : 1;
+    uint8_t isFirstMessage_ : 1;
     /** Tells which descriptor entry we are processing. */
-    unsigned entryOffset_ : 5;
-#pragma clang diagnostic ignored "-Wunused-private-field"
-    unsigned reserved_ : 1; // for alignment
+    uint8_t entryOffset_ : 5;
 
     /** Byte offset within a descriptor entry. */
-    unsigned byteOffset_ : 8;
+    uint8_t byteOffset_;
     /** Total / max length of the current block. This is typically strlen() + 1
      * (including the terminating zero, if any). */
-    unsigned currentLength_ : 8;
+    uint8_t currentLength_;
 
     /// Last file name we opened.
     const char* fileName_{nullptr};

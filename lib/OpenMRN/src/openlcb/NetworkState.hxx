@@ -78,10 +78,18 @@ private:
     }
 
     /// Get the current state.
-    /// @return true if active, else false
-    bool get_state() override
+    /// @return VALID, INVALID, or UNKNOWN
+    State get_state() override
     {
-        return bit_.get_local_state();
+        switch (bit_.get_current_state())
+        {
+            case EventState::VALID:
+                return State::VALID;
+            case EventState::INVALID:
+                return State::INVALID;
+            default:
+                return State::UNKNOWN;
+        }
     }
 
     /// Get an indication as to if the state is known.

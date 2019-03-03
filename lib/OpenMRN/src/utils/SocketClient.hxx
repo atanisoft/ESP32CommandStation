@@ -359,15 +359,14 @@ private:
                 return wait_retry();
             case Attempt::RECONNECT:
                 return try_schedule_connect(SocketClientParams::CONNECT_RE,
-                    to_string(params_->last_host_name()), params_->last_port());
+                    params_->last_host_name(), params_->last_port());
             case Attempt::INITIATE_MDNS:
                 return start_mdns();
             case Attempt::CONNECT_MDNS:
                 return wait_and_connect_mdns();
             case Attempt::CONNECT_STATIC:
                 return try_schedule_connect(SocketClientParams::CONNECT_MANUAL,
-                    to_string(params_->manual_host_name()),
-                    params_->manual_port());
+                    params_->manual_host_name(), params_->manual_port());
         }
     }
 
@@ -462,8 +461,8 @@ private:
     {
         HASSERT(mdnsExecutor_);
         mdnsAddr_.reset();
-        string srv = to_string(params_->mdns_service_name());
-        string host = to_string(params_->mdns_host_name());
+        string srv = params_->mdns_service_name();
+        string host = params_->mdns_host_name();
         if (!srv.empty())
         {
             {

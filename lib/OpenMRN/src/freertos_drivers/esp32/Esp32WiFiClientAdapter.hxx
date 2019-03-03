@@ -39,6 +39,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
+namespace openmrn_arduino {
+
 class Esp32WiFiClientAdapter
 {
 public:
@@ -126,5 +128,9 @@ private:
     /// WiFiClient being wrapped.
     WiFiClient client_;
 };
+
+} // namespace openmrn_arduino
+
+using openmrn_arduino::Esp32WiFiClientAdapter;
 
 #endif /* _FREERTOS_DRIVERS_ARDUINO_ESP32WIFI_HXX_ */

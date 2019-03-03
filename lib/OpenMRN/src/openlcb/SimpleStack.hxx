@@ -61,7 +61,9 @@
 #include "utils/HubDeviceSelect.hxx"
 #endif
 
+namespace openmrn_arduino {
 class OpenMRN;
+}
 
 namespace openlcb
 {
@@ -258,7 +260,7 @@ public:
     /// (gone down and up).
     void restart_stack();
 
-    friend class ::OpenMRN;
+    friend class ::openmrn_arduino::OpenMRN;
 
     /// Donates the current thread to the executor. Never returns.
     /// @param delay_start if true, then prevents sending traffic to the bus

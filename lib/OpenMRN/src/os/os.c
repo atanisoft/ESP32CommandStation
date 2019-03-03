@@ -32,7 +32,9 @@
  * @date 13 August 2012
  */
 
+#ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#endif
 
 /// Forces one definition of each inline function to be compiled.
 #define OS_INLINE extern
@@ -76,6 +78,7 @@
 
 #include "utils/macros.h"
 #include "os/os.h"
+#include "os/os_private.h"
 
 /** default stdin */
 extern const char *STDIN_DEVICE;
@@ -110,22 +113,28 @@ long long rtcOffset = 0;
 #define _READ_WRITE_RETURN_TYPE ssize_t
 #endif
 
-int open(const char* b, int flags, ...) {
+int open(const char* b, int flags, ...)
+{
     return _open_r(_impure_ptr, b, flags, 0);
 }
-int close(int fd) {
+int close(int fd)
+{
     return _close_r(_impure_ptr, fd);
 }
-_READ_WRITE_RETURN_TYPE read(int fd, void* buf, size_t count) {
+_READ_WRITE_RETURN_TYPE read(int fd, void* buf, size_t count)
+{
     return _read_r(_impure_ptr, fd, buf, count);
 }
-_READ_WRITE_RETURN_TYPE write(int fd, const void* buf, size_t count) {
+_READ_WRITE_RETURN_TYPE write(int fd, const void* buf, size_t count)
+{
     return _write_r(_impure_ptr, fd, buf, count);
 }
-off_t lseek(int fd, off_t offset, int whence) {
+off_t lseek(int fd, off_t offset, int whence)
+{
     return _lseek_r(_impure_ptr, fd, offset, whence);
 }
-int fstat(int fd, struct stat* buf) {
+int fstat(int fd, struct stat* buf)
+{
     return _fstat_r(_impure_ptr, fd, buf);
 }
 
@@ -133,14 +142,23 @@ int fstat(int fd, struct stat* buf) {
 
 
 #if defined (__FreeRTOS__)
-/** Task list entriy */
+/// Task list entriy
 typedef struct task_list
 {
-    xTaskHandle task; /**< list entry data */
-    char * name; /**< name of task */
-    size_t unused; /**< number of bytes left unused in the stack */
-    struct task_list *next; /**< next link in the list */
+    xTaskHandle task; ///< list entry data
+    char * name; ///< name of task
+    size_t unused; ///< number of bytes left unused in the stack
+    struct task_list *next; ///< next link in the list
 } TaskList;
+
+/** Private metadata for starting a thread.
+ */
+typedef struct
+{
+    void *(*entry)(void*); /**< thread entry point */
+    void *arg; /**< argument to thread */
+    TaskList *taskList; /**< task list instance */
+} OSThreadStartPriv;
 
 /** List of all the tasks in the system */
 static TaskList *taskList = NULL;
@@ -164,14 +182,6 @@ void hw_init(void)
 void hw_postinit(void) __attribute__ ((weak));
 void hw_postinit(void)
 {
-}
-
-__attribute__ ((weak))
-struct _reent* allocate_reent(void)
-{
-    struct _reent* data = malloc(sizeof(struct _reent));
-    _REENT_INIT_PTR(data);
-    return data;
 }
 
 /** One time intialization routine
@@ -308,96 +318,122 @@ int pipe(int fildes[2])
 #if defined (__FreeRTOS__)
 extern const void* stack_malloc(unsigned long length);
 
-#endif  // FreeRTOS
-
-/** Entry point to a thread.
- * @param arg metadata for entering the thread
+/** Add a thread to the task list for tracking.
+ * @param task_new metadata for new task
  */
-#if defined (__FreeRTOS__)
-static void os_thread_start(void *arg)
+void add_thread_to_task_list(TaskList *task_new)
 {
-    ThreadPriv *priv = arg;
-    vTaskSetApplicationTaskTag(NULL, arg);
-    _impure_ptr = priv->reent;
-    (*priv->entry)(priv->arg);
+    vTaskSuspendAll();
+    task_new->next = taskList;
+    taskList = task_new;
+    xTaskResumeAll();
+}
 
+/** Delete a thread from the task list for tracking.
+ * @param task_handle FreeRTOS task handle to delete
+ */
+void del_thread_from_task_list(TaskHandle_t task_handle)
+{
     vTaskSuspendAll();
     TaskList *tl;
-    for (tl = taskList; tl != NULL && tl->task != xTaskGetCurrentTaskHandle();
-         tl = tl->next)
+    for (tl = taskList; tl != NULL && tl->task != task_handle; tl = tl->next)
     {
     }
     if (tl)
     {
         tl->task = NULL;
+        tl->name = NULL;
         tl->unused = DELETED_TASK_MAGIC;
     }
     xTaskResumeAll();
+}
 
-    free(priv->reent);
-    free(priv);
+/** Do any platform specific work at the beginning of os_thread_start().
+ */
+void __attribute__((weak)) os_thread_start_entry_hook(void)
+{
+}
+
+/** Do any platform specific work at the end of os_thread_start().
+ * @param thread return context
+ */
+void __attribute__((weak)) os_thread_start_exit_hook(void *context)
+{
     vTaskDelete(NULL);
+}
+
+/** Entry point to a thread.
+ * @param arg metadata for entering the thread
+ */
+void os_thread_start(void *arg)
+{
+    os_thread_start_entry_hook();
+
+    // add ourselves to the task list
+    OSThreadStartPriv *priv = (OSThreadStartPriv*)arg;
+    priv->taskList->task = xTaskGetCurrentTaskHandle();
+    add_thread_to_task_list(priv->taskList);
+
+#if OPENMRN_FEATURE_DEVICE_SELECT    
+    // init thread local storage to
+#if tskKERNEL_VERSION_MAJOR >= 9
+    // FreeRTOS 9.x+ implementation
+    vTaskSetThreadLocalStoragePointer(NULL, TLS_INDEX_SELECT_EVENT_BIT, NULL);
+#else
+    // legacy implementation uses task tag
+    vTaskSetApplicationTaskTag(NULL, NULL);
+#endif
+#endif
+
+    // execute thread entry point
+    void *result = (*priv->entry)(priv->arg);
+
+    // remove ourselves from task list
+    del_thread_from_task_list(xTaskGetCurrentTaskHandle());
+
+    // We purposesly do not free priv->taskList.  Though it is technically a
+    // leak, we keep it around for diagnostic purposes.
+
+    free(arg);
+
+    os_thread_start_exit_hook(result);
 }
 #endif
 
 #if !(defined(__EMSCRIPTEN__) || defined(ESP_NONOS) || defined(ARDUINO))
 
 #if defined(__FreeRTOS__)
+/** Create a thread helper.
+ * @param thread handle to the created thread
+ * @param name name of thread, NULL for an auto generated name
+ * @param priority priority of created thread, 0 means default,
+ *        lower numbers means lower priority, higher numbers mean higher priority
+ * @param stack_size size in bytes of the created thread's stack
+ * @param priv thread matadata parameter
+ * @return 0 upon success or error number upon failure
+ */
+int __attribute__((weak)) os_thread_create_helper(os_thread_t *thread,
+                                                  const char *name,
+                                                  int priority,
+                                                  size_t stack_size,
+                                                  void *priv)
+{
+    HASSERT(thread);
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-/** Static memory allocators for idle system thread.
- * @param pxIdleTaskTCBBuffer pointer to pointer to TCB
- * @param pxIdelTaskStackBuffer pointer to pointer to Stack
- * @param ulIdleTaskStackSize pointer to stack size
- */
-
-void vApplicationGetIdleTaskMemory(StaticTask_t **pxIdleTaskTCBBuffer,
-                                   StackType_t **pxIdleTaskStackBuffer,
-                                   uint32_t *ulIdleTaskStackSize);
-
-void vApplicationGetIdleTaskMemory(StaticTask_t **pxIdleTaskTCBBuffer,
-                                   StackType_t **pxIdleTaskStackBuffer,
-                                   uint32_t *ulIdleTaskStackSize)
-{
-    const uint32_t stksz = configMINIMAL_STACK_SIZE*sizeof(StackType_t);
-    *pxIdleTaskTCBBuffer = (StaticTask_t *) malloc(sizeof(StaticTask_t));
-    HASSERT(*pxIdleTaskTCBBuffer);
-    *pxIdleTaskStackBuffer = (StackType_t *) malloc(stksz);
-    HASSERT(*pxIdleTaskStackBuffer);
-    *ulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
-}
-
-/** Static memory allocators for timer system thread.
- * @param pxTimerTaskTCBBuffer pointer to pointer to TCB
- * @param pxIdelTaskStackBuffer pointer to pointer to Stack
- * @param ulTimerTaskStackSize pointer to stack size
- */
-
-void vApplicationGetTimeraskMemory(StaticTask_t **pxTimerTaskTCBBuffer,
-                                   StackType_t **pxTimerTaskStackBuffer,
-                                   uint32_t *ulTimerTaskStackSize);
-
-void vApplicationGetTimerTaskMemory(StaticTask_t **pxTimerTaskTCBBuffer,
-                                   StackType_t **pxTimerTaskStackBuffer,
-                                   uint32_t *ulTimerTaskStackSize)
-{
-    const uint32_t stksz = configMINIMAL_STACK_SIZE*sizeof(StackType_t);
-    *pxTimerTaskTCBBuffer = (StaticTask_t *) malloc(sizeof(StaticTask_t));
-    HASSERT(*pxTimerTaskTCBBuffer);
-    *pxTimerTaskStackBuffer = (StackType_t *) malloc(stksz);
-    HASSERT(*pxTimerTaskStackBuffer);
-    *ulTimerTaskStackSize = configMINIMAL_STACK_SIZE;
-}
-#endif // configSUPPORT_STATIC_ALLOCATION
-
-/** Add a thread to the task list for tracking.
- * @param task_new metadata for new task
- */
-static void add_thread_to_task_list(TaskList *task_new)
-{
-    vTaskSuspendAll();
-    task_new->next = taskList;
-    taskList = task_new;
-    xTaskResumeAll();
+    *thread = xTaskCreateStatic(os_thread_start, (const char *const)name,
+                                stack_size/sizeof(portSTACK_TYPE), priv,
+                                priority,
+                                (StackType_t *)stack_malloc(stack_size),
+                                (StaticTask_t *) malloc(sizeof(StaticTask_t)));
+    task_new->task = *thread;
+    task_new->name = (char*)pcTaskGetTaskName(*thread);
+#elif (configSUPPORT_DYNAMIC_ALLOCATION == 1)
+    xTaskCreate(os_thread_start, (const char *const)name,
+                stack_size/sizeof(portSTACK_TYPE), priv, priority, thread);
+#else
+#error FREERTOS version v9.0.0 or later required
+#endif
+    return 0;
 }
 #endif // FreeRTOS
 
@@ -412,8 +448,8 @@ static void add_thread_to_task_list(TaskList *task_new)
  * @return 0 upon success or error number upon failure
  */
 int os_thread_create(os_thread_t *thread, const char *name, int priority,
-                     size_t stack_size,
-                     void *(*start_routine) (void *), void *arg)
+                     size_t stack_size, void *(*start_routine) (void *),
+                     void *arg)
 {
     static unsigned int count = 0;
     char auto_name[10];
@@ -429,13 +465,15 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
     }
 
 #if defined (__FreeRTOS__)
-    ThreadPriv *priv = malloc(sizeof(ThreadPriv));
-    
+    OSThreadStartPriv *priv =
+        (OSThreadStartPriv*)malloc(sizeof(OSThreadStartPriv));
+
+    priv->taskList = (TaskList*)malloc(sizeof(TaskList));
+    priv->taskList->name = NULL;
     priv->entry = start_routine;
-    priv->selectEventBit = 0;
     priv->arg = arg;
-    priv->reent = allocate_reent();
-    
+
+    priv->taskList->unused = stack_size;
     if (priority == 0)
     {
         priority = configMAX_PRIORITIES / 2;
@@ -449,92 +487,20 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
     {
         stack_size = 2048;
     }
-
-    TaskList *task_new = malloc(sizeof(TaskList));
-    task_new->unused = stack_size;
     
-#if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (thread)
+    os_thread_t local_thread;
+    int result =  os_thread_create_helper(&local_thread, name, priority,
+                                          stack_size, priv);
+    if (result == 0)
     {
-        *thread = xTaskCreateStatic(os_thread_start,
-                                    (const char *const)name,
-                                    stack_size/sizeof(portSTACK_TYPE),
-                                    priv,
-                                    priority,
-                                    (StackType_t *)stack_malloc(stack_size),
-                                    (StaticTask_t *) malloc(sizeof(StaticTask_t)));
-        task_new->task = *thread;
-        task_new->name = (char*)pcTaskGetTaskName(*thread);
+        priv->taskList->task = local_thread;
+        priv->taskList->name = (char*)pcTaskGetTaskName(local_thread);
+        if (thread)
+        {
+            *thread = local_thread;
+        }
     }
-    else
-    {
-        xTaskHandle task_handle;
-        task_handle = xTaskCreateStatic(os_thread_start,
-                                        (const char *const)name,
-                                        stack_size/sizeof(portSTACK_TYPE),
-                                        priv,
-                                        priority,
-                                        (StackType_t *) stack_malloc(stack_size),
-                                        (StaticTask_t *) malloc(sizeof(StaticTask_t)));
-        task_new->task = task_handle;
-        task_new->name = (char*)pcTaskGetTaskName(task_handle);
-    }
-#elif (configSUPPORT_DYNAMIC_ALLOCATION == 1)
-    if (thread)
-    {
-        xTaskCreate(os_thread_start,
-                    (const char *const)name,
-                    stack_size/sizeof(portSTACK_TYPE),
-                    priv,
-                    priority,
-                    thread);
-        task_new->task = *thread;
-        task_new->name = (char*)pcTaskGetTaskName(*thread);
-    }
-    else
-    {
-        xTaskHandle task_handle;
-        xTaskCreate(os_thread_start,
-                    (const char *const)name,
-                    stack_size/sizeof(portSTACK_TYPE),
-                    priv,
-                    priority,
-                    &task_handle);
-        task_new->task = task_handle;
-        task_new->name = (char*)pcTaskGetTaskName(task_handle);
-    }
-#else  // prior to v9.0.0
-    if (thread)
-    {
-        xTaskGenericCreate(os_thread_start,
-                           (const char *const)name,
-                           stack_size/sizeof(portSTACK_TYPE),
-                           priv,
-                           priority,
-                           (xTaskHandle*)thread,
-                           (long unsigned int*)stack_malloc(stack_size),
-                           NULL);
-        task_new->task = *thread;
-        task_new->name = (char*)pcTaskGetTaskName(*thread);
-    }
-    else
-    {
-        xTaskHandle task_handle;
-        xTaskGenericCreate(os_thread_start,
-                           (const char *const)name,
-                           stack_size/sizeof(portSTACK_TYPE),
-                           priv,
-                           priority,
-                           (xTaskHandle*)&task_handle,
-                           (long unsigned int*) stack_malloc(stack_size),
-                           NULL);
-        task_new->task = task_handle;
-        task_new->name = (char*)pcTaskGetTaskName(task_handle);
-    }
-#endif
-    add_thread_to_task_list(task_new);
-
-    return 0;
+    return result;
 #else // not freertos
     pthread_attr_t attr;
 
@@ -549,7 +515,8 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
         return result;
     }
 
-#if !defined(__linux__) && !defined(__MACH__) /* Linux allocates stack as needed */
+/* Linux/Unix allocates stack as needed */
+#if !defined(__linux__) && !defined(__MACH__)
     struct sched_param sched_param;
     result = pthread_attr_setstacksize(&attr, stack_size);
     if (result != 0)
@@ -579,7 +546,10 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
     result = pthread_create(thread, &attr, start_routine, arg);
 
 #if !defined (__MINGW32__) && !defined (__MACH__)
-    if (!result) pthread_setname_np(*thread, name);
+    if (!result)
+    {
+        pthread_setname_np(*thread, name);
+    }
 #endif
 
     return result;
@@ -760,7 +730,9 @@ int usleep(useconds_t usec)
 
 void abort(void)
 {
-#if defined(TARGET_LPC2368) || defined(TARGET_LPC11Cxx) || defined(TARGET_LPC1768) || defined(GCC_ARMCM3) || defined (GCC_ARMCM0) || defined(TARGET_PIC32MX)
+#if defined(TARGET_LPC2368) || defined(TARGET_LPC11Cxx) || \
+    defined(TARGET_LPC1768) || defined(GCC_ARMCM3) || defined (GCC_ARMCM0) || \
+    defined(TARGET_PIC32MX)
     diewith(BLINK_DIE_ABORT);
 #endif
     for (;;)
@@ -861,7 +833,8 @@ void vApplicationIdleHook( void )
     {
         if (tl->task)
         {
-            tl->unused = uxTaskGetStackHighWaterMark(tl->task) * sizeof(portSTACK_TYPE);
+            tl->unused = uxTaskGetStackHighWaterMark(tl->task) *
+                         sizeof(portSTACK_TYPE);
         }
         xTaskResumeAll();
         vTaskSuspendAll();
@@ -870,16 +843,19 @@ void vApplicationIdleHook( void )
 }
 
 #ifdef TARGET_PIC32MX
-static void __attribute__((nomips16)) os_yield_trampoline(void) {
+static void __attribute__((nomips16)) os_yield_trampoline(void)
+{
     taskYIELD();
 }
 
-void __attribute__((nomips16)) os_isr_exit_yield_test(int woken) {
+void __attribute__((nomips16)) os_isr_exit_yield_test(int woken)
+{
    portEND_SWITCHING_ISR(woken); 
 }
 
 #else
-static inline void __attribute__((always_inline)) os_yield_trampoline(void) {
+static inline void __attribute__((always_inline)) os_yield_trampoline(void)
+{
     taskYIELD();
 }
 #endif
@@ -888,28 +864,9 @@ static inline void __attribute__((always_inline)) os_yield_trampoline(void) {
  * @param arg unused argument
  * @return NULL;
  */
-void main_thread(void *arg)
+static void *main_thread(void *unused)
 {
-    ThreadPriv *priv = arg;
-    char *argv[2] = {"nmranet", NULL};
-    vTaskSetApplicationTaskTag(NULL, arg);
-    _impure_ptr = priv->reent;
-
-    /* setup the monitoring entries for the timer and idle tasks */
-#if configUSE_TIMERS
-    TaskList *task_new = malloc(sizeof(TaskList) * 2);
-    task_new->task = xTimerGetTimerDaemonTaskHandle();
-    task_new->name = (char*)pcTaskGetTaskName(task_new->task);
-    task_new->unused = uxTaskGetStackHighWaterMark(task_new->task);
-    add_thread_to_task_list(task_new);
-    ++task_new;
-#else
-    TaskList *task_new = malloc(sizeof(TaskList));
-#endif
-    task_new->task = xTaskGetIdleTaskHandle();
-    task_new->name = (char*)pcTaskGetTaskName(task_new->task);
-    task_new->unused = uxTaskGetStackHighWaterMark(task_new->task);
-    add_thread_to_task_list(task_new);
+    char *argv[2] = {(char*)"openmrn", NULL};
 
     /* Allow any library threads to run that must run ahead of main */
     os_yield_trampoline();
@@ -922,6 +879,7 @@ void main_thread(void *arg)
     // If the main thread returns, FreeRTOS usually crashes the CPU in a
     // hard-to-debug state. Let's avoid that.
     abort();
+    return NULL;
 }
 #endif
 
@@ -949,23 +907,6 @@ int main(int argc, char *argv[])
     /* initialize the processor hardware */
     hw_init();
 
-    ThreadPriv *priv = malloc(sizeof(ThreadPriv));
-    xTaskHandle task_handle;
-    int priority;
-    priv->reent = _impure_ptr;
-    priv->selectEventBit = 0;
-    priv->entry = NULL;
-    priv->arg = NULL;
-    
-    if (config_main_thread_priority() == 0xdefa01)
-    {
-        priority = configMAX_PRIORITIES / 2;
-    }
-    else
-    {
-        priority = config_main_thread_priority();
-    }
-    
 #ifndef TARGET_LPC11Cxx
     /* stdin */
     if (open(STDIN_DEVICE, O_RDWR) < 0)
@@ -984,30 +925,18 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    /* start the main thread */
-#if (configSUPPORT_STATIC_ALLOCATION == 1)
-    task_handle = xTaskCreateStatic(main_thread, (char *)"thread.main",
-                                    config_main_thread_stack_size() / sizeof(portSTACK_TYPE), priv,
-                                    priority,
-                                    (StackType_t *)stack_malloc(config_main_thread_stack_size()),
-                                    (StaticTask_t *) malloc(sizeof(StaticTask_t)));
-#elif (configSUPPORT_DYNAMIC_ALLOCATION == 1)
-    xTaskCreate(main_thread, (char *)"thread.main",
-                config_main_thread_stack_size() / sizeof(portSTACK_TYPE), priv,
-                priority,
-                &task_handle);
-#else
-    xTaskGenericCreate(main_thread, (char *)"thread.main",
-                       config_main_thread_stack_size() / sizeof(portSTACK_TYPE), priv,
-                       priority, &task_handle,
-                       (long unsigned int *)stack_malloc(config_main_thread_stack_size()),
-                       NULL);
-#endif
-    TaskList *task_new = malloc(sizeof(TaskList));
-    task_new->task = task_handle;
-    task_new->unused = config_main_thread_stack_size();
-    task_new->name = "thread.main";
-    add_thread_to_task_list(task_new);
+    int priority;
+    if (config_main_thread_priority() == 0xdefa01)
+    {
+        priority = configMAX_PRIORITIES / 2;
+    }
+    else
+    {
+        priority = config_main_thread_priority();
+    }
+
+    os_thread_create(NULL, "thread.main", priority,
+                     config_main_thread_stack_size(), main_thread, NULL);
 
     vTaskStartScheduler();
 #else

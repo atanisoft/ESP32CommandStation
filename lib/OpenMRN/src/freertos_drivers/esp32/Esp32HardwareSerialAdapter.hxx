@@ -38,6 +38,8 @@
 
 #include <HardwareSerial.h>
 
+namespace openmrn_arduino {
+
 class Esp32HardwareSerialAdapter
 {
 public:
@@ -83,5 +85,9 @@ private:
     /// HardwareSerial device being wrapped.
     HardwareSerial &serial_;
 };
+
+} // namespace openmrn_arduino
+
+using openmrn_arduino::Esp32HardwareSerialAdapter;
 
 #endif /* _FREERTOS_DRIVERS_ESP32_ESP32SERIAL_HXX_ */

@@ -92,10 +92,11 @@ extern const char* g_death_file;
 #elif defined(ESP_NONOS) || defined(ARDUINO)
 
 #include <stdio.h>
+#include <assert.h>
 
-#define HASSERT(x) do { if (!(x)) { printf("Assertion failed in file " __FILE__ " line %d: assert(%s)", __LINE__, #x); g_death_file = __FILE__; g_death_lineno = __LINE__; abort();} } while(0)
+#define HASSERT(x) do { if (!(x)) { printf("Assertion failed in file " __FILE__ " line %d: assert(%s)\n", __LINE__, #x); g_death_file = __FILE__; g_death_lineno = __LINE__; assert(0); abort();} } while(0)
 
-#define DIE(MSG) do { printf("Crashed in file " __FILE__ " line %d: " MSG, __LINE__); abort(); } while(0)
+#define DIE(MSG) do { printf("Crashed in file " __FILE__ " line %d: " MSG "\n", __LINE__); assert(0); abort(); } while(0)
 
 #else
 
@@ -224,6 +225,14 @@ extern const char* g_death_file;
 
 /// Macro to signal a function that the result must be used.
 #define MUST_USE_RESULT __attribute__((__warn_unused_result__))
+
+#ifdef ESP32
+/// Workaround for broken header in endian.h for the ESP32
+#include <endian.h>
+#ifndef __bswap64
+#define __bswap64(x) __bswap_64(x)
+#endif
+#endif
 
 
 #endif // _UTILS_MACROS_H_

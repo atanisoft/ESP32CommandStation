@@ -180,7 +180,7 @@ public:
         for (; nextPinToPoll_ < size_; ++nextPinToPoll_)
         {
             auto i = nextPinToPoll_;
-            if (pins_[i]->direction() == Gpio::Direction::OUTPUT)
+            if (pins_[i]->direction() == Gpio::Direction::DOUTPUT)
             {
                 continue;
             }
@@ -225,14 +225,14 @@ public:
             uint8_t action = cfg_ref.action().read(fd);
             if (action == (uint8_t)PCConfig::ActionConfig::OUTPUT)
             {
-                pins_[i]->set_direction(Gpio::Direction::OUTPUT);
+                pins_[i]->set_direction(Gpio::Direction::DOUTPUT);
                 producedEvents_[i * 2] = 0;
                 producedEvents_[i * 2 + 1] = 0;
             }
             else
             {
                 uint8_t param = cfg_ref.debounce().read(fd);
-                pins_[i]->set_direction(Gpio::Direction::INPUT);
+                pins_[i]->set_direction(Gpio::Direction::DINPUT);
                 debouncers_[i].reset_options(param);
                 debouncers_[i].initialize(pins_[i]->read());
                 producedEvents_[i * 2] = cfg_event_off;
@@ -279,7 +279,7 @@ public:
             return;
         }
         unsigned pin = registry_entry.user_arg >> 1;
-        if (pins_[pin]->direction() == Gpio::Direction::INPUT)
+        if (pins_[pin]->direction() == Gpio::Direction::DINPUT)
         {
             SendProducerIdentified(registry_entry, event, done);
         }
@@ -298,7 +298,7 @@ public:
             return;
         }
         unsigned pin = registry_entry.user_arg >> 1;
-        if (pins_[pin]->direction() == Gpio::Direction::OUTPUT)
+        if (pins_[pin]->direction() == Gpio::Direction::DOUTPUT)
         {
             SendConsumerIdentified(registry_entry, event, done);
         }
@@ -313,7 +313,7 @@ public:
             return;
         }
         unsigned pin = registry_entry.user_arg >> 1;
-        if (pins_[pin]->direction() == Gpio::Direction::INPUT)
+        if (pins_[pin]->direction() == Gpio::Direction::DINPUT)
         {
             SendProducerIdentified(registry_entry, event, done);
         }
@@ -328,7 +328,7 @@ public:
             return;
         }
         const Gpio *pin = pins_[registry_entry.user_arg >> 1];
-        if (pin->direction() == Gpio::Direction::OUTPUT)
+        if (pin->direction() == Gpio::Direction::DOUTPUT)
         {
             const bool is_on = (registry_entry.user_arg & 1);
             pin->write(is_on);

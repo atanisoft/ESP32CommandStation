@@ -35,6 +35,13 @@
 class NetworkState
 {
 public:
+    enum State
+    {
+        VALID    = 0, ///< state is "valid"
+        INVALID  = 1, ///< state is "invalid"
+        UNKNOWN  = 3, ///< state is "unknown"
+    };
+
     /// Destructor.
     virtual ~NetworkState()
     {
@@ -57,8 +64,8 @@ public:
     virtual void set_state(bool state, Notifiable *done) = 0;
 
     /// Get the current state.
-    /// @return true if active, else false
-    virtual bool get_state() = 0;
+    /// @return VALID, INVALID, or UNKNOWN
+    virtual State get_state() = 0;
 
     /// Get an indication as to if the state is known.
     /// @return true if known, else false

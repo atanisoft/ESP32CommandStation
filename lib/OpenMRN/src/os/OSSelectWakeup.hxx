@@ -36,18 +36,21 @@
 
 #include <unistd.h>
 
+#include "openmrn_features.h"
 #include "utils/Atomic.hxx"
 #include "os/os.h"
 
-#ifdef __FreeRTOS__
+#if OPENMRN_FEATURE_DEVICE_SELECT
 #include "Devtab.hxx"
-#else
+#endif
+
+#if OPENMRN_HAVE_PSELECT
 #include <signal.h>
 #endif
 
 #ifdef __WINNT__
 #include <winsock2.h>
-#else
+#elif OPENMRN_HAVE_SELECT
 #include <sys/select.h>
 #endif
 
@@ -64,8 +67,16 @@ public:
     {
     }
 
+    ~OSSelectWakeup()
+    {
+#ifdef ESP32
+        esp_deallocate_vfs_fd();
+#endif
+    }
+
     /// @return the thread ID that we are engaged upon.
-    os_thread_t main_thread() {
+    os_thread_t main_thread()
+    {
         return thread_;
     }
 
@@ -75,10 +86,12 @@ public:
     {
         // Gets the current thread.
         thread_ = os_thread_self();
-#ifdef __FreeRTOS__
+#ifdef ESP32
+        esp_allocate_vfs_fd();
+#endif
+#if OPENMRN_FEATURE_DEVICE_SELECT
         Device::select_insert(&selectInfo_);
-#elif defined(ESP_NONOS) || defined(ARDUINO)
-#elif !defined(__WINNT__)
+#elif OPENMRN_HAVE_PSELECT
         // Blocks SIGUSR1 in the signal mask of the current thread.
         sigset_t usrmask;
         HASSERT(!sigemptyset(&usrmask));
@@ -107,20 +120,23 @@ public:
         }
         if (need_wakeup)
         {
-#ifdef __FreeRTOS__
+#if OPENMRN_FEATURE_DEVICE_SELECT
             HASSERT(selectInfo_.event);
             // We cannot destroy the thread ID in the local object.
             Device::SelectInfo copy(selectInfo_);
             Device::select_wakeup(&copy);
-#elif defined(__WINNT__) || defined(ESP_NONOS) || defined(ARDUINO)
-#else
+#elif OPENMRN_HAVE_PSELECT
             pthread_kill(thread_, WAKEUP_SIG);
+#elif defined(ESP32)
+            esp_wakeup();
+#elif !defined(OPENMRN_FEATURE_SINGLE_THREADED)
+            DIE("need wakeup code");
 #endif
         }
     }
 
     /// Called from the main thread after being woken up. Enables further
-    /// wakeup signals to be colledted.
+    /// wakeup signals to be collected.
     void clear_wakeup()
     {
         pendingWakeup_ = false;
@@ -167,12 +183,12 @@ public:
             }
             else
             {
-#ifdef __FreeRTOS__
+#if OPENMRN_FEATURE_DEVICE_SELECT
                 Device::select_clear();
 #endif
             }
         }
-#ifdef __FreeRTOS__
+#if OPENMRN_FEATURE_DEVICE_SELECT
         int ret =
             Device::select(nfds, readfds, writefds, exceptfds, deadline_nsec);
         if (!ret && pendingWakeup_)
@@ -180,18 +196,32 @@ public:
             ret = -1;
             errno = EINTR;
         }
-#elif defined(__WINNT__) || defined(ESP_NONOS) || defined(ESP32)
-        struct timeval timeout;
-        timeout.tv_sec = deadline_nsec / 1000000000;
-        timeout.tv_usec = (deadline_nsec / 1000) % 1000000;
-        int ret =
-            ::select(nfds, readfds, writefds, exceptfds, &timeout);
-#else
+#elif OPENMRN_HAVE_PSELECT
         struct timespec timeout;
         timeout.tv_sec = deadline_nsec / 1000000000;
         timeout.tv_nsec = deadline_nsec % 1000000000;
         int ret =
             ::pselect(nfds, readfds, writefds, exceptfds, &timeout, &origMask_);
+#elif OPENMRN_HAVE_SELECT
+#ifdef ESP32
+        fd_set newexcept;
+        if (!exceptfds)
+        {
+            FD_ZERO(&newexcept);
+            exceptfds = &newexcept;
+        }
+        FD_SET(vfsFd_, exceptfds);
+        if (vfsFd_ >= nfds) {
+            nfds = vfsFd_ + 1;
+        }
+#endif //ESP32
+        struct timeval timeout;
+        timeout.tv_sec = deadline_nsec / 1000000000;
+        timeout.tv_usec = (deadline_nsec / 1000) % 1000000;
+        int ret =
+            ::select(nfds, readfds, writefds, exceptfds, &timeout);
+#elif !defined(OPENMRN_FEATURE_SINGLE_THREADED)
+        #error no select implementation in multi threaded OS.
 #endif
         {
             AtomicHolder l(this);
@@ -202,7 +232,25 @@ public:
     }
 
 private:
-#if !defined(__FreeRTOS__) && !defined(__WINNT__)
+#ifdef ESP32
+    void esp_allocate_vfs_fd();
+    void esp_deallocate_vfs_fd();
+    void esp_wakeup();
+public:
+    void esp_start_select(void* signal_sem);
+    void esp_end_select();
+
+private:
+    /// FD for waking up select in ESP32 VFS implementation.
+    int vfsFd_{-1};
+    /// Semaphore for waking up LWIP select.
+    void* lwipSem_{nullptr};
+    /// Semaphore for waking up ESP32 select.
+    void* espSem_{nullptr};
+    /// true if we have already woken up select. protected by Atomic *this.
+    bool woken_{true};
+#endif
+#if OPENMRN_HAVE_PSELECT
     /** This signal is used for the wakeup kill in a pthreads OS. */
     static const int WAKEUP_SIG = SIGUSR1;
 #endif
@@ -212,9 +260,10 @@ private:
     bool inSelect_;
     /// ID of the main thread we are engaged upon.
     os_thread_t thread_;
-#if defined(__FreeRTOS__)
+#if OPENMRN_FEATURE_DEVICE_SELECT
     Device::SelectInfo selectInfo_;
-#elif !defined(__WINNT__)
+#endif
+#if OPENMRN_HAVE_PSELECT
     /// Original signal mask. Used for pselect to reenable the signal we'll be
     /// using to wake up.
     sigset_t origMask_;

@@ -51,7 +51,7 @@
 // both WiFi and CAN interfaces.
 
 #define USE_WIFI
-// #define USE_CAN
+//#define USE_CAN
 
 // Uncomment the line below to have this node advertise itself via mDNS as a
 // hub. When this is enabled, other devices can find and connect to this node
@@ -336,6 +336,7 @@ void setup()
 
     // Start the OpenMRN stack
     openmrn.begin();
+    openmrn.start_executor_thread();
 
 #if defined(PRINT_PACKETS)
     // Dump all packets as they are sent/received.

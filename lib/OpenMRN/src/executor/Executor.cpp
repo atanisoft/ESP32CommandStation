@@ -163,6 +163,7 @@ void ExecutorBase::sync_run(std::function<void()> fn)
 
 bool ExecutorBase::loop_once()
 {
+    ScopedSetThreadHandle h(this);
     unsigned priority;
     activeTimers_.get_next_timeout();
     Executable* msg = next(&priority);
@@ -183,6 +184,7 @@ bool ExecutorBase::loop_once()
 }
 
 long long ICACHE_FLASH_ATTR  ExecutorBase::loop_some() {
+    ScopedSetThreadHandle h(this);
     for (int i = 12; i > 0; --i) {
         Executable *msg = nullptr;
         unsigned priority = UINT_MAX;
@@ -212,8 +214,8 @@ long long ICACHE_FLASH_ATTR  ExecutorBase::loop_some() {
 
 void executor_loop_some(void* arg)
 {
-  ExecutorBase* b = static_cast<ExecutorBase*>(arg);
-  while (b->loop_once());
+    ExecutorBase* b = static_cast<ExecutorBase*>(arg);
+    while (b->loop_once());
 }
 
 void *ExecutorBase::entry()
@@ -225,7 +227,7 @@ void *ExecutorBase::entry()
     return nullptr;
 }
 
-#elif defined(ARDUINO)
+#elif defined(ARDUINO) && !defined(ESP32)
 
 void *ExecutorBase::entry()
 {

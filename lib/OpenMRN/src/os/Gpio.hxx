@@ -67,8 +67,8 @@ public:
     };
 
     /** Defines the options for GPIO direction. This enum must always be used
-     * fully qualified (i.e. Gpio::Direction::INPUT and
-     * Gpio::Direction::OUTPUT). */
+     * fully qualified (i.e. Gpio::Direction::DINPUT and
+     * Gpio::Direction::DOUTPUT). */
     enum class Direction
     {
         DINPUT,

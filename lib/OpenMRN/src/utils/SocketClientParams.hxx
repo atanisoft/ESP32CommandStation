@@ -83,17 +83,17 @@ public:
 
     /// @return the service name to use for mDNS lookup; nullptr or empty
     /// string if mdns is not to be used.
-    virtual const char *mdns_service_name() = 0;
+    virtual string mdns_service_name() = 0;
 
     /// @return null or empty string if any mdns server is okay to connect
     /// to. If nonempty, then only an mdns server will be chosen that has the
     /// specific host name.
-    virtual const char *mdns_host_name() = 0;
+    virtual string mdns_host_name() = 0;
 
     /// @return null or empty string if no manual address is
     /// configured. Otherwise a dotted-decimal IP address or a DNS hostname
     /// (not mDNS) for manual address to connect to.
-    virtual const char *manual_host_name() = 0;
+    virtual string manual_host_name() = 0;
 
     /// @return port number to use for manual connection.
     virtual int manual_port() = 0;
@@ -105,7 +105,7 @@ public:
     /// @return the last successfully used IP address, as dotted
     /// decimal. Nullptr or empty if no successful connection has ever been
     /// made.
-    virtual const char *last_host_name() = 0;
+    virtual string last_host_name() = 0;
 
     /// @return the last successfully used port number.
     virtual int last_port() = 0;
@@ -182,25 +182,25 @@ public:
 
     /// @return the service name to use for mDNS lookup; nullptr or empty
     /// string if mdns is not to be used.
-    const char *mdns_service_name() override
+    string mdns_service_name() override
     {
-        return nullptr;
+        return string();
     }
 
     /// @return null or empty string if any mdns server is okay to connect
     /// to. If nonempty, then only an mdns server will be chosen that has the
     /// specific host name.
-    const char *mdns_host_name() override
+    string mdns_host_name() override
     {
-        return nullptr;
+        return string();
     }
 
     /// @return null or empty string if no manual address is
     /// configured. Otherwise a dotted-decimal IP address or a DNS hostname
     /// (not mDNS) for manual address to connect to.
-    const char *manual_host_name() override
+    string manual_host_name() override
     {
-        return nullptr;
+        return string();
     }
 
     /// @return port number to use for manual connection.
@@ -219,9 +219,9 @@ public:
     /// @return the last successfully used IP address, as dotted
     /// decimal. Nullptr or empty if no successful connection has ever been
     /// made.
-    const char *last_host_name() override
+    string last_host_name() override
     {
-        return nullptr;
+        return string();
     }
 
     /// @return the last successfully used port number.
@@ -238,17 +238,17 @@ class DefaultSocketClientParams : public EmptySocketClientParams
 public:
     /// @return the service name to use for mDNS lookup; nullptr or empty
     /// string if mdns is not to be used.
-    const char *mdns_service_name() override
+    string mdns_service_name() override
     {
-        return mdnsService_.c_str();
+        return mdnsService_;
     }
 
     /// @return null or empty string if no manual address is
     /// configured. Otherwise a dotted-decimal IP address or a DNS hostname
     /// (not mDNS) for manual address to connect to.
-    const char *manual_host_name() override
+    string manual_host_name() override
     {
-        return staticHost_.c_str();
+        return staticHost_;
     }
 
     /// @return port number to use for manual connection.

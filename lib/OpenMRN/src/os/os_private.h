@@ -1,5 +1,5 @@
-/** \copyright
- * Copyright (c) 2018, Balazs Racz
+/** @copyright
+ * Copyright (c) 2018, Stuart W Baker
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,28 +24,28 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file OpenMRN.cpp
- * 
- * Implementation that needs to be compiled for the Arduino.
+ * @file os_private.h
+ * This file is a bit of a hack and should only used under extreme caution.
+ * its purpose is to allow alternate niche platform support for the OS API's
  *
- * @author Balazs Racz
- * @date 24 July 2018
+ * @author Stuart W. Baker
+ * @date 29 December 2018
  */
 
-#include <OpenMRN.h>
+#ifndef _OS_OS_PRIVATE_H_
+#define _OS_OS_PRIVATE_H_
 
-#ifdef HAVE_FILESYSTEM
-#include "utils/FileUtils.hxx"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-extern const char DEFAULT_WIFI_NAME[] __attribute__((weak)) = "defaultap";
-extern const char DEFAULT_PASSWORD[] __attribute__((weak)) = "defaultpw";
+#if defined (__FreeRTOS__)
+extern void os_thread_start(void *arg);
+#endif // __FreeRTOS__
 
-namespace openmrn_arduino {
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
-OpenMRN::OpenMRN(openlcb::NodeID node_id)
-{
-    init(node_id);
-}
+#endif // _OS_OS_PRIVATE_H_
 
-} // namespace openmrn_arduino

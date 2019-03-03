@@ -43,6 +43,8 @@
 #include <driver/gpio.h>
 #include <esp_task_wdt.h>
 
+namespace openmrn_arduino {
+
 /// ESP32 CAN bus status strings, used for periodic status reporting
 static const char *ESP32_CAN_STATUS_STRINGS[] = {
     "STOPPED",               // CAN_STATE_STOPPED
@@ -342,5 +344,9 @@ private:
     }
     DISALLOW_COPY_AND_ASSIGN(Esp32HardwareCan);
 };
+
+} // namespace openmrn_arduino
+
+using openmrn_arduino::Esp32HardwareCan;
 
 #endif /* _FREERTOS_DRIVERS_ARDUINO_ESP32HWCAN_HXX_ */
