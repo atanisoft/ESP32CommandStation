@@ -8,28 +8,35 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 #### DCC System
 
-- [x] fix signal generation so it doesn't crash up when spi_flash disables cache. This is the hardest and biggest issue by far and needs to be fixed somehow but I haven't found a working solution yet. It will very likely require a ground up re-write with streaming packet data to the ISR.
+- [x] fix signal generation so it doesn't crash up when spi_flash disables cache.
 
 #### LCC Integration
 
 - [ ] Traction proxy impl.
 - [ ] Broadcast events for turnout state change.
 - [ ] Discard turnout events when turnout already in expected state (drop duplicate events).
+- [ ] Integrate the WiFiConfiguration CDI element.
 
 #### Nextion Interface
 
-- [ ] fix screen type detection
+- [x] fix screen type detection.
+- [x] lock to title screen until WiFi connects.
 
 #### Web Interface
 - [x] Add space in footer for clock so date/time are not smashed together.
+
+#### Configuration Persistence
+- [ ] Split up monolithic json files to instead be individual files in unique directories.
+- [ ] consider switch to binary format vs json format to save space on FS
 
 ## Future planning:
 The entries below are not tracked to a specific release or in any particular priority order.
 
 ### DCC System
 
+- [ ] implement RailCom cut-out for OPS track.
 - [ ] continue sending eStop packet until eStop is cleared.
-- [ ] add support for RailCom cut-out.
+- [ ] implement BG task for prog track.
 
 ### Config
 
@@ -41,18 +48,22 @@ The entries below are not tracked to a specific release or in any particular pri
 
 - [ ] auto-refresh of status pages
 - [ ] add busy/wait spinner for when data is loading (or being refreshed) in the web interface
-- [ ] investigate tcp/ip hang (AsyncTCP LwIP crash?)
+- [ ] investigate tcp/ip hang (AsyncTCP LwIP crash? consider replacements for AsyncWebServer?)
 - [ ] WiThrottle support (https://github.com/atanisoft/DCCppESP32/issues/15)
 
 ### LCC Integration
 
 - [ ] adjust InfoScreen LCC details so they are actually useful, right now it is a placeholder.
+- [ ] implement CV memory space.
 
 ### Nextion Interface
 
 - [ ] auto turn on of track power from Nextion when interacting with loco/turnouts.
 - [ ] add notification of turnout state change when changed external to the nextion code
 - [ ] replace Routes page with a Setup page which will include route creation
+- [ ] implement automatic resolver for component id during page initialization so we can drop component IDs from the argument list
+- [ ] move screen detection code into NeoNextion lib.
+- [ ] add support for Nextion Upload via OTA in NeoNextion.
 
 ### OTA
 
