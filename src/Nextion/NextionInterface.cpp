@@ -45,7 +45,6 @@ Nextion nextion(Serial);
 
 TaskHandle_t _nextionTaskHandle;
 
-constexpr uint16_t TITLE_SCREEN_TRANSITION_DELAY = 2500;
 constexpr TickType_t NEXTION_INTERFACE_UPDATE_INTERVAL = pdMS_TO_TICKS(50);
 constexpr uint8_t NEXTION_INTERFACE_TASK_PRIORITY = 2;
 constexpr uint16_t NEXTION_INTERFACE_TASK_STACK_SIZE = DEFAULT_THREAD_STACKSIZE;
@@ -59,21 +58,6 @@ DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   nullptr
 };
 
-NEXTION_DEVICE_TYPE nextionDeviceType = NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY;
-
-void nextionTask(void *param) {
-  nextionPages[TITLE_PAGE]->display();
-  bool showingTitlePage = true;
-  uint64_t startupTransition = millis() + TITLE_SCREEN_TRANSITION_DELAY;
-  while(true) {
-    if(showingTitlePage && startupTransition <= millis()) {
-      showingTitlePage = false;
-      nextionPages[THROTTLE_PAGE]->display();
-    }
-    nextion.poll();
-    vTaskDelay(NEXTION_INTERFACE_UPDATE_INTERVAL);
-  }
-}
 
 static constexpr char const * NEXTION_DISPLAY_TYPE_STRINGS[] = {
   "basic 3.2\"",
@@ -84,6 +68,18 @@ static constexpr char const * NEXTION_DISPLAY_TYPE_STRINGS[] = {
   "enhanced 5.0\"",
   "Unknown"
 };
+
+NEXTION_DEVICE_TYPE nextionDeviceType = NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY;
+
+void nextionTask(void *param) {
+  nextionPages[TITLE_PAGE]->display();
+  static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(3, "Detected Screen type:");
+  static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(4, NEXTION_DISPLAY_TYPE_STRINGS[nextionDeviceType]);
+  while(true) {
+    nextion.poll();
+    vTaskDelay(NEXTION_INTERFACE_UPDATE_INTERVAL);
+  }
+}
 
 void nextionInterfaceInit() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init Nextion"));
@@ -124,8 +120,12 @@ void nextionInterfaceInit() {
         nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_5_DISPLAY;
       } else if(parts[2].compare(0, 7, "NX4832T") == 0) {
         nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY;
+      } else if(parts[2].compare(0, 7, "NX8048K") == 0) {
+        nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_5_DISPLAY;
+      } else if(parts[2].compare(0, 7, "NX8048T") == 0) {
+        nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY;
       } else {
-        log_w("Unreognized Nextion Device model: %s", parts[2].c_str());
+        log_w("Unrecognized Nextion Device model: %s", parts[2].c_str());
       }
       log_i("Device type: %s", NEXTION_DISPLAY_TYPE_STRINGS[nextionDeviceType]);
       log_i("Firmware Version: %s", parts[3].c_str());

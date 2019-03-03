@@ -99,15 +99,20 @@ public:
       NextionText(nextion, TITLE_PAGE, 7, "Status4"),
       NextionText(nextion, TITLE_PAGE, 8, "Status5")
      } {}
-  virtual void refreshPage() {}
+  void refreshPage() override {}
   void setStatusText(int line, String text) {
     _statusText[line].setText(text);
   }
+  void clearStatusText() {
+    for(auto line : _statusText) {
+      line.setText("");
+    }
+  }
 protected:
-  virtual void init() {
+  void init() override {
     _versionText.setText(VERSION);
   }
-  virtual void displayPage() {}
+  void displayPage() override {}
 private:
   NextionText _versionText;
   NextionText _statusText[5];
@@ -128,10 +133,10 @@ public:
   TurnoutOrientation getOrientation() {
     return (TurnoutOrientation)_orientation;
   }
-  virtual void refreshPage() {}
+  void refreshPage() override {}
 protected:
-  virtual void init() {}
-  virtual void displayPage();
+  void init() override {}
+  void displayPage() override;
 private:
   void refreshOrientationButton();
   NextionButton _buttons[10];
@@ -161,13 +166,13 @@ public:
   void decreaseLocoSpeed();
   void increaseLocoSpeed();
   void setLocoSpeed(uint8_t speed);
-  virtual void refreshPage() {
+  void refreshPage() override {
     refreshLocomotiveDetails();
   }
   void invalidateLocomotive(uint32_t);
 protected:
-  virtual void init();
-  virtual void displayPage();
+  void init() override;
+  void displayPage() override;
   void previousPageCallback(DCCPPNextionPage *);
 private:
   void refreshLocomotiveDetails();
@@ -209,15 +214,15 @@ public:
   }
   void addNewTurnout() {
     _pageMode = PAGE_MODE::ADDITION;
-    NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
+    auto addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
     addressPage->setCurrentAddress(0);
     addressPage->setPreviousPage(TURNOUT_PAGE);
     addressPage->display();
   }
   void deleteButtonHandler();
 protected:
-  virtual void init() {}
-  virtual void displayPage() {
+  void init() override {}
+  void displayPage() override {
     refreshPage();
   }
   void previousPageCallback(DCCPPNextionPage *);

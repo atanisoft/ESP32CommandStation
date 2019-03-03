@@ -482,6 +482,9 @@ uint8_t NextionTurnoutPage::getDefaultTurnoutPictureID(Turnout *turnout) {
         return TURNOUT_IMAGE_IDS::MULTI_STRAIGHT;
       }
       return TURNOUT_IMAGE_IDS::MULTI_CROSS_OVER;
+    default:
+      // TODO: update this with a better image like a ?
+      return TURNOUT_IMAGE_IDS::LEFT_HAND_CLOSED;
   }
   // TODO: update this with a better image like a ?
   return TURNOUT_IMAGE_IDS::LEFT_HAND_CLOSED;
@@ -492,6 +495,9 @@ uint8_t NextionTurnoutPage::getTurnoutsPerPageCount() {
   if(nextionDeviceType == NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY ||
     nextionDeviceType == NEXTION_DEVICE_TYPE::ENHANCED_3_5_DISPLAY) {
     maxTurnoutsPerPage = TURNOUTS_PER_PAGE_3_5_DISPLAY;
+  } else if(nextionDeviceType == NEXTION_DEVICE_TYPE::BASIC_5_0_DISPLAY ||
+    nextionDeviceType == NEXTION_DEVICE_TYPE::ENHANCED_5_0_DISPLAY) {
+    maxTurnoutsPerPage = TURNOUTS_PER_PAGE_5_0_DISPLAY;
   }
   return maxTurnoutsPerPage;
 }

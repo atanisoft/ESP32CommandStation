@@ -96,6 +96,10 @@ WiFiInterface::WiFiInterface() {
 }
 
 void WiFiInterface::begin() {
+#if NEXTION_ENABLED
+  auto nextionTitlePage = static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE]);
+  nextionTitlePage->setStatusText(0, "Initializing WiFi");
+#endif
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init WiFI"));
 	InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("IP:Pending"));
 #if defined(WIFI_STATIC_IP_ADDRESS) && defined(WIFI_STATIC_IP_GATEWAY) && defined(WIFI_STATIC_IP_SUBNET)
@@ -130,7 +134,6 @@ void WiFiInterface::begin() {
   #endif
 #endif
     log_i("WiFi IP: %s", WiFi.localIP().toString().c_str());
-
     if (!MDNS.begin(HOSTNAME)) {
       log_e("Failed to start mDNS");
     } else {
@@ -144,6 +147,12 @@ void WiFiInterface::begin() {
 #if LCC_ENABLED
     lccInterface.startWiFiDependencies();
 #endif
+#if NEXTION_ENABLED
+    static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->clearStatusText();
+    // transition to next screen since WiFi connection is complete
+    nextionPages[THROTTLE_PAGE]->display();
+#endif
+
   }, SYSTEM_EVENT_STA_GOT_IP);
   WiFi.onEvent([](system_event_id_t event) {
     wifiConnected = false;
@@ -164,10 +173,16 @@ void WiFiInterface::begin() {
 
   WiFi.mode(WIFI_STA);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFi Connecting"));
+#if NEXTION_ENABLED
+  nextionTitlePage->setStatusText(0, "Connecting to WiFi");
+#endif
   log_i("WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), wifiSSID.c_str());
   WiFi.setHostname(HOSTNAME);
   if (WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()) != WL_CONNECT_FAILED) {
     log_i("Waiting for WiFi to connect");
+#if NEXTION_ENABLED
+    nextionTitlePage->setStatusText(1, "Pending...");
+#endif
     // this call waits up to 10sec for a result before timing out so it needs to be called a few times
     // until we get a real final result
     uint8_t attemptsRemaining = 10;
@@ -175,6 +190,10 @@ void WiFiInterface::begin() {
     while(wifiStatus != WL_CONNECTED && wifiStatus != WL_NO_SSID_AVAIL && wifiStatus != WL_CONNECT_FAILED && attemptsRemaining--) {
       esp_task_wdt_reset();
       log_i("WiFi not connected yet, status: %d (%s), attempts remaining: %d", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus], attemptsRemaining);
+#if NEXTION_ENABLED
+      nextionTitlePage->setStatusText(1, StringPrintf("WiFi status: %d (%s)", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus]).c_str());
+      nextionTitlePage->setStatusText(2, StringPrintf("remaining attempts: %d", attemptsRemaining).c_str());
+#endif
       wifiStatus = WiFi.waitForConnectResult();
     }
   }
@@ -191,6 +210,15 @@ void WiFiInterface::begin() {
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Generic WiFi fail"));
     }
   #endif
+#endif
+#if NEXTION_ENABLED
+    nextionTitlePage->setStatusText(2, "");
+    nextionTitlePage->setStatusText(0, "WiFi connection Failed");
+    if (WiFi.status() == WL_NO_SSID_AVAIL) {
+      nextionTitlePage->setStatusText(1, "SSID not found");
+    } else {
+      nextionTitlePage->setStatusText(1, "Generic WiFi fail");
+    }
 #endif
     // since we couldn't connect to the configured SSID, perform a scan to help in
     // troubleshooting.
@@ -209,6 +237,9 @@ void WiFiInterface::begin() {
         log_w("Expected SSID was found, perhaps an incorrect value was provided in Config_WiFi.h WIFI_PASSWORD?");
 #if INFO_SCREEN_ENABLED && (INFO_SCREEN_OLED || (INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS >= 20))
         InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("BAD SSID PASSWORD!"));
+#endif
+#if NEXTION_ENABLED
+        nextionTitlePage->setStatusText(2, "Invalid SSID password");
 #endif
       }
     } else {
