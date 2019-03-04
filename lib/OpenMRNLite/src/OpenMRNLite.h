@@ -24,7 +24,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file OpenMRN.h
+ * \file OpenMRNLite.h
  *
  * Main include file for the OpenMRN library to be used in an Arduino
  * compilation environment.
@@ -33,8 +33,8 @@
  * @date 24 July 2018
  */
 
-#ifndef _ARDUINO_OPENMRN_H_
-#define _ARDUINO_OPENMRN_H_
+#ifndef _ARDUINO_OPENMRNLITE_H_
+#define _ARDUINO_OPENMRNLITE_H_
 
 #include <Arduino.h>
 
@@ -80,7 +80,7 @@ void write_string_to_file(const string &filename, const string &data);
 extern "C"
 {
     extern const char DEFAULT_WIFI_NAME[];
-    extern const char DEFAULT_PASSWORD[];
+    extern const char DEFAULT_WIFI_PASSWORD[];
 }
 
 namespace openmrn_arduino {
@@ -364,18 +364,8 @@ public:
     void start_executor_thread()
     {
         haveExecutorThread_ = true;
-        xTaskCreate(openmrn_background_task, "OpenMRN", OPENMRN_STACK_SIZE,
-                    this, OPENMRN_TASK_PRIORITY, nullptr);
-        /// @todo: replace the above with the below once os_thread_create gets
-        /// implemented for the esp32.
-        // stack_->executor()->start_thread(
-        //     "OpenMRN", OPENMRN_TASK_PRIORITY, OPENMRN_STACK_SIZE);
-    }
-
-    static void openmrn_background_task(void *arg)
-    {
-        OpenMRN *me = static_cast<OpenMRN *>(arg);
-        me->stack_->executor()->thread_body();
+        stack_->executor()->start_thread(
+            "OpenMRN", OPENMRN_TASK_PRIORITY, OPENMRN_STACK_SIZE);
     }
 #endif
 
@@ -493,4 +483,4 @@ private:
 
 using openmrn_arduino::OpenMRN;
 
-#endif // _ARDUINO_OPENMRN_H_
+#endif // _ARDUINO_OPENMRNLITE_H_

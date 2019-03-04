@@ -106,7 +106,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include "Outputs.h"
 #include "NextionInterface.h"
 #if LCC_ENABLED
-#include <OpenMRN.h>
+#include <OpenMRNLite.h>
 #include "LCCInterface.h"
 #endif
 

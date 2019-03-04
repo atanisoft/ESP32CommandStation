@@ -82,6 +82,26 @@
 #define OPENMRN_FEATURE_SEM_TIMEDWAIT 1
 #endif
 
+#if defined(__FreeRTOS__) || defined(ESP32)
+/// Use FreeRTOS implementation for os_thread_create and keeping a list of live
+/// threads.
+#define OPENMRN_FEATURE_THREAD_FREERTOS 1
+#elif OPENMRN_FEATURE_SINGLE_THREADED
+#else
+/// Use pthread for os_thread_create.
+#define OPENMRN_FEATURE_THREAD_PTHREAD 1
+#if !defined (__MINGW32__) && !defined (__MACH__)
+/// Use pthread_setname for setting the newly created thread's name.
+#define OPENMRN_HAVE_PTHREAD_SETNAME 1
+#endif
+#if !defined(__linux__) && !defined(__MACH__)
+/// Use pthread_attr for setting the stack size of newly created threads.
+/// Linux/Unix allocates stack as needed.
+#define OPENMRN_FEATURE_PTHREAD_SETSTACK 1
+#endif
+#endif
+
+
 
 
 #endif // _INCLUDE_OPENMRN_FEATURES_

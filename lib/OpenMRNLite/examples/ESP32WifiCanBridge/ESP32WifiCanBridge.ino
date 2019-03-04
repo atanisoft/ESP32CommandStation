@@ -4,7 +4,7 @@
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are  permitted provided that the following conditions are met:
- * 
+ *
  *  - Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
  *
@@ -24,18 +24,20 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file ESP32SerialBridge.ino
- * 
- * Example application for the ESP32 showing how to configure a Serial bridge
- * GridConnect client adapter to the OpenMRN stack.
+ * \file ESP32WiFiCanBridge.ino
+ *
+ * Example application for the ESP32 showing how to configure a WiFi to CAN
+ * bridge.
  *
  * @author Mike Dunston
- * @date 13 January 2019
+ * @date 21 January 2019
  */
 
 #include <Arduino.h>
-#include <OpenMRN.h>
+#include <ESPmDNS.h>
+#include <OpenMRNLite.h>
 #include <SPIFFS.h>
+#include <openlcb/TcpDefs.hxx>
 
 #include "config.h"
 
@@ -43,20 +45,9 @@
 // output. This is not recommended for production deployment.
 //#define PRINT_PACKETS
 
-/// This is the speed used for UART0 AND UART1 on the ESP32.
-/// UART0 is primarily for debug/log messages.
-/// UART1 is used as the bridge device.
-constexpr uint32_t  SERIAL_BAUD     = 115200L;
-
-/// This is the pin to use for UART1 RX, this can not be the same as the CAN_RX_PIN below.
-/// Note: Any pin can be used for this other than 6-11 which are connected to
-/// the onboard flash.
-constexpr uint8_t   SERIAL_RX_PIN   = 16;
-
-/// This is the pin to use for UART1 TX, this can not be the same as the CAN_TX_PIN below.
-/// Note: Any pin can be used for this other than 6-11 which are connected to
-/// the onboard flash and 34-39 which are input only.
-constexpr uint8_t   SERIAL_TX_PIN   = 17;
+/// This is the speed used for UART0 on the ESP32, this is primarily for
+/// debug/log messages.
+constexpr uint32_t SERIAL_BAUD = 115200L;
 
 /// This is the ESP32 pin connected to the SN65HVD23x/MCP2551 R (RX) pin.
 /// Recommended pins: 4, 16, 21.
@@ -70,9 +61,39 @@ constexpr gpio_num_t CAN_RX_PIN = GPIO_NUM_4;
 /// the onboard flash and 34-39 which are input only.
 constexpr gpio_num_t CAN_TX_PIN = GPIO_NUM_5;
 
+/// This is the TCP/IP port which the ESP32 will listen on for incoming
+/// GridConnect formatted CAN frames.
+constexpr uint16_t OPENMRN_TCP_PORT = 12021L;
+
 /// This is the node id to assign to this device, this must be unique
 /// on the CAN bus.
-static constexpr uint64_t NODE_ID = UINT64_C(0x050101011423);
+static constexpr uint64_t NODE_ID = UINT64_C(0x050101011821);
+
+// Configuring WiFi accesspoint name and password
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// There are two options:
+// 1) edit the sketch to set this information just below. Use quotes:
+//     const char* ssid     = "linksys";
+//     const char* password = "superSecret";
+// 2) add a new file to the sketch folder called something.cpp with the
+// following contents:
+//     #include <OpenMRNLite.h>
+//
+//     const char DEFAULT_WIFI_NAME[] = "linksys";
+//     const char DEFAULT_WIFI_PASSWORD[] = "theTRUEsupers3cr3t";
+
+/// This is the name of the WiFi network (access point) to connect to.
+const char *ssid = DEFAULT_WIFI_NAME;
+
+/// Password of the wifi network.
+const char *password = DEFAULT_WIFI_PASSWORD;
+
+/// This is the hostname which the ESP32 will advertise via mDNS, it should be
+/// unique.
+const char *hostname = "esp32mrn";
+
+/// This is the TCP/IP listener on the ESP32.
+WiFiServer openMRNServer(OPENMRN_TCP_PORT);
 
 /// This is the primary entrypoint for the OpenMRN/LCC stack.
 OpenMRN openmrn(NODE_ID);
@@ -81,7 +102,7 @@ OpenMRN openmrn(NODE_ID);
 // for the ESP32
 string dummystring("abcdef");
 
-// ConfigDef comes from config.hxx and is specific to the particular device and
+// ConfigDef comes from config.h and is specific to this particular device and
 // target. It defines the layout of the configuration memory space and is also
 // used to generate the cdi.xml file. Here we instantiate the configuration
 // layout. The argument of offset zero is ignored and will be removed later.
@@ -103,7 +124,8 @@ public:
     }
 } factory_reset_helper;
 
-namespace openlcb {
+namespace openlcb
+{
     // Name of CDI.xml to generate dynamically.
     const char CDI_FILENAME[] = "/spiffs/cdi.xml";
 
@@ -121,18 +143,51 @@ namespace openlcb {
     const char *const SNIP_DYNAMIC_FILENAME = CONFIG_FILENAME;
 }
 
-void setup() {
+void setup()
+{
     Serial.begin(SERIAL_BAUD);
-    Serial1.begin(SERIAL_BAUD, SERIAL_8N1, SERIAL_RX_PIN, SERIAL_TX_PIN);
+
+    printf("\nConnecting to: %s\n", ssid);
+    WiFi.begin(ssid, password);
+    uint8_t attempts = 30;
+    while (WiFi.status() != WL_CONNECTED &&
+        WiFi.status() != WL_CONNECT_FAILED &&
+        WiFi.status() != WL_NO_SSID_AVAIL && attempts--)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        printf("\nFailed to connect to WiFi, restarting\n");
+        ESP.restart();
+
+        // in case the above call doesn't trigger restart, force WDT to restart
+        // the ESP32
+        while (1)
+        {
+            // The ESP32 has built in watchdog timers that as of
+            // arduino-esp32 1.0.1 are enabled on both core 0 (OS core) and core
+            // 1 (Arduino core). It usually takes a couple seconds of an endless
+            // loop such as this one to trigger the WDT to force a restart.
+        }
+    }
+
+    // This makes the wifi much more responsive. Since we are plugged in we
+    // don't care about the increased power usage. Disable when on battery.
+    WiFi.setSleep(false);
+
+    printf("\nWiFi connected, IP address: %s\n",
+        WiFi.localIP().toString().c_str());
 
     // Initialize the SPIFFS filesystem as our persistence layer
-    if(!SPIFFS.begin())
+    if (!SPIFFS.begin())
     {
         printf("SPIFFS failed to mount, attempting to format and remount\n");
-        if(!SPIFFS.begin(true))
+        if (!SPIFFS.begin(true))
         {
             printf("SPIFFS mount failed even with format, giving up!\n");
-            while(1)
+            while (1)
             {
                 // Unable to start SPIFFS successfully, give up and wait
                 // for WDT to kick in
@@ -140,8 +195,17 @@ void setup() {
         }
     }
 
-    printf("\nSerial(rx:%d, tx:%d, speed:%d) is ready to exchange grid connect packets.\n",
-        SERIAL_TX_PIN, SERIAL_TX_PIN, SERIAL_BAUD);
+    // Start the TCP/IP listener
+    openMRNServer.setNoDelay(true);
+    openMRNServer.begin();
+
+    // Start the mDNS subsystem
+    MDNS.begin(hostname);
+
+    // Broadcast this node's hostname with the mDNS service name
+    // for a TCP GridConnect endpoint.
+    MDNS.addService(openlcb::TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN,
+        openlcb::TcpDefs::MDNS_PROTOCOL_TCP, OPENMRN_TCP_PORT);
 
     // Create the CDI.xml dynamically
     openmrn.create_config_descriptor_xml(cfg, openlcb::CDI_FILENAME);
@@ -160,15 +224,24 @@ void setup() {
     openmrn.stack()->print_all_packets();
 #endif // PRINT_PACKETS
 
-    // Add Serial1 as a bridge
-    openmrn.add_gridconnect_port(new Esp32HardwareSerialAdapter(Serial1));
-
     // Add the hardware CAN device as a bridge
     openmrn.add_can_port(
         new Esp32HardwareCan("esp32can", CAN_RX_PIN, CAN_TX_PIN));
 }
 
-void loop() {
+void loop()
+{
+    // if the TCP/IP listener has a new client accept it and add it
+    // as a new GridConnect port.
+    if (openMRNServer.hasClient())
+    {
+        WiFiClient client = openMRNServer.available();
+        if (client)
+        {
+            openmrn.add_gridconnect_port(new Esp32WiFiClientAdapter(client));
+        }
+    }
+
     // Call the OpenMRN executor, this needs to be done as often
     // as possible from the loop() method.
     openmrn.loop();

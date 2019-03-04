@@ -141,7 +141,7 @@ int fstat(int fd, struct stat* buf)
 #endif
 
 
-#if defined (__FreeRTOS__)
+#if OPENMRN_FEATURE_THREAD_FREERTOS
 /// Task list entriy
 typedef struct task_list
 {
@@ -226,7 +226,9 @@ int os_thread_once(os_thread_once_t *once, void (*routine)(void))
 
     return 0;
 }
-#elif defined (__WIN32__)
+#endif
+
+#if defined (__WIN32__)
 /** Windows does not support pipes, so we made our own with a pseudo socketpair.
  * @param fildes fildes[0] is open for reading, filedes[1] is open for writing
  * @return 0 upon success, else -1 with errno set to indicate error
@@ -315,7 +317,7 @@ int pipe(int fildes[2])
 }
 #endif
 
-#if defined (__FreeRTOS__)
+#if OPENMRN_FEATURE_THREAD_FREERTOS
 extern const void* stack_malloc(unsigned long length);
 
 /** Add a thread to the task list for tracking.
@@ -398,11 +400,11 @@ void os_thread_start(void *arg)
 
     os_thread_start_exit_hook(result);
 }
-#endif
+#endif // OPENMRN_FEATURE_THREAD_FREERTOS
 
-#if !(defined(__EMSCRIPTEN__) || defined(ESP_NONOS) || defined(ARDUINO))
+#ifndef OPENMRN_FEATURE_SINGLE_THREADED
 
-#if defined(__FreeRTOS__)
+#if OPENMRN_FEATURE_THREAD_FREERTOS
 /** Create a thread helper.
  * @param thread handle to the created thread
  * @param name name of thread, NULL for an auto generated name
@@ -435,7 +437,7 @@ int __attribute__((weak)) os_thread_create_helper(os_thread_t *thread,
 #endif
     return 0;
 }
-#endif // FreeRTOS
+#endif // OPENMRN_FEATURE_THREAD_FREERTOS
 
 /** Create a thread.
  * @param thread handle to the created thread
@@ -464,7 +466,7 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
         name = auto_name;
     }
 
-#if defined (__FreeRTOS__)
+#if OPENMRN_FEATURE_THREAD_FREERTOS
     OSThreadStartPriv *priv =
         (OSThreadStartPriv*)malloc(sizeof(OSThreadStartPriv));
 
@@ -501,7 +503,8 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
         }
     }
     return result;
-#else // not freertos
+#endif
+#if OPENMRN_FEATURE_THREAD_PTHREAD    
     pthread_attr_t attr;
 
     int result = pthread_attr_init(&attr);
@@ -515,8 +518,7 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
         return result;
     }
 
-/* Linux/Unix allocates stack as needed */
-#if !defined(__linux__) && !defined(__MACH__)
+#if OPENMRN_FEATURE_PTHREAD_SETSTACK
     struct sched_param sched_param;
     result = pthread_attr_setstacksize(&attr, stack_size);
     if (result != 0)
@@ -542,10 +544,15 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
     {
         return result;
     }
-#endif // not linux and not mac
+#endif // no stack size set needed
+    pthread_t local_thread_handle;
+    if (!thread)
+    {
+        thread = &local_thread_handle;
+    }
     result = pthread_create(thread, &attr, start_routine, arg);
 
-#if !defined (__MINGW32__) && !defined (__MACH__)
+#if OPENMRN_HAVE_PTHREAD_SETNAME
     if (!result)
     {
         pthread_setname_np(*thread, name);
@@ -553,9 +560,9 @@ int os_thread_create(os_thread_t *thread, const char *name, int priority,
 #endif
 
     return result;
-#endif // freertos or not
+#endif // pthread implementation
 }
-#endif // __EMSCRIPTEN__
+#endif // not single threaded
 
 /// Implement this function to read timing more accurately than 1 msec in
 /// FreeRTOS.
