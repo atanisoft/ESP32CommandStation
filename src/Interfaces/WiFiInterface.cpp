@@ -26,6 +26,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <esp_wifi_internal.h>
 #include <esp_task_wdt.h>
 
+#include <utils/StringPrintf.hxx>
+
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
 #include "HC12Interface.h"
 #endif
