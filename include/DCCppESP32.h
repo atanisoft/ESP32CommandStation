@@ -90,6 +90,10 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define ENERGIZE_OPS_TRACK_ON_STARTUP false
 #endif
 
+#ifndef LOCONET_INVERTED_LOGIC
+#define LOCONET_INVERTED_LOGIC false
+#endif
+
 #define USE_RMT_FOR_DCC true
 
 #include "ConfigurationManager.h"

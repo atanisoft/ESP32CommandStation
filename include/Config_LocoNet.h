@@ -26,6 +26,11 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 #define LOCONET_TX_PIN 17
 #define LOCONET_UART 1
 
+// If you are using the LM311 circuit as defined in the docs/loconet/LoocNetInterface.png
+// file it is necessary to invert the logic. If you are using a different circuit you can
+// reset this parameter to false or comment the next line which will have the same effect.
+#define LOCONET_INVERTED_LOGIC true
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 #define LOCONET_ENABLED true

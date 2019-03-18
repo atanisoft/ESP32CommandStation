@@ -167,7 +167,7 @@ WiFiInterface wifiInterface;
 std::vector<uint8_t> restrictedPins;
 
 #if LOCONET_ENABLED
-LocoNetESP32Uart locoNet(LOCONET_RX_PIN, LOCONET_TX_PIN, LOCONET_UART);
+LocoNetESP32Uart locoNet(LOCONET_RX_PIN, LOCONET_TX_PIN, LOCONET_UART, LOCONET_INVERTED_LOGIC);
 #endif
 
 bool otaComplete = false;
