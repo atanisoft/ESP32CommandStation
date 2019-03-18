@@ -58,27 +58,31 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
   log_i("[%s] Disabling DCC Signal", _name.c_str());
   digitalWrite(_enablePin, LOW);
   _state = false;
-	if(announce) {
-		if(overCurrent) {
+  if(!_progTrack) {
+    if(announce) {
+      if(overCurrent) {
 #if LOCONET_ENABLED
-      locoNet.send(OPC_IDLE, 0, 0);
+        locoNet.send(OPC_IDLE, 0, 0);
 #endif
-			wifiInterface.printf(F("<p2 %s>"), _name.c_str());
-		} else {
+			  wifiInterface.printf(F("<p2 %s>"), _name.c_str());
+		  } else {
 #if LOCONET_ENABLED
-      locoNet.reportPower(false);
+        locoNet.reportPower(false);
 #endif
-			wifiInterface.printf(F("<p0 %s>"), _name.c_str());
+			  wifiInterface.printf(F("<p0 %s>"), _name.c_str());
+      }
 		}
 	}
 }
 
 void GenericMotorBoard::showStatus() {
-	if(_state) {
-		wifiInterface.printf(F("<p1 %s>"), _name.c_str());
-    wifiInterface.printf(F("<a %s %d>"), _name.c_str(), getLastRead());
-	} else {
-		wifiInterface.printf(F("<p0 %s>"), _name.c_str());
+  if(!_progTrack) {
+    if(_state) {
+      wifiInterface.printf(F("<p1 %s>"), _name.c_str());
+      wifiInterface.printf(F("<a %s %d>"), _name.c_str(), getLastRead());
+    } else {
+      wifiInterface.printf(F("<p0 %s>"), _name.c_str());
+    }
 	}
 }
 
@@ -179,7 +183,7 @@ void MotorBoardManager::powerOnAll() {
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("ON   "));
 #endif
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+#if LOCONET_ENABLED
   locoNet.reportPower(true);
 #endif
   startDCCSignalGenerators();
@@ -194,7 +198,7 @@ void MotorBoardManager::powerOffAll() {
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("OFF  "));
 #endif
-#if defined(LOCONET_ENABLED) && LOCONET_ENABLED
+#if LOCONET_ENABLED
   locoNet.reportPower(false);
 #endif
   stopDCCSignalGenerators();
