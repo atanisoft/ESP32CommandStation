@@ -8,7 +8,7 @@ This repository, DCCppESP32, contains a complete DCC++ESP32 Command Station code
 
 To utilize this code, download a release zip file from this repository and open the included project file in PlatformIO IDE, and the dependent libraries listed under the "lib" folder (see the readme.txt file for details). No code modifications should be required *EXCEPT* for configuring which features you want to use, see the [Building DCC++ESP32](#building-dccesp32) section further down for specifics.
 
-The latest production release of the code is 1.2.0:
+The latest production release of the code is 1.2.1:
 * Supports almost any variant of the ESP32.
 * Built-in configuration for both the original Arduino Motor Shield, Pololu MC33926 Motor Shield or BTS7960B based Motor Shield.
 * Built-in web interface for controlling locomotives or configuring the DCC++ESP32 Command Station.
@@ -286,4 +286,4 @@ When this module is enabled the Command Station will receive and respond to cert
 | LCC_CAN_RX_PIN | This is the pin connected to the CAN transceiver RX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 | LCC_CAN_TX_PIN | This is the pin connected to the CAN transceiver TX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 
--February 17, 2019
+-March 3, 2019
