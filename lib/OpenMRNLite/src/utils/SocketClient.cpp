@@ -32,28 +32,34 @@
  * @date 28 Dec 2013
  */
 
-#if defined(__linux__) || defined (__MACH__) || defined (__FreeRTOS__)
+#include "openmrn_features.h"
+
+#if OPENMRN_FEATURE_BSD_SOCKETS
 
 #define LOGLEVEL INFO
 
 #include "utils/SocketClient.hxx"
 
-#include <arpa/inet.h>
+#include <memory>
 #include <netdb.h>
+#ifndef ESP32 // these don't exist on the ESP32 with LWiP
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#endif // ESP32
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <signal.h>
-
-#include <memory>
 
 #include "utils/socket_listener.hxx"
 
 #include "utils/format_utils.hxx"
 #include "utils/macros.h"
 #include "utils/logging.h"
+
+#ifdef ESP32 // this is not declared in netdb.h on ESP32
+const char *gai_strerror (int __ecode);
+#endif // ESP32
 
 int ConnectSocket(const char *host, int port)
 {
@@ -100,11 +106,11 @@ int SocketClient::connect(const char *host, const char *port_str)
 
 int SocketClient::connect(struct addrinfo *addr)
 {
-#ifdef __linux__
+#if OPENMRN_FEATURE_BSD_SOCKETS_IGNORE_SIGPIPE
     // We expect write failures to occur but we want to handle them where
     // the error occurs rather than in a SIGPIPE handler.
     signal(SIGPIPE, SIG_IGN);
-#endif
+#endif // OPENMRN_FEATURE_BSD_SOCKETS_IGNORE_SIGPIPE
 
     if (!addr)
     {
@@ -154,7 +160,7 @@ bool SocketClient::address_to_string(
             n = inet_ntop(addr->ai_family, &sa->sin_addr, buf, sizeof(buf));
             break;
         }
-#ifdef __linux__
+#if OPENMRN_HAVE_BSD_SOCKETS_IPV6
         case AF_INET6:
         {
             auto *sa = (struct sockaddr_in6 *)addr->ai_addr;
@@ -162,7 +168,7 @@ bool SocketClient::address_to_string(
             n = inet_ntop(addr->ai_family, &sa->sin6_addr, buf, sizeof(buf));
             break;
         }
-#endif
+#endif // OPENMRN_HAVE_BSD_SOCKETS_IPV6
         default:
             LOG(INFO, "unsupported address type.");
             errno = EAFNOSUPPORT;
@@ -237,4 +243,4 @@ std::unique_ptr<SocketClientParams> SocketClientParams::from_static_and_mdns(
     return std::move(p);
 }
 
-#endif // __linux__
+#endif // OPENMRN_FEATURE_BSD_SOCKETS

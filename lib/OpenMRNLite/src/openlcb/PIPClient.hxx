@@ -33,6 +33,9 @@
  * @date 31 Oct 2015
  */
 
+#ifndef _OPENLCB_PIPCLIENT_HXX_
+#define _OPENLCB_PIPCLIENT_HXX_
+
 #include "executor/StateFlow.hxx"
 #include "openlcb/Defs.hxx"
 #include "openlcb/If.hxx"
@@ -230,3 +233,5 @@ private:
 };
 
 } // namespace openlcb
+
+#endif // _OPENLCB_PIPCLIENT_HXX_

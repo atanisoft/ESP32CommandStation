@@ -734,8 +734,6 @@ private:
 };
 #elif defined(ARDUINO)
 
-#include <Arduino.h>
-
 typedef uint32_t OSEventType;
 
 extern "C" {

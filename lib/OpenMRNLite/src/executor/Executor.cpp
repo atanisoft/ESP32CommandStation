@@ -419,6 +419,13 @@ void ExecutorBase::wait_with_select(long long wait_length)
 
 #endif
 
+#if defined(ARDUINO)
+// declare the function rather than include Arduino.h
+extern "C"
+{
+void delay(unsigned long);
+}
+#endif // ARDUINO
 void ExecutorBase::shutdown()
 {
     if (!started_) return;

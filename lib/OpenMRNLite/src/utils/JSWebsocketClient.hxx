@@ -119,7 +119,7 @@ public:
                     catch (e)
                     {
                         console.log(
-                            'This doesn\'t look like a valid JSON: ',
+                            'This doesnt look like a valid JSON: ',
                             message.data);
                         return;
                     }

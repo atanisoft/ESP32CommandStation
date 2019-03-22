@@ -37,9 +37,11 @@
 
 #include "os/Gpio.hxx"
 #include "GpioWrapper.hxx"
-#include <Arduino.h>
 #if defined(ESP32)
+#include <esp32-hal.h>
 #include <driver/gpio.h>
+#else
+#include <Arduino.h>
 #endif
 
 /// Defines a GPIO output pin. Writes to this structure will change the output

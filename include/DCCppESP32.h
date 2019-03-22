@@ -131,7 +131,7 @@ extern bool otaInProgress;
 
 // Perform some basic configuration validations to prevent common mistakes
 
-#if !defined(WIFI_SSID) || !defined(WIFI_PASSWORD)
+#if !defined(SSID_NAME) || !defined(SSID_PASSWORD)
 #error "Invalid Configuration detected, Config_WiFi.h is a mandatory module."
 #endif
 

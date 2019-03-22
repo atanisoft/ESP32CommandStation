@@ -36,6 +36,7 @@
 
 #include <unistd.h>
 
+#include "openmrn_features.h"
 #include "utils/Hub.hxx"
 #include "executor/SemaphoreNotifiableBlock.hxx"
 
@@ -47,10 +48,18 @@ template <class Data> class FdHubWriteFlow;
 class FdHubPortBase : public FdHubPortInterface, private Atomic
 {
 public:
+#ifdef ESP32 // TODO: shrink these if possible
+    /// How many bytes of stack should we allocate to the write thread's stack.
+    static const int kWriteThreadStackSize = 2048;
+    /// How many bytes of stack should we allocate to the read thread's stack.
+    static const int kReadThreadStackSize = 2048;
+#else
     /// How many bytes of stack should we allocate to the write thread's stack.
     static const int kWriteThreadStackSize = 1000;
     /// How many bytes of stack should we allocate to the read thread's stack.
     static const int kReadThreadStackSize = 1000;
+#endif // ESP32
+
     /// Constructor.
     /// @param fd is the filedes to read/write
     /// @param done will be called when this file is closed and removed from
@@ -158,7 +167,7 @@ protected:
                         continue;
                     }
 // Now: we have an error.
-#if defined(__linux__)
+#if OPENMRN_FEATURE_BSD_SOCKETS_REPORT_EOF_ERROR
                     if (!ret)
                     {
                         LOG_ERROR("EOF reading fd %d", port_->fd_);
@@ -168,7 +177,7 @@ protected:
                         LOG_ERROR("Error reading fd %d: (%d) %s", port_->fd_,
                             errno, strerror(errno));
                     }
-#endif
+#endif // OPENMRN_FEATURE_BSD_SOCKETS_REPORT_EOF_ERROR
                     port_->report_error();
                     return NULL;
                 }
@@ -243,7 +252,7 @@ public:
                 continue;
             }
 // now: we have an error.
-#ifdef __linux__
+#if OPENMRN_FEATURE_BSD_SOCKETS_REPORT_EOF_ERROR
             if (!ret)
             {
                 LOG_ERROR("EOF writing fd %d", port_->fd_);
@@ -253,7 +262,7 @@ public:
                 LOG_ERROR("Error writing fd %d: (%d) %s", port_->fd_, errno,
                     strerror(errno));
             }
-#endif
+#endif // OPENMRN_FEATURE_BSD_SOCKETS_REPORT_EOF_ERROR
             port_->report_error();
             break;
         }

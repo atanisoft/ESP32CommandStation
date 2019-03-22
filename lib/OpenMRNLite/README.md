@@ -1,7 +1,11 @@
-# OpenMRN-lite Arduino Library
-The OpenMRN-lite Arduino Library is a packaged version of the OpenMRN code that
-has been designed to run in the Arduino environment. The OpenLCB features of
-OpenMRN are available through this library.
+# OpenMRNLite Arduino Library
+This library implements network protocols for model railroading. In the center
+is the OpenLCB protocol suite (Open Layout Control Bus), which has been adopted
+by the NMRA and referenced as LCC (Layout Command Control): a high-performance
+and highly extensible communications protocol suite for model railroad
+control. OpenMRN is one of the most extensible implementation of this protocol
+suite. This Lite version has been adapted to work with the programming model and
+drivers of the Arduino ecosystem.
 
 ## Supported platforms/architectures
 At this time the only supported platforms are:
@@ -12,42 +16,15 @@ core as the underlying stack.
 
 Additional platforms may be added in the future.
 
-## Preparing the library for use in Arduino IDE or PlatformIO IDE
-The OpenMRN-lite library is not currently delivered as a standalone released
-library and must be generated using the libify.sh script. Executing this script
-creates a library directory that is usable in the various IDEs that support
-Arduino development.
+## Where to get the library
 
-### Executing libify.sh to create the OpenMRN-lite library
-The libify.sh script requires a bash like environment for execution, on Windows
-the Git bash commandline will work. On Linux/MacOS the native bash shell will
-work.
-    sh libify.sh {path to OpenMRN-lite creation directory} {path to OpenMRN}
-
-#### Arduino IDE library generation
-On Windows the Arduino IDE stores the libraries under
-"Documents\Arduino\libraries", this can be accessed via the Git bash
-commandline as:
-```bash
-    sh arduino/libify.sh "$USERPROFILE/Documents/Arduino/libraries/OpenMRN-lite" .
-```
-when executed from the OpenMRN repository root folder.
-
-On Linux the location would normally be
-/home/{user}/Documents/Arduino/libraries.
-
-On macOS the location would normally be
-/Users/{user}/Documents/Arduino/libraries.
-
-#### PlatformIO IDE library generation
-For PlatformIO IDE it would be recommended to put this into the project lib
-folder instead. By default the PlatformIO build process will inspect the lib
-folder for project specific libraries and will automatically include them in
-the compilation.
-```bash
-    sh arduino/libify.sh "/path/to/project/lib/OpenMRN-lite" .
-```
-when executed from the OpenMRN repository root folder.
+- by exporting directly from the OpenMRN source tree (under linux also symlinks
+  are supported)
+- by downloading a released source code ZIP file from GitHub
+  (https://github.com/openmrn/OpenMRNLite/releases) and importing that ZIP file
+  into the Arduino UI.
+- by using the Arduino Library Manager to download a released version from the
+  global Arduino index.
 
 # ESP32 supported hardware
 At this time the ESP32 supports both WiFi and hardware CAN adapters. Almost
@@ -104,8 +81,8 @@ function. This can also be achieved by using a flash erase tool
 `esptool.py erase_flash ...` and reflashing the ESP32.
 
 ## ESP32 Hardware CAN support
-The ESP32 has a built in CAN controller but lacks a CAN transceiver. There are
-two types of transceivers recommended by Espressif:
+The ESP32 has a built in CAN controller and needs an external CAN transceiver
+only. There are two types of transceivers recommended by Espressif:
 1. SN65HVD23x, also known as VP230, this is a 3.3V transceiver that typically
 is only available as a breakout board with on board termination resistor.
 2. MCP2551, this is a 5V transceiver that is available as a DIP-8, SMD or as a
@@ -118,15 +95,14 @@ voltage for the transceiver.
 2. GND to the GND pin on the transceiver.
 3. GPIO for RX to the RX pin on the transceiver. This can be any unused GPIO
 pin. Note, if you are using a 5V transceiver (ie: MCP2551) it is recommended to
-use a resistor between the RX pin on the transceiver and the ESP32 GPIO pin to
-prevent damage to the ESP32.
+use a 1k resistor between the RX pin on the transceiver and the ESP32 GPIO pin
+to prevent damage to the ESP32.
 4. GPIO for TX to the TX pin on the transceiver. This pin must be usable as an
 output pin, GPIO 34-39 on the ESP32 are input only.
 
-If you are using the MCP2551 transceiver and the ESP32 will be at the end of
-the CAN bus, you should include a 150ohm resistor across the H and L lines to
-terminate the CAN bus. This is only necessary if there is not already another
-node providing the required CAN bus termination.
+If you are using the MCP2551 transceiver and the ESP32 will be at the end of the
+CAN bus, you should include a 120ohm resistor across the H and L lines to
+terminate the CAN bus. This is necessary on the two ends of the CAN-bus.
 
 ## Powering the ESP32
 It is not recommended to directly connect the CAN bus PWR_POS (7) to the VIN

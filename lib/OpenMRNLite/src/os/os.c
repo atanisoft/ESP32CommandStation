@@ -792,6 +792,15 @@ void* _sbrk_r(struct _reent *reent, ptrdiff_t incr)
     return (caddr_t) prev_heap_end;
 }
 
+ssize_t os_get_free_heap()
+{
+    /** @todo (Stuart Baker) change naming to remove "cs3" convention */
+    extern char __cs3_heap_end; /* Defined by the linker */
+    uint32_t fh = &__cs3_heap_end - heap_end;
+    fh += (&__heap2_end - heap2_end);
+    return fh;
+}
+
 xTaskHandle volatile overflowed_task = 0;
 signed portCHAR * volatile overflowed_task_name = 0;
 
@@ -888,6 +897,13 @@ static void *main_thread(void *unused)
     abort();
     return NULL;
 }
+#else // not freertos
+
+ssize_t __attribute__((weak)) os_get_free_heap()
+{
+    return -1;
+}
+
 #endif
 
 /** This function does nothing. It can be used to alias other symbols to it via

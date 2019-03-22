@@ -40,6 +40,7 @@
 #include "openlcb/PIPClient.hxx"
 #include "openlcb/CanDefs.hxx"
 #include "openlcb/MemoryConfig.hxx"
+#include "openlcb/IfCan.hxx"
 #include "utils/Ewma.hxx"
 
 namespace openlcb
@@ -74,6 +75,9 @@ struct BootloaderRequest
     uint32_t offset{0};
     /// Payload to write.
     string data;
+    /// If set, will be called with floats [0.0, 1.0] as the download is
+    /// progressing.
+    std::function<void(float)> progress_callback;
     /// This structure will be filled with the returning error code, or zero if
     /// the bootloading was successful.
     BootloaderResponse *response{nullptr};
@@ -125,6 +129,11 @@ public:
     const NodeHandle &dst()
     {
         return message()->data()->dst;
+    }
+
+    const BootloaderRequest *request()
+    {
+        return message()->data();
     }
 
     void response_datagram_arrived(Buffer<IncomingDatagram> *datagram)
@@ -557,9 +566,15 @@ private:
         }
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
-
-        LOG(INFO, "%02ld.%06ld stream offset: %" PRIdPTR "; wrote %.0lld usec slept "
-                  "%.0lld usec, speed=%.0f bytes/sec",
+        if (request()->progress_callback)
+        {
+            float ofs = bufferOffset_;
+            ofs /= request()->data.size();
+            request()->progress_callback(ofs);
+        }
+        LOG(INFO,
+            "%02ld.%06ld stream offset: %" PRIdPTR "; wrote %.0lld usec slept "
+            "%.0lld usec, speed=%.0f bytes/sec",
             ts.tv_sec % 60, ts.tv_nsec / 1000, bufferOffset_,
             (sleepStartTimeNsec_ - lastMeasurementTimeNsec_) / 1000,
             (next_time - sleepStartTimeNsec_) / 1000, speed_);
@@ -674,6 +689,12 @@ private:
             speedAvg_.add_absolute(bufferOffset_);
             LOG(INFO, "write offset: %" PRIdPTR "; speed=%.0f bytes/sec",
                 bufferOffset_, speedAvg_.avg());
+            if (request()->progress_callback)
+            {
+                float ofs = bufferOffset_;
+                ofs /= request()->data.size();
+                request()->progress_callback(ofs);
+            }
         }
 
         if (bufferOffset_ < message()->data()->data.size()) {

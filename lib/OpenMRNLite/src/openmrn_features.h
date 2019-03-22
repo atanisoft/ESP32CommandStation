@@ -49,7 +49,8 @@
 #endif
 
 /// @todo this should probably be a whitelist: __linux__ || __MACH__.
-#if !defined(__FreeRTOS__) && !defined(__WINNT__) && !defined(ESP32) && !defined(ARDUINO) && !defined(ESP_NONOS)
+#if !defined(__FreeRTOS__) && !defined(__WINNT__) && !defined(ESP32) &&        \
+    !defined(ARDUINO) && !defined(ESP_NONOS)
 /// Uses ::pselect in the Executor for sleep and pkill for waking up.
 #define OPENMRN_HAVE_PSELECT 1
 #endif
@@ -77,7 +78,8 @@
 #define OPENMRN_FEATURE_MUTEX_PTHREAD 1
 #endif
 
-#if OPENMRN_FEATURE_MUTEX_FREERTOS || OPENMRN_FEATURE_MUTEX_PTHREAD || defined(__EMSCRIPTEN__)
+#if OPENMRN_FEATURE_MUTEX_FREERTOS || OPENMRN_FEATURE_MUTEX_PTHREAD ||         \
+    defined(__EMSCRIPTEN__)
 /// Compile os_sem_timedwait functions.
 #define OPENMRN_FEATURE_SEM_TIMEDWAIT 1
 #endif
@@ -101,6 +103,39 @@
 #endif
 #endif
 
+#if defined(__linux__) || defined(__MACH__) || defined(__FreeRTOS__) ||        \
+    defined(ESP32)
+/// Compiles support for BSD sockets API.
+#define OPENMRN_FEATURE_BSD_SOCKETS 1
+
+#ifndef __FreeRTOS__
+/// Compiles support for setting the SO_RCVTIMEO value when creating a new
+/// socket.
+#define OPENMRN_HAVE_BSD_SOCKETS_RX_TIMEOUT 1
+#endif
+
+#if !defined(__FreeRTOS__) && !defined(ESP32)
+/// Compiles support for calling getsockname when binding a socket to a port
+/// when listening for incoming connections.
+#define OPENMRN_HAVE_BSD_SOCKETS_GETSOCKNAME 1
+#endif
+
+#if defined(__linux__)
+/// Compiles suport for IPv6 address types
+#define OPENMRN_HAVE_BSD_SOCKETS_IPV6 1
+#endif
+
+#if defined(__linux__) || defined(__MACH__)
+/// Ignores SIGPIPE signals to avoid write failures crashing the program.
+#define OPENMRN_FEATURE_BSD_SOCKETS_IGNORE_SIGPIPE 1
+#endif
+
+#if defined(__linux__) || defined(__MACH__) || defined(ESP32)
+/// Compiles support for reporting EOF as an error for read/write.
+#define OPENMRN_FEATURE_BSD_SOCKETS_REPORT_EOF_ERROR 1
+#endif
+
+#endif
 
 
 

@@ -40,9 +40,11 @@
 
 #include "freertos_drivers/arduino/ArduinoGpio.hxx"
 #include "freertos_drivers/arduino/Can.hxx"
+#include "freertos_drivers/arduino/WifiDefs.hxx"
 #include "openlcb/SimpleStack.hxx"
 #include "utils/GridConnectHub.hxx"
 #include "utils/Uninitialized.hxx"
+#include "utils/FileUtils.hxx"
 
 #if defined(ESP32)
 
@@ -64,24 +66,13 @@ constexpr UBaseType_t OPENMRN_TASK_PRIORITY = ESP_TASK_TCPIP_PRIO;
 
 #include "freertos_drivers/esp32/Esp32HardwareCanAdapter.hxx"
 #include "freertos_drivers/esp32/Esp32HardwareSerialAdapter.hxx"
-#include "freertos_drivers/esp32/Esp32WiFiClientAdapter.hxx"
+#include "freertos_drivers/esp32/Esp32WiFiManager.hxx"
 
 // On the ESP32 we have persistent file system access so enable
 // dynamic CDI.xml generation support
 #define HAVE_FILESYSTEM
 
 #endif // ESP32
-
-#if defined(HAVE_FILESYSTEM)
-string read_file_to_string(const string &filename);
-void write_string_to_file(const string &filename, const string &data);
-#endif // HAVE_FILESYSTEM
-
-extern "C"
-{
-    extern const char DEFAULT_WIFI_NAME[];
-    extern const char DEFAULT_WIFI_PASSWORD[];
-}
 
 namespace openmrn_arduino {
 
@@ -366,6 +357,11 @@ public:
         haveExecutorThread_ = true;
         stack_->executor()->start_thread(
             "OpenMRN", OPENMRN_TASK_PRIORITY, OPENMRN_STACK_SIZE);
+#ifdef ESP32
+        // Remove IDLE0 task watchdog, because the openmrn task sometimes gets
+        // scheduled on CPU0 and can use 100% cpu.
+        disableCore0WDT();
+#endif        
     }
 #endif
 

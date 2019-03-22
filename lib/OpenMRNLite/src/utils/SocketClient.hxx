@@ -40,7 +40,9 @@
 
 #include <functional>
 #include <netdb.h>
+#ifndef ESP32 // this doesn't exist on the ESP32 with LWiP
 #include <arpa/inet.h>
+#endif
 #include <fcntl.h>
 #include <ifaddrs.h>
 

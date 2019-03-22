@@ -19,8 +19,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // DEFINE WiFi Parameters
 //
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
+#define SSID_NAME "SSID_NAME_HERE"
+#define SSID_PASSWORD "SSID_PASSWORD_HERE"
 
 /////////////////////////////////////////////////////////////////////////////////////
 //

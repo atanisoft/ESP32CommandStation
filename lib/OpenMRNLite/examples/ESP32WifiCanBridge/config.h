@@ -6,6 +6,8 @@
 #include "openlcb/ConfigRepresentation.hxx"
 #include "openlcb/MemoryConfig.hxx"
 
+#include "freertos_drivers/esp32/Esp32WiFiConfiguration.hxx"
+
 namespace openlcb
 {
 
@@ -39,6 +41,7 @@ CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
 /// Each entry declares the name of the current entry, then the type and then
 /// optional arguments list.
 CDI_GROUP_ENTRY(internal_config, InternalConfigData);
+CDI_GROUP_ENTRY(wifi, WiFiConfiguration, Name("WiFi Configuration"));
 CDI_GROUP_END();
 
 /// This segment is only needed temporarily until there is program code to set

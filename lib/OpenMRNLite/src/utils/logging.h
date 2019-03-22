@@ -88,10 +88,10 @@ extern os_mutex_t g_log_mutex;
 #endif
 
 /// Conditionally write a message to the logging output.
-/// @param level is the log level; if the confiugured loglevel is smaller, then
+/// @param level is the log level; if the configured loglevel is smaller, then
 /// the log is not printed, not rendered, and the rendering code is never even
 /// compiled. This makes it cheap to have LOG(VERBOSE, ...) messages left in
-/// the code wverywhere.
+/// the code everywhere.
 /// @param message is a printf format argument and possibly more arguments that
 /// are referenced from the printf format.
 #define LOG(level, message...)                                                 \
@@ -104,6 +104,7 @@ extern os_mutex_t g_log_mutex;
         else if (level == FATAL)                                               \
         {                                                                      \
             fprintf(stderr, message);                                          \
+            fprintf(stderr, "\n");                                             \
             abort();                                                           \
         }                                                                      \
         else if (LOGLEVEL >= level)                                            \

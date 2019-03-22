@@ -1,5 +1,5 @@
-/** \copyright
- * Copyright (c) 2015, Balazs Racz
+/** @copyright
+ * Copyright (c) 2017, Stuart W Baker
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,35 +24,27 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * \file FileUtils.hxx
+ * @file WifiDefs.cxx
+ * This file provides weak (reference) definitions for the Wi-Fi credentials.
  *
- * Utilities for dealing with files on host OSes.
- *
- * @author Balazs Racz
- * @date 4 Dec 2015
+ * @author Stuart W Baker
+ * @date 3 February 2017
  */
 
-#ifndef _UTILS_FILEUTILS_HXX_
-#define _UTILS_FILEUTILS_HXX_
+// The following defaults are a template for what needs to be defined in a
+// given application for Wi-Fi to work.  Do not modify this file.  Copy these
+// globals into an application specific file and remove the weak attribute.
+// They are defined here weak so that a build can complete without failure
+// but are not expected to work as is.
 
-#include <string>
+extern "C" {
+/// Name of wifi accesspoint to connect to.
+char __attribute__((weak)) WIFI_SSID[] = "YourSSIDHere";
+/// Password of wifi connection. If empty, use no encryption.
+char __attribute__((weak)) WIFI_PASS[] = "pass-or-empty-for-open";
+/// Hostname at which the OpenLCB hub is at.
+char __attribute__((weak)) WIFI_HUB_HOSTNAME[] = "10.0.0.7";
+/// Port number of the OpenLCB hub.
+int __attribute__((weak)) WIFI_HUB_PORT = 12021;
+}
 
-/// Opens a file, reads the entire contents, stores it in a c++ std::string and
-/// returns this string. Helper function in some client applications. Exits the
-/// current application if there is an error.
-///
-/// @param filename name of file to open.
-///
-/// @return the file contents.
-///
-string read_file_to_string(const string &filename);
-
-/// Opens (or creates) a file, truncates it and overwrites the contents with
-/// what is given in a string. Terminates the application if an error is
-/// encountered.
-///
-/// @param filename name of file to open.
-/// @param data what to write into the file.
-void write_string_to_file(const string &filename, const string &data);
-
-#endif //_UTILS_FILEUTILS_HXX_

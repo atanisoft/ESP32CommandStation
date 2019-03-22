@@ -26,6 +26,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <esp_wifi_internal.h>
 #include <esp_task_wdt.h>
 
+#include <freertos_drivers/arduino/WifiDefs.hxx>
 #include <utils/StringPrintf.hxx>
 
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
@@ -75,8 +76,8 @@ private:
   WiFiClient _client;
 };
 
-const String wifiSSID = WIFI_SSID;
-const String wifiPassword = WIFI_PASSWORD;
+char WIFI_SSID[] = SSID_NAME;
+char WIFI_PASS[] = SSID_PASSWORD;
 
 DCCPPWebServer dccppWebServer;
 WiFiServer DCCppServer(DCCPP_JMRI_CLIENT_PORT);
@@ -169,7 +170,7 @@ void WiFiInterface::begin() {
   WiFi.onEvent([](system_event_id_t event) {
     if(wifiConnected) {
       log_e("Connection to WiFi lost, reconnecting...");
-      WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
+      WiFi.begin(WIFI_SSID, WIFI_PASS);
     }
   }, SYSTEM_EVENT_STA_DISCONNECTED);
 
@@ -178,9 +179,9 @@ void WiFiInterface::begin() {
 #if NEXTION_ENABLED
   nextionTitlePage->setStatusText(0, "Connecting to WiFi");
 #endif
-  log_i("WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), wifiSSID.c_str());
+  log_i("WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), WIFI_SSID);
   WiFi.setHostname(HOSTNAME);
-  if (WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str()) != WL_CONNECT_FAILED) {
+  if (WiFi.begin(WIFI_SSID, WIFI_PASS) != WL_CONNECT_FAILED) {
     log_i("Waiting for WiFi to connect");
 #if NEXTION_ENABLED
     nextionTitlePage->setStatusText(1, "Pending...");
@@ -231,7 +232,7 @@ void WiFiInterface::begin() {
       for(int index = 0; index < networks; index++) {
         log_i("SSID: %s (RSSI: %d) Encryption: %s",
           WiFi.SSID(index), WiFi.RSSI(index), WIFI_ENC_TYPES[WiFi.encryptionType(index)]);
-        if(WiFi.SSID(index).equalsIgnoreCase(wifiSSID)) {
+        if(WiFi.SSID(index).equalsIgnoreCase(WIFI_SSID)) {
           ssidMatch = true;
         }
       }

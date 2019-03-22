@@ -153,12 +153,18 @@ public:
     /// @return the thread handle.
     os_thread_t thread_handle() { return OSThread::get_handle(); }
 
+    OSThread& thread() { return *this; }
+    
     /// Die if we are not on the current executor.
     void assert_current() { HASSERT(os_thread_self() == thread_handle()); }
     
     /// @return a number that gets incremented by one every time an executable
     /// runs.
     virtual uint32_t sequence() = 0;
+
+    /// Helper function for debugging and tracing.
+    /// @return currently running executable or nullptr if none active.
+    Executable* volatile current() { return current_; }
     
 protected:
     /** Thread entry point.
@@ -207,7 +213,7 @@ private:
     const char *name_;
 
     /** Currently executing closure. USeful for debugging crashes. */
-    Executable* current_;
+    Executable* volatile current_;
 
     /** List of active timers. */
     ActiveTimers activeTimers_;

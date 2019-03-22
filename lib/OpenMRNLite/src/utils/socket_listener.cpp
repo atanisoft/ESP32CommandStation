@@ -32,14 +32,20 @@
  * @date 3 Aug 2013
  */
 
-#if defined (__linux__) || defined (__MACH__) || defined(__FreeRTOS__)
+#include "openmrn_features.h"
 
+#if OPENMRN_FEATURE_BSD_SOCKETS
+
+#ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#endif
 
+#ifndef ESP32 // these don't exist on the ESP32 with LWiP
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#endif // ESP32
+#include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <signal.h>
@@ -57,18 +63,28 @@ static void* accept_thread_start(void* arg) {
   return NULL;
 }
 
+#ifdef ESP32
+/// Stack size to use for the accept_thread_.
+static constexpr size_t listener_stack_size = 1536;
+#else
+/// Stack size to use for the accept_thread_.
+static constexpr size_t listener_stack_size = 1000;
+#endif // ESP32
+
 SocketListener::SocketListener(int port, connection_callback_t callback)
     : startupComplete_(0),
       shutdownRequested_(0),
       shutdownComplete_(0),
       port_(port),
       callback_(callback),
-      accept_thread_("accept_thread", 0, 1000, accept_thread_start, this) {
-#ifdef __linux__
+      accept_thread_("accept_thread", 0, listener_stack_size,
+        accept_thread_start, this)
+{
+#if OPENMRN_FEATURE_BSD_SOCKETS_IGNORE_SIGPIPE
     // We expect write failures to occur but we want to handle them where the
     // error occurs rather than in a SIGPIPE handler.
     signal(SIGPIPE, SIG_IGN);
-#endif
+#endif // OPENMRN_FEATURE_BSD_SOCKETS_IGNORE_SIGPIPE
 }
 
 SocketListener::~SocketListener() {
@@ -102,14 +118,14 @@ void SocketListener::AcceptThreadBody() {
   ERRNOCHECK("bind",
              ::bind(listenfd, (struct sockaddr *) &addr, sizeof(addr)));
 
-#ifndef __FreeRTOS__  // no getsockname support
+#if OPENMRN_HAVE_BSD_SOCKETS_GETSOCKNAME
   namelen = sizeof(addr);
   ERRNOCHECK("getsockname",
              getsockname(listenfd, (struct sockaddr *) &addr, &namelen));
 
   // This is the actual port that got opened. We could check it against the
   // requested port. listenport = ;
-#endif
+#endif // OPENMRN_HAVE_BSD_SOCKETS_GETSOCKNAME
 
   // FreeRTOS+TCP uses the parameter to listen to set the maximum number of
   // connections to the given socket, so allow some room
@@ -117,7 +133,7 @@ void SocketListener::AcceptThreadBody() {
 
   LOG(INFO, "Listening on port %d, fd %d", ntohs(addr.sin_port), listenfd);
 
-#ifndef __FreeRTOS__
+#if OPENMRN_HAVE_BSD_SOCKETS_RX_TIMEOUT
   {
       struct timeval tm;
       tm.tv_sec = 0;
@@ -125,7 +141,7 @@ void SocketListener::AcceptThreadBody() {
       ERRNOCHECK("setsockopt_timeout",
           setsockopt(listenfd, SOL_SOCKET, SO_RCVTIMEO, &tm, sizeof(tm)));
   }
-#endif
+#endif // OPENMRN_HAVE_BSD_SOCKETS_RX_TIMEOUT
 
   int connfd;
 
@@ -161,7 +177,4 @@ void SocketListener::AcceptThreadBody() {
   shutdownComplete_ = 1;
 }
 
-
-
-
-#endif // __linux__
+#endif // OPENMRN_FEATURE_BSD_SOCKETS

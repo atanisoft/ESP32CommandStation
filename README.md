@@ -51,8 +51,8 @@ Open include/Config_WiFi.h and set the values for the following parameters as re
 
 | PARAM | Description |
 | ----- | ----------- |
-| WIFI_SSID | This is the WiFi Access Point the Command Station should connect to on startup. |
-| WIFI_PASSWORD | This is the password the Command Station should use when connecting to the WiFi Access Point defined above. |
+| SSID_NAME | This is the WiFi Access Point the Command Station should connect to on startup. |
+| SSID_PASSWORD | This is the password the Command Station should use when connecting to the WiFi Access Point defined above. |
 | HOSTNAME | This is the hostname that the Command Station will advertise in mDNS and can be customized if you desire a different name than the default (DCCpp32) |
 
 #### Static IP vs DHCP assigned IP (Optional)

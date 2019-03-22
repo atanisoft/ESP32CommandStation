@@ -84,6 +84,9 @@ extern "C" {
  */
 int appl_main(int argc, char *argv[]);
 
+/// @return the available heap or -1 if this operation is not supported.
+ssize_t os_get_free_heap(void);
+
 #if defined (__FreeRTOS__)
 
 extern void hw_init(void);

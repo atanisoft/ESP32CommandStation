@@ -33,13 +33,18 @@
  */
 
 #include <Arduino.h>
+#include <ESPmDNS.h>
 #include <SPIFFS.h>
+#include <WiFi.h>
+#include <vector>
+#include <esp_spi_flash.h>
 
 #include <OpenMRNLite.h>
-#include "openlcb/ConfiguredConsumer.hxx"
-#include "openlcb/ConfiguredProducer.hxx"
-#include "openlcb/MultiConfiguredConsumer.hxx"
-#include "utils/GpioInitializer.hxx"
+#include <openlcb/TcpDefs.hxx>
+
+#include <openlcb/MultiConfiguredConsumer.hxx>
+#include <utils/GpioInitializer.hxx>
+#include <freertos_drivers/arduino/CpuLoad.hxx>
 
 // Pick an operating mode below, if you select USE_WIFI it will expose
 // this node on WIFI if you select USE_CAN, this node will be available
@@ -48,7 +53,13 @@
 // both WiFi and CAN interfaces.
 
 #define USE_WIFI
-//#define USE_CAN
+#define USE_CAN
+
+// Uncomment the line below to have this node advertise itself via mDNS as a
+// hub. When this is enabled, other devices can find and connect to this node
+// via mDNS, treating it as a hub. Note this requires USE_WIFI to be enabled
+// above and should only be enabled on one node which is acting as a hub.
+// #define BROADCAST_MDNS
 
 // uncomment the line below to have all packets printed to the Serial
 // output. This is not recommended for production deployment.
@@ -84,9 +95,9 @@ const char *password = WIFI_PASS;
 /// unique.
 const char *hostname = "esp32mrn";
 
-// Uncomment this line to enable usage of ::select() within the Grid Connect
-// code.
-//OVERRIDE_CONST_TRUE(gridconnect_tcp_use_select);
+OVERRIDE_CONST(gridconnect_buffer_size, 3512);
+OVERRIDE_CONST(gridconnect_buffer_delay_usec, 2000);
+OVERRIDE_CONST(gc_generate_newlines, CONSTANT_FALSE);
 
 #endif // USE_WIFI
 
@@ -142,15 +153,15 @@ GPIO_PIN(IO7, GpioOutputSafeLow, 27);
 // the constexpr declaration, because it will produce a compile error in case
 // the list of pointers cannot be compiled into a compiler constant and thus
 // would be placed into RAM instead of ROM.
-constexpr const Gpio *const output_gpio_set[] = {
+constexpr const Gpio *const outputGpioSet[] = {
     IO0_Pin::instance(), IO1_Pin::instance(), //
     IO2_Pin::instance(), IO3_Pin::instance(), //
     IO4_Pin::instance(), IO5_Pin::instance(), //
     IO6_Pin::instance(), IO7_Pin::instance()  //
 };
 
-openlcb::MultiConfiguredConsumer gpio_consumers(openmrn.stack()->node(),
-    output_gpio_set, ARRAYSIZE(output_gpio_set), cfg.seg().consumers());
+openlcb::MultiConfiguredConsumer gpio_consumers(openmrn.stack()->node(), outputGpioSet,
+    ARRAYSIZE(outputGpioSet), cfg.seg().consumers());
 
 // Declare input pins, these are using analog pins as digital inputs
 // NOTE: pins 25 and 26 can not safely be used as analog pins while
@@ -182,12 +193,13 @@ openlcb::ConfiguredProducer IO14_producer(
 openlcb::ConfiguredProducer IO15_producer(
     openmrn.stack()->node(), cfg.seg().producers().entry<7>(), IO15_Pin());
 
+
 // Create an initializer that can initialize all the GPIO pins in one shot
 typedef GpioInitializer<
     IO0_Pin,  IO1_Pin,  IO2_Pin,  IO3_Pin,  // outputs 0-3
     IO4_Pin,  IO5_Pin,  IO6_Pin,  IO7_Pin,  // outputs 4-7
     IO8_Pin,  IO9_Pin,  IO10_Pin, IO11_Pin, // inputs 0-3
-    IO12_Pin, IO13_Pin, IO14_Pin, IO15_Pin  // inputs 4-7
+    IO12_Pin, IO13_Pin, IO14_Pin, IO15_Pin // inputs 4-7
     > GpioInit;
 
 // The producers need to be polled repeatedly for changes and to execute the
@@ -250,9 +262,29 @@ namespace openlcb
     extern const char *const SNIP_DYNAMIC_FILENAME = CONFIG_FILENAME;
 }
 
+CpuLoad cpu_load;
+hw_timer_t * timer = nullptr;
+CpuLoadLog* cpu_log = nullptr;
+
+void IRAM_ATTR onTimer()
+{
+    if (spi_flash_cache_enabled())
+    {
+        // Retrieves the vtable pointer from the currently running executable.
+        unsigned *pp = (unsigned *)openmrn.stack()->executor()->current();
+        cpuload_tick(pp ? pp[0] | 1 : 0);
+    }
+}
+
 void setup()
 {
     Serial.begin(115200L);
+
+    timer = timerBegin(3, 80, true); // timer_id = 3; divider=80; countUp = true;
+    timerAttachInterrupt(timer, &onTimer, true); // edge = true
+    // 1MHz clock, 163 ticks per second desired.
+    timerAlarmWrite(timer, 1000000/163, true);
+    timerAlarmEnable(timer);
 
     // Initialize the SPIFFS filesystem as our persistence layer
     if (!SPIFFS.begin())
@@ -282,6 +314,8 @@ void setup()
     // Start the OpenMRN stack
     openmrn.begin();
     openmrn.start_executor_thread();
+    cpu_log = new CpuLoadLog(openmrn.stack()->service());
+
 
 #if defined(PRINT_PACKETS)
     // Dump all packets as they are sent/received.
@@ -295,7 +329,6 @@ void setup()
     openmrn.add_can_port(
         new Esp32HardwareCan("esp32can", CAN_RX_PIN, CAN_TX_PIN));
 #endif // USE_CAN
-
 }
 
 void loop()
