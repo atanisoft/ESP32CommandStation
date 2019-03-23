@@ -44,7 +44,7 @@
 
 class LocoNetESP32Uart: public LocoNet {
 	public:
-		LocoNetESP32Uart(uint8_t rxPin=16, uint8_t txPin=15, uint8_t uartNum=1, bool inverted=false, const BaseType_t preferedCore=tskNO_AFFINITY);
+		LocoNetESP32Uart(uint8_t rxPin=16, uint8_t txPin=15, uint8_t uartNum=1, bool inverted=false, bool enablePullup=false, const BaseType_t preferedCore=tskNO_AFFINITY);
 		virtual bool begin();
 		virtual void end();
 		static void taskEntryPoint(void *param) {
