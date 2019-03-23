@@ -31,6 +31,12 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 // reset this parameter to false or comment the next line which will have the same effect.
 #define LOCONET_INVERTED_LOGIC true
 
+// If you are using the LM311 circuit as defined in the docs/loconet/LoocNetInterface.png
+// file and do not have a resistor connected between 3v3 (VCC) and the LOCONET_RX_PIN it
+// is necessary to enable the internal pull up for the RX pin to ensure proper logic. If
+// you have an external pull up resistor comment out this option.
+#define LOCONET_ENABLE_RX_PIN_PULLUP true
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 #define LOCONET_ENABLED true

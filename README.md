@@ -233,6 +233,8 @@ The following are not implemented but are planned:
 | LOCONET_RX_PIN | This should be connected to the RX input from the LocoNet interface. |
 | LOCONET_TX_PIN | This should be connected to the TX output from the LocoNet interface. |
 | LOCONET_UART | This is the hardware UART on the ESP32 to use for the LocoNet interface. |
+| LOCONET_INVERTED_LOGIC | If the LocoNet interface circuit requires inverted logic this option should be enabled. This is defaulted to enabled based on the LM311 circuit below. |
+| LOCONET_ENABLE_RX_PIN_PULLUP | If the LocoNet interface circuit is an open collector output design it is necessary to enable the built in pull up resistor on the RX pin unless an external pull up resistor has been added between 3v3 (VCC) and LOCONET_RX_PIN. |
 
 #### LocoNet Interface circuit
 John Plocher created the circuit shown below, it works great for a DIY interface as it only requires a handful of components.

@@ -94,6 +94,10 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define LOCONET_INVERTED_LOGIC false
 #endif
 
+#ifndef LOCONET_ENABLE_RX_PIN_PULLUP
+#define LOCONET_ENABLE_RX_PIN_PULLUP false
+#endif
+
 #define USE_RMT_FOR_DCC true
 
 #include "ConfigurationManager.h"
