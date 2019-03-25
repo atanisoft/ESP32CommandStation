@@ -234,25 +234,23 @@ extern OpenMRN openmrn;
 void InfoScreen::update() {
   static uint8_t _rotatingStatusIndex = 0;
   static uint8_t _rotatingStatusLineCount = 3;
-  static bool _firstUpdate = true;
   static uint8_t _motorboardIndex = 0;
   static uint32_t _lastRotation = millis();
   static uint32_t _lastUpdate = millis();
 #if LOCONET_ENABLED
   static uint8_t _firstLocoNetIndex = 0;
-  if(_firstUpdate) {
+  if(!_firstLocoNetIndex) {
     _firstLocoNetIndex = _rotatingStatusLineCount;
     _rotatingStatusLineCount += 2;
   }
 #endif
 #if LCC_ENABLED
   static uint8_t _firstLCCIndex = 0;
-  if(_firstUpdate) {
+  if(!_firstLCCIndex) {
     _firstLCCIndex = _rotatingStatusLineCount;
     _rotatingStatusLineCount++;
   }
 #endif
-  _firstUpdate = false;
   // switch to next status line detail set every five seconds
   if(millis() - _lastRotation >= 5000) {
     _lastRotation = millis();
