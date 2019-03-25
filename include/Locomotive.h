@@ -69,6 +69,7 @@ public:
   void showStatus();
   void toJson(JsonObject &, bool=true, bool=true);
   void setFunction(uint8_t funcID, bool state=false) {
+    log_v("[Loco %d] Setting function %d to %d", _locoAddress, funcID, state);
     _functionState[funcID] = state;
     _functionsChanged = true;
   }
