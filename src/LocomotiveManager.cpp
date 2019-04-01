@@ -68,13 +68,13 @@ void LocomotiveManager::processFunction(const std::vector<String> arguments) {
     // this is a request for functions FL,F1-F12
     // for safety this guarantees that first nibble of function byte will always
     // be of binary form 10XX which should always be the case for FL,F1-F12
-    if((functionByte & 0xA0) == 0xA0) {
-      for(uint8_t funcID = 9; funcID <= 12; funcID++) {
-        loco->setFunction(funcID, bitRead(functionByte, funcID-9));
-      }
-    } else if((functionByte & 0xB0) == 0xB0) {
+    if((functionByte & 0xB0) == 0xB0) {
       for(uint8_t funcID = 5; funcID <= 8; funcID++) {
         loco->setFunction(funcID, bitRead(functionByte, funcID-5));
+      }
+    } else if((functionByte & 0xA0) == 0xA0) {
+      for(uint8_t funcID = 9; funcID <= 12; funcID++) {
+        loco->setFunction(funcID, bitRead(functionByte, funcID-9));
       }
     } else {
       loco->setFunction(0, bitRead(functionByte, 4));
