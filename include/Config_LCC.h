@@ -44,12 +44,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // to disable the CAN interface set this to -1
 #define LCC_CAN_TX_PIN -1
 
-// Uncomment the next line to allow the DCC++ESP32 Command Station to act as
-// an LCC Hub via the WiFi interface. When this is not enabled the Command
-// Station will attempt to locate a hub to connect to if the CAN interface
-// is not enabled.
-// #define LCC_ENABLE_GC_TCP_HUB true
-
 /////////////////////////////////////////////////////////////////////////////////////
 
 #define LCC_ENABLED true

@@ -123,9 +123,6 @@ void WiFiInterface::begin() {
       jmriClients.push_back(fd);
     }));
     dccppWebServer.begin();
-#if LCC_ENABLED
-    lccInterface.startWiFiDependencies();
-#endif
 #if NEXTION_ENABLED
     static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->clearStatusText();
     // transition to next screen since WiFi connection is complete

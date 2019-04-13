@@ -56,10 +56,6 @@ using openlcb::WriteHelper;
 
 static constexpr NodeID COMMAND_STATION_NODE_ID = UINT64_C(LCC_NODE_ID);
 
-#if LCC_ENABLE_GC_TCP_HUB
-WiFiServer openMRNServer(openlcb::TcpClientDefaultParams::DEFAULT_PORT);
-#endif
-
 OpenMRN openmrn(COMMAND_STATION_NODE_ID);
 // note the dummy string below is required due to a bug in the GCC compiler
 // for the ESP32
@@ -70,6 +66,9 @@ string dummystring("abcdef");
 // used to generate the cdi.xml file. Here we instantiate the configuration
 // layout. The argument of offset zero is ignored and will be removed later.
 static constexpr ConfigDef cfg(0);
+
+// WiFi manager instance, this will cover the LCC uplink etc.
+Esp32WiFiManager wifi_mgr(openmrn.stack(), cfg.seg().wifi());
 
 // when the command station starts up the first time the config is blank
 // and needs to be reset to factory settings. This class being declared here
@@ -192,6 +191,7 @@ void LCCInterface::init() {
 
     // Start the OpenMRN stack
     openmrn.begin();
+    openmrn.start_executor_thread();
 #if LCC_CAN_ENABLED
     // Add the hardware CAN device as a bridge
     openmrn.add_can_port(
@@ -199,34 +199,7 @@ void LCCInterface::init() {
 #endif
 }
 
-void LCCInterface::startWiFiDependencies() {
-#if LCC_ENABLE_GC_TCP_HUB
-    // Advertise the Command Station as a GC TCP hub
-    MDNS.addService(openlcb::TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN,
-        openlcb::TcpDefs::MDNS_PROTOCOL_TCP,
-        openlcb::TcpClientDefaultParams::DEFAULT_PORT);
-    // start the TCP/IP listener
-    openMRNServer.setNoDelay(true);
-    openMRNServer.begin();
-#elif !(LCC_CAN_ENABLED)
-    // CAN is diabled, search for a hub to connect to
-    // TODO: implement this after implementing generic support inside OpenMRN
-#endif
-}
-
 void LCCInterface::update() {
-#if LCC_ENABLE_GC_TCP_HUB
-    // if the TCP/IP listener has a new client accept it and add it
-    // as a new GridConnect port.
-    if (openMRNServer.hasClient())
-    {
-        WiFiClient client = openMRNServer.available();
-        if (client)
-        {
-            openmrn.add_gridconnect_port(new Esp32WiFiClientAdapter(client));
-        }
-    }
-#endif
     // Call into the OpenMRN stack for its periodic updates
     openmrn.loop();
 }

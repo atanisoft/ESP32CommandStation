@@ -21,7 +21,6 @@ class LCCInterface {
 public:
 	LCCInterface();
   void init();
-	void startWiFiDependencies();
   void update();
 };
 

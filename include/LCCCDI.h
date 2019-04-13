@@ -21,6 +21,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 #include <openlcb/ConfigRepresentation.hxx>
 #include <openlcb/MemoryConfig.hxx>
 #include <openlcb/TractionCvCdi.hxx>
+#include <freertos_drivers/esp32/Esp32WiFiConfiguration.hxx>
 
 namespace openlcb {
     const SimpleNodeStaticValues SNIP_STATIC_DATA = {
@@ -33,7 +34,7 @@ namespace openlcb {
 
     /// Modify this value every time the EEPROM needs to be cleared on the node
     /// after an update.
-    static constexpr uint16_t CANONICAL_VERSION = 0x0130;
+    static constexpr uint16_t CANONICAL_VERSION = 0x0125;
 
     /// Defines the main segment in the configuration CDI. This is laid out at
     /// origin 128 to give space for the ACDI user data at the beginning.
@@ -43,6 +44,7 @@ namespace openlcb {
     CDI_GROUP_ENTRY(internal_config, InternalConfigData);
     /// CV Access via MemoryConfig protocol.
     //CDI_GROUP_ENTRY(cv, TractionShortCvSpace);
+    CDI_GROUP_ENTRY(wifi, WiFiConfiguration, Name("WiFi Configuration"));
     CDI_GROUP_END();
 
     /// This segment is only needed temporarily until there is program code to set
