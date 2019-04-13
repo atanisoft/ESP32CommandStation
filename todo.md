@@ -1,10 +1,14 @@
 # DCC++ESP32 Feature/Bug Tracking list
 This document tracks features and bug fixes that are planned.
 
-## v1.3.0
+## v1.2.5
 The primary focus for this will be improving the LCC integration and solve the crash caused by the DCC signal generation code.
 
 ### Updates from v1.2.1
+
+#### JMRI Interface
+
+- [x] Replaced WiFiServer code with socket_listener from OpenMRNLite.
 
 #### DCC System
 
@@ -12,10 +16,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 #### LCC Integration
 
-- [ ] Traction proxy impl.
-- [ ] Broadcast events for turnout state change.
-- [ ] Discard turnout events when turnout already in expected state (drop duplicate events).
-- [ ] Integrate the WiFiConfiguration CDI element.
+- [x] Integrate the WiFiConfiguration CDI element.
 
 #### Nextion Interface
 
@@ -53,6 +54,9 @@ The entries below are not tracked to a specific release or in any particular pri
 
 ### LCC Integration
 
+- [ ] Traction proxy impl.
+- [ ] Broadcast events for turnout state change.
+- [ ] Discard turnout events when turnout already in expected state (drop duplicate events).
 - [ ] adjust InfoScreen LCC details so they are actually useful, right now it is a placeholder.
 - [ ] implement CV memory space.
 
@@ -69,7 +73,6 @@ The entries below are not tracked to a specific release or in any particular pri
 
 - [ ] OTA support via JMRI / LCC
 - [ ] return to normal mode on Nextion when OTA fails.
-- [ ] OTA SPIFFS update (if needed, unsure as of now)
 
 ### InfoScreen
 

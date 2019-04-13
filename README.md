@@ -288,4 +288,4 @@ When this module is enabled the Command Station will receive and respond to cert
 | LCC_CAN_RX_PIN | This is the pin connected to the CAN transceiver RX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 | LCC_CAN_TX_PIN | This is the pin connected to the CAN transceiver TX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 
--February 17, 2019
+-April 13, 2019
