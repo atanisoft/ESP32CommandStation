@@ -29,6 +29,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <freertos_drivers/arduino/WifiDefs.hxx>
 #include <utils/StringPrintf.hxx>
 
+#include <utils/socket_listener.hxx>
+#include <utils/macros.h>
+#include <utils/logging.h>
+
+#include <string>
+
 #if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
 #include "HC12Interface.h"
 #endif
@@ -42,46 +48,14 @@ static constexpr char const * WIFI_ENC_TYPES[] = {
   "WPA2 Enterprise"
 };
 
-class WiFiClientWrapper : public DCCPPProtocolConsumer {
-public:
-  WiFiClientWrapper(WiFiClient client) : _client(client) {
-    log_i("WiFiClient connected from %s", _client.remoteIP().toString().c_str());
-    _client.setNoDelay(true);
-  }
-
-  virtual ~WiFiClientWrapper() {
-    stop();
-  }
-
-  void stop() {
-    log_i("Disconnecting %s", _client.remoteIP().toString().c_str());
-    _client.stop();
-  }
-
-  bool update() {
-    uint8_t buf[128];
-    while (_client.available()) {
-      auto len = _client.available();
-      log_v("[%s] reading %d bytes", _client.remoteIP().toString().c_str(), len);
-      auto added = _client.readBytes(&buf[0], len < 128 ? len : 128);
-      feed(&buf[0], added);
-    }
-    return _client.connected();
-  }
-
-  WiFiClient getClient() {
-    return _client;
-  }
-private:
-  WiFiClient _client;
-};
-
 char WIFI_SSID[] = SSID_NAME;
 char WIFI_PASS[] = SSID_PASSWORD;
 
+void *jmriClientHandler(void *arg);
+
 DCCPPWebServer dccppWebServer;
-WiFiServer DCCppServer(DCCPP_JMRI_CLIENT_PORT);
-LinkedList<WiFiClientWrapper *> DCCppClients([](WiFiClientWrapper *consumer) {consumer->stop(); delete consumer; });
+std::vector<int> jmriClients;
+std::unique_ptr<SocketListener> JMRIListener;
 bool wifiConnected = false;
 
 static constexpr const char *WIFI_STATUS_STRINGS[] =
@@ -144,8 +118,10 @@ void WiFiInterface::begin() {
       MDNS.addService("dccpp", "tcp", DCCPP_JMRI_CLIENT_PORT);
     }
 
-    DCCppServer.setNoDelay(true);
-    DCCppServer.begin();
+    JMRIListener.reset(new SocketListener(DCCPP_JMRI_CLIENT_PORT, [](int fd) {
+      os_thread_create(nullptr, nullptr, 0, 0, jmriClientHandler, (void *)fd);
+      jmriClients.push_back(fd);
+    }));
     dccppWebServer.begin();
 #if LCC_ENABLED
     lccInterface.startWiFiDependencies();
@@ -256,18 +232,6 @@ void WiFiInterface::begin() {
 }
 
 void WiFiInterface::update() {
-	if (DCCppServer.hasClient()) {
-    WiFiClient client = DCCppServer.available();
-    if(client) {
-      DCCppClients.add(new WiFiClientWrapper(client));
-    }
-  }
-  for (const auto& client : DCCppClients) {
-    if(!client->update()) {
-      log_d("dropping dead connection from %s", client->getClient().remoteIP().toString().c_str());
-      DCCppClients.remove(client);
-    }
-  }
 }
 
 void WiFiInterface::showInitInfo() {
@@ -275,9 +239,8 @@ void WiFiInterface::showInitInfo() {
 }
 
 void WiFiInterface::send(const String &buf) {
-  for (const auto& client : DCCppClients) {
-    client->getClient().print(buf);
-    delay(1);
+  for (const int client : jmriClients) {
+    ::write(client, buf.c_str(), buf.length());
   }
 	dccppWebServer.broadcastToWS(buf);
 #if HC12_RADIO_ENABLED
@@ -292,4 +255,32 @@ void WiFiInterface::printf(const __FlashStringHelper *fmt, ...) {
 	vsnprintf_P(buf, sizeof(buf), (const char *)fmt, args);
 	va_end(args);
 	send(buf);
+}
+
+void *jmriClientHandler(void *arg) {
+  int fd = (int)arg;
+  uint8_t buf[64];
+  DCCPPProtocolConsumer consumer;
+  while(true) {
+    int bytesRead = ::read(fd, &buf, 64);
+    if (bytesRead < 0 && (errno == EINTR || errno == EAGAIN)) {
+      // no data to read yet
+    } else if(bytesRead > 0) {
+      consumer.feed(buf, bytesRead);
+    } else if(bytesRead == 0) {
+      // EOF, close client
+      LOG(INFO, "JMRI client disconnected on fd: %d\n", fd);
+      break;
+    } else {
+      // some other error, close client
+      LOG(INFO, "JMRI client error on fd: %d (err:%d, %s)\n", fd, errno, strerror(errno));
+      break;
+    }
+  }
+  // remove client FD
+  std::vector<int>::iterator it = std::find(jmriClients.begin(), jmriClients.end(), fd);
+  if(it != jmriClients.end()) {
+    jmriClients.erase(it);
+  }
+  return nullptr;
 }
