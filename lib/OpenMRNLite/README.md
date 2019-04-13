@@ -11,20 +11,20 @@ drivers of the Arduino ecosystem.
 At this time the only supported platforms are:
 
 * ESP32 using the [arduino-esp32](https://github.com/espressif/arduino-esp32)
-core as the underlying stack.
+core as the underlying stack, version 1.0.1 or 1.0.2-rc2.
 * STM32, but no examples are available at this time.
 
 Additional platforms may be added in the future.
 
 ## Where to get the library
 
-- by exporting directly from the OpenMRN source tree (under linux also symlinks
-  are supported)
+- by using the Arduino Library Manager to download a released version from the
+  global Arduino index.
 - by downloading a released source code ZIP file from GitHub
   (https://github.com/openmrn/OpenMRNLite/releases) and importing that ZIP file
   into the Arduino UI.
-- by using the Arduino Library Manager to download a released version from the
-  global Arduino index.
+- by exporting directly from the OpenMRN source tree (under linux also symlinks
+  are supported)
 
 # ESP32 supported hardware
 At this time the ESP32 supports both WiFi and hardware CAN adapters. Almost
@@ -53,32 +53,22 @@ which may be observed:
 ```
 
 If you observe this output, this generally means there was a timeout condition
-where the ESP32 did not receive a response from the access point. This timeout
-is unfortuntely not configurable at this time. It is not known if this is due
-to a poor signal strength or an underlying bug in the ESP-IDF WiFi driver. The
-solution for this appears to be power down the ESP32 and restart the AP. The
-ESP32 should successfully connect. Additional options to try if this does not
-resolve the connection issues:
-1. Before connecting to the AP add these lines:
-```C++
-        WiFi.mode(WIFI_STA);
-        WiFi.disconnect(true);
-```
-
-The above two lines should be set before the call to WiFi.begin();
-2. If the ESP32 board supports an external WiFi antenna use one, this will
+where the ESP32 did not receive a response from the access point. It generally
+means that the ESP32 is too far from the AP for the AP to hear what the ESP32
+is transmitting. Additional options to try if this does not resolve the
+connection issues:
+1. If the ESP32 board supports an external WiFi antenna use one, this will
 provide a higher signal strength which should allow a more successful
 connection.
-3. Clear the persistent WiFi connection details from NVS:
+2. Clear the persistent WiFi connection details from NVS:
 ```C
         #include <nvs_flash.h>
         nvs_flash_init();
 ```
 
-This should be considered a last resort option as it will erase any data in the
-NVS partition. There is no recovery of data from NVS after executing the above
-function. This can also be achieved by using a flash erase tool
-`esptool.py erase_flash ...` and reflashing the ESP32.
+This should not be done very often (i.e. do not do it at every startup!), but
+is otherwise harmless. The same can also be achieved by using a flash erase
+tool `esptool.py erase_flash ...` and reflashing the ESP32.
 
 ## ESP32 Hardware CAN support
 The ESP32 has a built in CAN controller and needs an external CAN transceiver
@@ -95,8 +85,8 @@ voltage for the transceiver.
 2. GND to the GND pin on the transceiver.
 3. GPIO for RX to the RX pin on the transceiver. This can be any unused GPIO
 pin. Note, if you are using a 5V transceiver (ie: MCP2551) it is recommended to
-use a 1k resistor between the RX pin on the transceiver and the ESP32 GPIO pin
-to prevent damage to the ESP32.
+use a 1k or higher resistor between the RX pin on the transceiver and the ESP32
+GPIO pin to prevent damage to the ESP32.
 4. GPIO for TX to the TX pin on the transceiver. This pin must be usable as an
 output pin, GPIO 34-39 on the ESP32 are input only.
 
@@ -105,7 +95,7 @@ CAN bus, you should include a 120ohm resistor across the H and L lines to
 terminate the CAN bus. This is necessary on the two ends of the CAN-bus.
 
 ## Powering the ESP32
-It is not recommended to directly connect the CAN bus PWR_POS (7) to the VIN
+It is not recommended to directly connect the CAN bus `PWR_POS` (7) to the VIN
 pin on the ESP32 as the CAN bus will not supply the necessary current for the
 ESP32 and the PWR_POS can be up to 15V DC which is more than the power
 regulator on most ESP32 boards can handle. For these reasons, a DC-DC

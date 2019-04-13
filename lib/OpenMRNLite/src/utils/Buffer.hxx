@@ -54,6 +54,7 @@
 
 class DynamicPool;
 class FixedPool;
+class LimitedPool;
 class Pool;
 template <class T> class Buffer;
 class BufferBase;
@@ -175,6 +176,9 @@ protected:
 
     /** Allow FixedPool access to our constructor */
     friend class FixedPool;
+
+    /** Allow LimitedPool access to our fields */
+    friend class LimitedPool;
 
     DISALLOW_COPY_AND_ASSIGN(BufferBase);
 };
@@ -358,6 +362,8 @@ protected:
 private:
     /** Allow BufferBase to access this class */
     friend class BufferBase;
+    /** LimitedPool proxies to a base Pool. */
+    friend class LimitedPool;
 
     /** Allow Buffer to access this class */
     template <class T> friend class Buffer;

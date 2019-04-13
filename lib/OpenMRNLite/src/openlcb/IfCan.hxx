@@ -83,8 +83,8 @@ public:
      * @param local_nodes_count is the maximum number of virtual nodes that
      * this interface will support. */
     IfCan(ExecutorBase *executor, CanHubFlow *device,
-          int local_alias_cache_size, int remote_alias_cache_size,
-          int local_nodes_count);
+        int local_alias_cache_size, int remote_alias_cache_size,
+        int local_nodes_count);
 
     ~IfCan();
 
@@ -115,14 +115,16 @@ public:
     /// Sets the alias allocator for this If. Takes ownership of pointer.
     void set_alias_allocator(AliasAllocator *a);
 
-    void add_owned_flow(Executable *e) OVERRIDE;
+    void add_owned_flow(Executable *e) override;
 
-    bool matching_node(NodeHandle expected, NodeHandle actual) OVERRIDE;
+    bool matching_node(NodeHandle expected, NodeHandle actual) override;
 
     void delete_local_node(Node *node) override;
 
+    Node *lookup_local_node_handle(NodeHandle handle) override;
+
 private:
-    void canonicalize_handle(NodeHandle* h);
+    void canonicalize_handle(NodeHandle *h) override;
 
     friend class CanFrameWriteFlow; // accesses the device and the hubport.
 
@@ -166,7 +168,7 @@ struct NodeCanonicalizeRequest
 {
     /// Requests a NodeHandle to be canonicalized, i.e. look up node ID from
     /// alias.
-    void reset(Node* node, NodeHandle handle)
+    void reset(Node *node, NodeHandle handle)
     {
         srcNode = node;
         this->handle = handle;
@@ -174,7 +176,7 @@ struct NodeCanonicalizeRequest
     }
 
     /// Caller node (in order to talk to the bus)
-    Node* srcNode;
+    Node *srcNode;
     /// Destination node handle to canonicalize. At request time the alias
     /// should vbe filled in; at response time the id will be filled in as
     /// well.
@@ -260,7 +262,8 @@ private:
     class ReplyHandler : public MessageHandler
     {
     public:
-        /// Constructor. @param parent is the looku flow that owns this handler.
+        /// Constructor. @param parent is the lookup flow that owns this
+        /// handler.
         ReplyHandler(NodeIdLookupFlow *parent)
             : parent_(parent)
         {

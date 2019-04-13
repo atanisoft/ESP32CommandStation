@@ -148,5 +148,7 @@ DEFAULT_CONST(gridconnect_buffer_delay_usec, 300);
 DEFAULT_CONST(gridconnect_port_max_incoming_packets, 6);
 /// 1 = infinite, do not preallocate memory
 DEFAULT_CONST(gridconnect_bridge_max_incoming_packets, 1);
+/// 1 = infinite
+DEFAULT_CONST(gridconnect_bridge_max_outgoing_packets, 1);
 
 DEFAULT_CONST_FALSE(gridconnect_tcp_use_select);

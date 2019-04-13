@@ -352,16 +352,25 @@ public:
     }
 
 #ifndef OPENMRN_FEATURE_SINGLE_THREADED
+    static void thread_entry(void *arg)
+    {
+        OpenMRN *p = (OpenMRN *)arg;
+        p->stack()->executor()->thread_body();
+    }
+
     void start_executor_thread()
     {
         haveExecutorThread_ = true;
+#ifdef ESP32
+        xTaskCreatePinnedToCore(&thread_entry, "OpenMRN", OPENMRN_STACK_SIZE,
+            this, OPENMRN_TASK_PRIORITY, nullptr, 0);
+        // Remove IDLE0 task watchdog, because the openmrn task sometimes uses
+        // 100% cpu and it is pinned to CPU 0.
+        disableCore0WDT();
+#else
         stack_->executor()->start_thread(
             "OpenMRN", OPENMRN_TASK_PRIORITY, OPENMRN_STACK_SIZE);
-#ifdef ESP32
-        // Remove IDLE0 task watchdog, because the openmrn task sometimes gets
-        // scheduled on CPU0 and can use 100% cpu.
-        disableCore0WDT();
-#endif        
+#endif
     }
 #endif
 

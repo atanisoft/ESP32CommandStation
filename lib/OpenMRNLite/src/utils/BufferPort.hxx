@@ -36,7 +36,9 @@
 #ifndef _UTILS_BUFFERPORT_HXX_
 #define _UTILS_BUFFERPORT_HXX_
 
-/// A wrapper class around a string-based Hub Port that buffersthe outgoing
+#include "utils/LimitedPool.hxx"
+
+/// A wrapper class around a string-based Hub Port that buffers the outgoing
 /// bytes for a specified delay timer before sending the data off. This helps
 /// accumulate more data per TCP packet and increase transmission efficiency.
 ///
@@ -80,10 +82,17 @@ public:
         }
         return true;
     }
-    
+
 private:
     Action entry() override
     {
+        if (!tgtBuf_)
+        {
+            return allocate_and_call(downstream_, STATE(buf_alloc_done),
+                config_gridconnect_bridge_max_outgoing_packets() <= 1
+                    ? nullptr
+                    : &outputPool_);
+        }
         if (msg().size() < (bufSize_ - bufEnd_))
         {
             // Fits into the buffer.
@@ -93,12 +102,6 @@ private:
             {
                 timerPending_ = 1;
                 bufferTimer_.start(delayNsec_);
-            }
-            if (!tgtBuf_) {
-                // Will ensure we keep track of the skipMember_ inside as well.
-                tgtBuf_ = transfer_message();
-                // Invokes the caller's notify in case there is one set.
-                tgtBuf_->set_done(nullptr);
             }
             return release_and_exit();
         }
@@ -118,6 +121,14 @@ private:
             // After flushing the buffers this will fit.
             return again();
         }
+    }
+
+    /// State when the allocation of output buffer completed.
+    Action buf_alloc_done()
+    {
+        tgtBuf_ = get_allocation_result(downstream_);
+        tgtBuf_->data()->skipMember_ = message()->data()->skipMember_;
+        return call_immediately(STATE(entry));
     }
 
     /// Sends off any data we may have accumulated in the buffer to the
@@ -171,6 +182,10 @@ private:
         BufferPort *parent_; ///< what to notify upon timeout.
     } bufferTimer_{this}; ///< timer instance.
 
+    /// Pool implementation that limits the number of buffers allocatable to
+    /// the configuration option.
+    LimitedPool outputPool_ {sizeof(*tgtBuf_),
+        (unsigned)config_gridconnect_bridge_max_outgoing_packets()};
     /// Caches one output buffer to fill in the buffer flush method.
     Buffer<HubData> *tgtBuf_{nullptr};
     /// Where to send output data to.

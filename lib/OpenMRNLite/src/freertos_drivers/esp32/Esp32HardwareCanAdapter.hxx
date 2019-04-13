@@ -63,8 +63,11 @@ public:
     /// transceiver RX.
     /// @param txPin is the ESP32 pin that is connected to the external
     /// transceiver TX.
-    Esp32HardwareCan(const char *name, gpio_num_t rxPin, gpio_num_t txPin, bool reportStats=true)
-        : Can(name), reportStats_(reportStats)
+    Esp32HardwareCan(const char *name, gpio_num_t rxPin, gpio_num_t txPin,
+        bool reportStats = true)
+        : Can(name)
+        , reportStats_(reportStats)
+        , overrunWarningPrinted_(false)
     {
         // Configure the ESP32 CAN driver to use 125kbps.
         can_timing_config_t can_timing_config = CAN_TIMING_CONFIG_125KBITS();
@@ -129,7 +132,9 @@ private:
 
     /// Enables/Disables the periodic reporting of CAN bus statistics to the
     /// default serial stream.
-    bool reportStats_;
+    bool reportStats_ : 1;
+    /// Set to true if the 'frame dropped' warning is printed.
+    bool overrunWarningPrinted_ : 1;
 
     /// Handle for the tx_task that converts and transmits can_frame to the
     /// native can driver.
@@ -181,19 +186,24 @@ private:
             can_status_info_t status;
             can_get_status_info(&status);
             auto current_tick_count = xTaskGetTickCount();
-            if ((next_status_display_tick_count == 0 ||
-                current_tick_count >= next_status_display_tick_count) &&
-                parent->reportStats_)
+            if (next_status_display_tick_count == 0 ||
+                current_tick_count >= next_status_display_tick_count)
             {
                 next_status_display_tick_count =
                     current_tick_count + STATUS_PRINT_INTERVAL;
-                LOG(INFO,
-                    "ESP32-CAN: rx-q:%d, tx-q:%d, rx-err:%d, tx-err:%d, "
-                    "arb-lost:%d, bus-err:%d, state: %s",
-                    status.msgs_to_rx, status.msgs_to_tx,
-                    status.rx_error_counter, status.tx_error_counter,
-                    status.arb_lost_count, status.bus_error_count,
-                    ESP32_CAN_STATUS_STRINGS[status.state]);
+                if (parent->reportStats_)
+                {
+                    LOG(INFO,
+                        "ESP32-CAN: %s rx-q:%d, tx-q:%d, rx-err:%d, tx-err:%d, "
+                        "ovr:%d arb-lost:%d, bus-err:%d, state: %s",
+                        parent->overrunWarningPrinted_ ? "!!OVERRUN!! " : "",
+                        status.msgs_to_rx, status.msgs_to_tx,
+                        status.rx_error_counter, status.tx_error_counter,
+                        parent->overrunCount, status.arb_lost_count,
+                        status.bus_error_count,
+                        ESP32_CAN_STATUS_STRINGS[status.state]);
+                }
+                parent->overrunWarningPrinted_ = false;
             }
             if (status.state == CAN_STATE_BUS_OFF)
             {
@@ -316,8 +326,12 @@ private:
             if (!parent->rxBuf->data_write_pointer(&can_frame) ||
                 can_frame == nullptr)
             {
-                LOG(WARNING,
-                    "ESP32-CAN-RX: buffer overrun, frame dropped!");
+                if (!parent->overrunWarningPrinted_)
+                {
+                    parent->overrunWarningPrinted_ = true;
+                    LOG(WARNING,
+                        "ESP32-CAN-RX: buffer overrun, frame dropped!");
+                }
                 parent->overrunCount++;
                 continue;
             }

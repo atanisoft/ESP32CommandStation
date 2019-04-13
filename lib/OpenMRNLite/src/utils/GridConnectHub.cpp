@@ -41,7 +41,7 @@
 #include "utils/Buffer.hxx"
 #include "utils/BufferPort.hxx"
 #include "utils/HubDevice.hxx"
-#ifndef ARDUINO
+#ifdef OPENMRN_FEATURE_EXECUTOR_SELECT
 #include "utils/HubDeviceSelect.hxx"
 #endif
 #include "utils/Hub.hxx"
@@ -404,8 +404,8 @@ struct GcHubPort : public Executable
     {
         LOG(VERBOSE, "gchub port %p", (Executable *)this);
         if (use_select) {
-#ifdef ARDUINO
-            DIE("select is not supported on Arduino");
+#ifndef OPENMRN_FEATURE_EXECUTOR_SELECT
+            DIE("select is not supported");
 #else
             gcWrite_.reset(new HubDeviceSelect<HubFlow>(&gcHub_, fd, this));
 #endif

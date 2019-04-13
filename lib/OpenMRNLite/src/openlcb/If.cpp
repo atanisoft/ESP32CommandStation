@@ -80,6 +80,12 @@ void error_to_data(uint16_t error_code, void* data) {
     p[1] = error_code & 0xff;
 }
 
+uint16_t data_to_error(const void *data)
+{
+    const uint8_t *p = (const uint8_t *)data;
+    return (((uint16_t)p[0]) << 8) | p[1];
+}
+
 string error_to_buffer(uint16_t error_code, uint16_t mti)
 {
     string ret(4, '\0');

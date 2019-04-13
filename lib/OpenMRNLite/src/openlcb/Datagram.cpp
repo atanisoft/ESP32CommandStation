@@ -37,6 +37,10 @@
 namespace openlcb
 {
 
+/// Defines how long the datagram client flow should wait for the datagram
+/// ack/nack response message.
+long long DATAGRAM_RESPONSE_TIMEOUT_NSEC = SEC_TO_NSEC(3);
+
 DatagramService::DatagramService(If* iface,
                                  size_t num_registry_entries)
     : Service(iface->executor()), iface_(iface), dispatcher_(iface_, num_registry_entries)

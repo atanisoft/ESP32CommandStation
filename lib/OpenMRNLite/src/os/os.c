@@ -600,13 +600,15 @@ long long os_get_time_monotonic(void)
     
     static uint32_t last_micros = 0;
     static uint32_t overflow_micros = 0;
-    
+
+    os_atomic_lock();
     uint32_t new_micros = (uint32_t) micros();
     if (new_micros < last_micros)
     {
         ++overflow_micros;
     }
     last_micros = new_micros;
+    os_atomic_unlock();
     
     time = overflow_micros;
     time <<= 32;
@@ -635,16 +637,19 @@ long long os_get_time_monotonic(void)
     /* This logic ensures that every successive call is one value larger
      * than the last.  Each call returns a unique value.
      */
+    os_atomic_lock();
     if (time <= last)
     {
         last++;
+        time = last;
     }
     else
     {
         last = time;
     }
-
-    return last;
+    os_atomic_unlock();
+    
+    return time;
 }
 
 #if defined(__EMSCRIPTEN__)

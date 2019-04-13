@@ -62,6 +62,13 @@ struct NodeHandle
     NodeHandle(NodeID _id, NodeAlias _alias) : id(_id), alias(_alias) {}
     NodeHandle() : id(0), alias(0) {}
 
+    /** Resets node handle to global (broadcast) handle. */
+    void clear()
+    {
+        id = 0;
+        alias = 0;
+    }
+
     /** Compares two NodeHandle instances.
      * @param o object to compare to
      * @return boolean result of compare

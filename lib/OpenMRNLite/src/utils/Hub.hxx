@@ -233,4 +233,37 @@ protected:
     int fd_{-1};
 };
 
+namespace openlcb
+{
+class FdToTcpParser;
+}
+
+/** Shared base class for thread-based and select-based hub devices. */
+class FdHubPortService : public FdHubPortInterface, public Service
+{
+public:
+    /// Callback from the write flow when it encounters an error.
+    virtual void report_write_error() = 0;
+
+    /// Callback from the readflow when it encounters an error.
+    virtual void report_read_error() = 0;
+
+protected:
+    // For barrier_.
+    template <class HFlow> friend class HubDeviceSelectReadFlow;
+    friend class openlcb::FdToTcpParser;
+
+    /// Constructor
+    /// @param exec executor for the service.
+    /// @param fd the device file descriptor
+    FdHubPortService(ExecutorBase *exec, int fd)
+        : FdHubPortInterface(fd)
+        , Service(exec)
+    {
+    }
+
+    /// This notifiable will be called (if not NULL) upon read or write error.
+    BarrierNotifiable barrier_;
+};
+
 #endif // _UTILS_HUB_HXX_

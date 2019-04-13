@@ -208,7 +208,7 @@ private:
         uint32_t ex_count = service()->executor()->sequence();
         LOG(INFO,
             "Ex %d|FreeHeap %d|Buf %d|Load: avg %3d max streak %d max of 16 %d",
-            (int)ex_count - executorLastCount_, (int)os_get_free_heap(),
+            (int)(ex_count - executorLastCount_), (int)os_get_free_heap(),
             (int)mainBufferPool->total_size(), l->get_load(),
             l->get_max_consecutive(), l->get_peak_over_16_counts());
         executorLastCount_ = ex_count;

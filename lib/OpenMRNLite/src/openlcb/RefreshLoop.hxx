@@ -64,7 +64,6 @@ class RefreshLoop : public StateFlowBase
 public:
     RefreshLoop(Node *node, const std::initializer_list<Polling *> &members)
         : StateFlowBase(node->iface())
-//        , node_(node)
         , timer_(this)
         , lastTimeout_(os_get_time_monotonic())
         , members_(members)
@@ -91,22 +90,40 @@ public:
 
     Action call_members()
     {
-        if (nextMember_ == members_.end())
+        while (true)
         {
-            return call_immediately(STATE(wait_for_tick));
+            if (nextMember_ == members_.end())
+            {
+                return call_immediately(STATE(wait_for_tick));
+            }
+            bn_.reset(this);
+            (*nextMember_)->poll_33hz(&helper_, bn_.new_child());
+            ++nextMember_;
+            if (bn_.abort_if_almost_done())
+            {
+                // The polling member called done notifiable inline. Short
+                // circuits the yield to the executor.
+                continue;
+            }
+            bn_.maybe_done();
+            return wait();
         }
-        (*nextMember_)->poll_33hz(&helper_, this);
-        ++nextMember_;
-        return wait();
     }
 
 private:
-//    Node *node_;
+    /// Message write buffer that is passed to each polling object.
     WriteHelper helper_;
+    /// Helper object for sleeps.
     StateFlowTimer timer_;
+    /// Rolling clock of when the next wakeup should happen.
     long long lastTimeout_;
+    /// Controllable notifier to be passed into the polling objects.
+    BarrierNotifiable bn_;
+    /// Data structure type for storing the polling members.
     typedef vector<Polling*> members_type;
+    /// The actual members.
     members_type members_;
+    /// Iterator for going through the members list.
     members_type::iterator nextMember_;
 };
 

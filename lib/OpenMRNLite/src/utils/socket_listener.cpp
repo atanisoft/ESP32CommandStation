@@ -65,7 +65,7 @@ static void* accept_thread_start(void* arg) {
 
 #ifdef ESP32
 /// Stack size to use for the accept_thread_.
-static constexpr size_t listener_stack_size = 1536;
+static constexpr size_t listener_stack_size = 2048;
 #else
 /// Stack size to use for the accept_thread_.
 static constexpr size_t listener_stack_size = 1000;

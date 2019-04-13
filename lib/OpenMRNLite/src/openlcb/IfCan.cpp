@@ -765,4 +765,13 @@ bool IfCan::matching_node(NodeHandle expected, NodeHandle actual)
     return false;
 }
 
+Node *IfCan::lookup_local_node_handle(NodeHandle h)
+{
+    if (!h.id)
+    {
+        h.id = local_aliases()->lookup(h.alias);
+    }
+    return lookup_local_node(h.id);
+}
+
 } // namespace openlcb

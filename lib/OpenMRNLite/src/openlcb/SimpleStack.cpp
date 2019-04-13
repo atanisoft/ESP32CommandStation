@@ -44,6 +44,7 @@
 #if defined(__linux__)
 #include "utils/HubDeviceSelect.hxx"
 #include <linux/sockios.h>
+#include <sys/ioctl.h>
 #endif
 
 #include <sys/stat.h>

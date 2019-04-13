@@ -35,6 +35,10 @@
 #ifndef _BRACZ_CUSTOM_BLINKERFLOW_HXX_
 #define _BRACZ_CUSTOM_BLINKERFLOW_HXX_
 
+#include "executor/StateFlow.hxx"
+#include "openlcb/Node.hxx"
+#include "openlcb/EventHandlerTemplates.hxx"
+
 /// Reusable test flow that just blinks a pair of events.
 class BlinkerFlow : public StateFlowBase
 {

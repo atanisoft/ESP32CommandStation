@@ -36,7 +36,9 @@
 #define _UTILS_SOCKET_CLIENT_HXX_
 
 /// @todo(balazs.racz) remove this by moving all calls to usleep to the .cxx file.
+#ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#endif
 
 #include <functional>
 #include <netdb.h>

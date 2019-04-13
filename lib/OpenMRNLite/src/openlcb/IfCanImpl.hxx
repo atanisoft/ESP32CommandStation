@@ -409,6 +409,7 @@ protected:
 
     virtual Action timeout_looking_for_dst()
     {
+        /// @todo: generate a terminate due to error response message.
         return call_immediately(STATE(send_finished));
     }
 

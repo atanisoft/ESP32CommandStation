@@ -99,6 +99,10 @@ DECLARE_CONST(gridconnect_port_max_incoming_packets);
 ///  - tracks CAN frames coming from gridconnect ports
 /// it works (unlike the above)
 DECLARE_CONST(gridconnect_bridge_max_incoming_packets);
+/// Number of pending buffers (of type string) in the outgoing hub on a
+/// per-connection basis. This limit ensures that we don't leak memory if the
+/// output socket cannot send the data fast enough.
+DECLARE_CONST(gridconnect_bridge_max_outgoing_packets);
 
 /** Number of bytes of gridconnect data to buffer before sending off the
  * lowlevel system (such as TCP socket). */

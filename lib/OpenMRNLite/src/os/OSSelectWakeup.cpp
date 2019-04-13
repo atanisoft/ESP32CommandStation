@@ -12,8 +12,6 @@ void empty_signal_handler(int)
 
 #include "../vfs/esp_vfs.h"
 
-/// ID of the registered ESP32 VFS structure.
-static esp_vfs_id_t vfs_id;
 /// Protects the initialization of vfs_id.
 static pthread_once_t vfs_init_once = PTHREAD_ONCE_INIT;
 /// This per-thread key will store the OSSelectWakeup object that has been
@@ -89,7 +87,7 @@ void OSSelectWakeup::esp_wakeup()
 #if 0
     esp_vfs_select_triggered((SemaphoreHandle_t *)espSem_);
 #else
-    LOG(VERBOSE, "wakeup es %p %p lws %p", espSem_, *(unsigned*)espSem_, lwipSem_);
+    LOG(VERBOSE, "wakeup es %p %u lws %p", espSem_, *(unsigned*)espSem_, lwipSem_);
     if (espSem_)
     {
         esp_vfs_select_triggered((SemaphoreHandle_t *)espSem_);

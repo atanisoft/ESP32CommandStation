@@ -46,7 +46,6 @@
 #include "utils/SocketClientParams.hxx"
 #include "utils/macros.h"
 
-#include <esp_event_legacy.h>
 #include <freertos/event_groups.h>
 
 namespace openmrn_arduino
@@ -133,9 +132,12 @@ public:
     /// can react to WiFi events to cleanup or recreate the hub or uplink
     /// connections as required.
     ///
-    /// @param event is the system_event_t that was raised by the WiFi
-    /// subsystem.
-    void process_wifi_event(system_event_t *event);
+    /// @param event_id is the system_event_t.event_id value.
+    void process_wifi_event(int event_id);
+
+    /// If called, setsthe ESP32 wifi stack to log verbose information to the
+    /// ESP32 serial port.
+    void enable_verbose_logging();
 
 private:
     /// Default constructor.
@@ -179,6 +181,10 @@ private:
     /// @param on_exit is the Notifiable for when this socket has closed.
     void on_uplink_created(int fd, Notifiable *on_exit);
 
+    /// Enables the esp_wifi logging, including the esp_wifi_internal APIs when
+    /// available.
+    void enable_esp_wifi_logging();
+
     /// Handle for the wifi_manager_task that manages the WiFi stack, including
     /// periodic health checks of the connected hubs or clients.
     os_thread_t wifiTaskHandle_;
@@ -213,6 +219,9 @@ private:
 
     /// Internal flag to request the wifi_manager_task reload configuration.
     bool configReloadRequested_{true};
+
+    /// if true, request esp32 wifi to do verbose logging.
+    bool esp32VerboseLogging_{false};
 
     /// @ref GcTcpHub for this node's hub if enabled.
     std::unique_ptr<GcTcpHub> hub_;

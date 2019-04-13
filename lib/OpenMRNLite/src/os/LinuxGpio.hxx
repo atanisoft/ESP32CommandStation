@@ -209,7 +209,7 @@ public:
         }
     }
     /// @return the static Gpio instance.
-    static const Gpio *instance()
+    static constexpr const Gpio *instance()
     {
         return GpioWrapper<GpioOutputPin<Base,SAFE_VALUE,INVERT>>::instance();
     }

@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "utils/logging.h"
+#include "utils/FdUtils.hxx"
 
 namespace openlcb
 {
@@ -45,36 +46,14 @@ void ConfigEntryBase::repeated_read(int fd, void *buf, size_t size) const
 {
     int ret = lseek(fd, offset_, SEEK_SET);
     ERRNOCHECK("seek_config", ret);
-    uint8_t *dst = static_cast<uint8_t *>(buf);
-    while (size)
-    {
-        ssize_t ret = ::read(fd, dst, size);
-        ERRNOCHECK("read_config", ret);
-        if (ret == 0)
-        {
-            DIE("Unexpected EOF reading the config file.");
-        }
-        size -= ret;
-        dst += ret;
-    }
+    FdUtils::repeated_read(fd, buf, size);
 }
 
 void ConfigEntryBase::repeated_write(int fd, const void *buf, size_t size) const
 {
     int ret = lseek(fd, offset_, SEEK_SET);
     ERRNOCHECK("seek_config", ret);
-    const uint8_t *dst = static_cast<const uint8_t *>(buf);
-    while (size)
-    {
-        ssize_t ret = ::write(fd, dst, size);
-        ERRNOCHECK("write_config", ret);
-        if (ret == 0)
-        {
-            DIE("Unexpected EOF writing the config file.");
-        }
-        size -= ret;
-        dst += ret;
-    }
+    FdUtils::repeated_write(fd, buf, size);
 }
 
 } // namespace openlcb

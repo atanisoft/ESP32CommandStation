@@ -42,7 +42,7 @@ StateFlowBase::Action WriteFlowBase::addressed_entry()
 {
     if (nmsg()->dst.id)
     {
-        nmsg()->dstNode = async_if()->lookup_local_node(nmsg()->dst.id);
+        nmsg()->dstNode = async_if()->lookup_local_node_handle(nmsg()->dst);
         if (nmsg()->dstNode)
         {
             return call_immediately(STATE(send_to_local_node));

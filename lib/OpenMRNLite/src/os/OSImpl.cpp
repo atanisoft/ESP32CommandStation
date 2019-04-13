@@ -1,5 +1,5 @@
-/** @copyright
- * Copyright (c) 2018, Stuart W Baker
+/** \copyright
+ * Copyright (c) 2019, Balazs Racz
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,33 +24,25 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * @file os_private.h
- * This file is a bit of a hack and should only used under extreme caution.
- * its purpose is to allow alternate niche platform support for the OS API's
+ * \file OSImpl.cxx
+ * C++ implementation of certain OS functions.
  *
- * @author Stuart W. Baker
- * @date 29 December 2018
+ * @author Balazs Racz
+ * @date 10 April 2019
  */
 
-#ifndef _OS_OS_PRIVATE_H_
-#define _OS_OS_PRIVATE_H_
+#include "utils/Atomic.hxx"
 
-#ifdef __cplusplus
+static Atomic osGlobalAtomic;
+
 extern "C" {
-#endif
 
-#if defined (__FreeRTOS__)
-extern void os_thread_start(void *arg);
-#endif // __FreeRTOS__
+void os_atomic_lock() {
+    osGlobalAtomic.lock();
+}
 
-/// Locks a single global Atomic used to guard some OS structures.
-void os_atomic_lock();
-/// Unlocks a single global Atomic used to guard some OS structures.
-void os_atomic_unlock();
+void os_atomic_unlock() {
+    osGlobalAtomic.unlock();
+}
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // _OS_OS_PRIVATE_H_
-
+}
