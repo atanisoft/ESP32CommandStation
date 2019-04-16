@@ -135,6 +135,7 @@ void S88BusManager::s88SensorTask(void *param) {
       delayMicroseconds(S88_SENSOR_READ_TIME);
     }
     MUTEX_UNLOCK(_s88SensorLock);
+    vTaskDelay(pdMS_TO_TICKS(50));
   }
 }
 

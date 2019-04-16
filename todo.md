@@ -26,6 +26,9 @@ The primary focus for this will be improving the LCC integration and solve the c
 #### Web Interface
 - [x] Add space in footer for clock so date/time are not smashed together.
 
+#### S88 Sensors
+- [x] Add delay in s88SensorTask so that it gives time for other tasks to execute between updates.
+
 #### Configuration Persistence
 - [ ] Split up monolithic json files to instead be individual files in unique directories.
 - [ ] consider switch to binary format vs json format to save space on FS
@@ -68,6 +71,7 @@ The entries below are not tracked to a specific release or in any particular pri
 - [ ] implement automatic resolver for component id during page initialization so we can drop component IDs from the argument list
 - [ ] move screen detection code into NeoNextion lib.
 - [ ] add support for Nextion Upload via OTA in NeoNextion.
+- [ ] correct screen size detection for 5" and 7" displays which send the same screen type prefix.
 
 ### OTA
 
