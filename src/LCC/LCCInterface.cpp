@@ -83,7 +83,7 @@ public:
 
     void factory_reset(int fd) override
     {
-        log_i("Factory Reset Helper invoked");
+        LOG(INFO, "Factory Reset Helper invoked");
         cfg.userinfo().name().write(fd, "DCC++ESP32 Command Station");
         cfg.userinfo().description().write(fd, "");
     }

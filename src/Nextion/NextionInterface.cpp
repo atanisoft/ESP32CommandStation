@@ -20,6 +20,8 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #include <bits/stdc++.h> 
 
+#include <esp32-hal-log.h>
+
 #ifndef NEXTION_UART_NUM
 #define NEXTION_UART_NUM 2
 #endif

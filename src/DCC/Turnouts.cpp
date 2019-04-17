@@ -243,11 +243,11 @@ Turnout::Turnout(uint16_t turnoutID, uint16_t address, int8_t index,
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    log_i("Created Turnout(%d): DCC Address: %d, orientation: %d (%s), state: %d (%s)",
+    LOG(INFO, "Created Turnout(%d): DCC Address: %d, orientation: %d (%s), state: %d (%s)",
       _turnoutID, _address, _orientation, ORIENTATION_STRINGS[_orientation],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   } else {
-    log_i("Created Turnout(%d): Address: %d/%d, orientation: %d (%s), state: %d (%s)",
+    LOG(INFO, "Created Turnout(%d): Address: %d/%d, orientation: %d (%s), state: %d (%s)",
       _turnoutID, _address, _index, _orientation, ORIENTATION_STRINGS[_orientation],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   }
@@ -263,11 +263,11 @@ Turnout::Turnout(JsonObject &json) {
   if(json.get<int>(JSON_SUB_ADDRESS_NODE) == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    log_v("Loaded Turnout(%d): DCC Address: %d, orientation: %d (%s), state: %d (%s)",
+    LOG(VERBOSE, "Loaded Turnout(%d): DCC Address: %d, orientation: %d (%s), state: %d (%s)",
       _turnoutID, _address, _orientation, ORIENTATION_STRINGS[_orientation],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   } else {
-    log_i("Loaded Turnout(%d): Address: %d/%d, orientation: %d (%s), state: %d (%s)",
+    LOG(VERBOSE, "Loaded Turnout(%d): Address: %d/%d, orientation: %d (%s), state: %d (%s)",
       _turnoutID, _address, _index, _orientation, ORIENTATION_STRINGS[_orientation],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   }
@@ -280,10 +280,10 @@ void Turnout::update(uint16_t address, int8_t index, TurnoutOrientation orientat
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    log_v("Turnout %d updated to address: %d, orientation: %d (%s)",
+    LOG(VERBOSE, "Turnout %d updated to address: %d, orientation: %d (%s)",
       _turnoutID, _address, _orientation, ORIENTATION_STRINGS[_orientation]);
   } else {
-    log_v("Turnout %d updated to address: %d/%d, orientation: %d (%s)",
+    LOG(VERBOSE, "Turnout %d updated to address: %d/%d, orientation: %d (%s)",
       _turnoutID, _address, _index, _orientation, ORIENTATION_STRINGS[_orientation]);
   }
 }
@@ -319,7 +319,7 @@ void Turnout::set(bool thrown, bool sendDCCPacket) {
     DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   }
   wifiInterface.printf(F("<H %d %d>"), _turnoutID, _thrown);
-  log_i("Turnout(%d addr: %d, board:%d, index:%d) %s", _turnoutID, _address, _boardAddress, _index,
+  LOG(INFO, "Turnout(%d addr: %d, board:%d, index:%d) %s", _turnoutID, _address, _boardAddress, _index,
     _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
 }
 
@@ -354,7 +354,7 @@ void AccessoryCommand::process(const std::vector<String> arguments) {
     uint16_t boardAddress = arguments[0].toInt();
     uint8_t boardIndex = arguments[1].toInt();
     bool activate = arguments[2].toInt() == 1;
-    log_v("DCC Accessory Packet %d:%d state: %d", boardAddress, boardIndex, activate);
+    LOG(VERBOSE, "DCC Accessory Packet %d:%d state: %d", boardAddress, boardIndex, activate);
     // first byte is of the form 10AAAAAA, where AAAAAA represent 6 least
     // signifcant bits of accessory address
     packetBuffer.push_back(0x80 + boardAddress % 64);

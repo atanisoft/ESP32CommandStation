@@ -530,11 +530,13 @@ function initPage() {
 		$.get({
 			url: '/features',
 			success : function (data, status, xhr) {
-				if(data['s88'] != 'true') {
+				if(data.s88 === 'false') {
 					disableS88Tab();
 				}
 			},
-			error : disableS88Tab()
+			error : function (xhr, status, error) {
+				disableS88Tab();
+			}
 		});
 		$.mobile.loading("hide");
 	} else {
@@ -808,9 +810,9 @@ function setupBSSensor() {
 function setupBSS88Sensors() {
 	$('#bs-sensor-s88-dialog-save').on('vclick', function(event, ui) {
 		$.post('/s88sensors', {
-			'bus': $('#bs-sensor-s88-id').val(),
-			'dataPin' : $('#bs-sensor-s88-pin').val(),
-			'sensorCount' : $('#bs-sensor-s88-count').val()
+			'id': $('#bs-sensor-s88-id').val(),
+			'pin' : $('#bs-sensor-s88-pin').val(),
+			'count' : $('#bs-sensor-s88-count').val()
 		});
 		BSTabRefresh('Sensors (S88)');
 	});

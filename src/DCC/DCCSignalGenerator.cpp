@@ -121,7 +121,7 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
 }
 
 SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) : _name(name), _signalID(signalID) {
-  log_i("[%s] Configuring signal pin %d", _name.c_str(), signalPin);
+  LOG(INFO, "[%s] Configuring signal pin %d", _name.c_str(), signalPin);
   pinMode(signalPin, INPUT);
   digitalWrite(signalPin, LOW);
   pinMode(signalPin, OUTPUT);
@@ -148,10 +148,10 @@ void SignalGenerator::startSignal(bool sendIdlePackets) {
   // this is required as part of S-9.2.4 section A
   // at least 20 reset packets and 10 idle packets must be sent upon initialization
   // of the command station to force decoders to exit service mode.
-  log_i("[%s] Adding reset packet (25 repeats) to packet queue", _name.c_str());
+  LOG(INFO, "[%s] Adding reset packet (25 repeats) to packet queue", _name.c_str());
   loadBytePacket(resetPacket, 2, 25);
   if(sendIdlePackets) {
-    log_i("[%s] Adding idle packet to packet queue", _name.c_str());
+    LOG(INFO, "[%s] Adding idle packet to packet queue", _name.c_str());
     loadBytePacket(idlePacket, 2, 10);
   }
   enable();
@@ -196,7 +196,7 @@ void SignalGenerator::drainQueue() {
   if(!isQueueEmpty()) {
     // lock the queue so we can drain it
     lockSendQueue();
-    log_i("[%s] Draining packet queue", _name.c_str());
+    LOG(INFO, "[%s] Draining packet queue", _name.c_str());
     while(!isQueueEmpty()) {
       _currentPacket = _toSend.front();
       _toSend.pop();

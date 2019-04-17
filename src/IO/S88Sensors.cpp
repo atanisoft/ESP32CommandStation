@@ -57,20 +57,21 @@ static constexpr UBaseType_t S88_SENSOR_TASK_PRIORITY = 1;
 
 LinkedList<S88SensorBus *> s88SensorBus([](S88SensorBus *sensorBus) {
   sensorBus->removeSensors(-1);
-  log_v("S88SensorBus(%d) removed", sensorBus->getID());
+  LOG(INFO, "[S88] SensorBus(%d) removed", sensorBus->getID());
   delete sensorBus;
 });
 
 void S88BusManager::init() {
+  LOG(INFO, "[S88] Configuration (clock: %d, reset: %d, load: %d)", S88_CLOCK_PIN, S88_RESET_PIN, S88_LOAD_PIN);
   pinMode(S88_CLOCK_PIN, OUTPUT);
   pinMode(S88_RESET_PIN, OUTPUT);
   pinMode(S88_LOAD_PIN, OUTPUT);
 
-  log_v("Initializing S88 SensorBus list");
+  LOG(VERBOSE, "[S88] Initializing SensorBus list");
   JsonObject &root = configStore.load(S88_SENSORS_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t s88BusCount = count.success() ? count.as<int>() : 0;
-  log_v("Found %d S88 Busses", s88BusCount);
+  LOG(VERBOSE, "[S88] Found %d Busses", s88BusCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d S88 Bus"), s88BusCount);
   if(s88BusCount > 0) {
     for(auto bus : root.get<JsonArray>(JSON_SENSORS_NODE)) {
@@ -143,7 +144,7 @@ bool S88BusManager::createOrUpdateBus(const uint8_t id, const uint8_t dataPin, c
   // check for duplicate data pin
   for (const auto& sensorBus : s88SensorBus) {
     if(sensorBus->getID() != id && sensorBus->getDataPin() == dataPin) {
-      log_e("S88 Bus %d is already using data pin %d, rejecting create/update of S88 Bus %d",
+      LOG_ERROR("[S88] Bus %d is already using data pin %d, rejecting create/update of S88 Bus %d",
         sensorBus->getID(), dataPin, id);
       return false;
     }
@@ -159,6 +160,7 @@ bool S88BusManager::createOrUpdateBus(const uint8_t id, const uint8_t dataPin, c
   }
   if(std::find(restrictedPins.begin(), restrictedPins.end(), dataPin) != restrictedPins.end()) {
     MUTEX_UNLOCK(_s88SensorLock);
+    LOG_ERROR("[S88] Attempt to use a restricted pin: %d", dataPin);
     return false;
   }
   s88SensorBus.add(new S88SensorBus(id, dataPin, sensorCount));
@@ -175,7 +177,7 @@ bool S88BusManager::removeBus(const uint8_t id) {
     }
   }
   if(sensorBusToRemove != nullptr) {
-    log_v("Removing S88 Sensor Bus(%d)", sensorBusToRemove->getID());
+    LOG(VERBOSE, "[S88] Removing SensorBus(%d)", sensorBusToRemove->getID());
     s88SensorBus.remove(sensorBusToRemove);
     MUTEX_UNLOCK(_s88SensorLock);
     return true;
@@ -193,7 +195,7 @@ void S88BusManager::getState(JsonArray &array) {
 
 S88SensorBus::S88SensorBus(const uint8_t id, const uint8_t dataPin, const uint16_t sensorCount) :
   _id(id), _dataPin(dataPin), _sensorIDBase((id * S88_MAX_SENSORS_PER_BUS) + S88_FIRST_SENSOR), _lastSensorID((id * S88_MAX_SENSORS_PER_BUS) + S88_FIRST_SENSOR) {
-  log_v("S88SensorBus(%d) created on pin %d with %d sensors starting at id %d",
+  LOG(INFO, "[S88] SensorBus(%d) created on pin %d with %d sensors starting at id %d",
     _id, _dataPin, sensorCount, _sensorIDBase);
   pinMode(_dataPin, INPUT);
   if(sensorCount > 0) {
@@ -207,11 +209,8 @@ S88SensorBus::S88SensorBus(JsonObject &json) {
   _lastSensorID = _sensorIDBase = json[JSON_S88_SENSOR_BASE_NODE];
   uint16_t sensorCount = json[JSON_COUNT_NODE];
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("S88(%d) %02d sensors"), _id, sensorCount);
-  for(uint16_t id = 0; id < sensorCount; id++) {
-    _sensors.push_back(new S88Sensor(_sensorIDBase + id, id));
-  }
-  for (const auto& sensor : _sensors) {
-    sensors.add(sensor);
+  if(sensorCount > 0) {
+    addSensors(sensorCount);
   }
 }
 
@@ -227,7 +226,7 @@ void S88SensorBus::update(const uint8_t dataPin, const uint16_t sensorCount) {
   } else if(sensorCount > 0) {
     addSensors(sensorCount - _sensors.size());
   }
-  log_v("S88SensorBus(%d) updated to use data pin %d, updating %d sensors",
+  LOG(INFO, "[S88] SensorBus(%d) updated to use data pin %d, updating %d sensors",
     _id, _dataPin, _sensors.size());
   show();
 }
@@ -254,14 +253,14 @@ void S88SensorBus::addSensors(int16_t sensorCount) {
 void S88SensorBus::removeSensors(int16_t sensorCount) {
   if(sensorCount < 0) {
     for (const auto& sensor : _sensors) {
-      log_v("S88Sensor(%d) removed", sensor->getID());
+      LOG(VERBOSE, "[S88] Sensor(%d) removed", sensor->getID());
       sensors.remove(sensor);
     }
     _sensors.clear();
   } else {
     for(uint8_t id = 0; id < sensorCount; id++) {
       S88Sensor *removedSensor = _sensors.back();
-      log_v("S88Sensor(%d) removed", removedSensor->getID());
+      LOG(VERBOSE, "[S88] Sensor(%d) removed", removedSensor->getID());
       _sensors.pop_back();
       sensors.remove(removedSensor);
     }
@@ -287,9 +286,9 @@ void S88SensorBus::readNext() {
 
 void S88SensorBus::show() {
   wifiInterface.printf(F("<S88 %d %d %d>"), _id, _dataPin, _sensors.size());
-  log_v("S88 Bus(%d, %d, %d, %d):", _id, _dataPin, _sensorIDBase, _sensors.size());
+  LOG(VERBOSE, "[S88] SensorBus(%d, %d, %d, %d):", _id, _dataPin, _sensorIDBase, _sensors.size());
   for (const auto& sensor : _sensors) {
-    log_v("Input: %d :: %s", sensor->getIndex(), sensor->isActive() ? "ACTIVE" : "INACTIVE");
+    LOG(VERBOSE, "[S88] Input: %d :: %s", sensor->getIndex(), sensor->isActive() ? "ACTIVE" : "INACTIVE");
     sensor->show();
   }
 }
@@ -314,6 +313,6 @@ void S88BusCommandAdapter::process(const std::vector<String> arguments) {
 }
 
 S88Sensor::S88Sensor(uint16_t id, uint16_t index) : Sensor(id, NON_STORED_SENSOR_PIN, false, false), _index(index) {
-  log_v("S88Sensor(%d) created with index %d", id, _index);
+  LOG(VERBOSE, "[S88] Sensor(%d) created with index %d", id, _index);
 }
 #endif

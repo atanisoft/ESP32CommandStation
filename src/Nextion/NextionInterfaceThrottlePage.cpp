@@ -18,6 +18,8 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #include "DCCppESP32.h"
 
+#include <esp32-hal-log.h>
+
 #if NEXTION_ENABLED
 
 const uint8_t SPEED_INCREMENT = 5;

@@ -171,7 +171,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
       static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(0, "Firmware Upload Started...");
 #endif
       otaInProgress = true;
-      log_i("Update starting...");
+      LOG(INFO, "Update starting...");
       InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, "Update starting");
       MotorBoardManager::powerOffAll();
       stopDCCSignalGenerators();
@@ -247,7 +247,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
               }
               node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_LONG_ADDRESS;
             } else {
-              log_w("Failed to read address MSB/LSB");
+              LOG(WARNING, "Failed to read address MSB/LSB");
               jsonResponse->setCode(STATUS_SERVER_ERROR);
             }
           } else {
@@ -258,7 +258,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
                 decoderAddress = (uint16_t)(((addrMSB & 0xFF) << 8) | (addrLSB & 0xFF));
                 node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_LONG_ADDRESS;
               } else {
-                log_w("Unable to read address MSB/LSB");
+                LOG(WARNING, "Unable to read address MSB/LSB");
                 jsonResponse->setCode(STATUS_SERVER_ERROR);
               }
             } else {
@@ -267,7 +267,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
                 decoderAddress = shortAddr;
                 node[JSON_ADDRESS_MODE_NODE] = JSON_VALUE_SHORT_ADDRESS;
               } else {
-                log_w("Unable to read short address CV");
+                LOG(WARNING, "Unable to read short address CV");
                 jsonResponse->setCode(STATUS_SERVER_ERROR);
               }
             }
@@ -294,16 +294,16 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
               node[JSON_LOCO_NODE] = roster;
             }
           } else {
-            log_w("Failed to read decoder address");
+            LOG(WARNING, "Failed to read decoder address");
             jsonResponse->setCode(STATUS_SERVER_ERROR);
           }
         } else {
-          log_w("Failed to read decoder configuration");
+          LOG(WARNING, "Failed to read decoder configuration");
           jsonResponse->setCode(STATUS_SERVER_ERROR);
         }
         leaveProgrammingMode();
       } else {
-        log_w("Programmer already in use");
+        LOG(WARNING, "Programmer already in use");
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
     } else {
@@ -320,7 +320,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
         }
         leaveProgrammingMode();
       } else {
-        log_w("Programmer already in use");
+        LOG(WARNING, "Programmer already in use");
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
 		}
@@ -354,11 +354,11 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
   } else {
     jsonResponse->setCode(STATUS_BAD_REQUEST);
   }
-  log_d("Setting response size");
+  LOG(VERBOSE, "Setting response size");
 	jsonResponse->setLength();
-  log_d("Sending response, %d bytes", jsonResponse->getSize());
+  LOG(VERBOSE, "Sending response, %d bytes", jsonResponse->getSize());
 	request->send(jsonResponse);
-  log_d("sent");
+  LOG(VERBOSE, "sent");
  }
 
 void DCCPPWebServer::handlePower(AsyncWebServerRequest *request) {

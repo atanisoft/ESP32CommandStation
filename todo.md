@@ -25,6 +25,8 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 #### Web Interface
 - [x] Add space in footer for clock so date/time are not smashed together.
+- [x] Fixed S88 section hiding.
+- [x] Fixed S88 sensor bus creation/edit json payload parameters.
 
 #### S88 Sensors
 - [x] Add delay in s88SensorTask so that it gives time for other tasks to execute between updates.
@@ -32,6 +34,9 @@ The primary focus for this will be improving the LCC integration and solve the c
 #### Configuration Persistence
 - [ ] Split up monolithic json files to instead be individual files in unique directories.
 - [ ] consider switch to binary format vs json format to save space on FS
+
+#### General
+- [x] Remove usage of log_X macros in favor of LOG.
 
 ## Future planning:
 The entries below are not tracked to a specific release or in any particular priority order.

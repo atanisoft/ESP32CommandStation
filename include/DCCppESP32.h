@@ -44,10 +44,11 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <functional>
 #include <StringArray.h>
 #include <ArduinoJson.h>
-#include <esp32-hal-log.h>
 #include <SPI.h>
 #include <FS.h>
 #include <SPIFFS.h>
+
+#include <utils/logging.h>
 
 #include "Config.h"
 

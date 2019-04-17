@@ -277,7 +277,7 @@ void DCCPPProtocolHandler::process(const String &commandString) {
   }
   String commandID = parts.front();
   parts.erase(parts.begin());
-  //log_i("Command: %s, argument count: %d", commandID.c_str(), parts.size());
+  LOG(VERBOSE, "Command: %s, argument count: %d", commandID.c_str(), parts.size());
   bool processed = false;
   for (const auto& command : registeredCommands) {
     if(commandID == command->getID()) {
@@ -286,7 +286,7 @@ void DCCPPProtocolHandler::process(const String &commandString) {
     }
   }
   if(!processed) {
-    log_e("No command handler for [%s]", commandID.c_str());
+    LOG_ERROR("No command handler for [%s]", commandID.c_str());
     wifiInterface.send(COMMAND_FAILED_RESPONSE);
   }
 }
@@ -294,12 +294,12 @@ void DCCPPProtocolHandler::process(const String &commandString) {
 void DCCPPProtocolHandler::registerCommand(DCCPPProtocolCommand *cmd) {
   for (const auto& command : registeredCommands) {
 		if(command->getID() == cmd->getID()) {
-      log_e("Ignoring attempt to register second command with ID: %s",
+      LOG_ERROR("Ignoring attempt to register second command with ID: %s",
         cmd->getID().c_str());
       return;
     }
 	}
-  log_v("Registering interface command %s", cmd->getID().c_str());
+  LOG(VERBOSE, "Registering interface command %s", cmd->getID().c_str());
   registeredCommands.add(cmd);
 }
 

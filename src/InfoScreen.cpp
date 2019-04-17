@@ -110,7 +110,7 @@ void InfoScreen::init() {
   }
 #endif
   if(!_enabled) {
-    log_w("Unable to initialize InfoScreen");
+    LOG(WARNING, "Unable to initialize InfoScreen");
     if(scanI2C) {
       ::printf("Scanning for I2C devices...\n");
       ::printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");

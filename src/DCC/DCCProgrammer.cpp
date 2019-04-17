@@ -81,9 +81,9 @@ int16_t readCV(const uint16_t cv) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(int attempt = 0; attempt < PROG_TRACK_CV_ATTEMPTS && cvValue == -1; attempt++) {
-    log_i("[PROG %d/%d] Attempting to read CV %d", attempt+1, PROG_TRACK_CV_ATTEMPTS, cv);
+    LOG(INFO, "[PROG %d/%d] Attempting to read CV %d", attempt+1, PROG_TRACK_CV_ATTEMPTS, cv);
     if(attempt) {
-      log_v("[PROG] Resetting DCC Decoder");
+      LOG(VERBOSE, "[PROG] Resetting DCC Decoder");
       signalGenerator->loadBytePacket(resetPacket, 2, 25);
       signalGenerator->waitForQueueEmpty();
     }
@@ -91,33 +91,33 @@ int16_t readCV(const uint16_t cv) {
     // reset cvValue to all bits OFF
     cvValue = 0;
     for(uint8_t bit = 0; bit < 8; bit++) {
-      log_v("[PROG] CV %d, bit [%d/7]", cv, bit);
+      LOG(VERBOSE, "[PROG] CV %d, bit [%d/7]", cv, bit);
       readCVBitPacket[2] = 0xE8 + bit;
       signalGenerator->loadBytePacket(resetPacket, 2, 3);
       signalGenerator->loadBytePacket(readCVBitPacket, 3, 5);
       signalGenerator->waitForQueueEmpty();
       if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
-        log_v("[PROG] CV %d, bit [%d/7] ON", cv, bit);
+        LOG(VERBOSE, "[PROG] CV %d, bit [%d/7] ON", cv, bit);
         bitWrite(cvValue, bit, 1);
       } else {
-        log_v("[PROG] CV %d, bit [%d/7] OFF", cv, bit);
+        LOG(VERBOSE, "[PROG] CV %d, bit [%d/7] OFF", cv, bit);
       }
     }
 
     // verify the byte we received
     verifyCVPacket[2] = cvValue & 0xFF;
-    log_i("[PROG %d/%d] Attempting to verify read of CV %d as %d", attempt+1, PROG_TRACK_CV_ATTEMPTS, cv, cvValue);
+    LOG(INFO, "[PROG %d/%d] Attempting to verify read of CV %d as %d", attempt+1, PROG_TRACK_CV_ATTEMPTS, cv, cvValue);
     signalGenerator->loadBytePacket(resetPacket, 2, 3);
     signalGenerator->loadBytePacket(verifyCVPacket, 3, 5);
     signalGenerator->waitForQueueEmpty();
     if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
-      log_i("[PROG] CV %d, verified as %d", cv, cvValue);
+      LOG(INFO, "[PROG] CV %d, verified as %d", cv, cvValue);
     } else {
-      log_w("[PROG] CV %d, could not be verified", cv);
+      LOG(WARNING, "[PROG] CV %d, could not be verified", cv);
       cvValue = -1;
     }
   }
-  log_i("[PROG] CV %d value is %d", cv, cvValue);
+  LOG(INFO, "[PROG] CV %d value is %d", cv, cvValue);
   return cvValue;
 }
 
@@ -130,9 +130,9 @@ bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(uint8_t attempt = 1; attempt <= PROG_TRACK_CV_ATTEMPTS && !writeVerified; attempt++) {
-    log_i("[PROG %d/%d] Attempting to write CV %d as %d", attempt, PROG_TRACK_CV_ATTEMPTS, cv, cvValue);
+    LOG(INFO, "[PROG %d/%d] Attempting to write CV %d as %d", attempt, PROG_TRACK_CV_ATTEMPTS, cv, cvValue);
     if(attempt) {
-      log_v("[PROG] Resetting DCC Decoder");
+      LOG(VERBOSE, "[PROG] Resetting DCC Decoder");
       signalGenerator->loadBytePacket(resetPacket, 2, 25);
     }
     signalGenerator->loadBytePacket(resetPacket, 2, 3);
@@ -146,10 +146,10 @@ bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
       // check that decoder sends an ACK for the verify operation
       if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
         writeVerified = true;
-        log_i("[PROG] CV %d write value %d verified.", cv, cvValue);
+        LOG(INFO, "[PROG] CV %d write value %d verified.", cv, cvValue);
       }
     } else {
-      log_w("[PROG] CV %d write value %d could not be verified.", cv, cvValue);
+      LOG(WARNING, "[PROG] CV %d write value %d could not be verified.", cv, cvValue);
     }
   }
   return writeVerified;
@@ -164,9 +164,9 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(uint8_t attempt = 1; attempt <= PROG_TRACK_CV_ATTEMPTS && !writeVerified; attempt++) {
-    log_d("[PROG %d/%d] Attempting to write CV %d bit %d as %d", attempt, PROG_TRACK_CV_ATTEMPTS, cv, bit, value);
+    LOG(INFO, "[PROG %d/%d] Attempting to write CV %d bit %d as %d", attempt, PROG_TRACK_CV_ATTEMPTS, cv, bit, value);
     if(attempt) {
-      log_v("[PROG] Resetting DCC Decoder");
+      LOG(VERBOSE, "[PROG] Resetting DCC Decoder");
       signalGenerator->loadBytePacket(resetPacket, 2, 3);
     }
     signalGenerator->loadBytePacket(writeCVBitPacket, 3, 4);
@@ -180,10 +180,10 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
       // check that decoder sends an ACK for the verify operation
       if(motorBoard->captureSample(CVSampleCount) > milliAmpAck) {
         writeVerified = true;
-        log_i("[PROG %d/%d] CV %d write bit %d verified.", attempt, PROG_TRACK_CV_ATTEMPTS, cv, bit);
+        LOG(INFO, "[PROG %d/%d] CV %d write bit %d verified.", attempt, PROG_TRACK_CV_ATTEMPTS, cv, bit);
       }
     } else {
-      log_w("[PROG %d/%d] CV %d write bit %d could not be verified.", attempt, PROG_TRACK_CV_ATTEMPTS, cv, bit);
+      LOG(WARNING, "[PROG %d/%d] CV %d write bit %d could not be verified.", attempt, PROG_TRACK_CV_ATTEMPTS, cv, bit);
     }
   }
   return writeVerified;
@@ -191,7 +191,7 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
 
 void writeOpsCVByte(const uint16_t locoAddress, const uint16_t cv, const uint8_t cvValue) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_OPERATIONS];
-  log_d("[OPS] Updating CV %d to %d for loco %d", cv, cvValue, locoAddress);
+  LOG(VERBOSE, "[OPS] Updating CV %d to %d for loco %d", cv, cvValue, locoAddress);
   if(locoAddress > 127) {
     uint8_t writeCVBytePacket[] = {
       (uint8_t)(0xC0 | highByte(locoAddress)),
@@ -214,7 +214,7 @@ void writeOpsCVByte(const uint16_t locoAddress, const uint16_t cv, const uint8_t
 
 void writeOpsCVBit(const uint16_t locoAddress, const uint16_t cv, const uint8_t bit, const bool value) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_OPERATIONS];
-  log_d("[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value, locoAddress);
+  LOG(VERBOSE, "[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value, locoAddress);
   if(locoAddress > 127) {
     uint8_t writeCVBitPacket[] = {
       (uint8_t)(0xC0 | highByte(locoAddress)),

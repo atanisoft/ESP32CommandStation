@@ -19,6 +19,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <esp32-hal-timer.h>
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
+#include <esp32-hal-log.h>
 
 // number of microseconds for each half of the DCC signal for a zero
 static constexpr uint64_t DCC_ZERO_BIT_PULSE_DURATION=98;

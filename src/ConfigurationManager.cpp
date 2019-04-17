@@ -17,7 +17,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "DCCppESP32.h"
 
-
 String JSON_NAME_NODE PROGMEM = "name";
 String JSON_STATE_NODE PROGMEM = "state";
 String JSON_USAGE_NODE PROGMEM = "usage";
@@ -112,7 +111,7 @@ ConfigurationManager::~ConfigurationManager() {
 void ConfigurationManager::init() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Loading Config"));
   if(!SPIFFS.begin()) {
-    log_i("SPIFFS mount failed, formatting SPIFFS and retrying");
+    LOG(INFO, "SPIFFS mount failed, formatting SPIFFS and retrying");
     SPIFFS.begin(true);
   }
   SPIFFS.mkdir("/DCCppESP32");
@@ -124,7 +123,7 @@ void ConfigurationManager::clear() {
 }
 
 JsonObject &ConfigurationManager::load(const String &name) {
-  log_i("Loading /DCCppESP32/%s", name.c_str());
+  LOG(INFO, "Loading /DCCppESP32/%s", name.c_str());
   File configFile = SPIFFS.open("/DCCppESP32/" + name, FILE_READ);
   jsonConfigBuffer.clear();
   JsonObject &root = jsonConfigBuffer.parseObject(configFile);
@@ -133,10 +132,10 @@ JsonObject &ConfigurationManager::load(const String &name) {
 }
 
 void ConfigurationManager::store(const String &name, const JsonObject &json) {
-  log_i("Storing /DCCppESP32/%s", name.c_str());
+  LOG(INFO, "Storing /DCCppESP32/%s", name.c_str());
   File configFile = SPIFFS.open("/DCCppESP32/" + name, FILE_WRITE);
   if(!configFile) {
-    log_e("Failed to open /DCCppESP32/%s", name.c_str());
+    LOG_ERROR("Failed to open /DCCppESP32/%s", name.c_str());
     return;
   }
   json.printTo(configFile);

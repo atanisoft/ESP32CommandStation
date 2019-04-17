@@ -89,13 +89,13 @@ LocomotiveConsist::~LocomotiveConsist() {
 
 void LocomotiveConsist::showStatus() {
   // <U ID LEAD TRAIL [{OTHER}]>
-  log_i("LocomotiveConsist(%d) speed: %d, direction: %s, decoderAssisted: %s",
-    getLocoAddress(), getSpeed(), isDirectionForward() ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE,
-    _decoderAssisstedConsist ? JSON_VALUE_TRUE : JSON_VALUE_FALSE);
+  LOG(INFO, "LocomotiveConsist(%d) speed: %d, direction: %s, decoderAssisted: %s",
+    getLocoAddress(), getSpeed(), isDirectionForward() ? JSON_VALUE_FORWARD.c_str() : JSON_VALUE_REVERSE.c_str(),
+    _decoderAssisstedConsist ? JSON_VALUE_TRUE.c_str() : JSON_VALUE_FALSE.c_str());
   String statusCmd = "<U " + String(getLocoAddress() * _decoderAssisstedConsist ? -1 : 1);
   for (const auto& loco : _locos) {
-    log_i("LOCO: %d, ORIENTATION: %s", loco->getLocoAddress(),
-      loco->isOrientationForward() ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
+    LOG(INFO, "LOCO: %d, ORIENTATION: %s", loco->getLocoAddress(),
+      loco->isOrientationForward() ? JSON_VALUE_FORWARD.c_str() : JSON_VALUE_REVERSE.c_str());
     statusCmd += " " + String(loco->getLocoAddress() * loco->isOrientationForward() ? 1 : -1);
   }
   statusCmd += ">";
@@ -259,14 +259,14 @@ void ConsistCommandAdapter::process(const std::vector<String> arguments) {
       for(int index = 1; index < arguments.size(); index++) {
         int32_t locomotiveAddress = arguments[index].toInt();
         if(LocomotiveManager::isAddressInConsist(abs(locomotiveAddress))) {
-          log_e("Locomotive %d is already in a consist.", abs(locomotiveAddress));
+          LOG_ERROR("Locomotive %d is already in a consist.", abs(locomotiveAddress));
           wifiInterface.send(COMMAND_FAILED_RESPONSE);
           return;
         }
       }
       consist = LocomotiveManager::createLocomotiveConsist(consistAddress);
       if(consist == nullptr) {
-        log_e("Unable to create new Consist");
+        LOG_ERROR("Unable to create new Consist");
         wifiInterface.send(COMMAND_FAILED_RESPONSE);
         return;
       }

@@ -28,6 +28,8 @@ public:
 	void showInitInfo();
 	void send(const String &);
 	void printf(const __FlashStringHelper *fmt, ...);
+private:
+  static void printf(const char *fmt, ...);
 };
 
 extern WiFiInterface wifiInterface;

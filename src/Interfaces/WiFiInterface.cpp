@@ -31,7 +31,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include <utils/socket_listener.hxx>
 #include <utils/macros.h>
-#include <utils/logging.h>
 
 #include <string>
 
@@ -57,6 +56,7 @@ DCCPPWebServer dccppWebServer;
 std::vector<int> jmriClients;
 std::unique_ptr<SocketListener> JMRIListener;
 bool wifiConnected = false;
+WiFiInterface wifiInterface;
 
 static constexpr const char *WIFI_STATUS_STRINGS[] =
 {
@@ -92,10 +92,6 @@ void WiFiInterface::begin() {
 	WiFi.config(staticIP, gatewayIP, subnetMask, dnsServer);
 #endif
 
-  //esp_log_level_set("wifi", ESP_LOG_VERBOSE);
-  //esp_wifi_internal_set_log_level(WIFI_LOG_VERBOSE);
-  //esp_wifi_internal_set_log_mod(WIFI_LOG_MODULE_ALL, WIFI_LOG_SUBMODULE_ALL, true);
-
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(true);
   WiFi.onEvent([](system_event_id_t event) {
@@ -110,11 +106,11 @@ void WiFiInterface::begin() {
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
   #endif
 #endif
-    log_i("WiFi IP: %s", WiFi.localIP().toString().c_str());
+    LOG(INFO, "WiFi IP: %s", WiFi.localIP().toString().c_str());
     if (!MDNS.begin(HOSTNAME)) {
-      log_e("Failed to start mDNS");
+      LOG_ERROR("Failed to start mDNS");
     } else {
-      log_i("Adding dccpp.tcp service to mDNS advertiser");
+      LOG(INFO, "Adding dccpp.tcp service to mDNS advertiser");
       MDNS.addService("dccpp", "tcp", DCCPP_JMRI_CLIENT_PORT);
     }
 
@@ -142,7 +138,7 @@ void WiFiInterface::begin() {
   }, SYSTEM_EVENT_STA_LOST_IP);
   WiFi.onEvent([](system_event_id_t event) {
     if(wifiConnected) {
-      log_e("Connection to WiFi lost, reconnecting...");
+      LOG(WARNING, "Connection to WiFi lost, reconnecting...");
       WiFi.begin(WIFI_SSID, WIFI_PASS);
     }
   }, SYSTEM_EVENT_STA_DISCONNECTED);
@@ -152,10 +148,10 @@ void WiFiInterface::begin() {
 #if NEXTION_ENABLED
   nextionTitlePage->setStatusText(0, "Connecting to WiFi");
 #endif
-  log_i("WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), WIFI_SSID);
+  LOG(INFO, "WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), WIFI_SSID);
   WiFi.setHostname(HOSTNAME);
   if (WiFi.begin(WIFI_SSID, WIFI_PASS) != WL_CONNECT_FAILED) {
-    log_i("Waiting for WiFi to connect");
+    LOG(INFO, "Waiting for WiFi to connect");
 #if NEXTION_ENABLED
     nextionTitlePage->setStatusText(1, "Pending...");
 #endif
@@ -165,7 +161,7 @@ void WiFiInterface::begin() {
     uint8_t wifiStatus = WiFi.waitForConnectResult();
     while(wifiStatus != WL_CONNECTED && wifiStatus != WL_NO_SSID_AVAIL && wifiStatus != WL_CONNECT_FAILED && attemptsRemaining--) {
       esp_task_wdt_reset();
-      log_i("WiFi not connected yet, status: %d (%s), attempts remaining: %d", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus], attemptsRemaining);
+      LOG(INFO, "WiFi not connected yet, status: %d (%s), attempts remaining: %d", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus], attemptsRemaining);
 #if NEXTION_ENABLED
       nextionTitlePage->setStatusText(1, StringPrintf("WiFi status: %d (%s)", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus]).c_str());
       nextionTitlePage->setStatusText(2, StringPrintf("remaining attempts: %d", attemptsRemaining).c_str());
@@ -201,10 +197,10 @@ void WiFiInterface::begin() {
     int networks = WiFi.scanNetworks();
     if(networks) {
       bool ssidMatch = false;
-      log_i("Available WiFi networks:");
+      LOG(INFO, "Available WiFi networks:");
       for(int index = 0; index < networks; index++) {
-        log_i("SSID: %s (RSSI: %d) Encryption: %s",
-          WiFi.SSID(index), WiFi.RSSI(index), WIFI_ENC_TYPES[WiFi.encryptionType(index)]);
+        LOG(INFO, "SSID: %s (RSSI: %d) Encryption: %s",
+          WiFi.SSID(index).c_str(), WiFi.RSSI(index), WIFI_ENC_TYPES[WiFi.encryptionType(index)]);
         if(WiFi.SSID(index).equalsIgnoreCase(WIFI_SSID)) {
           ssidMatch = true;
         }
@@ -219,12 +215,11 @@ void WiFiInterface::begin() {
 #endif
       }
     } else {
-      log_w("Unable to find any WiFi networks!");
+      LOG(WARNING, "Unable to find any WiFi networks!");
     }
-    log_e("WiFI connect failed, restarting");
-    esp32_restart();
+    LOG(FATAL, "WiFI connect failed, restarting");
   } else {
-    log_i("WiFi connected!");
+    LOG(INFO, "WiFi connected!");
   }
 }
 
@@ -252,6 +247,15 @@ void WiFiInterface::printf(const __FlashStringHelper *fmt, ...) {
 	vsnprintf_P(buf, sizeof(buf), (const char *)fmt, args);
 	va_end(args);
 	send(buf);
+}
+
+void WiFiInterface::printf(const char *fmt, ...) {
+	char buf[256] = {0};
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, args);
+	va_end(args);
+	wifiInterface.send(buf);
 }
 
 void *jmriClientHandler(void *arg) {

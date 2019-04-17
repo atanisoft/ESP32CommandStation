@@ -38,12 +38,12 @@ GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enable
   adc1_config_channel_atten(_senseChannel, ADC_CURRENT_ATTENUATION);
   pinMode(enablePin, OUTPUT);
   digitalWrite(enablePin, LOW);
-  log_i("[%s] Configuring motor board [ADC1 Channel: %d, currentLimit: %d, enablePin: %d]",
+  LOG(INFO, "[%s] Configuring motor board [ADC1 Channel: %d, currentLimit: %d, enablePin: %d]",
     _name.c_str(), _senseChannel, _triggerValue, _enablePin);
 }
 
 void GenericMotorBoard::powerOn(bool announce) {
-  log_i("[%s] Enabling DCC Signal", _name.c_str());
+  LOG(INFO, "[%s] Enabling DCC Signal", _name.c_str());
   digitalWrite(_enablePin, HIGH);
   _state = true;
 	if(announce) {
@@ -55,7 +55,7 @@ void GenericMotorBoard::powerOn(bool announce) {
 }
 
 void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
-  log_i("[%s] Disabling DCC Signal", _name.c_str());
+  LOG(INFO, "[%s] Disabling DCC Signal", _name.c_str());
   digitalWrite(_enablePin, LOW);
   _state = false;
   if(!_progTrack) {
@@ -92,22 +92,22 @@ void GenericMotorBoard::check() {
     _lastCheckTime = millis();
 		_current = captureSample(motorBoardADCSampleCount);
 		if(_current >= _triggerValue && isOn()) {
-      log_i("[%s] Overcurrent detected %2.2f mA (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
+      LOG(INFO, "[%s] Overcurrent detected %2.2f mA (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
 			powerOff(true, true);
 			_triggered = true;
       _triggerClearedCountdown = motorBoardCheckFaultCountdownInterval;
       _triggerRecurrenceCount = 0;
     } else if(_current >= _triggerValue && _triggered) {
       _triggerRecurrenceCount++;
-      log_i("[%s] Overcurrent persists (%d ms) %2.2f mA (raw: %d)", _name.c_str(), _triggerRecurrenceCount * motorBoardCheckInterval, getCurrentDraw(), _current);
+      LOG(INFO, "[%s] Overcurrent persists (%d ms) %2.2f mA (raw: %d)", _name.c_str(), _triggerRecurrenceCount * motorBoardCheckInterval, getCurrentDraw(), _current);
 		} else if(_current < _triggerValue && _triggered) {
       _triggerClearedCountdown--;
       if(_triggerClearedCountdown == 0) {
-        log_i("[%s] Overcurrent cleared %2.2f mA, enabling (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
+        LOG(INFO, "[%s] Overcurrent cleared %2.2f mA, enabling (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
   			powerOn();
   			_triggered=false;
       } else {
-        log_i("[%s] Overcurrent cleared %2.2f mA, %d ms before re-enable (raw: %d)", _name.c_str(), _triggerClearedCountdown * motorBoardCheckInterval, getCurrentDraw(), _current);
+        LOG(INFO, "[%s] Overcurrent cleared %2.2f mA, %d ms before re-enable (raw: %d)", _name.c_str(), getCurrentDraw(), _triggerClearedCountdown * motorBoardCheckInterval, _current);
       }
     }
 	}
@@ -121,7 +121,7 @@ uint16_t GenericMotorBoard::captureSample(uint8_t sampleCount, bool logResults) 
   }
   auto avgReading = std::accumulate(readings.begin(), readings.end(), 0) / readings.size();
   if(logResults) {
-    log_i("ADC(%d) average: %d, samples: %d", _senseChannel, avgReading, readings.size());
+    LOG(INFO, "ADC(%d) average: %d, samples: %d", _senseChannel, avgReading, readings.size());
   }
   return avgReading;
 }
@@ -173,7 +173,7 @@ void MotorBoardManager::check() {
 }
 
 void MotorBoardManager::powerOnAll() {
-  log_i("Enabling DCC Signal for all boards");
+  LOG(INFO, "Enabling DCC Signal for all boards");
   for (const auto& board : motorBoards) {
     if(!board->isProgrammingTrack()) {
       board->powerOn(false);
@@ -190,7 +190,7 @@ void MotorBoardManager::powerOnAll() {
 }
 
 void MotorBoardManager::powerOffAll() {
-  log_i("Disabling DCC Signal for all boards");
+  LOG(INFO, "Disabling DCC Signal for all boards");
   for (const auto& board : motorBoards) {
     board->powerOff(false);
     board->showStatus();
