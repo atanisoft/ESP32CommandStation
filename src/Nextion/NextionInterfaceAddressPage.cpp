@@ -66,7 +66,7 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
   _addressPic(nextion, ADDRESS_PAGE, addrtype, "AddrType"),
   _boardAddress(nextion, ADDRESS_PAGE, boardaddress, "boardAddress"),
   _indexAddress(nextion, ADDRESS_PAGE, indexaddress, "indexAddress"),
-  _orientationButton(nextion, ADDRESS_PAGE, orientation, "Orientation"),
+  _turnoutTypeButton(nextion, ADDRESS_PAGE, orientation, "Orientation"),
   _saveButton(nextion, ADDRESS_PAGE, save1, "Save"),
   _quitButton(nextion, ADDRESS_PAGE, quit1, "Quit"),
   _undoButton(nextion, ADDRESS_PAGE, undo, "Undo"),
@@ -94,9 +94,9 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
       static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE])->removeNumber(static_cast<NextionButton *>(widget));
     }
   });
-  _orientationButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+  _turnoutTypeButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if (type == NEX_EVENT_PUSH) {
-      static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE])->changeOrientation(static_cast<NextionButton *>(widget));
+      static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE])->changeTurnoutType(static_cast<NextionButton *>(widget));
     }
   });
 }
@@ -119,11 +119,11 @@ void NextionAddressPage::addNumber(const NextionButton *button) {
   }
 }
 
-void NextionAddressPage::changeOrientation(const NextionButton *button) {
-  _orientation++;
-  _orientation %= TurnoutOrientation::MAX_TURNOUT_TYPES;
-  refreshOrientationButton();
-  log_i("Orientation set to %d", _orientation);
+void NextionAddressPage::changeTurnoutType(const NextionButton *button) {
+  _turnoutType++;
+  _turnoutType %= TurnoutType::MAX_TURNOUT_TYPES;
+  refreshTurnoutTypeButton();
+  log_i("Orientation set to %d", _turnoutType);
 }
 
 void NextionAddressPage::removeNumber(const NextionButton *button) {
@@ -157,33 +157,33 @@ void NextionAddressPage::displayPage() {
     _addressPic.setPictureID(LOCO_PIC);
     _boardAddress.hide();
     _indexAddress.hide();
-    _orientationButton.hide();
+    _turnoutTypeButton.hide();
   } else {
     _addressPic.setPictureID(TURNOUT_PIC);
     _boardAddress.setTextAsNumber(0);
     _indexAddress.setTextAsNumber(0);
     _boardAddress.show();
     _indexAddress.show();
-    refreshOrientationButton();
+    refreshTurnoutTypeButton();
   }
 }
 
-void NextionAddressPage::refreshOrientationButton() {
-  switch(_orientation) {
-    case TurnoutOrientation::LEFT:
-      _orientationButton.setPictureID(TURNOUT_IMAGE_IDS::LEFT_HAND_THROWN);
+void NextionAddressPage::refreshTurnoutTypeButton() {
+  switch(_turnoutType) {
+    case TurnoutType::LEFT:
+      _turnoutTypeButton.setPictureID(TURNOUT_IMAGE_IDS::LEFT_HAND_THROWN);
       break;
-    case TurnoutOrientation::RIGHT:
-      _orientationButton.setPictureID(TURNOUT_IMAGE_IDS::RIGHT_HAND_THROWN);
+    case TurnoutType::RIGHT:
+      _turnoutTypeButton.setPictureID(TURNOUT_IMAGE_IDS::RIGHT_HAND_THROWN);
       break;
-    case TurnoutOrientation::WYE:
-      _orientationButton.setPictureID(TURNOUT_IMAGE_IDS::WYE_THROWN_LEFT);
+    case TurnoutType::WYE:
+      _turnoutTypeButton.setPictureID(TURNOUT_IMAGE_IDS::WYE_THROWN_LEFT);
       break;
-    case TurnoutOrientation::MULTI:
-      _orientationButton.setPictureID(TURNOUT_IMAGE_IDS::MULTI_STRAIGHT);
+    case TurnoutType::MULTI:
+      _turnoutTypeButton.setPictureID(TURNOUT_IMAGE_IDS::MULTI_STRAIGHT);
       break;
   }
-  _orientationButton.show();
+  _turnoutTypeButton.show();
 }
 
 #endif

@@ -428,7 +428,7 @@ void NextionTurnoutPage::refreshPage() {
 void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
   NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(previousPage);
   TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount(),
-    addressPage->getNewAddress(), -1, addressPage->getOrientation());
+    addressPage->getNewAddress(), -1, addressPage->getTurnoutType());
   // reset page mode for normal operations
   _pageMode = PAGE_MODE::NORMAL;
   refresh();
@@ -463,23 +463,23 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
 }
 
 uint8_t NextionTurnoutPage::getDefaultTurnoutPictureID(Turnout *turnout) {
-  switch(turnout->getOrientation()) {
-    case TurnoutOrientation::LEFT:
+  switch(turnout->getType()) {
+    case TurnoutType::LEFT:
       if(turnout->isThrown()) {
         return TURNOUT_IMAGE_IDS::LEFT_HAND_THROWN;
       }
       return TURNOUT_IMAGE_IDS::LEFT_HAND_CLOSED;
-    case TurnoutOrientation::RIGHT:
+    case TurnoutType::RIGHT:
       if(turnout->isThrown()) {
         return TURNOUT_IMAGE_IDS::RIGHT_HAND_THROWN;
       }
       return TURNOUT_IMAGE_IDS::RIGHT_HAND_CLOSED;
-    case TurnoutOrientation::WYE:
+    case TurnoutType::WYE:
       if(turnout->isThrown()) {
         return TURNOUT_IMAGE_IDS::WYE_THROWN_RIGHT;
       }
       return TURNOUT_IMAGE_IDS::WYE_THROWN_LEFT;
-    case TurnoutOrientation::MULTI:
+    case TurnoutType::MULTI:
       if(turnout->isThrown()) {
         return TURNOUT_IMAGE_IDS::MULTI_STRAIGHT;
       }

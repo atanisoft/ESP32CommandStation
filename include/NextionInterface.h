@@ -126,31 +126,31 @@ public:
   }
   void addNumber(const NextionButton *);
   void removeNumber(const NextionButton *);
-  void changeOrientation(const NextionButton *);
+  void changeTurnoutType(const NextionButton *);
   uint32_t getNewAddress() {
     return _newAddressString.toInt();
   }
-  TurnoutOrientation getOrientation() {
-    return (TurnoutOrientation)_orientation;
+  TurnoutType getTurnoutType() {
+    return (TurnoutType)_turnoutType;
   }
   void refreshPage() override {}
 protected:
   void init() override {}
   void displayPage() override;
 private:
-  void refreshOrientationButton();
+  void refreshTurnoutTypeButton();
   NextionButton _buttons[10];
   NextionButton _addressPic;
   NextionText _boardAddress;
   NextionText _indexAddress;
-  NextionButton _orientationButton;
+  NextionButton _turnoutTypeButton;
   NextionButton _saveButton;
   NextionButton _quitButton;
   NextionButton _undoButton;
   NextionText _currentAddress;
   NextionText _newAddress;
   uint32_t _address{0};
-  uint8_t _orientation{TurnoutOrientation::LEFT};
+  uint8_t _turnoutType{TurnoutType::LEFT};
   String _newAddressString{""};
 };
 

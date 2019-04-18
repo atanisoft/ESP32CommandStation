@@ -155,7 +155,7 @@
 									<tr>
 										<th>ID</th>
 										<th>Address</th>
-										<th>Orientation</th>
+										<th>Type</th>
 										<th>State</th>
 										<th>Actions</th>
 									</tr>
@@ -359,8 +359,8 @@
 					<select id="bs-turnout-index"><option>0</option><option>1</option><option>2</option><option>3</option></select>
 				</div>
 				<div class="ui-field-contain">
-					<label for="bs-turnout-orientation">Orientation:</label>
-					<select id="bs-turnout-orientation"><option value="0">Left</option><option value="1">Right</option><option value="2">Wye</option><option value="3">Multi (threeway/etc)</option></select>
+					<label for="bs-turnout-type">Type:</label>
+					<select id="bs-turnout-type"><option value="0">Left</option><option value="1">Right</option><option value="2">Wye</option><option value="3">Multi (threeway/etc)</option></select>
 				</div>
 			</div>
 			<div role="footer">
@@ -758,20 +758,20 @@ function setupBSTurnout() {
 	$('#bs-turnout-address-mode').change();
 	$('#bs-turnout-dialog-save').on('vclick', function(event, ui) {
 		if($('#bs-turnout-address-mode').val() === 'dcc') {
-			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val(), 'and orientation', $('#bs-turnout-orientation').val());
+			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val(), 'and type', $('#bs-turnout-type').val());
 			$.post('/turnouts', {
 				'id': $('#bs-turnout-id').val(),
 				'address' : $('#bs-turnout-address').val(),
 				'subAddress' : -1,
-				'orientation' : $('#bs-turnout-orientation').val()
+				'type' : $('#bs-turnout-type').val()
 			});
 		} else {
-			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val(), 'and index', $('#bs-turnout-index').val(), 'with orientation', $('#bs-turnout-orientation').val());
+			console.log('Creating/Updating turnout', $('#bs-turnout-id').val(), 'using address', $('#bs-turnout-address').val(), 'and index', $('#bs-turnout-index').val(), 'with type', $('#bs-turnout-type').val());
 			$.post('/turnouts', {
 				'id': $('#bs-turnout-id').val(),
 				'address' : $('#bs-turnout-address').val(),
 				'subAddress' : $('#bs-turnout-index').val(),
-				'orientation' : $('#bs-turnout-orientation').val()
+				'type' : $('#bs-turnout-type').val()
 			});
 		}
 		BSTabRefresh('Turnouts');
@@ -780,7 +780,7 @@ function setupBSTurnout() {
 		$('#bs-turnout-id').val($('#bs-table-turnouts tbody tr').length + 1);
 		$('#bs-turnout-address').val(1);
 		$('#bs-turnout-index').val(-1);
-		$('#bs-turnout-orientation').val(0);
+		$('#bs-turnout-type').val(0);
 		$('#bs-turnout-address-mode').val('dcc').change();
 		$('#bs-turnout-editor').popup('open', {positionTo:'window'});
 	});
@@ -1083,9 +1083,9 @@ function BSTabRefresh(section) {
 						return String.format("address:{0},index:{1}", record.address, record.subAddress);
 					}
 				},
-				function(record) { // convert orientation
-					var orientationStrings = ["Left", "Right", "Wye", "Multi"];
-					return orientationStrings[record.orientation];
+				function(record) { // convert type
+					var typeStrings = ["Left", "Right", "Wye", "Multi"];
+					return typeStrings[record.type];
 				}, 'state', function(record) {
 				var buttons = '';
 				buttons += createButton({type:'delete', id:String.format("turnout-{0}-delete", record.id)});
@@ -1114,7 +1114,7 @@ function BSTabRefresh(section) {
 								$('#bs-turnout-id').val(data.id);
 								$('#bs-turnout-address').val(data.address);
 								$('#bs-turnout-index').val(data.subAddress);
-								$('#bs-turnout-orientation').val(data.orientation).change();
+								$('#bs-turnout-type').val(data.type).change();
 								if(data.subAddress != -1) {
 									$('#bs-turnout-address-mode').val('address-index').change();
 								} else {

@@ -73,7 +73,7 @@ by a separate interface or GUI program.
 
 LinkedList<Turnout *> turnouts([](Turnout *turnout) {delete turnout; });
 
-static constexpr const char *ORIENTATION_STRINGS[] = {
+static constexpr const char *TURNOUT_TYPE_STRINGS[] = {
   "LEFT",
   "RIGHT",
   "WYE",
@@ -153,14 +153,14 @@ void TurnoutManager::showStatus() {
   }
 }
 
-Turnout *TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t index, const TurnoutOrientation orientation) {
+Turnout *TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t index, const TurnoutType type) {
   for (const auto& turnout : turnouts) {
     if(turnout->getID() == id) {
-      turnout->update(address, index, orientation);
+      turnout->update(address, index, type);
       return turnout;
     }
   }
-  turnouts.add(new Turnout(id, address, index, false, orientation));
+  turnouts.add(new Turnout(id, address, index, false, type));
   return getTurnoutByID(id);
 }
 
@@ -237,18 +237,18 @@ void calculateTurnoutBoardAddressAndIndex(uint16_t *boardAddress, uint8_t *board
 }
 
 Turnout::Turnout(uint16_t turnoutID, uint16_t address, int8_t index,
-  bool thrown, TurnoutOrientation orientation) : _turnoutID(turnoutID),
+  bool thrown, TurnoutType type) : _turnoutID(turnoutID),
   _address(address), _index(index), _boardAddress(0), _thrown(thrown),
-  _orientation(orientation) {
+  _type(type) {
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    LOG(INFO, "Created Turnout(%d): DCC Address: %d, orientation: %d (%s), state: %d (%s)",
-      _turnoutID, _address, _orientation, ORIENTATION_STRINGS[_orientation],
+    LOG(INFO, "Created Turnout(%d): DCC Address: %d, type: %d (%s), state: %d (%s)",
+      _turnoutID, _address, _type, TURNOUT_TYPE_STRINGS[_type],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   } else {
-    LOG(INFO, "Created Turnout(%d): Address: %d/%d, orientation: %d (%s), state: %d (%s)",
-      _turnoutID, _address, _index, _orientation, ORIENTATION_STRINGS[_orientation],
+    LOG(INFO, "Created Turnout(%d): Address: %d/%d, type: %d (%s), state: %d (%s)",
+      _turnoutID, _address, _index, _type, TURNOUT_TYPE_STRINGS[_type],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   }
 }
@@ -258,33 +258,33 @@ Turnout::Turnout(JsonObject &json) {
   _address = json.get<int>(JSON_ADDRESS_NODE);
   _index = json.get<int>(JSON_SUB_ADDRESS_NODE);
   _thrown = json.get<bool>(JSON_STATE_NODE);
-  _orientation = (TurnoutOrientation)json.get<int>(JSON_ORIENTATION_NODE);
+  _type = (TurnoutType)json.get<int>(JSON_TYPE_NODE);
   _boardAddress = 0;
   if(json.get<int>(JSON_SUB_ADDRESS_NODE) == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    LOG(VERBOSE, "Loaded Turnout(%d): DCC Address: %d, orientation: %d (%s), state: %d (%s)",
-      _turnoutID, _address, _orientation, ORIENTATION_STRINGS[_orientation],
+    LOG(VERBOSE, "Loaded Turnout(%d): DCC Address: %d, type: %d (%s), state: %d (%s)",
+      _turnoutID, _address, _type, TURNOUT_TYPE_STRINGS[_type],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   } else {
-    LOG(VERBOSE, "Loaded Turnout(%d): Address: %d/%d, orientation: %d (%s), state: %d (%s)",
-      _turnoutID, _address, _index, _orientation, ORIENTATION_STRINGS[_orientation],
+    LOG(VERBOSE, "Loaded Turnout(%d): Address: %d/%d, type: %d (%s), state: %d (%s)",
+      _turnoutID, _address, _index, _type, TURNOUT_TYPE_STRINGS[_type],
       _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   }
 }
 
-void Turnout::update(uint16_t address, int8_t index, TurnoutOrientation orientation) {
+void Turnout::update(uint16_t address, int8_t index, TurnoutType type) {
   _address = address;
   _index = index;
-  _orientation = orientation;
+  _type = type;
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    LOG(VERBOSE, "Turnout %d updated to address: %d, orientation: %d (%s)",
-      _turnoutID, _address, _orientation, ORIENTATION_STRINGS[_orientation]);
+    LOG(VERBOSE, "Turnout %d updated to address: %d, type: %d (%s)",
+      _turnoutID, _address, _type, TURNOUT_TYPE_STRINGS[_type]);
   } else {
-    LOG(VERBOSE, "Turnout %d updated to address: %d/%d, orientation: %d (%s)",
-      _turnoutID, _address, _index, _orientation, ORIENTATION_STRINGS[_orientation]);
+    LOG(VERBOSE, "Turnout %d updated to address: %d/%d, type: %d (%s)",
+      _turnoutID, _address, _index, _type, TURNOUT_TYPE_STRINGS[_type]);
   }
 }
 
@@ -306,7 +306,7 @@ void Turnout::toJson(JsonObject &json, bool readableStrings) {
   } else {
     json[JSON_STATE_NODE] = _thrown;
   }
-  json[JSON_ORIENTATION_NODE] = (int)_orientation;
+  json[JSON_TYPE_NODE] = (int)_type;
 }
 
 void Turnout::set(bool thrown, bool sendDCCPacket) {
