@@ -208,7 +208,7 @@ void LocomotiveManager::init() {
   JsonObject &root = configStore.load(ROSTER_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t locoCount = count.success() ? count.as<int>() : 0;
-  LOG(VERBOSE, "Found %d RosterEntries", locoCount);
+  LOG(INFO, "[Roster] Found %d RosterEntries", locoCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Locos"), locoCount);
   if(locoCount > 0) {
     for(auto loco : root.get<JsonArray>(JSON_LOCOS_NODE)) {
@@ -218,7 +218,7 @@ void LocomotiveManager::init() {
   JsonObject &consistRoot = configStore.load(CONSISTS_JSON_FILE);
   count = consistRoot[JSON_COUNT_NODE];
   uint16_t consistCount = count.success() ? count.as<int>() : 0;
-  LOG(VERBOSE, "Found %d Consists", consistCount);
+  LOG(INFO, "[Consist] Found %d Consists", consistCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Consists"), consistCount);
   if(locoCount > 0) {
     for(auto consist : consistRoot.get<JsonArray>(JSON_CONSISTS_NODE)) {
@@ -333,24 +333,24 @@ LocomotiveConsist *LocomotiveManager::getConsistForLoco(uint16_t locomotiveAddre
 
 LocomotiveConsist *LocomotiveManager::createLocomotiveConsist(int8_t consistAddress) {
   if(consistAddress == 0) {
-    LOG(INFO, "Creating new Loco Consist, automatic address selection...");
+    LOG(INFO, "[Consist] Creating new Loco Consist, automatic address selection...");
     uint8_t newConsistAddress = 127;
     for (const auto& consist : _consists) {
       if(newConsistAddress > consist->getLocoAddress() - 1 && !isConsistAddress(consist->getLocoAddress() - 1)) {
         newConsistAddress = consist->getLocoAddress() - 1;
-        LOG(INFO, "Found free address for new Loco Consist: %d", newConsistAddress);
+        LOG(INFO, "[Consist] Found free address for new Loco Consist: %d", newConsistAddress);
         break;
       }
     }
     if(newConsistAddress > 0) {
-      LOG(INFO, "Adding new Loco Consist %d", newConsistAddress);
+      LOG(INFO, "[Consist] Adding new Loco Consist %d", newConsistAddress);
       _consists.add(new LocomotiveConsist(newConsistAddress, true));
       return getConsistByID(newConsistAddress);
     } else {
-      LOG(INFO, "Unable to locate free address for new Loco Consist, giving up.");
+      LOG(INFO, "[Consist] Unable to locate free address for new Loco Consist, giving up.");
     }
   } else {
-    LOG(INFO, "Adding new Loco Consist %d", consistAddress);
+    LOG(INFO, "[Consist] Adding new Loco Consist %d", consistAddress);
     _consists.add(new LocomotiveConsist(abs(consistAddress), consistAddress < 0));
     return getConsistByID(abs(consistAddress));
   }
@@ -365,7 +365,7 @@ RosterEntry *LocomotiveManager::getRosterEntry(uint16_t address, bool create) {
     }
   }
   if(instance == nullptr && create) {
-    LOG(VERBOSE, "No roster entry for address %d, creating", address);
+    LOG(VERBOSE, "[Roster] No roster entry for address %d, creating", address);
     instance = new RosterEntry(address);
     _roster.add(instance);
   }
@@ -380,10 +380,10 @@ void LocomotiveManager::removeRosterEntry(uint16_t address) {
     }
   }
   if(entryToRemove != nullptr) {
-    LOG(VERBOSE, "Removing roster entry for address %d", address);
+    LOG(VERBOSE, "[Roster] Removing roster entry for address %d", address);
     _roster.remove(entryToRemove);
   } else {
-    LOG(WARNING, "Roster entry for address %d doesn't exist, ignoring delete request", address);
+    LOG(WARNING, "[Roster] Roster entry for address %d doesn't exist, ignoring delete request", address);
   }
 }
 

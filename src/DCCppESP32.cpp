@@ -183,7 +183,7 @@ void esp32_restart() {
 void setup() {
 	Serial.begin(115200L);
 	Serial.setDebugOutput(true);
-	LOG(INFO, "DCC++ ESP starting up");
+	LOG(INFO, "DCC++ESP32 v%s starting up", VERSION);
 #ifndef ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
   restrictedPins.push_back(0);
   restrictedPins.push_back(2);
@@ -398,15 +398,14 @@ void loop() {
     delay(250);
     esp32_restart();
   }
-  wifiInterface.update();
+  MotorBoardManager::check();
   if(!otaInProgress) {
     InfoScreen::update();
-  }
-  MotorBoardManager::check();
 #if LCC_ENABLED
-  lccInterface.update();
+    lccInterface.update();
 #endif
 #if HC12_RADIO_ENABLED
-  HC12Interface::update();
+    HC12Interface::update();
 #endif
+  }
 }

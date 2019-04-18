@@ -23,7 +23,6 @@ class WiFiInterface {
 public:
 	WiFiInterface();
 	void begin();
-	void update();
 	void showConfiguration();
 	void showInitInfo();
 	void send(const String &);

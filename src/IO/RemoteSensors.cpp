@@ -68,7 +68,7 @@ where
 
 extern LinkedList<Sensor *> sensors;
 LinkedList<RemoteSensor *> remoteSensors([](RemoteSensor *sensor) {
-  LOG(VERBOSE, "RemoteSensor(%d) removed", sensor->getID());
+  LOG(VERBOSE, "[RemoteSensors] RemoteSensor(%d) removed", sensor->getID());
   // NOTE: No delete is being done here as the sensors cleanup handler will
   // handle the actual delete.
 });
@@ -78,7 +78,7 @@ void RemoteSensorManager::init() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("WiFiScan started"));
   int8_t networksFound;
 
-  LOG(VERBOSE, "Scanning for RemoteSensors");
+  LOG(VERBOSE, "[RemoteSensors] Scanning for RemoteSensors");
   WiFi.scanNetworks(true);
   while((networksFound = WiFi.scanComplete()) < 0) {
     delay(100);
@@ -89,13 +89,13 @@ void RemoteSensorManager::init() {
   for (int8_t i = 0; i < networksFound; i++) {
     if(WiFi.SSID(i).startsWith(REMOTE_SENSORS_PREFIX)) {
       const uint16_t sensorID = String(WiFi.SSID(i)).substring(REMOTE_SENSOR_PREFIX_LEN).toInt();
-      LOG(INFO, "Found RemoteSensor(%d): %s", sensorID, WiFi.SSID(i).c_str());
+      LOG(VERBOSE, "[RemoteSensors] Found %s, assigning as sensor %d", WiFi.SSID(i).c_str(), sensorID);
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("RS %d: %s"), sensorID, WiFi.SSID(i).c_str());
       createOrUpdate(sensorID);
     }
   }
 #else
-  LOG(VERBOSE, "Scanning for RemoteSensors DISABLED, remote sensors will only be created after reporting state");
+  LOG(VERBOSE, "[RemoteSensors] Scanning for RemoteSensors DISABLED, remote sensors will only be created after reporting state");
 #endif
 }
 
@@ -148,13 +148,13 @@ void RemoteSensorManager::show() {
 RemoteSensor::RemoteSensor(uint16_t id, uint16_t value) :
   Sensor(id + REMOTE_SENSORS_FIRST_SENSOR, NON_STORED_SENSOR_PIN, false, false), _rawID(id) {
   setSensorValue(value);
-  LOG(VERBOSE, "RemoteSensor(%d) created with Sensor(%d), active: %s, value: %d",
+  LOG(VERBOSE, "[RemoteSensors] RemoteSensor(%d) created with Sensor(%d), active: %s, value: %d",
     getRawID(), getID(), isActive() ? "true" : "false", value);
 }
 
 void RemoteSensor::check() {
   if(isActive() && millis() > _lastUpdate + REMOTE_SENSORS_DECAY) {
-    LOG(INFO, "RemoteSensor(%d) expired, deactivating", getRawID());
+    LOG(INFO, "[RemoteSensors] RemoteSensor(%d) expired, deactivating", getRawID());
     setSensorValue(0);
   }
 }
@@ -164,13 +164,13 @@ void RemoteSensor::showSensor() {
 }
 
 void RemoteSensor::toJson(JsonObject &json, bool includeState) {
-  json[F("id")] = getRawID();
-  json[F("value")] = getSensorValue();
-  json[F("state")] = isActive();
-  json[F("lastUpdate")] = getLastUpdate();
+  json[JSON_ID_NODE] = getRawID();
+  json[JSON_VALUE_NODE] = getSensorValue();
+  json[JSON_STATE_NODE] = isActive();
+  json[JSON_LAST_UPDATE_NODE] = getLastUpdate();
   // for compatibility with sensors table
-  json[F("pin")] = getPin();
-  json[F("pullUp")] = isPullUp();
+  json[JSON_PIN_NODE] = getPin();
+  json[JSON_PULLUP_NODE] = isPullUp();
 }
 
 void RemoteSensorsCommandAdapter::process(const std::vector<String> arguments) {

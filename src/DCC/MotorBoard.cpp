@@ -173,7 +173,7 @@ void MotorBoardManager::check() {
 }
 
 void MotorBoardManager::powerOnAll() {
-  LOG(INFO, "Enabling DCC Signal for all boards");
+  LOG(VERBOSE, "Enabling DCC Signal for all OPS track outputs");
   for (const auto& board : motorBoards) {
     if(!board->isProgrammingTrack()) {
       board->powerOn(false);
@@ -190,7 +190,7 @@ void MotorBoardManager::powerOnAll() {
 }
 
 void MotorBoardManager::powerOffAll() {
-  LOG(INFO, "Disabling DCC Signal for all boards");
+  LOG(VERBOSE, "Disabling DCC Signal for all track outputs");
   for (const auto& board : motorBoards) {
     board->powerOff(false);
     board->showStatus();

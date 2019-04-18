@@ -223,9 +223,6 @@ void WiFiInterface::begin() {
   }
 }
 
-void WiFiInterface::update() {
-}
-
 void WiFiInterface::showInitInfo() {
 	printf(F("<N1: %s>"), WiFi.localIP().toString().c_str());
 }
@@ -260,21 +257,22 @@ void WiFiInterface::printf(const char *fmt, ...) {
 
 void *jmriClientHandler(void *arg) {
   int fd = (int)arg;
-  uint8_t buf[64];
   DCCPPProtocolConsumer consumer;
+  std::unique_ptr<uint8_t> buf(new uint8_t[128]);
+  HASSERT(buf.get() != nullptr);
   while(true) {
-    int bytesRead = ::read(fd, &buf, 64);
+    int bytesRead = ::read(fd, buf.get(), 128);
     if (bytesRead < 0 && (errno == EINTR || errno == EAGAIN)) {
       // no data to read yet
     } else if(bytesRead > 0) {
-      consumer.feed(buf, bytesRead);
+      consumer.feed(buf.get(), bytesRead);
     } else if(bytesRead == 0) {
       // EOF, close client
-      LOG(INFO, "JMRI client disconnected on fd: %d\n", fd);
+      LOG(INFO, "[JMRI %d] disconnected", fd);
       break;
     } else {
       // some other error, close client
-      LOG(INFO, "JMRI client error on fd: %d (err:%d, %s)\n", fd, errno, strerror(errno));
+      LOG(INFO, "[JMRI %d] error:%d, %s. Disconnecting.", fd, errno, strerror(errno));
       break;
     }
   }

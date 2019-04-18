@@ -70,10 +70,9 @@ String JSON_ADDRESS_MODE_NODE PROGMEM = "addressMode";
 String JSON_SPEED_TABLE_NODE PROGMEM = "speedTable";
 String JSON_DECODER_VERSION_NODE PROGMEM = "version";
 String JSON_DECODER_MANUFACTURER_NODE PROGMEM = "manufacturer";
-
 String JSON_CREATE_NODE PROGMEM = "create";
-
 String JSON_OVERALL_STATE_NODE PROGMEM = "overallState";
+String JSON_LAST_UPDATE_NODE PROGMEM = "lastUpdate";
 
 String JSON_VALUE_FORWARD PROGMEM = "FWD";
 String JSON_VALUE_REVERSE PROGMEM = "REV";
@@ -89,7 +88,6 @@ String JSON_VALUE_LONG_ADDRESS PROGMEM = "Long Address";
 String JSON_VALUE_SHORT_ADDRESS PROGMEM = "Short Address";
 String JSON_VALUE_MOBILE_DECODER PROGMEM = "Mobile Decoder";
 String JSON_VALUE_STATIONARY_DECODER PROGMEM = "Stationary Decoder";
-
 
 String ROSTER_JSON_FILE PROGMEM = "roster.json";
 String CONSISTS_JSON_FILE PROGMEM = "consists.json";
@@ -111,7 +109,7 @@ ConfigurationManager::~ConfigurationManager() {
 void ConfigurationManager::init() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Loading Config"));
   if(!SPIFFS.begin()) {
-    LOG(INFO, "SPIFFS mount failed, formatting SPIFFS and retrying");
+    LOG(INFO, "[Config] SPIFFS mount failed, formatting SPIFFS and retrying");
     SPIFFS.begin(true);
   }
   SPIFFS.mkdir("/DCCppESP32");
@@ -123,7 +121,7 @@ void ConfigurationManager::clear() {
 }
 
 JsonObject &ConfigurationManager::load(const String &name) {
-  LOG(INFO, "Loading /DCCppESP32/%s", name.c_str());
+  LOG(INFO, "[Config] Loading /DCCppESP32/%s", name.c_str());
   File configFile = SPIFFS.open("/DCCppESP32/" + name, FILE_READ);
   jsonConfigBuffer.clear();
   JsonObject &root = jsonConfigBuffer.parseObject(configFile);
@@ -132,10 +130,10 @@ JsonObject &ConfigurationManager::load(const String &name) {
 }
 
 void ConfigurationManager::store(const String &name, const JsonObject &json) {
-  LOG(INFO, "Storing /DCCppESP32/%s", name.c_str());
+  LOG(INFO, "[Config] Storing /DCCppESP32/%s", name.c_str());
   File configFile = SPIFFS.open("/DCCppESP32/" + name, FILE_WRITE);
   if(!configFile) {
-    LOG_ERROR("Failed to open /DCCppESP32/%s", name.c_str());
+    LOG_ERROR("[Config] Failed to open /DCCppESP32/%s", name.c_str());
     return;
   }
   json.printTo(configFile);

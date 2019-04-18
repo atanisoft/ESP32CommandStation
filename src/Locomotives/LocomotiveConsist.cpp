@@ -89,7 +89,7 @@ LocomotiveConsist::~LocomotiveConsist() {
 
 void LocomotiveConsist::showStatus() {
   // <U ID LEAD TRAIL [{OTHER}]>
-  LOG(INFO, "LocomotiveConsist(%d) speed: %d, direction: %s, decoderAssisted: %s",
+  LOG(INFO, "[Consist %d] speed: %d, direction: %s, decoderAssisted: %s",
     getLocoAddress(), getSpeed(), isDirectionForward() ? JSON_VALUE_FORWARD.c_str() : JSON_VALUE_REVERSE.c_str(),
     _decoderAssisstedConsist ? JSON_VALUE_TRUE.c_str() : JSON_VALUE_FALSE.c_str());
   String statusCmd = "<U " + String(getLocoAddress() * _decoderAssisstedConsist ? -1 : 1);
@@ -259,14 +259,14 @@ void ConsistCommandAdapter::process(const std::vector<String> arguments) {
       for(int index = 1; index < arguments.size(); index++) {
         int32_t locomotiveAddress = arguments[index].toInt();
         if(LocomotiveManager::isAddressInConsist(abs(locomotiveAddress))) {
-          LOG_ERROR("Locomotive %d is already in a consist.", abs(locomotiveAddress));
+          LOG_ERROR("[Consist] Locomotive %d is already in a consist.", abs(locomotiveAddress));
           wifiInterface.send(COMMAND_FAILED_RESPONSE);
           return;
         }
       }
       consist = LocomotiveManager::createLocomotiveConsist(consistAddress);
       if(consist == nullptr) {
-        LOG_ERROR("Unable to create new Consist");
+        LOG_ERROR("[Consist] Unable to create new Consist");
         wifiInterface.send(COMMAND_FAILED_RESPONSE);
         return;
       }

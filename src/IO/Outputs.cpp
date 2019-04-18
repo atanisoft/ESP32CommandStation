@@ -96,11 +96,11 @@ or GUI program.
 LinkedList<Output *> outputs([](Output *output) {delete output; });
 
 void OutputManager::init() {
-  LOG(VERBOSE, "Initializing outputs");
+  LOG(INFO, "[Output] Initializing outputs");
   JsonObject &root = configStore.load(OUTPUTS_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t outputCount = count.success() ? count.as<int>() : 0;
-  LOG(VERBOSE, "Found %d outputs", outputCount);
+  LOG(INFO, "[Output] Found %d outputs", outputCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Outputs"), outputCount);
   if(outputCount > 0) {
     for(auto output : root.get<JsonArray>(JSON_OUTPUTS_NODE)) {
@@ -191,7 +191,7 @@ bool OutputManager::remove(const uint16_t id) {
     }
   }
   if(outputToRemove != nullptr) {
-    LOG(VERBOSE, "Removing Output(%d)", outputToRemove->getID());
+    LOG(INFO, "[Output] Removing Output(%d)", outputToRemove->getID());
     outputs.remove(outputToRemove);
     return true;
   }
@@ -208,7 +208,7 @@ Output::Output(uint16_t id, uint8_t pin, uint8_t flags) : _id(id), _pin(pin), _f
   } else {
     set(false, false);
   }
-  LOG(VERBOSE, "Output(%d) on pin %d created, flags: %s", _id, _pin, getFlagsAsString().c_str());
+  LOG(VERBOSE, "[Output] Output(%d) on pin %d created, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
@@ -229,14 +229,14 @@ Output::Output(JsonObject &json) {
       set(false, false);
     }
   }
-  LOG(VERBOSE, "Output(%d) on pin %d loaded, flags: %s", _id, _pin, getFlagsAsString().c_str());
+  LOG(VERBOSE, "[Output] Output(%d) on pin %d loaded, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
 void Output::set(bool active, bool announce) {
   _active = active;
   digitalWrite(_pin, _active);
-  LOG(INFO, "Output(%d) set to %s", _id, _active ? JSON_VALUE_ON.c_str() : JSON_VALUE_OFF.c_str());
+  LOG(INFO, "[Output] Output(%d) set to %s", _id, _active ? JSON_VALUE_ON.c_str() : JSON_VALUE_OFF.c_str());
   if(announce) {
     wifiInterface.printf(F("<Y %d %d>"), _id, !_active);
   }
@@ -254,7 +254,7 @@ void Output::update(uint8_t pin, uint8_t flags) {
       set(false, false);
     }
   }
-  LOG(VERBOSE, "Output(%d) on pin %d updated, flags: %s", _id, _pin, getFlagsAsString().c_str());
+  LOG(VERBOSE, "[Output] Output(%d) on pin %d updated, flags: %s", _id, _pin, getFlagsAsString().c_str());
   pinMode(_pin, OUTPUT);
 }
 
