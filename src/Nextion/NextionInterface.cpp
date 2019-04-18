@@ -60,7 +60,6 @@ DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   nullptr
 };
 
-
 static constexpr char const * NEXTION_DISPLAY_TYPE_STRINGS[] = {
   "basic 3.2\"",
   "basic 3.5\"",

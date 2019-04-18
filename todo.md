@@ -22,6 +22,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 - [x] fix screen type detection.
 - [x] lock to title screen until WiFi connects.
+- [x] switch to timer based speed increment/decrement on the nextion mcu side.
 
 #### Web Interface
 - [x] Add space in footer for clock so date/time are not smashed together.

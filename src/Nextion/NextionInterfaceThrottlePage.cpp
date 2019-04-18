@@ -22,8 +22,6 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #if NEXTION_ENABLED
 
-const uint8_t SPEED_INCREMENT = 5;
-
 const uint8_t dec=4;            //Dec
 const uint8_t throttlenum=5;    //ThrottleNum
 const uint8_t inc=6;            //Inc
@@ -278,24 +276,16 @@ uint32_t NextionThrottlePage::getCurrentLocoAddress() {
 
 void NextionThrottlePage::decreaseLocoSpeed() {
   if(_locoNumbers[_activeLoco]) {
-    int8_t speed = _speedNumber.getTextAsNumber() - SPEED_INCREMENT;
-    if(speed < 0) {
-      speed = 0;
-    }
+    int8_t speed = max((uint8_t)0, (uint8_t)_speedNumber.getValue());
     LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setSpeed(speed);
-    _speedNumber.setTextAsNumber(speed);
     _speedSlider.setValue(speed);
   }
 }
 
 void NextionThrottlePage::increaseLocoSpeed() {
   if(_locoNumbers[_activeLoco]) {
-    int8_t speed = _speedNumber.getTextAsNumber() + SPEED_INCREMENT;
-    if(speed < 0) {
-      speed = 0;
-    }
+    int8_t speed = max((uint8_t)0, (uint8_t)_speedNumber.getValue());
     LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setSpeed(speed);
-    _speedNumber.setTextAsNumber(speed);
     _speedSlider.setValue(speed);
   }
 }
@@ -303,7 +293,7 @@ void NextionThrottlePage::increaseLocoSpeed() {
 void NextionThrottlePage::setLocoSpeed(uint8_t speed) {
   if(_locoNumbers[_activeLoco]) {
     LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco])->setSpeed(speed);
-    _speedNumber.setTextAsNumber(speed);
+    _speedNumber.setValue(speed);
     _speedSlider.setValue(speed);
   }
 }
@@ -351,7 +341,7 @@ void NextionThrottlePage::refreshLocomotiveDetails()
   if(_locoNumbers[_activeLoco]) {
     auto loco = LocomotiveManager::getLocomotive(_locoNumbers[_activeLoco]);
     _speedSlider.setValue(loco->getSpeed());
-    _speedNumber.setTextAsNumber(loco->getSpeed());
+    _speedNumber.setValue(loco->getSpeed());
     if(loco->isDirectionForward()) {
       _fwdButton.setPictureID(FWD_PIC_ON);
       _revButton.setPictureID(REV_PIC_OFF);
@@ -362,7 +352,7 @@ void NextionThrottlePage::refreshLocomotiveDetails()
     refreshFunctionButtons();
   } else {
     _speedSlider.setValue(0);
-    _speedNumber.setTextAsNumber(0);
+    _speedNumber.setValue(0);
     _fwdButton.setPictureID(FWD_PIC_ON);
     _revButton.setPictureID(REV_PIC_OFF);
     for(int index = 0; index < FUNC_LIGHT_INDEX; index++) {

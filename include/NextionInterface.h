@@ -192,7 +192,7 @@ private:
   NextionButton _downButton;
   NextionButton _upButton;
   NextionSlider _speedSlider;
-  NextionText _speedNumber;
+  NextionNumber _speedNumber;
 };
 
 class NextionTurnoutPage : public DCCPPNextionPage {
