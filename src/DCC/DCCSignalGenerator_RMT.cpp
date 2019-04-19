@@ -17,8 +17,17 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "DCCppESP32.h"
 
-static constexpr uint16_t ZERO_BIT_PULSE = 8640;
-static constexpr uint16_t ONE_BIT_PULSE = 4640;
+// APB/REF clock divider to use for the RMT module
+static constexpr uint8_t RMT_CLOCK_DIVIDER = 80;
+
+// number of microseconds for each half of the DCC signal for a zero
+static constexpr uint32_t ZERO_BIT_PULSE = 98;
+//static constexpr uint32_t ZERO_BIT_PULSE = 8640;
+
+// number of microseconds for each half of the DCC signal for a one
+static constexpr uint32_t ONE_BIT_PULSE = 58;
+//static constexpr uint32_t ONE_BIT_PULSE = 4640;
+
 static constexpr TickType_t PREAMBLE_MAX_DELAY = 1000000000L;
 
 static constexpr rmt_item32_t DCC_ZERO_BIT = {{{ ZERO_BIT_PULSE, 1, ZERO_BIT_PULSE, 0 }}};
@@ -103,7 +112,7 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
     rmt_config_t rmtConfig = {
         .rmt_mode = RMT_MODE_TX,
         .channel = _rmtChannel,
-        .clk_div = 1,
+        .clk_div = RMT_CLOCK_DIVIDER,
         .gpio_num = (gpio_num_t)signalPin,
         .mem_block_num = 2,
         {

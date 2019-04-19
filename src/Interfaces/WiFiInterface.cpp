@@ -106,11 +106,11 @@ void WiFiInterface::begin() {
     InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
   #endif
 #endif
-    LOG(INFO, "WiFi IP: %s", WiFi.localIP().toString().c_str());
+    LOG(INFO, "[WiFi] IP: %s", WiFi.localIP().toString().c_str());
     if (!MDNS.begin(HOSTNAME)) {
-      LOG_ERROR("Failed to start mDNS");
+      LOG_ERROR("[WiFi] Failed to start mDNS");
     } else {
-      LOG(INFO, "Adding dccpp.tcp service to mDNS advertiser");
+      LOG(INFO, "[WiFi] Adding dccpp.tcp service to mDNS advertiser");
       MDNS.addService("dccpp", "tcp", DCCPP_JMRI_CLIENT_PORT);
     }
 
@@ -138,7 +138,7 @@ void WiFiInterface::begin() {
   }, SYSTEM_EVENT_STA_LOST_IP);
   WiFi.onEvent([](system_event_id_t event) {
     if(wifiConnected) {
-      LOG(WARNING, "Connection to WiFi lost, reconnecting...");
+      LOG(WARNING, "[WiFi] Connection to WiFi lost, reconnecting...");
       WiFi.begin(WIFI_SSID, WIFI_PASS);
     }
   }, SYSTEM_EVENT_STA_DISCONNECTED);
@@ -148,10 +148,10 @@ void WiFiInterface::begin() {
 #if NEXTION_ENABLED
   nextionTitlePage->setStatusText(0, "Connecting to WiFi");
 #endif
-  LOG(INFO, "WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), WIFI_SSID);
+  LOG(INFO, "[WiFi] WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), WIFI_SSID);
   WiFi.setHostname(HOSTNAME);
   if (WiFi.begin(WIFI_SSID, WIFI_PASS) != WL_CONNECT_FAILED) {
-    LOG(INFO, "Waiting for WiFi to connect");
+    LOG(INFO, "[WiFi] Waiting for WiFi to connect");
 #if NEXTION_ENABLED
     nextionTitlePage->setStatusText(1, "Pending...");
 #endif
@@ -161,7 +161,7 @@ void WiFiInterface::begin() {
     uint8_t wifiStatus = WiFi.waitForConnectResult();
     while(wifiStatus != WL_CONNECTED && wifiStatus != WL_NO_SSID_AVAIL && wifiStatus != WL_CONNECT_FAILED && attemptsRemaining--) {
       esp_task_wdt_reset();
-      LOG(INFO, "WiFi not connected yet, status: %d (%s), attempts remaining: %d", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus], attemptsRemaining);
+      LOG(INFO, "[WiFi] WiFi not connected yet, status: %d (%s), attempts remaining: %d", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus], attemptsRemaining);
 #if NEXTION_ENABLED
       nextionTitlePage->setStatusText(1, StringPrintf("WiFi status: %d (%s)", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus]).c_str());
       nextionTitlePage->setStatusText(2, StringPrintf("remaining attempts: %d", attemptsRemaining).c_str());
@@ -215,11 +215,11 @@ void WiFiInterface::begin() {
 #endif
       }
     } else {
-      LOG(WARNING, "Unable to find any WiFi networks!");
+      LOG(WARNING, "[WiFi]Unable to find any WiFi networks!");
     }
-    LOG(FATAL, "WiFI connect failed, restarting");
+    LOG(FATAL, "[WiFi] WiFI connect failed, restarting");
   } else {
-    LOG(INFO, "WiFi connected!");
+    LOG(INFO, "[WiFi] Connected to %s!", WIFI_SSID);
   }
 }
 
