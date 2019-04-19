@@ -4,7 +4,7 @@ This document tracks features and bug fixes that are planned.
 ## v1.2.5
 The primary focus for this will be improving the LCC integration and solve the crash caused by the DCC signal generation code.
 
-### Updates from v1.2.1
+### Updates from v1.2.3
 
 #### JMRI Interface
 
@@ -32,7 +32,8 @@ The primary focus for this will be improving the LCC integration and solve the c
 #### S88 Sensors
 - [x] Add delay in s88SensorTask so that it gives time for other tasks to execute between updates.
 
-#### Configuration Persistence
+#### Configuration
+- [x] rename of WIFI_SSID to SSID_NAME and WIFI_PASSWORD to SSID_PASSWORD to be in sync with upcoming changes.
 - [ ] Split up monolithic json files to instead be individual files in unique directories.
 - [ ] consider switch to binary format vs json format to save space on FS
 
@@ -41,6 +42,9 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 ## Future planning:
 The entries below are not tracked to a specific release or in any particular priority order.
+
+#### S88 Sensors
+- [ ] Add S88 sensor data to InfoScreen status line, 16 sensor output rotation.
 
 ### DCC System
 
@@ -56,6 +60,7 @@ The entries below are not tracked to a specific release or in any particular pri
 
 ### Web Interface
 
+- [ ] add dialog for failed CS requests
 - [ ] auto-refresh of status pages
 - [ ] add busy/wait spinner for when data is loading (or being refreshed) in the web interface
 - [ ] investigate tcp/ip hang (AsyncTCP LwIP crash? consider replacements for AsyncWebServer?)

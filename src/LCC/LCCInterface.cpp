@@ -19,8 +19,8 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #if LCC_ENABLED
 
-// if either the RX or TX pin is set to -1 default to no CAN support
-#if LCC_CAN_RX_PIN != -1 || LCC_CAN_TX_PIN != -1
+// if both RX and TX pins are defined as valid pins enable the CAN interface
+#if LCC_CAN_RX_PIN != NOT_A_PIN && LCC_CAN_TX_PIN != NOT_A_PIN
 #define LCC_CAN_ENABLED true
 #else
 #define LCC_CAN_ENABLED false
@@ -34,10 +34,6 @@ COPYRIGHT (c) 2019 Mike Dunston
 #include <openlcb/CallbackEventHandler.hxx>
 #include <dcc/PacketFlowInterface.hxx>
 #include <openlcb/ConfiguredTcpConnection.hxx>
-
-#if !defined(LCC_ENABLE_GC_TCP_HUB)
-#define LCC_ENABLE_GC_TCP_HUB false
-#endif
 
 #include "LCCCDI.h"
 
@@ -152,16 +148,24 @@ DccPacketQueueInjector dccPacketInjector;
 
 DccAccyConsumer dccAccessoryConsumer{openmrn.stack()->node(), &dccPacketInjector};
 
+#if LCC_USE_SPIFFS
+#define CDI_CONFIG_PREFIX "/spiffs/"
+#define LCC_FS SPIFFS
+#elif LCC_USE_SD
+#define CDI_CONFIG_PREFIX "/sdcard/"
+#define LCC_FS SD_MMC
+#endif
+
 namespace openlcb
 {
     // Name of CDI.xml to generate dynamically.
-    const char CDI_FILENAME[] = "/spiffs/LCC/cdi.xml";
+    const char CDI_FILENAME[] = CDI_CONFIG_PREFIX LCC_CDI_FILE;
 
     // This will stop openlcb from exporting the CDI memory space upon start.
     const char CDI_DATA[] = "";
 
     // Path to where OpenMRN should persist general configuration data.
-    const char *const CONFIG_FILENAME = "/spiffs/LCC/config";
+    const char *const CONFIG_FILENAME = CDI_CONFIG_PREFIX LCC_CONFIG_FILE;
 
     // The size of the memory space to export over the above device.
     const size_t CONFIG_FILE_SIZE = cfg.seg().size() + cfg.seg().offset();
@@ -177,10 +181,10 @@ LCCInterface::LCCInterface() {
 }
 
 void LCCInterface::init() {
-    SPIFFS.mkdir("/LCC");
+    LCC_FS.mkdir(LCC_CONFIG_DIR);
     // uncomment the next two lines to force a factory reset on startup
-    //SPIFFS.remove("/LCC/config");
-    //SPIFFS.remove("/LCC/cdi.xml");
+    //LCC_FS.remove(LCC_CDI_FILE);
+    //LCC_FS.remove(LCC_CONFIG_FILE);
 
     // Create the CDI.xml dynamically
     openmrn.create_config_descriptor_xml(cfg, openlcb::CDI_FILENAME);

@@ -36,13 +36,27 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 // This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 R (RX) pin.
 // Recommended pin: 4, 16, 21.
-// to disable the CAN interface set this to -1
-#define LCC_CAN_RX_PIN -1
+// to disable the CAN interface set this to NOT_A_PIN
+#define LCC_CAN_RX_PIN NOT_A_PIN
 
 // This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 D (TX) pin.
 // Recommended pin: 5, 17, 22.
-// to disable the CAN interface set this to -1
-#define LCC_CAN_TX_PIN -1
+// to disable the CAN interface set this to NOT_A_PIN
+#define LCC_CAN_TX_PIN NOT_A_PIN
+
+// This defines where on the filesystem LCC configuration data will be persisted.
+#define LCC_CONFIG_DIR "/LCC"
+
+// This is where the CDI will be persisted on the filesystem and sent from on-demand
+// when the NODE CDI information is requested.
+#define LCC_CDI_FILE "/LCC/cdi.xml"
+
+// This is where the NODE persistent configuration will be stored on the filesystem.
+#define LCC_CONFIG_FILE "/LCC/config"
+
+// This defines which filesystem the LCC interface will use. Currently only SPIFFS is
+// supported but an SD card will be supported in the future.
+#define LCC_USE_SPIFFS true
 
 /////////////////////////////////////////////////////////////////////////////////////
 
