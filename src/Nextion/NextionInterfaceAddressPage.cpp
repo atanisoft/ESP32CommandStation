@@ -18,8 +18,6 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #include "DCCppESP32.h"
 
-#include <esp32-hal-log.h>
-
 #if NEXTION_ENABLED
 
 constexpr uint8_t oldaddr=7; //OldAddr
@@ -123,7 +121,7 @@ void NextionAddressPage::changeTurnoutType(const NextionButton *button) {
   _turnoutType++;
   _turnoutType %= TurnoutType::MAX_TURNOUT_TYPES;
   refreshTurnoutTypeButton();
-  log_i("Orientation set to %d", _turnoutType);
+  LOG(VERBOSE, "[Nextion] TurnoutType set to %d", _turnoutType);
 }
 
 void NextionAddressPage::removeNumber(const NextionButton *button) {

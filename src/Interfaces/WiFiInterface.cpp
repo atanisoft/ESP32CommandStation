@@ -206,7 +206,7 @@ void WiFiInterface::begin() {
         }
       }
       if(ssidMatch) {
-        log_w("Expected SSID was found, perhaps an incorrect value was provided in Config_WiFi.h WIFI_PASSWORD?");
+        LOG(WARNING, "Expected SSID was found, perhaps an incorrect value was provided in Config_WiFi.h WIFI_PASSWORD?");
 #if INFO_SCREEN_ENABLED && (INFO_SCREEN_OLED || (INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS >= 20))
         InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("BAD SSID PASSWORD!"));
 #endif

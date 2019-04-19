@@ -21,24 +21,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #define VERSION "1.2.5"
 
-/////////////////////////////////////////////////////////////////////////////////////
-// PERFORMANCE CONFIGURATION
-/////////////////////////////////////////////////////////////////////////////////////
-
-// Maximum clients connected to
-#define MAX_DCCPP_CLIENTS 10
-
-/////////////////////////////////////////////////////////////////////////////////////
-// S88 Timing values (in microseconds)
-/////////////////////////////////////////////////////////////////////////////////////
-#define S88_SENSOR_LOAD_PRE_CLOCK_TIME 50
-#define S88_SENSOR_LOAD_POST_RESET_TIME 50
-#define S88_SENSOR_CLOCK_PULSE_TIME 50
-#define S88_SENSOR_CLOCK_PRE_RESET_TIME 50
-#define S88_SENSOR_RESET_PULSE_TIME 50
-#define S88_SENSOR_READ_TIME 25
-#define S88_MAX_SENSORS_PER_BUS 512
-
 #include <Arduino.h>
 #include <algorithm>
 #include <functional>

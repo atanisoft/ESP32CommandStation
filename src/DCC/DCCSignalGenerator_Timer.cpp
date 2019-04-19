@@ -19,7 +19,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <esp32-hal-timer.h>
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
-#include <esp32-hal-log.h>
 
 // number of microseconds for each half of the DCC signal for a zero
 static constexpr uint64_t DCC_ZERO_BIT_PULSE_DURATION=98;
@@ -60,25 +59,25 @@ SignalGenerator_HardwareTimer::SignalGenerator_HardwareTimer(String name, uint16
 }
 
 void SignalGenerator_HardwareTimer::enable() {
-  log_i("[%s] Configuring Timer(%d) for generating DCC Signal", _name.c_str(), _signalID + 1);
+  LOG(INFO, "[%s] Configuring Timer(%d) for generating DCC Signal", _name.c_str(), _signalID + 1);
   _timer = timerBegin(_signalID + 1, DCC_TIMER_PRESCALE, true);
-  log_i("[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), _signalID + 1);
+  LOG(INFO, "[%s] Attaching interrupt handler to Timer(%d)", _name.c_str(), _signalID + 1);
   if(_signalID == DCC_SIGNAL_OPERATIONS) {
     timerAttachInterrupt(_timer, &signalGeneratorTimerISR_OPS, true);
   } else {
     timerAttachInterrupt(_timer, &signalGeneratorTimerISR_PROG, true);
   }
-  log_i("[%s] Configuring alarm on Timer(%d) to %dus", _name.c_str(), _signalID + 1, DCC_ONE_BIT_PULSE_DURATION);
+  LOG(INFO, "[%s] Configuring alarm on Timer(%d) to %" PRIu64 "us", _name.c_str(), _signalID + 1, DCC_ONE_BIT_PULSE_DURATION);
   timerAlarmWrite(_timer, DCC_ONE_BIT_PULSE_DURATION, true);
-  log_i("[%s] Setting load on Timer(%d) to zero", _name.c_str(), _signalID + 1);
+  LOG(INFO, "[%s] Setting load on Timer(%d) to zero", _name.c_str(), _signalID + 1);
   timerWrite(_timer, 0);
 
-  log_i("[%s] Enabling alarm on Timer(%d)", _name.c_str(), _signalID + 1);
+  LOG(INFO, "[%s] Enabling alarm on Timer(%d)", _name.c_str(), _signalID + 1);
   timerAlarmEnable(_timer);
 }
 
 void SignalGenerator_HardwareTimer::disable() {
-  log_i("[%s] Shutting down Timer(%d)", _name.c_str(), _signalID + 1);
+  LOG(INFO, "[%s] Shutting down Timer(%d)", _name.c_str(), _signalID + 1);
   timerStop(_timer);
   timerAlarmDisable(_timer);
   timerDetachInterrupt(_timer);

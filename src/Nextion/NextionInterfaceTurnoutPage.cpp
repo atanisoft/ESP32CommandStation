@@ -18,8 +18,6 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #include "DCCppESP32.h"
 
-#include <esp32-hal-log.h>
-
 #if NEXTION_ENABLED
 
 constexpr uint8_t LH=106;
@@ -316,7 +314,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
 
   _setupButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
-      printf("Setup Button Pressed\n");
+      LOG(INFO, "Setup Button Pressed");
     }
   });
 
@@ -357,7 +355,7 @@ void NextionTurnoutPage::deleteButtonHandler() {
     for(uint8_t slot = 0; slot < getTurnoutsPerPageCount(); slot++) {
       if(_turnoutButtons[slot].getPictureID() == TURNOUT_IMAGE_IDS::TURNOUT_DELETED) {
         TurnoutManager::removeByAddress(_toAddress[slot].getTextAsNumber());
-        log_i("Turnout(%d) deleted from slot(%d)", _toAddress[slot].getTextAsNumber(), slot);
+        LOG(INFO, "[Nextion] Turnout(%d) deleted from slot(%d)", _toAddress[slot].getTextAsNumber(), slot);
       }
     }
     _delButton.setPictureID(DELETE_INACTIVE);
@@ -453,7 +451,7 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
           _turnoutButtons[slot].setPictureID(getDefaultTurnoutPictureID(turnout));
         }
       } else {
-        log_w("Touched Turnout (slot:%d, addr:%d) was not found, refreshing page", slot, turnoutAddress);
+        LOG(WARNING, "[Nextion] Touched Turnout (slot:%d, addr:%d) was not found, refreshing page", slot, turnoutAddress);
         // since we couldn't find the touched turnout, reset the page mode and refresh the page
         _pageMode = PAGE_MODE::NORMAL;
         refreshPage();

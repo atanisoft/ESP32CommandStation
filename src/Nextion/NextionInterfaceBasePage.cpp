@@ -18,8 +18,6 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #include "DCCppESP32.h"
 
-#include <esp32-hal-log.h>
-
 #if NEXTION_ENABLED
 
 constexpr uint8_t ON_PIC_OFF=54;
@@ -51,9 +49,9 @@ DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const
 
 void DCCPPNextionPage::display() {
   if(!show()) {
-    log_e("display of page %s was not successful.\n", m_name.c_str());
+    LOG_ERROR("[Nextion] Display of page %s was not successful.", m_name.c_str());
   } else {
-    log_d("displayed page %s\n", m_name.c_str());
+    LOG(VERBOSE, "[Nextion] Displayed page %s", m_name.c_str());
   }
   if(!_pageInitialized) {
     init();

@@ -121,7 +121,7 @@ bool TurnoutManager::set(uint16_t turnoutID, bool thrown) {
     }
   }
   if(!found) {
-    log_w("Unable to locate turnout with ID %d", turnoutID);
+    LOG(WARNING, "[Turnout %d] Unable to set state, turnout not found", turnoutID);
   }
   return found;
 }
@@ -135,7 +135,7 @@ bool TurnoutManager::toggle(uint16_t turnoutID) {
     }
   }
   if(!found) {
-    log_w("Unable to locate turnout with ID %d", turnoutID);
+    LOG(WARNING, "[Turnout %d] Unable to set state, turnout not found", turnoutID);
   }
   return found;
 }
@@ -172,7 +172,7 @@ bool TurnoutManager::remove(const uint16_t id) {
     }
   }
   if(turnoutToRemoved != nullptr) {
-    log_v("Removing Turnout(%d)", turnoutToRemoved->getID());
+    LOG(VERBOSE, "[Turnout %d] Deleted", turnoutToRemoved->getID());
     turnouts.remove(turnoutToRemoved);
     return true;
   }
@@ -183,12 +183,11 @@ bool TurnoutManager::removeByAddress(const uint16_t address) {
   Turnout *turnoutToRemoved = nullptr;
   for (const auto& turnout : turnouts) {
     if(turnout->getAddress() == address) {
-      log_v("Turnout(%d) uses address %d", turnout->getID(), address);
       turnoutToRemoved = turnout;
     }
   }
   if(turnoutToRemoved != nullptr) {
-    log_v("Removing Turnout(%d)", turnoutToRemoved->getID());
+    LOG(VERBOSE, "[Turnout %d] Deleted as it used address %d", turnoutToRemoved->getID(), address);
     turnouts.remove(turnoutToRemoved);
     return true;
   }
@@ -243,13 +242,13 @@ Turnout::Turnout(uint16_t turnoutID, uint16_t address, int8_t index,
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    LOG(INFO, "Created Turnout(%d): DCC Address: %d, type: %d (%s), state: %d (%s)",
-      _turnoutID, _address, _type, TURNOUT_TYPE_STRINGS[_type],
-      _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+    LOG(INFO, "[Turnout %d] Created using DCC address %d as type %s and initial state of %s",
+      _turnoutID, _address, TURNOUT_TYPE_STRINGS[_type],
+      _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   } else {
-    LOG(INFO, "Created Turnout(%d): Address: %d/%d, type: %d (%s), state: %d (%s)",
-      _turnoutID, _address, _index, _type, TURNOUT_TYPE_STRINGS[_type],
-      _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+    LOG(INFO, "[Turnout %d] Created using address %d:%d as type %s and initial state of %s",
+      _turnoutID, _address, _index, TURNOUT_TYPE_STRINGS[_type],
+      _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   }
 }
 
@@ -263,13 +262,13 @@ Turnout::Turnout(JsonObject &json) {
   if(json.get<int>(JSON_SUB_ADDRESS_NODE) == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    LOG(VERBOSE, "Loaded Turnout(%d): DCC Address: %d, type: %d (%s), state: %d (%s)",
-      _turnoutID, _address, _type, TURNOUT_TYPE_STRINGS[_type],
-      _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+    LOG(VERBOSE, "[Turnout %d] Loaded using DCC address %d as type %s and last known state of %s",
+      _turnoutID, _address, TURNOUT_TYPE_STRINGS[_type],
+      _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   } else {
-    LOG(VERBOSE, "Loaded Turnout(%d): Address: %d/%d, type: %d (%s), state: %d (%s)",
-      _turnoutID, _address, _index, _type, TURNOUT_TYPE_STRINGS[_type],
-      _thrown, _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+    LOG(VERBOSE, "[Turnout %d] Loaded using address %d:%d as type %s and last known state of %s",
+      _turnoutID, _address, _index, TURNOUT_TYPE_STRINGS[_type],
+      _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
   }
 }
 
@@ -280,11 +279,11 @@ void Turnout::update(uint16_t address, int8_t index, TurnoutType type) {
   if(index == -1) {
     // convert the provided decoder address to a board address and accessory index
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
-    LOG(VERBOSE, "Turnout %d updated to address: %d, type: %d (%s)",
-      _turnoutID, _address, _type, TURNOUT_TYPE_STRINGS[_type]);
+    LOG(VERBOSE, "[Turnout %d] Updated to use DCC address %d and type %s",
+      _turnoutID, _address, TURNOUT_TYPE_STRINGS[_type]);
   } else {
-    LOG(VERBOSE, "Turnout %d updated to address: %d/%d, type: %d (%s)",
-      _turnoutID, _address, _index, _type, TURNOUT_TYPE_STRINGS[_type]);
+    LOG(VERBOSE, "[Turnout %d] Updated to address %d:%d and type %s",
+      _turnoutID, _address, _index, TURNOUT_TYPE_STRINGS[_type]);
   }
 }
 
@@ -319,7 +318,7 @@ void Turnout::set(bool thrown, bool sendDCCPacket) {
     DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   }
   wifiInterface.printf(F("<H %d %d>"), _turnoutID, _thrown);
-  LOG(INFO, "Turnout(%d addr: %d, board:%d, index:%d) %s", _turnoutID, _address, _boardAddress, _index,
+  LOG(VERBOSE, "[Turnout %d] Set to %s", _turnoutID,
     _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
 }
 
@@ -354,7 +353,7 @@ void AccessoryCommand::process(const std::vector<String> arguments) {
     uint16_t boardAddress = arguments[0].toInt();
     uint8_t boardIndex = arguments[1].toInt();
     bool activate = arguments[2].toInt() == 1;
-    LOG(VERBOSE, "DCC Accessory Packet %d:%d state: %d", boardAddress, boardIndex, activate);
+    LOG(VERBOSE, "[Turnout] DCC Accessory Packet %d:%d state: %d", boardAddress, boardIndex, activate);
     // first byte is of the form 10AAAAAA, where AAAAAA represent 6 least
     // signifcant bits of accessory address
     packetBuffer.push_back(0x80 + boardAddress % 64);

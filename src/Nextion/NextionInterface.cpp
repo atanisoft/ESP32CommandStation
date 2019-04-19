@@ -20,8 +20,6 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #include <bits/stdc++.h> 
 
-#include <esp32-hal-log.h>
-
 #ifndef NEXTION_UART_NUM
 #define NEXTION_UART_NUM 2
 #endif
@@ -97,7 +95,7 @@ void nextionInterfaceInit() {
   constexpr uint8_t MAX_ATTEMPTS = 3;
   uint8_t attempt = 0;
   while(attempt++ <= MAX_ATTEMPTS && nextionDeviceType == NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY) {
-    log_i("[%d/%d] Attempting to identify the attached Nextion display", attempt, MAX_ATTEMPTS);
+    LOG(INFO, "[Nextion] [%d/%d] Attempting to identify the attached Nextion display", attempt, MAX_ATTEMPTS);
     nextion.sendCommand("DRAKJHSUYDGBNCJHGJKSHBDN");
     nextion.sendCommand("connect");
     String screenID = "";
@@ -126,19 +124,19 @@ void nextionInterfaceInit() {
       } else if(parts[2].compare(0, 7, "NX8048T") == 0) {
         nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY;
       } else {
-        log_w("Unrecognized Nextion Device model: %s", parts[2].c_str());
+        LOG(WARNING, "[Nextion] Unrecognized Nextion Device model: %s", parts[2].c_str());
       }
-      log_i("Device type: %s", NEXTION_DISPLAY_TYPE_STRINGS[nextionDeviceType]);
-      log_i("Firmware Version: %s", parts[3].c_str());
-      log_i("MCU Code: %s", parts[4].c_str());
-      log_i("Serial #: %s", parts[5].c_str());
-      log_i("Flash size: %s bytes", parts[6].c_str());
+      LOG(INFO, "[Nextion] Device type: %s", NEXTION_DISPLAY_TYPE_STRINGS[nextionDeviceType]);
+      LOG(INFO, "[Nextion] Firmware Version: %s", parts[3].c_str());
+      LOG(INFO, "[Nextion] MCU Code: %s", parts[4].c_str());
+      LOG(INFO, "[Nextion] Serial #: %s", parts[5].c_str());
+      LOG(INFO, "[Nextion] Flash size: %s bytes", parts[6].c_str());
     } else {
-      log_w("Unable to determine Nextion device type: %s", screenID.c_str());
+      LOG(WARNING, "[Nextion] Unable to determine Nextion device type: %s", screenID.c_str());
     }
   }
   if(nextionDeviceType == NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY) {
-    log_w("Failed to identify the attached Nextion display, defaulting to 3.2\" basic display");
+    LOG(WARNING, "[Nextion] Failed to identify the attached Nextion display, defaulting to 3.2\" basic display");
     nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_2_DISPLAY;
   }
   xTaskCreate(nextionTask, "Nextion", NEXTION_INTERFACE_TASK_STACK_SIZE,
