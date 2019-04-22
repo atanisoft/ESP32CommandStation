@@ -26,9 +26,7 @@ public:
 	void showConfiguration();
 	void showInitInfo();
 	void send(const String &);
-	void printf(const __FlashStringHelper *fmt, ...);
-private:
-  static void printf(const char *fmt, ...);
+	void print(const __FlashStringHelper *fmt, ...);
 };
 
 extern WiFiInterface wifiInterface;

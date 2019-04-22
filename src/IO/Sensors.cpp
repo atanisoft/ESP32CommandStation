@@ -240,7 +240,7 @@ void Sensor::check() {
 }
 
 void Sensor::show() {
-  wifiInterface.printf(F("<Q %d %d %d>"), _sensorID, _pin, _pullUp);
+  wifiInterface.print(F("<Q %d %d %d>"), _sensorID, _pin, _pullUp);
 }
 
 void SensorCommandAdapter::process(const std::vector<String> arguments) {

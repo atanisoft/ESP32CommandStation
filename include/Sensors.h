@@ -51,9 +51,9 @@ protected:
       _lastState = state;
       LOG(INFO, "Sensor: %d :: %s", _sensorID, _lastState ? "ACTIVE" : "INACTIVE");
       if(state) {
-        wifiInterface.printf(F("<Q %d>"), _sensorID);
+        wifiInterface.print(F("<Q %d>"), _sensorID);
       } else {
-        wifiInterface.printf(F("<q %d>"), _sensorID);
+        wifiInterface.print(F("<q %d>"), _sensorID);
       }
     }
   }

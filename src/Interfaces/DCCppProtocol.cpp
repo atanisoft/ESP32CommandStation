@@ -69,7 +69,7 @@ public:
       S88BusManager::store(),
       LocomotiveManager::store());
 #else
-    wifiInterface.printf(F("<e %d %d %d 0 %d>"),
+    wifiInterface.print(F("<e %d %d %d 0 %d>"),
       TurnoutManager::store(),
       SensorManager::store(),
       OutputManager::store(),
@@ -96,7 +96,7 @@ public:
       cvValue = readCV(cvNumber);
       leaveProgrammingMode();
     }
-    wifiInterface.printf(F("<r%d|%d|%d %d>"),
+    wifiInterface.print(F("<r%d|%d|%d %d>"),
       arguments[1].toInt(),
       arguments[2].toInt(),
       cvNumber,
@@ -125,7 +125,7 @@ public:
     } else {
       cvValue = -1;
     }
-    wifiInterface.printf(F("<r%d|%d|%d %d>"),
+    wifiInterface.print(F("<r%d|%d|%d %d>"),
       arguments[2].toInt(),
       arguments[3].toInt(),
       cvNumber,
@@ -155,7 +155,7 @@ public:
     } else {
       bitValue = -1;
     }
-    wifiInterface.printf(F("<r%d|%d|%d %d %d>"),
+    wifiInterface.print(F("<r%d|%d|%d %d %d>"),
       arguments[2].toInt(),
       arguments[3].toInt(),
       cvNumber,
@@ -206,7 +206,7 @@ public:
 class StatusCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    wifiInterface.printf(F("<iDCC++ COMMAND STATION FOR ESP32: V-%s / %s %s>"),
+    wifiInterface.print(F("<iDCC++ COMMAND STATION FOR ESP32: V-%s / %s %s>"),
       VERSION, __DATE__, __TIME__);
     MotorBoardManager::showStatus();
     LocomotiveManager::showStatus();
@@ -224,7 +224,7 @@ public:
 class FreeHeapCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    wifiInterface.printf(F("<f %d>"), ESP.getFreeHeap());
+    wifiInterface.print(F("<f %d>"), ESP.getFreeHeap());
   }
 
   String getID() {

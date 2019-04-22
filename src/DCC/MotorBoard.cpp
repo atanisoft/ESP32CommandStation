@@ -50,7 +50,7 @@ void GenericMotorBoard::powerOn(bool announce) {
 #if LOCONET_ENABLED
     locoNet.reportPower(true);
 #endif
-		wifiInterface.printf(F("<p1 %s>"), _name.c_str());
+		wifiInterface.print(F("<p1 %s>"), _name.c_str());
 	}
 }
 
@@ -64,12 +64,12 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
 #if LOCONET_ENABLED
         locoNet.send(OPC_IDLE, 0, 0);
 #endif
-			  wifiInterface.printf(F("<p2 %s>"), _name.c_str());
+			  wifiInterface.print(F("<p2 %s>"), _name.c_str());
 		  } else {
 #if LOCONET_ENABLED
         locoNet.reportPower(false);
 #endif
-			  wifiInterface.printf(F("<p0 %s>"), _name.c_str());
+			  wifiInterface.print(F("<p0 %s>"), _name.c_str());
       }
 		}
 	}
@@ -78,10 +78,10 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
 void GenericMotorBoard::showStatus() {
   if(!_progTrack) {
     if(_state) {
-      wifiInterface.printf(F("<p1 %s>"), _name.c_str());
-      wifiInterface.printf(F("<a %s %d>"), _name.c_str(), getLastRead());
+      wifiInterface.print(F("<p1 %s>"), _name.c_str());
+      wifiInterface.print(F("<a %s %d>"), _name.c_str(), getLastRead());
     } else {
-      wifiInterface.printf(F("<p0 %s>"), _name.c_str());
+      wifiInterface.print(F("<p0 %s>"), _name.c_str());
     }
 	}
 }
@@ -181,7 +181,7 @@ void MotorBoardManager::powerOnAll() {
     }
   }
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
-  InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("ON   "));
+  InfoScreen::print(13, INFO_SCREEN_TRACK_POWER_LINE, F("ON   "));
 #endif
 #if LOCONET_ENABLED
   locoNet.reportPower(true);
@@ -196,7 +196,7 @@ void MotorBoardManager::powerOffAll() {
     board->showStatus();
   }
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
-  InfoScreen::printf(13, INFO_SCREEN_TRACK_POWER_LINE, F("OFF  "));
+  InfoScreen::print(13, INFO_SCREEN_TRACK_POWER_LINE, F("OFF  "));
 #endif
 #if LOCONET_ENABLED
   locoNet.reportPower(false);
@@ -284,7 +284,7 @@ void CurrentDrawCommand::process(const std::vector<String> arguments) {
   if(arguments.size() == 0) {
     MotorBoardManager::showStatus();
   } else {
-    wifiInterface.printf(F("<a %d %s>"), MotorBoardManager::getLastRead(arguments[0]), arguments[0].c_str());
+    wifiInterface.print(F("<a %d %s>"), MotorBoardManager::getLastRead(arguments[0]), arguments[0].c_str());
   }
 }
 

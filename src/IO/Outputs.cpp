@@ -238,7 +238,7 @@ void Output::set(bool active, bool announce) {
   digitalWrite(_pin, _active);
   LOG(INFO, "[Output] Output(%d) set to %s", _id, _active ? JSON_VALUE_ON.c_str() : JSON_VALUE_OFF.c_str());
   if(announce) {
-    wifiInterface.printf(F("<Y %d %d>"), _id, !_active);
+    wifiInterface.print(F("<Y %d %d>"), _id, !_active);
   }
 }
 
@@ -276,7 +276,7 @@ void Output::toJson(JsonObject &json, bool readableStrings) {
 }
 
 void Output::showStatus() {
-  wifiInterface.printf(F("<Y %d %d %d %d>"), _id, _pin, _flags, !_active);
+  wifiInterface.print(F("<Y %d %d %d %d>"), _id, _pin, _flags, !_active);
 }
 
 void OutputCommandAdapter::process(const std::vector<String> arguments) {

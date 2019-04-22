@@ -103,7 +103,7 @@ void WiFiInterface::begin() {
   #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
     InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
   #else
-    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
+    InfoScreen::print(3, INFO_SCREEN_IP_ADDR_LINE, WiFi.localIP().toString().c_str());
   #endif
 #endif
     LOG(INFO, "[WiFi] IP: %s", WiFi.localIP().toString().c_str());
@@ -132,7 +132,7 @@ void WiFiInterface::begin() {
   #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
     InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, "Disconnected");
   #else
-    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, "Disconnected");
+    InfoScreen::print(3, INFO_SCREEN_IP_ADDR_LINE, "Disconnected");
   #endif
 #endif
   }, SYSTEM_EVENT_STA_LOST_IP);
@@ -175,7 +175,7 @@ void WiFiInterface::begin() {
 		InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
     InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Failed"));
   #else
-    InfoScreen::printf(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
+    InfoScreen::print(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
     if (WiFi.status() == WL_NO_SSID_AVAIL) {
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("SSID not found"));
     } else {
@@ -224,7 +224,7 @@ void WiFiInterface::begin() {
 }
 
 void WiFiInterface::showInitInfo() {
-	printf(F("<N1: %s>"), WiFi.localIP().toString().c_str());
+	print(F("<N1: %s>"), WiFi.localIP().toString().c_str());
 }
 
 void WiFiInterface::send(const String &buf) {
@@ -237,22 +237,13 @@ void WiFiInterface::send(const String &buf) {
 #endif
 }
 
-void WiFiInterface::printf(const __FlashStringHelper *fmt, ...) {
+void WiFiInterface::print(const __FlashStringHelper *fmt, ...) {
 	char buf[256] = {0};
 	va_list args;
 	va_start(args, fmt);
 	vsnprintf_P(buf, sizeof(buf), (const char *)fmt, args);
 	va_end(args);
 	send(buf);
-}
-
-void WiFiInterface::printf(const char *fmt, ...) {
-	char buf[256] = {0};
-	va_list args;
-	va_start(args, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, args);
-	va_end(args);
-	wifiInterface.send(buf);
 }
 
 void *jmriClientHandler(void *arg) {

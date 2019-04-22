@@ -139,7 +139,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
       webSocketClients.add(new WebSocketClient(client->id(), client->remoteIP()));
       client->printf("DCC++ESP32 v%s. READY!", VERSION);
   #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
-      InfoScreen::printf(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
+      InfoScreen::print(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
   #endif
     } else if (type == WS_EVT_DISCONNECT) {
       WebSocketClient *toRemove = nullptr;
@@ -152,7 +152,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
         webSocketClients.remove(toRemove);
       }
   #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
-      InfoScreen::printf(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
+      InfoScreen::print(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
   #endif
     } else if (type == WS_EVT_DATA) {
       for (const auto& clientNode : webSocketClients) {

@@ -231,7 +231,7 @@ void ConsistCommandAdapter::process(const std::vector<String> arguments) {
       // query which consist loco is in
       auto consist = LocomotiveManager::getConsistForLoco(locomotiveAddress);
       if (consist != nullptr) {
-        wifiInterface.printf(F("<V %d %d>"),
+        wifiInterface.print(F("<V %d %d>"),
           consist->getLocoAddress() * consist->isDecoderAssistedConsist() ? -1 : 1,
           locomotiveAddress);
         return;

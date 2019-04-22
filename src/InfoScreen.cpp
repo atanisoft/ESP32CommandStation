@@ -81,7 +81,7 @@ void InfoScreen::init() {
   if(Wire.endTransmission() == 0) {
     _enabled = true;
   } else {
-    ::printf("OLED/LCD screen not found at 0x%x\n", INFO_SCREEN_I2C_TEST_ADDRESS);
+    LOG(WARNING, "OLED/LCD screen not found at 0x%x\n", INFO_SCREEN_I2C_TEST_ADDRESS);
     scanI2C = true;
   }
 
@@ -112,18 +112,18 @@ void InfoScreen::init() {
   if(!_enabled) {
     LOG(WARNING, "Unable to initialize InfoScreen");
     if(scanI2C) {
-      ::printf("Scanning for I2C devices...\n");
-      ::printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
-      ::printf("00:         ");
+      LOG(INFO, "Scanning for I2C devices...\n");
+      LOG(INFO, "     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
+      LOG(INFO, "00:         ");
       for (uint8_t addr=3; addr < 0x78; addr++) {
         if (addr % 16 == 0) {
-          ::printf("\n%.2x:", addr);
+          printf("\n%.2x:", addr);
         }
         Wire.beginTransmission(addr);
         if(Wire.endTransmission() == 0) {
-          ::printf(" %.2x", addr);
+          printf(" %.2x", addr);
         } else {
-          ::printf(" --");
+          printf(" --");
         }
       }
     }
@@ -141,7 +141,7 @@ void InfoScreen::clear() {
   }
 }
 
-void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...) {
+void InfoScreen::print(int col, int row, const __FlashStringHelper *format, ...) {
   char buf[512] = {0};
   va_list args;
   va_start(args, format);
@@ -160,7 +160,7 @@ void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...
   }
 }
 
-void InfoScreen::printf(int col, int row, const String &format, ...) {
+void InfoScreen::print(int col, int row, const String &format, ...) {
   if(_enabled) {
     char buf[512] = {0};
     va_list args;

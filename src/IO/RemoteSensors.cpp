@@ -160,7 +160,7 @@ void RemoteSensor::check() {
 }
 
 void RemoteSensor::showSensor() {
-  wifiInterface.printf(F("<RS %d %d>"), getRawID(), _value);
+  wifiInterface.print(F("<RS %d %d>"), getRawID(), _value);
 }
 
 void RemoteSensor::toJson(JsonObject &json, bool includeState) {

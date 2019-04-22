@@ -317,13 +317,13 @@ void Turnout::set(bool thrown, bool sendDCCPacket) {
     args.push_back(String(_thrown));
     DCCPPProtocolHandler::getCommandHandler("a")->process(args);
   }
-  wifiInterface.printf(F("<H %d %d>"), _turnoutID, _thrown);
+  wifiInterface.print(F("<H %d %d>"), _turnoutID, _thrown);
   LOG(VERBOSE, "[Turnout %d] Set to %s", _turnoutID,
     _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
 }
 
 void Turnout::showStatus() {
-  wifiInterface.printf(F("<H %d %d %d %d>"), _turnoutID, _address, _index, _thrown);
+  wifiInterface.print(F("<H %d %d %d %d>"), _turnoutID, _address, _index, _thrown);
 }
 
 void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
