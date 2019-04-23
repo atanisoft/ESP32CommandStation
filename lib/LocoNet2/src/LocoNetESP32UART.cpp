@@ -131,7 +131,7 @@ void LocoNetESP32Uart::rxtxTask() {
 				// last chance check for TX_COLLISION before starting TX
 				// st_urx_out contains the status of the UART RX state machine,
 				// any value other than zero indicates it is active.
-				if(_uart->dev->status.st_urx_out ||
+				if(uartRxActive(_uart) ||
 					digitalRead(_rxPin) == !_inverted ? LOW : HIGH) {
 					startCollisionTimer();
 				} else {
