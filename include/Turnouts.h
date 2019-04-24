@@ -78,7 +78,7 @@ public:
   static uint16_t store();
   static bool set(uint16_t, bool=false);
   static bool toggle(uint16_t);
-  static void getState(JsonArray &);
+  static void getState(JsonArray &, bool=true);
   static void showStatus();
   static Turnout *createOrUpdate(const uint16_t, const uint16_t, const int8_t, const TurnoutType=TurnoutType::LEFT);
   static bool remove(const uint16_t);

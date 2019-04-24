@@ -436,8 +436,12 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
 void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
   auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->params());
   if (request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE.c_str())) {
+    bool readableStrings = true;
+    if(request->hasArg(JSON_TURNOUTS_READABLE_STRINGS_NODE.c_str())) {
+      readableStrings = request->arg(JSON_TURNOUTS_READABLE_STRINGS_NODE.c_str()).toInt();
+    }
     JsonArray &array = jsonResponse->getRoot();
-    TurnoutManager::getState(array);
+    TurnoutManager::getState(array, readableStrings);
   } else if (request->method() == HTTP_GET) {
     auto turnout = TurnoutManager::getTurnoutByID(request->arg(JSON_ID_NODE.c_str()).toInt());
     if(turnout) {

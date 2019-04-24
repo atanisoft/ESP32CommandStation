@@ -140,10 +140,10 @@ bool TurnoutManager::toggle(uint16_t turnoutID) {
   return found;
 }
 
-void TurnoutManager::getState(JsonArray & array) {
+void TurnoutManager::getState(JsonArray & array, bool readableStrings) {
   for (const auto& turnout : turnouts) {
     JsonObject &json = array.createNestedObject();
-    turnout->toJson(json, true);
+    turnout->toJson(json, readableStrings);
   }
 }
 
