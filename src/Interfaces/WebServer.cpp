@@ -434,7 +434,7 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
 }
 
 void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->params());
+  auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE.c_str()));
   if (request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE.c_str())) {
     bool readableStrings = true;
     if(request->hasArg(JSON_TURNOUTS_READABLE_STRINGS_NODE.c_str())) {
