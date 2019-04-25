@@ -112,32 +112,35 @@ uint16_t TurnoutManager::store() {
   return turnoutStoredCount;
 }
 
-bool TurnoutManager::set(uint16_t turnoutID, bool thrown) {
-  bool found = false;
-  for (const auto& turnout : turnouts) {
-    if(turnout->getID() == turnoutID) {
-      turnout->set(thrown);
-      found = true;
-    }
+bool TurnoutManager::setByID(uint16_t id, bool thrown) {
+  auto turnout = getTurnoutByID(id);
+  if(turnout) {
+    turnout->set(thrown);
+    return true;
   }
-  if(!found) {
-    LOG(WARNING, "[Turnout %d] Unable to set state, turnout not found", turnoutID);
-  }
-  return found;
+  LOG(WARNING, "[Turnout %d] Unable to set state, turnout not found", id);
+  return false;
 }
 
-bool TurnoutManager::toggle(uint16_t turnoutID) {
-  bool found = false;
-  for (const auto& turnout : turnouts) {
-    if(turnout->getID() == turnoutID) {
-      turnout->toggle();
-      found = true;
-    }
+bool TurnoutManager::toggleByID(uint16_t id) {
+  auto turnout = getTurnoutByID(id);
+  if(turnout) {
+    turnout->toggle();
+    return true;
   }
-  if(!found) {
-    LOG(WARNING, "[Turnout %d] Unable to set state, turnout not found", turnoutID);
+
+  LOG(WARNING, "[Turnout %d] Unable to set state, turnout not found", id);
+  return false;
+}
+
+bool TurnoutManager::toggleByAddress(uint16_t address) {
+  auto turnout = getTurnoutByAddress(address);
+  if(turnout) {
+    turnout->toggle();
+    return true;
   }
-  return found;
+  LOG(WARNING, "[Turnout addr:%d] Unable to set state, turnout not found", address);
+  return false;
 }
 
 void TurnoutManager::getState(JsonArray & array, bool readableStrings) {
@@ -154,41 +157,31 @@ void TurnoutManager::showStatus() {
 }
 
 Turnout *TurnoutManager::createOrUpdate(const uint16_t id, const uint16_t address, const int8_t index, const TurnoutType type) {
-  for (const auto& turnout : turnouts) {
-    if(turnout->getID() == id) {
-      turnout->update(address, index, type);
-      return turnout;
-    }
+  Turnout *turnout = getTurnoutByID(id);
+  if(turnout) {
+    turnout->update(address, index, type);
+  } else {
+    turnout = new Turnout(id, address, index, false, type);
+    turnouts.add(turnout);
   }
-  turnouts.add(new Turnout(id, address, index, false, type));
-  return getTurnoutByID(id);
+  return turnout;
 }
 
-bool TurnoutManager::remove(const uint16_t id) {
-  Turnout *turnoutToRemoved = nullptr;
-  for (const auto& turnout : turnouts) {
-    if(turnout->getID() == id) {
-      turnoutToRemoved = turnout;
-    }
-  }
-  if(turnoutToRemoved != nullptr) {
-    LOG(VERBOSE, "[Turnout %d] Deleted", turnoutToRemoved->getID());
-    turnouts.remove(turnoutToRemoved);
+bool TurnoutManager::removeByID(const uint16_t id) {
+  Turnout *turnout = getTurnoutByID(id);
+  if(turnout) {
+    LOG(VERBOSE, "[Turnout %d] Deleted", turnout->getID());
+    turnouts.remove(turnout);
     return true;
   }
   return false;
 }
 
 bool TurnoutManager::removeByAddress(const uint16_t address) {
-  Turnout *turnoutToRemoved = nullptr;
-  for (const auto& turnout : turnouts) {
-    if(turnout->getAddress() == address) {
-      turnoutToRemoved = turnout;
-    }
-  }
-  if(turnoutToRemoved != nullptr) {
-    LOG(VERBOSE, "[Turnout %d] Deleted as it used address %d", turnoutToRemoved->getID(), address);
-    turnouts.remove(turnoutToRemoved);
+  Turnout *turnout = getTurnoutByAddress(address);
+  if(turnout) {
+    LOG(VERBOSE, "[Turnout %d] Deleted as it used address %d", turnout->getID(), address);
+    turnouts.remove(turnout);
     return true;
   }
   return false;
@@ -332,10 +325,10 @@ void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
     TurnoutManager::showStatus();
   } else {
     uint16_t turnoutID = arguments[0].toInt();
-    if (arguments.size() == 1 && TurnoutManager::remove(turnoutID)) {
+    if (arguments.size() == 1 && TurnoutManager::removeByID(turnoutID)) {
       // delete turnout
       wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
-    } else if (arguments.size() == 2 && TurnoutManager::set(turnoutID, arguments[1].toInt() == 1)) {
+    } else if (arguments.size() == 2 && TurnoutManager::setByID(turnoutID, arguments[1].toInt() == 1)) {
       // throw turnout
     } else if (arguments.size() == 3) {
       // create/update turnout

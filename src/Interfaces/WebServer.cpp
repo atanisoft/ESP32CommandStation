@@ -434,7 +434,28 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
 }
 
 void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
-  auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE.c_str()));
+  // GET /turnouts - full list of turnouts, note that turnout state is STRING type for display
+  // GET /turnouts?readbleStrings=[0,1] - full list of turnouts, turnout state will be returned as true/false (boolean) when readableStrings=0.
+  // GET /turnouts?address=<address> - retrieve turnout by DCC address
+  // GET /turnouts?id=<id> - retrieve turnout by ID
+  // PUT /turnouts?address=<address> - toggle turnout by DCC address
+  // PUT /turnouts?id=<id> - toggle turnout by ID
+  // POST /turnouts?id=<id>&address=<address>&subAddress=<subAddress>&type=<type> - creates a new turnout
+  //      when id is -1 it will be auto-assigned as number of defined turnouts + 1.
+  //      if subAddress is -1 the turnout will be defined as DCC address only.
+  // DELETE /turnouts?id=<id> - delete turnout by ID
+  // DELETE /turnouts?address=<address> - delete turnout by DCC address
+  //
+  // For successful requests the result code will be 200 and either an array of turnouts or single turnout will be returned.
+  // For unsuccessful requests the result code will be 400 (bad request, missing args), 401 (not found), 500 (server failure).
+  //
+
+  // if the request is GET and we do not have an ID or ADDRESS parameter we need to return an array, otherwise a single entity.
+  bool needArrayResponse = (
+    request->method() == HTTP_GET &&
+    !request->hasArg(JSON_ID_NODE.c_str()) &&
+    !request->hasArg(JSON_ADDRESS_NODE.c_str()));
+  auto jsonResponse = new AsyncJsonResponse(needArrayResponse);
   if (request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE.c_str())) {
     bool readableStrings = true;
     if(request->hasArg(JSON_TURNOUTS_READABLE_STRINGS_NODE.c_str())) {
@@ -443,32 +464,54 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
     JsonArray &array = jsonResponse->getRoot();
     TurnoutManager::getState(array, readableStrings);
   } else if (request->method() == HTTP_GET) {
-    auto turnout = TurnoutManager::getTurnoutByID(request->arg(JSON_ID_NODE.c_str()).toInt());
-    if(turnout) {
-      turnout->toJson(jsonResponse->getRoot());
+    if(request->hasArg(JSON_ID_NODE.c_str())) {
+      auto turnout = TurnoutManager::getTurnoutByID(request->arg(JSON_ID_NODE.c_str()).toInt());
+      if(turnout) {
+        turnout->toJson(jsonResponse->getRoot());
+      } else {
+        jsonResponse->setCode(STATUS_NOT_FOUND);
+      }
+    } else if (request->hasArg(JSON_ADDRESS_NODE.c_str())) {
+      auto turnout = TurnoutManager::getTurnoutByID(request->arg(JSON_ADDRESS_NODE.c_str()).toInt());
+      if(turnout) {
+        turnout->toJson(jsonResponse->getRoot());
+      } else {
+        jsonResponse->setCode(STATUS_NOT_FOUND);
+      }
     } else {
-      jsonResponse->setCode(STATUS_NOT_FOUND);
+      jsonResponse->setCode(STATUS_BAD_REQUEST);
     }
   } else if(request->method() == HTTP_POST) {
     uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();
     uint16_t turnoutAddress = request->arg(JSON_ADDRESS_NODE.c_str()).toInt();
     int8_t turnoutSubAddress = request->arg(JSON_SUB_ADDRESS_NODE.c_str()).toInt();
     TurnoutType type = (TurnoutType)request->arg(JSON_TYPE_NODE.c_str()).toInt();
-    TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress, type);
-    auto turnout = TurnoutManager::getTurnoutByID(request->arg(JSON_ID_NODE.c_str()).toInt());
+    // auto generate ID
+    if(turnoutID == -1) {
+      turnoutID = TurnoutManager::getTurnoutCount() + 1;
+    }
+    auto turnout = TurnoutManager::createOrUpdate(turnoutID, turnoutAddress, turnoutSubAddress, type);
     if(turnout) {
       turnout->toJson(jsonResponse->getRoot());
     } else {
       jsonResponse->setCode(STATUS_SERVER_ERROR);
     }
   } else if(request->method() == HTTP_DELETE) {
-    uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();
-    if(!TurnoutManager::remove(turnoutID)) {
-      jsonResponse->setCode(STATUS_NOT_FOUND);
+    if(request->hasArg(JSON_ID_NODE.c_str())) {
+      TurnoutManager::removeByID(request->arg(JSON_ID_NODE.c_str()).toInt());
+    } else if (request->hasArg(JSON_ADDRESS_NODE.c_str())) {
+      TurnoutManager::removeByAddress(request->arg(JSON_ADDRESS_NODE.c_str()).toInt());
+    } else {
+      jsonResponse->setCode(STATUS_BAD_REQUEST);
     }
   } else if(request->method() == HTTP_PUT) {
-    uint16_t turnoutID = request->arg(JSON_ID_NODE.c_str()).toInt();
-    TurnoutManager::toggle(turnoutID);
+    if(request->hasArg(JSON_ID_NODE.c_str())) {
+      TurnoutManager::toggleByID(request->arg(JSON_ID_NODE.c_str()).toInt());
+    } else if (request->hasArg(JSON_ADDRESS_NODE.c_str())) {
+      TurnoutManager::toggleByAddress(request->arg(JSON_ADDRESS_NODE.c_str()).toInt());
+    } else {
+      jsonResponse->setCode(STATUS_BAD_REQUEST);
+    }
   }
   jsonResponse->setLength();
   request->send(jsonResponse);
