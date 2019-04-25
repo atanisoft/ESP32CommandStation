@@ -235,6 +235,7 @@ public:
 void DCCPPProtocolHandler::init() {
   registerCommand(new ThrottleCommandAdapter());
   registerCommand(new FunctionCommandAdapter());
+  registerCommand(new FunctionExCommandAdapter());
   registerCommand(new ConsistCommandAdapter());
   registerCommand(new AccessoryCommand());
   registerCommand(new PowerOnCommand());

@@ -87,6 +87,18 @@ void LocomotiveManager::processFunction(const std::vector<String> arguments) {
   loco->sendLocoUpdate();
 }
 
+void LocomotiveManager::processFunctionEx(const std::vector<String> arguments) {
+  int locoAddress = arguments[0].toInt();
+  int function = arguments[1].toInt();
+  int state = arguments[2].toInt();
+  if(isConsistAddress(locoAddress)) {
+    return;
+  }
+  auto loco = getLocomotive(locoAddress);
+  loco->setFunction(function, state);
+  loco->sendLocoUpdate();
+}
+
 void LocomotiveManager::processConsistThrottle(const std::vector<String> arguments) {
   uint16_t locoAddress = arguments[1].toInt();
   int8_t speed = arguments[2].toInt();
