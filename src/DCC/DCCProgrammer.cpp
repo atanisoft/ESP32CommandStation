@@ -41,7 +41,6 @@ bool enterProgrammingMode() {
 
   // energize the programming track
   motorBoard->powerOn(false);
-  dccSignal[DCC_SIGNAL_PROGRAMMING]->startSignal(false);
   dccSignal[DCC_SIGNAL_PROGRAMMING]->waitForQueueEmpty();
   // give decoder time to start up and stabilize to under 100mA draw
   log_v("[PROG] waiting for power draw to stabilize");
@@ -64,9 +63,9 @@ void leaveProgrammingMode() {
   if(!progTrackBusy) {
     return;
   }
+
   // deenergize the programming track
   MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->powerOff(false);
-  dccSignal[DCC_SIGNAL_PROGRAMMING]->stopSignal();
 
   // reset flag to indicate the programming track is free
   progTrackBusy = false;

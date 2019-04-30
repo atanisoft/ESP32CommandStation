@@ -52,6 +52,13 @@ void GenericMotorBoard::powerOn(bool announce) {
 #endif
 		wifiInterface.print(F("<p1 %s>"), _name.c_str());
 	}
+
+  // enable the DCC signal
+  if(_progTrack && !dccSignal[DCC_SIGNAL_PROGRAMMING]->isEnabled()) {
+    dccSignal[DCC_SIGNAL_PROGRAMMING]->startSignal(false);
+  } else if(!dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
+    dccSignal[DCC_SIGNAL_OPERATIONS]->startSignal();
+  }
 }
 
 void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
@@ -73,6 +80,14 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
       }
 		}
 	}
+  if(!overCurrent) {
+    // disable the DCC signal
+    if(_progTrack) {
+      dccSignal[DCC_SIGNAL_PROGRAMMING]->stopSignal();
+    } else if(MotorBoardManager::getCountOfOPSBoards() == 1) {
+      dccSignal[DCC_SIGNAL_OPERATIONS]->stopSignal();
+    }
+  }
 }
 
 void GenericMotorBoard::showStatus() {
@@ -186,7 +201,6 @@ void MotorBoardManager::powerOnAll() {
 #if LOCONET_ENABLED
   locoNet.reportPower(true);
 #endif
-  startDCCSignalGenerators();
 }
 
 void MotorBoardManager::powerOffAll() {
@@ -201,7 +215,6 @@ void MotorBoardManager::powerOffAll() {
 #if LOCONET_ENABLED
   locoNet.reportPower(false);
 #endif
-  stopDCCSignalGenerators();
 }
 
 bool MotorBoardManager::powerOn(const String name) {
@@ -278,6 +291,16 @@ bool MotorBoardManager::isTrackPowerOn() {
     }
   }
   return state;
+}
+
+uint8_t MotorBoardManager::getCountOfOPSBoards() {
+  uint8_t count = 0;
+  for (const auto& motorBoard : motorBoards) {
+    if(!motorBoard->isProgrammingTrack()) {
+      count++;
+    }
+  }
+  return count;
 }
 
 void CurrentDrawCommand::process(const std::vector<String> arguments) {

@@ -57,6 +57,9 @@ public:
   bool isEnabled();
   void drainQueue();
   Packet *getPacket();
+  const char *getName() {
+    return _name.c_str();
+  }
 
 protected:
   SignalGenerator(String, uint16_t, uint8_t, uint8_t);

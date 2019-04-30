@@ -22,11 +22,9 @@ static constexpr uint8_t RMT_CLOCK_DIVIDER = 80;
 
 // number of microseconds for each half of the DCC signal for a zero
 static constexpr uint32_t ZERO_BIT_PULSE = 98;
-//static constexpr uint32_t ZERO_BIT_PULSE = 8640;
 
 // number of microseconds for each half of the DCC signal for a one
 static constexpr uint32_t ONE_BIT_PULSE = 58;
-//static constexpr uint32_t ONE_BIT_PULSE = 4640;
 
 static constexpr TickType_t PREAMBLE_MAX_DELAY = 1000000000L;
 
@@ -94,6 +92,7 @@ constexpr uint8_t MAX_DCC_PACKET_BITS = 64;
 
 static void RMT_task_entry(void *param) {
     SignalGenerator_RMT *signal = static_cast<SignalGenerator_RMT *>(param);
+    LOG(INFO, "[%s] RMT Timing:\nZERO: %duS, ONE: %duS", signal->getName(), ZERO_BIT_PULSE, ONE_BIT_PULSE);
     signal->_stopCompleted = false;
     if(signal->_rmtChannel == DCC_SIGNAL_PROGRAMMING) {
         // for PROG track we need to use a longer preamble
@@ -109,6 +108,7 @@ static void RMT_task_entry(void *param) {
 SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) :
     SignalGenerator(name, maxPackets, signalID, signalPin), _rmtChannel((rmt_channel_t)signalID) {
 
+    LOG(INFO, "[%s] Configuring RMT channel %d, clk_div: %d, pin: %d", _name.c_str(), _rmtChannel, signalPin);
     rmt_config_t rmtConfig = {
         .rmt_mode = RMT_MODE_TX,
         .channel = _rmtChannel,
@@ -133,10 +133,12 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
 
 void SignalGenerator_RMT::enable() {
     _stopRequested = false;
+    LOG(INFO, "[%s] Creating RMT feeder task", _name.c_str());
     xTaskCreate(RMT_task_entry, _name.c_str(), DEFAULT_THREAD_STACKSIZE, this, DEFAULT_THREAD_PRIO, nullptr);
 }
 
 void SignalGenerator_RMT::disable() {
+    LOG(INFO, "[%s] Stopping RMT feeder task", _name.c_str());
     _stopRequested = true;
     while(!_stopCompleted) {
         vTaskDelay(pdMS_TO_TICKS(1));

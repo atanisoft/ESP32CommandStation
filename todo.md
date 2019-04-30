@@ -13,6 +13,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 #### DCC System
 
 - [x] fix signal generation so it doesn't crash up when spi_flash disables cache.
+- [x] adjust motor board powerOn/powerOff to enable/disable DCC signal instead of using global power-on/off.
 
 #### LCC Integration
 

@@ -88,6 +88,7 @@ public:
 	static void showStatus();
 	static void getState(JsonArray &);
   static bool isTrackPowerOn();
+	static uint8_t getCountOfOPSBoards();
 };
 
 class CurrentDrawCommand : public DCCPPProtocolCommand {
