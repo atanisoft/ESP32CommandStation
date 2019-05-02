@@ -232,8 +232,21 @@ public:
   }
 };
 
+// <estop> command handler, this command sends the current free heap space as response.
+class EStopCommand : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String> arguments) {
+    LocomotiveManager::emergencyStop();
+  }
+
+  String getID() {
+    return "estop";
+  }
+};
+
 void DCCPPProtocolHandler::init() {
   registerCommand(new ThrottleCommandAdapter());
+  registerCommand(new ThrottleExCommandAdapter());
   registerCommand(new FunctionCommandAdapter());
   registerCommand(new FunctionExCommandAdapter());
   registerCommand(new ConsistCommandAdapter());
@@ -250,13 +263,16 @@ void DCCPPProtocolHandler::init() {
   registerCommand(new ConfigErase());
   registerCommand(new ConfigStore());
   registerCommand(new OutputCommandAdapter());
+  registerCommand(new OutputExCommandAdapter());
   registerCommand(new TurnoutCommandAdapter());
+  registerCommand(new TurnoutExCommandAdapter());
   registerCommand(new SensorCommandAdapter());
 #if defined(S88_ENABLED) && S88_ENABLED
   registerCommand(new S88BusCommandAdapter());
 #endif
   registerCommand(new RemoteSensorsCommandAdapter());
   registerCommand(new FreeHeapCommand());
+  registerCommand(new EStopCommand());
 }
 
 void DCCPPProtocolHandler::process(const String &commandString) {

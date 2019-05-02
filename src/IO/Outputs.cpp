@@ -299,3 +299,17 @@ void OutputCommandAdapter::process(const std::vector<String> arguments) {
     }
   }
 }
+
+void OutputExCommandAdapter::process(const std::vector<String> arguments) {
+  if(arguments.empty()) {
+    wifiInterface.send(COMMAND_FAILED_RESPONSE);
+  } else {
+    uint16_t outputID = arguments[0].toInt();
+    auto output = OutputManager::getOutput(outputID);
+    if(output) {
+      output->set(!output->isActive());
+    } else {
+      wifiInterface.send(COMMAND_FAILED_RESPONSE);
+    }
+  }
+}

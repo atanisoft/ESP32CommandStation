@@ -44,6 +44,21 @@ void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
   instance->showStatus();
 }
 
+void LocomotiveManager::processThrottleEx(const std::vector<String> arguments) {
+  uint16_t locoAddress = arguments[0].toInt();
+  int8_t speed = arguments[1].toInt();
+  int8_t dir = arguments[2].toInt();
+  auto instance = getLocomotive(locoAddress);
+  if(speed >= 0) {
+    instance->setSpeed(speed);
+  }
+  if(dir >= 0) {
+    instance->setDirection(dir == 1);
+  }
+  instance->sendLocoUpdate();
+  instance->showStatus();
+}
+
 // This method decodes the incoming function packet(s) to update the stored
 // functinon states. Loco update will be sent afterwards.
 void LocomotiveManager::processFunction(const std::vector<String> arguments) {
@@ -162,7 +177,7 @@ Locomotive *LocomotiveManager::getLocomotive(const uint16_t locoAddress, const b
       }
     }
     if(instance == nullptr) {
-      instance = new Locomotive(_locos.length());
+      instance = new Locomotive(_locos.length() + 1);
       instance->setLocoAddress(locoAddress);
       if(managed) {
         _locos.add(instance);

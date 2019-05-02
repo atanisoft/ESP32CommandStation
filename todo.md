@@ -29,6 +29,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 - [x] Add space in footer for clock so date/time are not smashed together.
 - [x] Fixed S88 section hiding.
 - [x] Fixed S88 sensor bus creation/edit json payload parameters.
+- [x] Reintroduce websocket usage for pushing commands back to the CS (improves performance).
 
 #### S88 Sensors
 - [x] Add delay in s88SensorTask so that it gives time for other tasks to execute between updates.

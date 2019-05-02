@@ -108,7 +108,7 @@ static void RMT_task_entry(void *param) {
 SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) :
     SignalGenerator(name, maxPackets, signalID, signalPin), _rmtChannel((rmt_channel_t)signalID) {
 
-    LOG(INFO, "[%s] Configuring RMT channel %d, clk_div: %d, pin: %d", _name.c_str(), _rmtChannel, signalPin);
+    LOG(INFO, "[%s] Configuring RMT channel %d, clk_div: %d, pin: %d", _name.c_str(), _rmtChannel, RMT_CLOCK_DIVIDER, signalPin);
     rmt_config_t rmtConfig = {
         .rmt_mode = RMT_MODE_TX,
         .channel = _rmtChannel,

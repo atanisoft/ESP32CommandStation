@@ -91,3 +91,11 @@ public:
     return "Z";
   }
 };
+
+class OutputExCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String> arguments);
+  String getID() {
+    return "Zex";
+  }
+};

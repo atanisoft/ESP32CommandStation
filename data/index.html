@@ -492,6 +492,32 @@
 	<script type="text/javascript">
 var fireLocoEvents = true;
 var firePowerEvents = true;
+var online = true;
+var webSocket;
+function connectWebSocket() {
+	var socketUrl = $.mobile.path.getDocumentBase().replace("http", "ws");
+	if(socketUrl.indexOf('#') > 0) {
+		socketUrl = socketUrl.substring(0, socketUrl.lastIndexOf('/') + 1);
+	}
+	if(socketUrl.endsWith('/')) {
+		socketUrl = socketUrl + 'ws';
+	} else {
+		socketUrl = socketUrl + '/ws';
+	}
+	console.log('Websocket url:', socketUrl);
+	webSocket = $.simpleWebSocket({url: socketUrl, dataType: 'text'});
+	webSocket.listen(function(msg) {
+		console.log('WS:', msg);
+	});
+	webSocket.connect();
+}
+function sendCommand(cmd) {
+	console.log(cmd);
+	if(!webSocket) {
+		connectWebSocket();
+	}
+	webSocket.send(cmd);
+}
 function createButton({type, id, title='',}= {}) {
 	if(title === '') {
 		if(type === 'delete') {
@@ -523,12 +549,19 @@ function registerStringFormat() {
 }
 function initPage() {
 	if(!$.mobile.path.getDocumentBase().startsWith("file://")) {
-		$.mobile.loading("show", {
-			text: 'Connecting to Command Station',
-			textVisible: true,
-			textonly: false});
-		$.get({
+		$.ajax({
 			url: '/features',
+			beforeSend: function() {
+				$.mobile.loading('show', {
+					text: 'Connecting to Command Station...',
+					textVisible: true,
+					textonly: false});
+			},
+			complete: function() {
+				setTimeout(function () {
+					$.mobile.loading('hide');
+				}, 1);
+			},
 			success : function (data, status, xhr) {
 				if(data.s88 === 'false') {
 					disableS88Tab();
@@ -538,8 +571,8 @@ function initPage() {
 				disableS88Tab();
 			}
 		});
-		$.mobile.loading("hide");
 	} else {
+		online = false;
 		disableS88Tab();
 		$("#throttle-loco-list").hide();
 		$("#throttle-loco-select-manual").show();
@@ -554,30 +587,28 @@ function initPage() {
 	setupBaseStation();
 }
 function enableTrackPower() {
-	$.ajax({url: '/power?overallState=true', method: 'PUT'});
+	sendCommand('<1>');
 }
 function setupThrottle() {
 	$("#throttle-speed").on("slidestop", function(event, ui) {
 		if(fireLocoEvents) {
 			var selectedLoco = $("#selected-loco-address").val();
 			var speed = $("#throttle-speed").val();
-			console.log('setting speed to', speed, 'for loco', selectedLoco);
-			$.ajax({url:'/locomotive', method: 'PUT', data: {'address' : selectedLoco, 'speed' : speed}});
+			sendCommand(String.format('<tex {0} {1} -1>', selectedLoco, speed));
 		}
 	});
 	$("#throttle-estop").on("vclick", function(event, ui) {
 		$("#throttle-speed").val(0).slider("refresh");
-		$.post('/locomotive/estop');
+		sendCommand('<estop>');
 	});
 	$("#throttle-direction").on('change', function(event, ui) {
 		if(fireLocoEvents) {
 			var selectedLoco = $("#selected-loco-address").val();
-			var direction = 'fwd';
+			var dir = '1';
 			if(this.checked) {
-				direction = 'rev';
+				dir = '0';
 			}
-			console.log('setting direction to', direction, 'for loco', selectedLoco);
-			$.ajax({url:'/locomotive', method: 'PUT', data: {'address' : selectedLoco, 'dir' : direction}});
+			sendCommand(String.format('<tex {0} -1 {1}>', selectedLoco, dir));
 		}
 	});
 	$('#throttle-acquire-loco').on('vclick', function(event, ui) {
@@ -612,7 +643,7 @@ function setupThrottle() {
 			disableLocomotiveInputs();
 		}
 	});
-	if(!$.mobile.path.getDocumentBase().startsWith("file://")) {
+	if(online) {
 		$("#throttle-loco-select-manual").hide();
 		$("#throttle-loco-select-confirm").on("vclick", function(event, ui) {
 			if($("#throttle-loco-list").is(":visible")) {
@@ -642,9 +673,11 @@ function setupThrottle() {
 		$(this).on('change', function(event, ui) {
 			if(fireLocoEvents) {
 				var selectedLoco = $("#selected-loco-address").val();
-				var functionTag = String.format('f{0}', functionID);
-				console.log('setting function', functionTag, 'to', this.checked, 'for loco', selectedLoco);
-				$.ajax({url:'/locomotive', method: 'PUT', data: {'address' : selectedLoco, functionTag : this.checked}});
+				var state = '0';
+				if(this.checked) {
+					state = '1';
+				}
+				sendCommand(String.format('<fex {0} {1} {2}>', selectedLoco, functionID, state));
 			}
 		});
 	});
@@ -730,10 +763,10 @@ function setupBaseStation() {
 }
 function setupBSStatus() {
 	$("#bs-persist-config").on("vclick", function() {
-		$.post({url: '/config'});
+		sendCommand('<E>');
 	});
 	$("#bs-clear-config").on("vclick", function() {
-		$.ajax({url: '/config', method: 'DELETE'});
+		sendCommand('<e>');
 	});
 	$('#bs-power-all').on('change', function() {
 		if(firePowerEvents) {
@@ -1064,11 +1097,8 @@ function BSTabRefresh(section) {
 								BSTabRefresh('Status');
 						}});
 					} else if(idParts[2] === 'stop') {
-						$.ajax({url: String.format('/locomotive/roster?address={0}&speed=0', idParts[1]),
-							method: 'PUT',
-							success:function() {
-								BSTabRefresh('Status');
-						}});
+						sendCommand(String.format('<tex {0} 0 -1>', idParts[1]));
+						BSTabRefresh('Status');
 					}
 				});
 			}
@@ -1125,11 +1155,8 @@ function BSTabRefresh(section) {
 							}
 						});
 					} else {
-						$.ajax({url: String.format('/turnouts?id={0}', idParts[1]),
-							method: 'PUT',
-							success: function() {
-								BSTabRefresh('Turnouts');
-						}});
+						sendCommand(String.format('<Tex {0}>', idParts[1]));
+						BSTabRefresh('Turnouts');
 					}
 				});
 			}
@@ -1236,11 +1263,8 @@ function BSTabRefresh(section) {
 							}
 						});
 					} else {
-						$.ajax({url: String.format('/outputs?id={0}', idParts[1]),
-							method: 'PUT',
-							success:function() {
-								BSTabRefresh('Outputs');
-						}});
+						sendCommand(String.format('<Zex {0}>', idParts[1]));
+						BSTabRefresh('Outputs');
 					}
 				});
 			}
@@ -1308,12 +1332,12 @@ function changeLocomotive(newAddress) {
 	$.get({
 		url: '/locomotive?address=' + newAddress,
 		success : function (data, status, xhr) {
+			console.log(data);
 			fireLocoEvents = false;
 			$("#selected-loco-address").val(newAddress);
 			$("#throttle-speed").val(data.speed).slider("refresh");
-			$("#throttle-direction").prop("checked", data.dir == 'FWD').flipswitch("refresh");
+			$("#throttle-direction").prop("checked", data.dir === 'REV').flipswitch("refresh");
 			$.each(data.functions, function(index, item) {
-				console.log('function:', item.id, 'state:', item.state);
 				$(String.format("#funct_{0}", item.id)).prop('checked', item.state).flipswitch("refresh");
 			});
 			enableLocomotiveInputs();
@@ -1332,11 +1356,16 @@ function disableS88Tab() {
 }
 function refreshTable({table, url, fields, filter=function() {return true;}, failureHandler=function() {}, refreshCallback=function() {}} = {}) {
 	console.log('refreshing table:', table, 'using url:', url, 'and fields:', fields)
-	$.mobile.loading("show", {text: 'Refreshing data', textVisible: true});
 	$.ajax({
 		url: url,
 		dataType:'json',
 		error: failureHandler,
+		beforeSend: function() {
+			$.mobile.loading('show', { text: 'Refreshing data', textVisible: true, textonly: false});
+		},
+		complete: function() {
+			setTimeout(function () { $.mobile.loading('hide'); }, 1);
+		},
 		success: function(data, status, jqxhr) {
 			var tableBody = $(table + ' tbody');
 			tableBody.empty();
@@ -1359,7 +1388,6 @@ function refreshTable({table, url, fields, filter=function() {return true;}, fai
 			refreshCallback();
 		}
 	});
-	$.mobile.loading("hide");
 }
 	</script>
 </body>

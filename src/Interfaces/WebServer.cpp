@@ -56,7 +56,6 @@ private:
 };
 LinkedList<WebSocketClient *> webSocketClients([](WebSocketClient *client) {delete client;});
 
-
 static const char * _err2str(uint8_t _error){
     if(_error == UPDATE_ERROR_OK){
         return ("No Error");
@@ -87,6 +86,7 @@ static const char * _err2str(uint8_t _error){
     }
     return ("UNKNOWN");
 }
+
 DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
   rewrite("/", "/index.html");
   on("/index.html", HTTP_GET,
@@ -133,35 +133,6 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     std::bind(&DCCPPWebServer::handleConfig, this, std::placeholders::_1));
   on("/locomotive", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
     std::bind(&DCCPPWebServer::handleLocomotive, this, std::placeholders::_1));
-  webSocket.onEvent([](AsyncWebSocket * server, AsyncWebSocketClient * client,
-      AwsEventType type, void * arg, uint8_t *data, size_t len) {
-    if (type == WS_EVT_CONNECT) {
-      webSocketClients.add(new WebSocketClient(client->id(), client->remoteIP()));
-      client->printf("DCC++ESP32 v%s. READY!", VERSION);
-  #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
-      InfoScreen::print(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
-  #endif
-    } else if (type == WS_EVT_DISCONNECT) {
-      WebSocketClient *toRemove = nullptr;
-      for (const auto& clientNode : webSocketClients) {
-        if(clientNode->getID() == client->id()) {
-          toRemove = clientNode;
-        }
-      }
-      if(toRemove != nullptr) {
-        webSocketClients.remove(toRemove);
-      }
-  #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
-      InfoScreen::print(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
-  #endif
-    } else if (type == WS_EVT_DATA) {
-      for (const auto& clientNode : webSocketClients) {
-        if(clientNode->getID() == client->id()) {
-          clientNode->feed(data, len);
-        }
-      }
-    }
-  });
   on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
     request->send(STATUS_OK, "text/plain", _err2str(Update.getError()));
   }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
@@ -212,6 +183,36 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
         InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, _err2str(Update.getError()));
         request->send(STATUS_BAD_REQUEST, "text/plain", _err2str(Update.getError()));
         Update.printError(Serial);
+      }
+    }
+  });
+
+  webSocket.onEvent([](AsyncWebSocket * server, AsyncWebSocketClient * client,
+      AwsEventType type, void * arg, uint8_t *data, size_t len) {
+    if (type == WS_EVT_CONNECT) {
+      webSocketClients.add(new WebSocketClient(client->id(), client->remoteIP()));
+      client->printf("DCC++ESP32 v%s. READY!", VERSION);
+  #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
+      InfoScreen::print(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
+  #endif
+    } else if (type == WS_EVT_DISCONNECT) {
+      WebSocketClient *toRemove = nullptr;
+      for (const auto& clientNode : webSocketClients) {
+        if(clientNode->getID() == client->id()) {
+          toRemove = clientNode;
+        }
+      }
+      if(toRemove != nullptr) {
+        webSocketClients.remove(toRemove);
+      }
+  #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
+      InfoScreen::print(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
+  #endif
+    } else if (type == WS_EVT_DATA) {
+      for (const auto& clientNode : webSocketClients) {
+        if(clientNode->getID() == client->id()) {
+          clientNode->feed(data, len);
+        }
       }
     }
   });

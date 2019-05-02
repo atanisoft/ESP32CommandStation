@@ -69,7 +69,7 @@ public:
   void showStatus();
   void toJson(JsonObject &, bool=true, bool=true);
   void setFunction(uint8_t funcID, bool state=false) {
-    log_v("[Loco %d] Setting function %d to %d", _locoAddress, funcID, state);
+    LOG(INFO, "[Loco %d] F%d:%s", _locoAddress, funcID, state ? JSON_VALUE_ON.c_str() : JSON_VALUE_OFF.c_str());
     _functionState[funcID] = state;
     _functionsChanged = true;
   }
@@ -175,6 +175,7 @@ public:
   static void removeLocomotive(const uint16_t);
   static bool removeLocomotiveConsist(const uint16_t);
   static void processThrottle(const std::vector<String>);
+  static void processThrottleEx(const std::vector<String>);
   static void processFunction(const std::vector<String>);
   static void processFunctionEx(const std::vector<String>);
   static void processConsistThrottle(const std::vector<String>);
@@ -217,6 +218,19 @@ public:
   }
   String getID() {
     return "t";
+  }
+};
+
+// <tex {LOCO} {SPEED} {DIRECTION}> command handler, this command
+// converts the provided locomotive control command into a compatible DCC
+// locomotive control packet.
+class ThrottleExCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String> arguments) {
+    LocomotiveManager::processThrottleEx(arguments);
+  }
+  String getID() {
+    return "tex";
   }
 };
 

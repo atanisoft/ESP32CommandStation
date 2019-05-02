@@ -340,6 +340,19 @@ void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
   }
 }
 
+void TurnoutExCommandAdapter::process(const std::vector<String> arguments) {
+  if(arguments.empty()) {
+    wifiInterface.send(COMMAND_FAILED_RESPONSE);
+  } else {
+    auto turnout = TurnoutManager::getTurnoutByID(arguments[0].toInt());
+    if(turnout) {
+      turnout->toggle();
+    } else {
+      wifiInterface.send(COMMAND_FAILED_RESPONSE);
+    }
+  }
+}
+
 void AccessoryCommand::process(const std::vector<String> arguments) {
   if(dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
     std::vector<uint8_t> packetBuffer;

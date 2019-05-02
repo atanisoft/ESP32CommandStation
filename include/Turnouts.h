@@ -97,6 +97,13 @@ public:
     return "T";
   }
 };
+class TurnoutExCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String>);
+  String getID() {
+    return "Tex";
+  }
+};
 
 class AccessoryCommand : public DCCPPProtocolCommand {
 public:
