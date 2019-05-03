@@ -695,19 +695,23 @@ function enableLocomotiveInputs() {
 	$('#throttle-speed').slider('enable');
 	$('#throttle-release-loco').button('enable');
 }
+function refreshCommandStationSection() {
+	const sections = ["Status", "Turnouts", "Sensors", "Sensors (S88)", "Outputs", "Locomotive Roster", "Programmer"];
+	var currentSection = $("#bs-accordion").accordion("option", "active");
+	BSTabRefresh(sections[currentSection]);
+}
 function setupBaseStation() {
 	$("#bs-accordion").on("accordionactivate", function(event, ui) {
-		BSTabRefresh(ui.newHeader.text());
+		refreshCommandStationSection();
 	});
 	$("#tabs").on("tabsactivate", function(event, ui) {
 		if(ui.newTab.text() == "Command Station") {
-			bsTabRefreshInterval = setInterval(function() {
-				const sections = ["Status", "Turnouts", "Sensors", "Sensors (S88)", "Outputs", "Locomotive Roster", "Programmer"];
-				var currentSection = $("#bs-accordion").accordion("option", "active");
-				BSTabRefresh(sections[currentSection]);
-			}, 30000);
+			refreshCommandStationSection();
+			console.log('enabling auto-refresh of CS tabs every 30s');
+			bsTabRefreshInterval = setInterval(refreshCommandStationSection, 30000);
 		} else {
 			if(bsTabRefreshInterval !== null) {
+				console.log('disabling auto-refresh of CS tabs');
 				clearInterval(bsTabRefreshInterval);
 				bsTabRefreshInterval = null;
 			}
