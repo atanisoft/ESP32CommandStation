@@ -494,6 +494,7 @@ var fireLocoEvents = true;
 var firePowerEvents = true;
 var online = true;
 var webSocket;
+var bsTabRefreshInterval = null;
 function connectWebSocket() {
 	var socketUrl = $.mobile.path.getDocumentBase().replace("http", "ws");
 	if(socketUrl.indexOf('#') > 0) {
@@ -700,9 +701,16 @@ function setupBaseStation() {
 	});
 	$("#tabs").on("tabsactivate", function(event, ui) {
 		if(ui.newTab.text() == "Command Station") {
-			const sections = ["Status", "Turnouts", "Sensors", "Sensors (S88)", "Outputs", "Locomotive Roster", "Programmer"];
-			var currentSection = $("#bs-accordion").accordion("option", "active");
-			BSTabRefresh(sections[currentSection]);
+			bsTabRefreshInterval = setInterval(function() {
+				const sections = ["Status", "Turnouts", "Sensors", "Sensors (S88)", "Outputs", "Locomotive Roster", "Programmer"];
+				var currentSection = $("#bs-accordion").accordion("option", "active");
+				BSTabRefresh(sections[currentSection]);
+			}, 30000);
+		} else {
+			if(bsTabRefreshInterval !== null) {
+				clearInterval(bsTabRefreshInterval);
+				bsTabRefreshInterval = null;
+			}
 		}
 	});
 	setupBSStatus();

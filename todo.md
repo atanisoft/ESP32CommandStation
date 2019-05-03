@@ -30,6 +30,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 - [x] Fixed S88 section hiding.
 - [x] Fixed S88 sensor bus creation/edit json payload parameters.
 - [x] Reintroduce websocket usage for pushing commands back to the CS (improves performance).
+- [x] auto-refresh of status pages
 
 #### S88 Sensors
 - [x] Add delay in s88SensorTask so that it gives time for other tasks to execute between updates.
@@ -63,7 +64,6 @@ The entries below are not tracked to a specific release or in any particular pri
 ### Web Interface
 
 - [ ] add dialog for failed CS requests
-- [ ] auto-refresh of status pages
 - [ ] add busy/wait spinner for when data is loading (or being refreshed) in the web interface
 - [ ] investigate tcp/ip hang (AsyncTCP LwIP crash? consider replacements for AsyncWebServer?)
 - [ ] WiThrottle support (https://github.com/atanisoft/DCCppESP32/issues/15)
