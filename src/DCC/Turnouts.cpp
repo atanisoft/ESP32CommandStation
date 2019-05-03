@@ -345,8 +345,10 @@ void TurnoutExCommandAdapter::process(const std::vector<String> arguments) {
     wifiInterface.send(COMMAND_FAILED_RESPONSE);
   } else {
     auto turnout = TurnoutManager::getTurnoutByID(arguments[0].toInt());
-    if(turnout) {
+    if(turnout && arguments.size() == 1) {
       turnout->toggle();
+    } else if(turnout) {
+      turnout->setType((TurnoutType)arguments[1].toInt());
     } else {
       wifiInterface.send(COMMAND_FAILED_RESPONSE);
     }
