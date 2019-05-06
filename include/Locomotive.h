@@ -69,7 +69,7 @@ public:
   void showStatus();
   void toJson(JsonObject &, bool=true, bool=true);
   void setFunction(uint8_t funcID, bool state=false) {
-    LOG(INFO, "[Loco %d] F%d:%s", _locoAddress, funcID, state ? JSON_VALUE_ON.c_str() : JSON_VALUE_OFF.c_str());
+    LOG(INFO, "[Loco %d] F%d:%s", _locoAddress, funcID, state ? JSON_VALUE_ON : JSON_VALUE_OFF);
     _functionState[funcID] = state;
     _functionsChanged = true;
   }

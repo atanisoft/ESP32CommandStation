@@ -63,7 +63,7 @@ void Locomotive::sendLocoUpdate() {
 
 void Locomotive::showStatus() {
   LOG(INFO, "[Loco %d] speed: %d, direction: %s",
-    _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD.c_str() : JSON_VALUE_REVERSE.c_str());
+    _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
   wifiInterface.print(F("<T %d %d %d>"), _registerNumber, _speed, _direction);
 }
 

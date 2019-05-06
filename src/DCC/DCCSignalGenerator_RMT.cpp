@@ -92,7 +92,7 @@ constexpr uint8_t MAX_DCC_PACKET_BITS = 64;
 
 static void RMT_task_entry(void *param) {
     SignalGenerator_RMT *signal = static_cast<SignalGenerator_RMT *>(param);
-    LOG(INFO, "[%s] RMT Timing:\nZERO: %duS, ONE: %duS", signal->getName(), ZERO_BIT_PULSE, ONE_BIT_PULSE);
+    LOG(VERBOSE, "[%s] RMT Timing:\nZERO: %duS, ONE: %duS", signal->getName(), ZERO_BIT_PULSE, ONE_BIT_PULSE);
     signal->_stopCompleted = false;
     if(signal->_rmtChannel == DCC_SIGNAL_PROGRAMMING) {
         // for PROG track we need to use a longer preamble

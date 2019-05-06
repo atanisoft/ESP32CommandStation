@@ -24,6 +24,9 @@ LinkedList<LocomotiveConsist *> LocomotiveManager::_consists([](LocomotiveConsis
 TaskHandle_t LocomotiveManager::_taskHandle;
 xSemaphoreHandle LocomotiveManager::_lock;
 static constexpr UBaseType_t LOCOMOTIVE_MANAGER_TASK_PRIORITY = 3;
+static constexpr size_t LOCOMOTIVE_MANAGER_TASK_STACK_SIZE = 3072;
+static constexpr const char * ROSTER_JSON_FILE = "roster.json";
+static constexpr const char * CONSISTS_JSON_FILE = "consists.json";
 
 void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
   int registerNumber = arguments[0].toInt();
@@ -231,15 +234,16 @@ bool LocomotiveManager::removeLocomotiveConsist(const uint16_t consistAddress) {
 }
 
 void LocomotiveManager::init() {
-  _lock = xSemaphoreCreateMutex();
+  _lock = xSemaphoreCreateBinary();
   JsonObject &root = configStore.load(ROSTER_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t locoCount = count.success() ? count.as<int>() : 0;
   LOG(INFO, "[Roster] Found %d RosterEntries", locoCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Locos"), locoCount);
   if(locoCount > 0) {
-    for(auto loco : root.get<JsonArray>(JSON_LOCOS_NODE)) {
-      _roster.add(new RosterEntry(loco.as<JsonObject &>()));
+    JsonArray &rosterEntries = root.get<JsonArray>(JSON_LOCOS_NODE);
+    for(auto entry : rosterEntries) {
+      _roster.add(new RosterEntry(entry.as<JsonObject &>()));
     }
   }
   JsonObject &consistRoot = configStore.load(CONSISTS_JSON_FILE);
@@ -248,11 +252,12 @@ void LocomotiveManager::init() {
   LOG(INFO, "[Consist] Found %d Consists", consistCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Consists"), consistCount);
   if(locoCount > 0) {
-    for(auto consist : consistRoot.get<JsonArray>(JSON_CONSISTS_NODE)) {
-      _consists.add(new LocomotiveConsist(consist.as<JsonObject &>()));
+    JsonArray &consists = root.get<JsonArray>(JSON_CONSISTS_NODE);
+    for(auto entry : consists) {
+      _consists.add(new LocomotiveConsist(entry.as<JsonObject &>()));
     }
   }
-  xTaskCreate(updateTask, "LocomotiveManager", DEFAULT_THREAD_STACKSIZE, NULL, LOCOMOTIVE_MANAGER_TASK_PRIORITY, &_taskHandle);
+  xTaskCreate(updateTask, "LocomotiveManager", LOCOMOTIVE_MANAGER_TASK_STACK_SIZE, NULL, LOCOMOTIVE_MANAGER_TASK_PRIORITY, &_taskHandle);
 }
 
 void LocomotiveManager::clear() {

@@ -90,12 +90,12 @@ LocomotiveConsist::~LocomotiveConsist() {
 void LocomotiveConsist::showStatus() {
   // <U ID LEAD TRAIL [{OTHER}]>
   LOG(INFO, "[Consist %d] speed: %d, direction: %s, decoderAssisted: %s",
-    getLocoAddress(), getSpeed(), isDirectionForward() ? JSON_VALUE_FORWARD.c_str() : JSON_VALUE_REVERSE.c_str(),
-    _decoderAssisstedConsist ? JSON_VALUE_TRUE.c_str() : JSON_VALUE_FALSE.c_str());
+    getLocoAddress(), getSpeed(), isDirectionForward() ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE,
+    _decoderAssisstedConsist ? JSON_VALUE_TRUE : JSON_VALUE_FALSE);
   String statusCmd = "<U " + String(getLocoAddress() * _decoderAssisstedConsist ? -1 : 1);
   for (const auto& loco : _locos) {
     LOG(INFO, "LOCO: %d, ORIENTATION: %s", loco->getLocoAddress(),
-      loco->isOrientationForward() ? JSON_VALUE_FORWARD.c_str() : JSON_VALUE_REVERSE.c_str());
+      loco->isOrientationForward() ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
     statusCmd += " " + String(loco->getLocoAddress() * loco->isOrientationForward() ? 1 : -1);
   }
   statusCmd += ">";

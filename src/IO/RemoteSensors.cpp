@@ -149,7 +149,7 @@ RemoteSensor::RemoteSensor(uint16_t id, uint16_t value) :
   Sensor(id + REMOTE_SENSORS_FIRST_SENSOR, NON_STORED_SENSOR_PIN, false, false), _rawID(id) {
   setSensorValue(value);
   LOG(VERBOSE, "[RemoteSensors] RemoteSensor(%d) created with Sensor(%d), active: %s, value: %d",
-    getRawID(), getID(), isActive() ? "true" : "false", value);
+    getRawID(), getID(), isActive() ? JSON_VALUE_TRUE : JSON_VALUE_FALSE, value);
 }
 
 void RemoteSensor::check() {

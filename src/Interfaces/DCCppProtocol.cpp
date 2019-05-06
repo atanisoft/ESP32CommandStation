@@ -62,7 +62,7 @@ public:
   void process(const std::vector<String> arguments) {
     bool reEnable = stopDCCSignalGenerators();
 #if S88_ENABLED
-    wifiInterface.printf(F("<e %d %d %d %d %d>"),
+    wifiInterface.print(F("<e %d %d %d %d %d>"),
       TurnoutManager::store(),
       SensorManager::store(),
       OutputManager::store(),

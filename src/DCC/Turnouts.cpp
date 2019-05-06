@@ -73,6 +73,8 @@ by a separate interface or GUI program.
 
 LinkedList<Turnout *> turnouts([](Turnout *turnout) {delete turnout; });
 
+static constexpr const char * TURNOUTS_JSON_FILE = "turnouts.json";
+
 static constexpr const char *TURNOUT_TYPE_STRINGS[] = {
   "LEFT",
   "RIGHT",
@@ -237,11 +239,11 @@ Turnout::Turnout(uint16_t turnoutID, uint16_t address, int8_t index,
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
     LOG(INFO, "[Turnout %d] Created using DCC address %d as type %s and initial state of %s",
       _turnoutID, _address, TURNOUT_TYPE_STRINGS[_type],
-      _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+      _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
   } else {
     LOG(INFO, "[Turnout %d] Created using address %d:%d as type %s and initial state of %s",
       _turnoutID, _address, _index, TURNOUT_TYPE_STRINGS[_type],
-      _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+      _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
   }
 }
 
@@ -257,11 +259,11 @@ Turnout::Turnout(JsonObject &json) {
     calculateTurnoutBoardAddressAndIndex(&_boardAddress, &_index, _address);
     LOG(VERBOSE, "[Turnout %d] Loaded using DCC address %d as type %s and last known state of %s",
       _turnoutID, _address, TURNOUT_TYPE_STRINGS[_type],
-      _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+      _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
   } else {
     LOG(VERBOSE, "[Turnout %d] Loaded using address %d:%d as type %s and last known state of %s",
       _turnoutID, _address, _index, TURNOUT_TYPE_STRINGS[_type],
-      _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+      _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
   }
 }
 
@@ -312,7 +314,7 @@ void Turnout::set(bool thrown, bool sendDCCPacket) {
   }
   wifiInterface.print(F("<H %d %d>"), _turnoutID, _thrown);
   LOG(VERBOSE, "[Turnout %d] Set to %s", _turnoutID,
-    _thrown ? JSON_VALUE_THROWN.c_str() : JSON_VALUE_CLOSED.c_str());
+    _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
 }
 
 void Turnout::showStatus() {

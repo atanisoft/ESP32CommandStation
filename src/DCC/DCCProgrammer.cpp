@@ -43,12 +43,12 @@ bool enterProgrammingMode() {
   motorBoard->powerOn(false);
   dccSignal[DCC_SIGNAL_PROGRAMMING]->waitForQueueEmpty();
   // give decoder time to start up and stabilize to under 100mA draw
-  log_v("[PROG] waiting for power draw to stabilize");
+  LOG(VERBOSE, "[PROG] waiting for power draw to stabilize");
   vTaskDelay(pdMS_TO_TICKS(100));
 
   // check that the current is under 100mA limit, this will take ~50ms
   if(motorBoard->captureSample(50) > milliAmpStartupLimit) {
-    log_e("[PROG] current draw is over 100mA, aborting");
+    LOG_ERROR("[PROG] current draw is over 100mA, aborting");
     leaveProgrammingMode();
     return false;
   }

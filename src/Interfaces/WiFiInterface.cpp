@@ -27,7 +27,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <esp_task_wdt.h>
 
 #include <freertos_drivers/arduino/WifiDefs.hxx>
-#include <utils/StringPrintf.hxx>
 
 #include <utils/socket_listener.hxx>
 #include <utils/macros.h>

@@ -31,6 +31,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <SPIFFS.h>
 
 #include <utils/logging.h>
+#include <utils/StringPrintf.hxx>
 
 #include "Config.h"
 

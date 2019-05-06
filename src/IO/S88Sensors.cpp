@@ -65,10 +65,13 @@ constexpr uint16_t S88_MAX_SENSORS_PER_BUS = 512;
 
 extern LinkedList<Sensor *> sensors;
 
+static constexpr const char * S88_SENSORS_JSON_FILE = "s88.json";
+
 TaskHandle_t S88BusManager::_taskHandle;
 xSemaphoreHandle S88BusManager::_s88SensorLock;
 
 static constexpr UBaseType_t S88_SENSOR_TASK_PRIORITY = 1;
+static constexpr uint32_t S88_SENSOR_TASK_STACK_SIZE = 2048;
 
 LinkedList<S88SensorBus *> s88SensorBus([](S88SensorBus *sensorBus) {
   sensorBus->removeSensors(-1);
@@ -94,7 +97,7 @@ void S88BusManager::init() {
     }
   }
   _s88SensorLock = xSemaphoreCreateMutex();
-  xTaskCreate(s88SensorTask, "S88SensorManager", DEFAULT_THREAD_STACKSIZE, NULL, S88_SENSOR_TASK_PRIORITY, &_taskHandle);
+  xTaskCreate(s88SensorTask, "S88SensorManager", S88_SENSOR_TASK_STACK_SIZE, NULL, S88_SENSOR_TASK_PRIORITY, &_taskHandle);
 }
 
 void S88BusManager::clear() {
@@ -299,7 +302,7 @@ void S88SensorBus::readNext() {
 }
 
 void S88SensorBus::show() {
-  wifiInterface.printf(F("<S88 %d %d %d>"), _id, _dataPin, _sensors.size());
+  wifiInterface.print(F("<S88 %d %d %d>"), _id, _dataPin, _sensors.size());
   LOG(VERBOSE, "[S88 Bus-%d] Data:%d, Base:%d, Count:%d:", _id, _dataPin, _sensorIDBase, _sensors.size());
   for (const auto& sensor : _sensors) {
     LOG(VERBOSE, "[S88] Input: %d :: %s", sensor->getIndex(), sensor->isActive() ? "ACTIVE" : "INACTIVE");

@@ -67,7 +67,7 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
   if(drainToSendQueue) {
     drainQueue();
   }
-  log_v("[%s] queue: %d / %d", _name.c_str(), _toSend.size(), _availablePackets.size());
+  LOG(VERBOSE, "[%s] queue: %d / %d", _name.c_str(), _toSend.size(), _availablePackets.size());
   while(_availablePackets.empty()) {
     delay(2);
   }

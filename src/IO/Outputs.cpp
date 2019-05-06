@@ -95,6 +95,8 @@ or GUI program.
 **********************************************************************/
 LinkedList<Output *> outputs([](Output *output) {delete output; });
 
+static constexpr const char * OUTPUTS_JSON_FILE = "outputs.json";
+
 void OutputManager::init() {
   LOG(INFO, "[Output] Initializing outputs");
   JsonObject &root = configStore.load(OUTPUTS_JSON_FILE);
@@ -236,7 +238,7 @@ Output::Output(JsonObject &json) {
 void Output::set(bool active, bool announce) {
   _active = active;
   digitalWrite(_pin, _active);
-  LOG(INFO, "[Output] Output(%d) set to %s", _id, _active ? JSON_VALUE_ON.c_str() : JSON_VALUE_OFF.c_str());
+  LOG(INFO, "[Output] Output(%d) set to %s", _id, _active ? JSON_VALUE_ON : JSON_VALUE_OFF);
   if(announce) {
     wifiInterface.print(F("<Y %d %d>"), _id, !_active);
   }
