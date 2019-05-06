@@ -58,6 +58,9 @@ std::unique_ptr<SocketListener> JMRIListener;
 bool wifiConnected = false;
 WiFiInterface wifiInterface;
 
+constexpr int JMRI_CLIENT_PRIORITY = 0;
+constexpr size_t JMRI_CLIENT_STACK_SIZE = 4096;
+
 static constexpr const char *WIFI_STATUS_STRINGS[] =
 {
     "WiFi Idle",            // WL_IDLE_STATUS
@@ -115,7 +118,9 @@ void WiFiInterface::begin() {
     }
 
     JMRIListener.reset(new SocketListener(DCCPP_JMRI_CLIENT_PORT, [](int fd) {
-      os_thread_create(nullptr, nullptr, 0, 0, jmriClientHandler, (void *)fd);
+      os_thread_create(nullptr, StringPrintf("jmri-%d", fd).c_str(),
+                       JMRI_CLIENT_PRIORITY, JMRI_CLIENT_STACK_SIZE,
+                       jmriClientHandler, (void *)fd);
       jmriClients.push_back(fd);
     }));
     dccppWebServer.begin();
