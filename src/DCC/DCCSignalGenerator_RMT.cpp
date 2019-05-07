@@ -38,6 +38,13 @@ static constexpr rmt_item32_t DCC_PREAMBLE[] = {
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
     DCC_ONE_BIT, DCC_ONE_BIT
 };
 
@@ -96,10 +103,10 @@ static void RMT_task_entry(void *param) {
     signal->_stopCompleted = false;
     if(signal->_rmtChannel == DCC_SIGNAL_PROGRAMMING) {
         // for PROG track we need to use a longer preamble
-        RMT_TRANSMIT_DCC(signal, 22)
+        RMT_TRANSMIT_DCC(signal, PROG_TRACK_PREAMBLE_BITS)
     } else {
         // for OPS track we can use a shorter preamble
-        RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, 16)
+        RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, OPS_TRACK_PREAMBLE_BITS)
     }
     signal->_stopCompleted = true;
     vTaskDelete(NULL);

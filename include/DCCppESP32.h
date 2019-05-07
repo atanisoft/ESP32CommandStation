@@ -35,6 +35,30 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "Config.h"
 
+#if !defined(OPS_TRACK_PREAMBLE_BITS)
+#define OPS_TRACK_PREAMBLE_BITS 16
+#endif
+
+#if !defined(PROG_TRACK_PREAMBLE_BITS)
+#define PROG_TRACK_PREAMBLE_BITS 22
+#endif
+
+#if OPS_TRACK_PREAMBLE_BITS < 11
+#error "OPS_TRACK_PREAMBLE_BITS is too low, a minimum of 11 bits must be transmitted for the DCC decoder to accept the packets."
+#endif
+
+#if OPS_TRACK_PREAMBLE_BITS > 20
+#error "OPS_TRACK_PREAMBLE_BITS is too high. The OPS track only supports up to 20 preamble bits."
+#endif
+
+#if PROG_TRACK_PREAMBLE_BITS < 22
+#error "PROG_TRACK_PREAMBLE_BITS is too low, a minimum of 22 bits must be transmitted for reliability on the PROG track."
+#endif
+
+#if OPS_TRACK_PREAMBLE_BITS > 50
+#error "PROG_TRACK_PREAMBLE_BITS is too high. The PROG track only supports up to 50 preamble bits."
+#endif
+
 // initialize default values for various pre-compiler checks to simplify logic in a lot of places
 #if (defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD) || (defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED)
 #define INFO_SCREEN_ENABLED true

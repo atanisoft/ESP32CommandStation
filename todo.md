@@ -14,6 +14,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 - [x] fix signal generation so it doesn't crash up when spi_flash disables cache.
 - [x] adjust motor board powerOn/powerOff to enable/disable DCC signal instead of using global power-on/off.
+- [x] allow adjustment of the DCC preamble bit count, default is 16 (OPS) and 22 (PROG). The OPS value is constrained between 11 and 20 and PROG between 22 and 50.
 
 #### LCC Integration
 
@@ -38,7 +39,6 @@ The primary focus for this will be improving the LCC integration and solve the c
 #### Configuration
 - [x] rename of WIFI_SSID to SSID_NAME and WIFI_PASSWORD to SSID_PASSWORD to be in sync with upcoming changes.
 - [ ] Split up monolithic json files to instead be individual files in unique directories.
-- [ ] consider switch to binary format vs json format to save space on FS
 
 #### General
 - [x] Remove usage of log_X macros in favor of LOG.
