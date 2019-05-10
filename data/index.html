@@ -402,15 +402,19 @@
 			<div data-role="main" class="ui-content">
 				<div class="ui-field-contain">
 					<label for="bs-sensor-s88-id">Sensor Bus ID:</label>
-					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-id" value="1" min="1" max="32767">
+					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-id" value="0" min="0" max="10">
+				</div>
+				<div class="ui-field-contain">
+					<label for="bs-sensor-s88-sensor-id">First sensor ID:</label>
+					<input type="number" id="bs-sensor-s88-sensor-id" value="512" readonly="true">
 				</div>
 				<div class="ui-field-contain">
 					<label for="bs-sensor-s88-pin">Data Pin:</label>
-					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-pin" value="1" min="1" max="40">
+					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-pin" value="0" min="0" max="40">
 				</div>
 				<div class="ui-field-contain">
 					<label for="bs-sensor-s88-count">Sensor Count:</label>
-					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-count" value="0" min="0" max="512">
+					<input type="number" pattern="[0-9]*" id="bs-sensor-s88-count" value="0" min="0" max="511">
 				</div>
 			</div>
 			<div role="footer">
@@ -495,6 +499,7 @@ var firePowerEvents = true;
 var online = true;
 var webSocket;
 var bsTabRefreshInterval = null;
+var s88SensorIDBase = 512;
 function connectWebSocket() {
 	var socketUrl = $.mobile.path.getDocumentBase().replace("http", "ws");
 	if(socketUrl.indexOf('#') > 0) {
@@ -566,6 +571,8 @@ function initPage() {
 			success : function (data, status, xhr) {
 				if(data.s88 === 'false') {
 					disableS88Tab();
+				} else {
+					s88SensorIDBase = data.sensorIDBase;
 				}
 			},
 			error : function (xhr, status, error) {
@@ -853,7 +860,7 @@ function setupBSSensor() {
 	});
 }
 function setupBSS88Sensors() {
-	$('#bs-sensor-s88-dialog-save').on('vclick', function(event, ui) {
+	$('#bs-sensor-s88-dialog-save').on('vclick', function() {
 		$.post('/s88sensors', {
 			'id': $('#bs-sensor-s88-id').val(),
 			'pin' : $('#bs-sensor-s88-pin').val(),
@@ -861,13 +868,17 @@ function setupBSS88Sensors() {
 		});
 		BSTabRefresh('Sensors (S88)');
 	});
-	$('#bs-sensor-s88-create').on('vclick', function(event, ui) {
-		$('#bs-sensor-s88-id').val($('#bs-table-sensors-s88 tbody tr').length + 1);
+	$('#bs-sensor-s88-create').on('vclick', function() {
+		$('#bs-sensor-s88-id').val($('#bs-table-sensors-s88 tbody tr').length);
+		$('#bs-sensor-s88-sensor-id').val(s88SensorIDBase + ($('#bs-sensor-s88-id').val() * 512));
 		$('#bs-sensor-s88-pin').val(1);
 		$('#bs-sensor-s88-count').val(0);
 		$('#bs-sensor-s88-editor').popup('open', {positionTo:'window'});
 	});
-	$('#bs-sensor-s88-refresh').on('vclick', function(event, ui) {
+	$('#bs-sensor-s88-id').on('change', function() {
+		$('#bs-sensor-s88-sensor-id').val(s88SensorIDBase + ($('#bs-sensor-s88-id').val() * 512));
+	});
+	$('#bs-sensor-s88-refresh').on('vclick', function() {
 		BSTabRefresh('Sensors (S88)');
 	});
 }
@@ -1209,7 +1220,23 @@ function BSTabRefresh(section) {
 		});
 	} else if(section === 'Sensors (S88)') {
 		refreshTable({table: '#bs-table-sensors-s88', url: '/s88sensors',
-			fields: ['id', 'pin', 'sensorIDBase', 'count', 'state', function(record) {
+			fields: ['id', 'pin', 'sensorIDBase', 'count', function(record) {
+				var state = '';
+				var dataSplit = record.state.split("");
+				var count = 0;
+				for(index in dataSplit) {
+					count++;
+					if(dataSplit[index] === '0') {
+						state += "<span class='s88SensorOff'>OFF</span>&nbsp;";
+					} else {
+						state += "<span class='s88SensorOn'>ON&nbsp;</span>&nbsp;";
+					}
+					if(count % 8 === 0) {
+						state += "<br/>";
+					}
+				}
+				return state;
+			}, function(record) {
 				var buttons = '';
 				buttons += createButton({type:'delete', id:String.format("s88sensor-{0}-delete", record.id)});
 				buttons += createButton({type:'edit', id:String.format("s88sensor-{0}-edit", record.id)});
@@ -1230,6 +1257,7 @@ function BSTabRefresh(section) {
 							success:function(data, status, jqxhr) {
 								console.log('Edit s88 sensor', data);
 								$('#bs-sensor-s88-id').val(data.id);
+								$('#bs-sensor-s88-sensor-id').val(s88SensorIDBase + (data.id * 512));
 								$('#bs-sensor-s88-pin').val(data.dataPin);
 								$('#bs-sensor-s88-count').val(data.count);
 								$('#bs-sensor-s88-editor').popup('open', {positionTo:'window'});

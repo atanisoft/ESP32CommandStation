@@ -35,6 +35,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 #### S88 Sensors
 - [x] Add delay in s88SensorTask so that it gives time for other tasks to execute between updates.
+- [x] restore custom web rendering of sensor data.
 
 #### Configuration
 - [x] rename of WIFI_SSID to SSID_NAME and WIFI_PASSWORD to SSID_PASSWORD to be in sync with upcoming changes.

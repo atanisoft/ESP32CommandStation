@@ -54,14 +54,8 @@ constexpr uint16_t S88_SENSOR_CLOCK_PRE_RESET_TIME = 50;
 constexpr uint16_t S88_SENSOR_RESET_PULSE_TIME = 50;
 constexpr uint16_t S88_SENSOR_READ_TIME = 25;
 
-/////////////////////////////////////////////////////////////////////////////////////
-// S88 Maximum sensors per bus.
-/////////////////////////////////////////////////////////////////////////////////////
-constexpr uint16_t S88_MAX_SENSORS_PER_BUS = 512;
-
-#ifndef S88_FIRST_SENSOR
-#define S88_FIRST_SENSOR S88_MAX_SENSORS_PER_BUS
-#endif
+// This is the interval at which sensors will be checked
+constexpr TickType_t S88_SENSOR_CHECK_DELAY = pdMS_TO_TICKS(50);
 
 extern LinkedList<Sensor *> sensors;
 
@@ -154,7 +148,7 @@ void S88BusManager::s88SensorTask(void *param) {
       delayMicroseconds(S88_SENSOR_READ_TIME);
     }
     MUTEX_UNLOCK(_s88SensorLock);
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(S88_SENSOR_CHECK_DELAY);
   }
 }
 

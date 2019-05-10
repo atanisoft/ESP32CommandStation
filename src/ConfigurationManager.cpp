@@ -67,6 +67,16 @@ void ConfigurationManager::clear() {
   CONFIG_FS.mkdir(DCCPPESP32_CONFIG_DIR);
 }
 
+bool ConfigurationManager::exists(const char *name) {
+  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  return CONFIG_FS.exists(configFilePath.c_str());
+}
+
+void ConfigurationManager::remove(const char *name) {
+  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  CONFIG_FS.remove(configFilePath.c_str());
+}
+
 JsonObject &ConfigurationManager::load(const char *name) {
   std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
   LOG(INFO, "[Config] Loading %s", configFilePath.c_str());

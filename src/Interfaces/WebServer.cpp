@@ -106,6 +106,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     JsonObject &root = jsonResponse->getRoot();
 #if S88_ENABLED
     root[JSON_S88_NODE] = JSON_VALUE_TRUE;
+    root[JSON_S88_SENSOR_BASE_NODE] = S88_FIRST_SENSOR;
 #else
     root[JSON_S88_NODE] = JSON_VALUE_FALSE;
 #endif
