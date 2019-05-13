@@ -29,6 +29,15 @@ const uint16_t motorBoardCheckFaultCountdownInterval = 40;
 
 LinkedList<GenericMotorBoard *> motorBoards([](GenericMotorBoard *board) {delete board; });
 
+class NonMonitoredMotorBoard : public GenericMotorBoard {
+public:
+	NonMonitoredMotorBoard(uint8_t enablePin, String name) : GenericMotorBoard(ADC1_CHANNEL_0, enablePin, 0, 0, name, false) {}
+	virtual void check() {}
+	virtual uint16_t captureSample(uint8_t sampleCount, bool logResults=false) {
+		return 0;
+	}
+};
+
 GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enablePin,
   uint16_t triggerMilliAmps, uint32_t maxMilliAmps, String name, bool programmingTrack) :
   _name(name), _senseChannel(senseChannel), _enablePin(enablePin),
@@ -170,6 +179,11 @@ void MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin
     triggerAmps = 300;
   }
   motorBoards.add(new GenericMotorBoard(sensePin, enablePin, triggerAmps, maxAmps, name, programmingTrack));
+}
+
+void MotorBoardManager::registerNonMonitoredBoard(uint8_t enablePin, String name) {
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("%s Init"), name.c_str());
+  motorBoards.add(new NonMonitoredMotorBoard(enablePin, name));
 }
 
 GenericMotorBoard *MotorBoardManager::getBoardByName(String name) {

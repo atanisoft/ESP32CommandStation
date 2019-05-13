@@ -32,7 +32,7 @@ public:
 	void powerOn(bool=true);
 	void powerOff(bool=true, bool=false);
 	void showStatus();
-	void check();
+	virtual void check();
 	bool isOn() {
 		return _state;
 	}
@@ -57,7 +57,7 @@ public:
 	float getCurrentDraw() {
 		return (float)((_current * _maxMilliAmps) / 4096.0f);
 	}
-  uint16_t captureSample(uint8_t, bool=false);
+  virtual uint16_t captureSample(uint8_t, bool=false);
 private:
 	const String _name;
 	const adc1_channel_t _senseChannel;
@@ -76,6 +76,7 @@ private:
 class MotorBoardManager {
 public:
 	static void registerBoard(adc1_channel_t, uint8_t, MOTOR_BOARD_TYPE, String, bool=false);
+	static void registerNonMonitoredBoard(uint8_t, String);
 	static GenericMotorBoard *getBoardByName(String);
 	static std::vector<String> getBoardNames();
 	static uint8_t getMotorBoardCount();
