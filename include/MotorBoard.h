@@ -29,6 +29,7 @@ enum MOTOR_BOARD_TYPE { ARDUINO_SHIELD, POLOLU, BTS7960B_5A, BTS7960B_10A };
 class GenericMotorBoard {
 public:
 	GenericMotorBoard(adc1_channel_t, uint8_t, uint16_t, uint32_t, String, bool);
+	virtual ~GenericMotorBoard() {}
 	void powerOn(bool=true);
 	void powerOff(bool=true, bool=false);
 	void showStatus();
