@@ -425,7 +425,7 @@ void NextionTurnoutPage::refreshPage() {
 
 void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
   NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(previousPage);
-  TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount(),
+  TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount() + 1,
     addressPage->getNewAddress(), -1, addressPage->getTurnoutType());
   // reset page mode for normal operations
   _pageMode = PAGE_MODE::NORMAL;
