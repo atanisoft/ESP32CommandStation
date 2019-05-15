@@ -346,13 +346,23 @@ void TurnoutExCommandAdapter::process(const std::vector<String> arguments) {
   if(arguments.empty()) {
     wifiInterface.send(COMMAND_FAILED_RESPONSE);
   } else {
-    auto turnout = TurnoutManager::getTurnoutByID(arguments[0].toInt());
-    if(turnout && arguments.size() == 1) {
-      turnout->toggle();
-    } else if(turnout) {
-      turnout->setType((TurnoutType)arguments[1].toInt());
+    int32_t turnoutID = arguments[0].toInt();
+    if(turnoutID > 0) {
+      auto turnout = TurnoutManager::getTurnoutByID(arguments[0].toInt());
+      if(turnout && arguments.size() == 1) {
+        turnout->toggle();
+      } else if(turnout) {
+        turnout->setType((TurnoutType)arguments[1].toInt());
+      } else {
+        wifiInterface.send(COMMAND_FAILED_RESPONSE);
+      }
     } else {
-      wifiInterface.send(COMMAND_FAILED_RESPONSE);
+      auto turnout = TurnoutManager::getTurnoutByAddress(arguments[1].toInt());
+      if(turnout) {
+        turnout->setType((TurnoutType)arguments[2].toInt());
+      } else {
+        TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount() + 1, arguments[1].toInt(), -1, (TurnoutType)arguments[2].toInt());
+      }
     }
   }
 }
