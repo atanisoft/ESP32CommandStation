@@ -29,7 +29,9 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // ADC1_CHANNEL_6 : 34
 // ADC1_CHANNEL_7 : 35
 //
-// MOST ESP32 BOARDS DO NOT EXPOSE GPIO38 so ADC1_CHANNEL_2 MAY NOT BE USABLE.
+// NOTE: GPIO 37 and GPIO 38 aare not usable as they are connected to GPIO 36 and
+// GPIO 39 internally with a capacitor. Therefore ADC1_CHANNEL_1 and ADC1_CHANNEL_2
+// are not suitable for usage, regardless of if the ESP32 board exposes these pins.
 //
 // SUPPORTED MOTORBOARD TYPES:
 // ARDUINO_SHIELD : Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A per channel https://store.arduino.cc/usa/arduino-motor-shield-rev3
