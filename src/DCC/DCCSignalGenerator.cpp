@@ -159,20 +159,22 @@ void SignalGenerator::startSignal(bool sendIdlePackets) {
 }
 
 void SignalGenerator::stopSignal() {
-  disable();
+  if(_enabled) {
+    disable();
 
-  // if we have a current packet being processed move it to the available
-  // queue if it is not the pre-canned idle packet.
-  if(_currentPacket != nullptr && _currentPacket != &_idlePacket) {
-    // make sure the packet is zeroed before pushing it back to the queue
-    memset(_currentPacket, 0, sizeof(Packet));
-    _availablePackets.push(_currentPacket);
-    _currentPacket = nullptr;
+    // if we have a current packet being processed move it to the available
+    // queue if it is not the pre-canned idle packet.
+    if(_currentPacket != nullptr && _currentPacket != &_idlePacket) {
+      // make sure the packet is zeroed before pushing it back to the queue
+      memset(_currentPacket, 0, sizeof(Packet));
+      _availablePackets.push(_currentPacket);
+      _currentPacket = nullptr;
+    }
+
+    // drain any remaining packets that were not sent back into the available
+    // to use packets.
+    drainQueue();
   }
-
-  // drain any remaining packets that were not sent back into the available
-  // to use packets.
-  drainQueue();
 
   _enabled = false;
 }
