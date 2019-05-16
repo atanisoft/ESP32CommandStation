@@ -220,8 +220,10 @@ void MotorBoardManager::powerOnAll() {
 void MotorBoardManager::powerOffAll() {
   LOG(VERBOSE, "Disabling DCC Signal for all track outputs");
   for (const auto& board : motorBoards) {
-    board->powerOff(false);
-    board->showStatus();
+    if(board->isOn()) {
+      board->powerOff(false);
+      board->showStatus();
+    }
   }
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::print(13, INFO_SCREEN_TRACK_POWER_LINE, F("OFF  "));

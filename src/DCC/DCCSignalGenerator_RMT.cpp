@@ -102,6 +102,7 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
 
 static void RMT_task_entry(void *param) {
     SignalGenerator_RMT *signal = static_cast<SignalGenerator_RMT *>(param);
+    xSemaphoreTake(signal->_stopComplete, portMAX_DELAY);
     LOG(INFO, "[%s] RMT feeder task starting up", signal->getName());
     if(signal->_rmtChannel == DCC_SIGNAL_PROGRAMMING) {
         // for PROG track we need to use a longer preamble
@@ -122,6 +123,7 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
 
     _stopRequest = xSemaphoreCreateBinary();
     _stopComplete = xSemaphoreCreateBinary();
+    xSemaphoreGive(_stopComplete);
 
     rmt_config_t rmtConfig = {
         .rmt_mode = RMT_MODE_TX,
@@ -147,6 +149,7 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
 
 void SignalGenerator_RMT::enable() {
     LOG(INFO, "[%s] Creating RMT feeder task", _name.c_str());
+    xSemaphoreGive(_stopComplete);
     xTaskCreate(RMT_task_entry, _name.c_str(), RMT_TASK_STACK_SIZE, this, RMT_TASK_PRIORITY, nullptr);
 }
 
