@@ -73,7 +73,7 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
     ESP_ERROR_CHECK(rmt_wait_tx_done(signal->_rmtChannel, time));
 
 #define RMT_TRANSMIT_DCC(signal, preambleBitCount) \
-    while(!signal->_stopRequested) { \
+    while(xSemaphoreTake(signal->_stopRequest, 0) != pdTRUE) { \
         auto packet = signal->getPacket(); \
         if(packet) { \
             uint8_t encodedBitCount = 0; \
@@ -86,7 +86,7 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
     }
 
 #define RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, preambleBitCount) \
-    while(!signal->_stopRequested) { \
+    while(xSemaphoreTake(signal->_stopRequest, 0) != pdTRUE) { \
         auto packet = signal->getPacket(); \
         if(packet) { \
             uint8_t encodedBitCount = 0; \
@@ -103,7 +103,6 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
 static void RMT_task_entry(void *param) {
     SignalGenerator_RMT *signal = static_cast<SignalGenerator_RMT *>(param);
     LOG(INFO, "[%s] RMT feeder task starting up", signal->getName());
-    signal->_stopCompleted = false;
     if(signal->_rmtChannel == DCC_SIGNAL_PROGRAMMING) {
         // for PROG track we need to use a longer preamble
         RMT_TRANSMIT_DCC(signal, PROG_TRACK_PREAMBLE_BITS)
@@ -111,16 +110,18 @@ static void RMT_task_entry(void *param) {
         // for OPS track we can use a shorter preamble
         RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, OPS_TRACK_PREAMBLE_BITS)
     }
-    signal->_stopCompleted = true;
-    vTaskDelete(NULL);
     LOG(INFO, "[%s] RMT feeder task shut down", signal->getName());
+    xSemaphoreGive(signal->_stopComplete);
+    vTaskDelete(NULL);
 }
 
 SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) :
     SignalGenerator(name, maxPackets, signalID, signalPin), _rmtChannel((rmt_channel_t)signalID) {
-
     LOG(INFO, "[%s] Configuring RMT-%d using pin %d and bit timing: zero: %duS, one: %duS",
         _name.c_str(), _rmtChannel, signalPin, ZERO_BIT_PULSE, ONE_BIT_PULSE);
+
+    _stopRequest = xSemaphoreCreateBinary();
+    _stopComplete = xSemaphoreCreateBinary();
 
     rmt_config_t rmtConfig = {
         .rmt_mode = RMT_MODE_TX,
@@ -145,15 +146,15 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
 }
 
 void SignalGenerator_RMT::enable() {
-    _stopRequested = false;
     LOG(INFO, "[%s] Creating RMT feeder task", _name.c_str());
     xTaskCreate(RMT_task_entry, _name.c_str(), RMT_TASK_STACK_SIZE, this, RMT_TASK_PRIORITY, nullptr);
 }
 
 void SignalGenerator_RMT::disable() {
-    LOG(INFO, "[%s] Stopping RMT feeder task", _name.c_str());
-    _stopRequested = true;
-    while(!_stopCompleted) {
-        vTaskDelay(pdMS_TO_TICKS(1));
+    LOG(INFO, "[%s] Requesting RMT feeder task to stop", _name.c_str());
+    xSemaphoreGive(_stopRequest);
+    while(xSemaphoreTake(_stopComplete, pdMS_TO_TICKS(250)) != pdTRUE) {
+        LOG(INFO, "[%s] RMT feeder task still running...", _name.c_str());
     }
+    LOG(INFO, "[%s] RMT Feeder task stopped", _name.c_str());
 }

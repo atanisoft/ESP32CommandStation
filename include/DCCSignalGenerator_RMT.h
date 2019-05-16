@@ -22,8 +22,8 @@ COPYRIGHT (c) 2019 Mike Dunston
 class SignalGenerator_RMT : public SignalGenerator {
 public:
   SignalGenerator_RMT(String, uint16_t, uint8_t, uint8_t);
-  bool _stopRequested{false};
-  bool _stopCompleted{false};
+  SemaphoreHandle_t _stopRequest;
+  SemaphoreHandle_t _stopComplete;
   const rmt_channel_t _rmtChannel;
 protected:
   void enable() override;
