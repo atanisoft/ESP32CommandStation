@@ -179,7 +179,7 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(ne
     static_cast<NextionThrottlePage*>(nextionPages[THROTTLE_PAGE])->increaseLocoSpeed();
   });
   _speedSlider.attachCallback([](NextionEventType type, INextionTouchable *widget) {
-    if(type == NEX_EVENT_PUSH) {
+    if(type == NEX_EVENT_POP) {
       NextionSlider *slider = static_cast<NextionSlider *>(widget);
       static_cast<NextionThrottlePage*>(nextionPages[THROTTLE_PAGE])->setLocoSpeed(slider->getValue());
     }

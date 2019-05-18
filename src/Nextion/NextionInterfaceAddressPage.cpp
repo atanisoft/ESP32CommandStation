@@ -38,7 +38,7 @@ constexpr uint8_t quit1=21;  //quit PIC 94/95
 constexpr uint8_t addrtype=22;  //AddrType PIC129/130
 constexpr uint8_t boardaddress=5;
 constexpr uint8_t indexaddress=6;
-constexpr uint8_t orientation=23;
+constexpr uint8_t type=23;
 
 constexpr uint8_t LOCO_PIC=140;
 constexpr uint8_t TURNOUT_PIC=141;
@@ -64,7 +64,7 @@ NextionAddressPage::NextionAddressPage(Nextion &nextion) :
   _addressPic(nextion, ADDRESS_PAGE, addrtype, "AddrType"),
   _boardAddress(nextion, ADDRESS_PAGE, boardaddress, "boardAddress"),
   _indexAddress(nextion, ADDRESS_PAGE, indexaddress, "indexAddress"),
-  _turnoutTypeButton(nextion, ADDRESS_PAGE, orientation, "Orientation"),
+  _turnoutTypeButton(nextion, ADDRESS_PAGE, type, "Type"),
   _saveButton(nextion, ADDRESS_PAGE, save1, "Save"),
   _quitButton(nextion, ADDRESS_PAGE, quit1, "Quit"),
   _undoButton(nextion, ADDRESS_PAGE, undo, "Undo"),
