@@ -120,9 +120,9 @@ void nextionInterfaceInit() {
       } else if(parts[2].compare(0, 7, "NX4832T") == 0) {
         nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY;
       } else if(parts[2].compare(0, 7, "NX8048K") == 0) {
-        nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_3_5_DISPLAY;
+        nextionDeviceType = NEXTION_DEVICE_TYPE::ENHANCED_5_0_DISPLAY;
       } else if(parts[2].compare(0, 7, "NX8048T") == 0) {
-        nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_5_DISPLAY;
+        nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_5_0_DISPLAY;
       } else {
         LOG(WARNING, "[Nextion] Unrecognized Nextion Device model: %s", parts[2].c_str());
       }
