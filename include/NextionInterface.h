@@ -234,6 +234,7 @@ private:
   uint8_t getTurnoutsPerPageCount();
   NextionButton _turnoutButtons[TURNOUTS_PER_PAGE_5_0_DISPLAY];
   NextionButton _toAddress[TURNOUTS_PER_PAGE_5_0_DISPLAY];
+  int32_t _toIDCache[TURNOUTS_PER_PAGE_5_0_DISPLAY];
   NextionButton _backButton;
   NextionButton _prevButton;
   NextionButton _nextButton;

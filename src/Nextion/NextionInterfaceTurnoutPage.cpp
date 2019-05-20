@@ -310,6 +310,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
         static_cast<NextionTurnoutPage*>(nextionPages[TURNOUT_PAGE])->toggleTurnout(static_cast<NextionButton *>(widget));
       }
     });
+    _toIDCache[slot] = -1;
   };
 
   _setupButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
@@ -390,6 +391,7 @@ void NextionTurnoutPage::refreshPage() {
       _turnoutButtons[componentIndex].show();
       _toAddress[componentIndex].setTextAsNumber(turnout->getAddress());
       _toAddress[componentIndex].show();
+      _toIDCache[componentIndex] = turnout->getID();
     }
   }
 
@@ -401,6 +403,7 @@ void NextionTurnoutPage::refreshPage() {
     {
       _turnoutButtons[turnoutsToDisplay].hide();
       _toAddress[turnoutsToDisplay].hide();
+      _toIDCache[turnoutsToDisplay] = -1;
     }
     _nextButton.setPictureID(NEXT_BUTTON_DISABLED);
     _nextButton.disable();
