@@ -24,7 +24,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include "DCCppProtocol.h"
 #include "DCCSignalGenerator.h"
 
-enum MOTOR_BOARD_TYPE { ARDUINO_SHIELD, POLOLU, BTS7960B_5A, BTS7960B_10A };
+enum MOTOR_BOARD_TYPE { ARDUINO_SHIELD, POLOLU, LMD18200, BTS7960B_5A, BTS7960B_10A };
 
 class GenericMotorBoard {
 public:

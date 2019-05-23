@@ -163,6 +163,10 @@ void MotorBoardManager::registerBoard(adc1_channel_t sensePin, uint8_t enablePin
       maxAmps = 2500;
       triggerAmps = 2250;
       break;
+    case LMD18200:
+      maxAmps = 3000;
+      triggerAmps = 2750;
+      break;
     case BTS7960B_5A:
       maxAmps = 43000;
       triggerAmps = 5000;
