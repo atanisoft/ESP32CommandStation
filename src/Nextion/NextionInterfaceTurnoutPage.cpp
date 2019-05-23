@@ -31,12 +31,15 @@ constexpr uint8_t PREV_BUTTON_ENABLED=126;
 constexpr uint8_t DELETE_INACTIVE=136;
 constexpr uint8_t DELETE_ACTIVE=137;
 
+constexpr uint8_t EDIT_INACTIVE=129;
+constexpr uint8_t EDIT_ACTIVE=131;
+
 constexpr uint8_t prevButtonID=4;
 constexpr uint8_t addtoButtonID=5;
 constexpr uint8_t nextButtonID=6;
 constexpr uint8_t backButtonID=7;
 constexpr uint8_t delButtonID=8;
-constexpr uint8_t setupButtonID=9;
+constexpr uint8_t editButtonID=9;
 
 // 3.2" and 3.5" display
 constexpr uint8_t ad0ButtonID=10;
@@ -303,7 +306,7 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
   _nextButton(nextion, TURNOUT_PAGE, nextButtonID, "Next"),
   _addButton(nextion, TURNOUT_PAGE, addtoButtonID, "Add"),
   _delButton(nextion, TURNOUT_PAGE, delButtonID, "Del"),
-  _setupButton(nextion, TURNOUT_PAGE, setupButtonID, "Setup") {
+  _editButton(nextion, TURNOUT_PAGE, editButtonID, "Edit") {
   for(int slot = 0; slot < TURNOUTS_PER_PAGE_5_0_DISPLAY; slot++) {
     _turnoutButtons[slot].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
@@ -313,9 +316,9 @@ NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
     _toIDCache[slot] = -1;
   };
 
-  _setupButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+  _editButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
-      LOG(INFO, "Setup Button Pressed");
+      static_cast<NextionTurnoutPage*>(nextionPages[TURNOUT_PAGE])->editButtonHandler();
     }
   });
 
@@ -361,11 +364,22 @@ void NextionTurnoutPage::deleteButtonHandler() {
     }
     _delButton.setPictureID(DELETE_INACTIVE);
     _pageMode = PAGE_MODE::NORMAL;
+    refresh();
   } else {
     _delButton.setPictureID(DELETE_ACTIVE);
     _pageMode = PAGE_MODE::DELETION;
   }
-  refresh();
+}
+
+void NextionTurnoutPage::editButtonHandler() {
+  if(_pageMode == PAGE_MODE::EDIT) {
+    _editButton.setPictureID(EDIT_INACTIVE);
+    _pageMode = PAGE_MODE::NORMAL;
+    refresh();
+  } else {
+    _editButton.setPictureID(EDIT_ACTIVE);
+    _pageMode = PAGE_MODE::EDIT;
+  }
 }
 
 void NextionTurnoutPage::refreshPage() {
@@ -428,8 +442,22 @@ void NextionTurnoutPage::refreshPage() {
 
 void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
   NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(previousPage);
-  TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount() + 1,
-    addressPage->getNewAddress(), -1, addressPage->getTurnoutType());
+  if(_pageMode == PAGE_MODE::EDIT) {
+    auto turnout = TurnoutManager::getTurnoutByAddress(addressPage->getCurrentAddress());
+    if(turnout) {
+      // if we have a new address use it
+      if(addressPage->getNewAddress() > 0) {
+        turnout->update(addressPage->getNewAddress(), -1, addressPage->getTurnoutType());
+      } else {
+        turnout->setType(addressPage->getTurnoutType());
+      }
+    } else {
+      LOG(WARNING, "[Nextion] Turnout with address %d no longer exists", addressPage->getCurrentAddress());
+    }
+  } else {
+    TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount() + 1,
+      addressPage->getNewAddress(), -1, addressPage->getTurnoutType());
+  }
   // reset page mode for normal operations
   _pageMode = PAGE_MODE::NORMAL;
   refresh();
@@ -448,7 +476,11 @@ void NextionTurnoutPage::toggleTurnout(const NextionButton *button) {
             _turnoutButtons[slot].setPictureID(TURNOUT_IMAGE_IDS::TURNOUT_DELETED);
           }
         } else if(_pageMode == PAGE_MODE::EDIT) {
-          // TODO: pop up address page for edits
+          auto addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
+          addressPage->setCurrentAddress(turnout->getAddress());
+          addressPage->setTurnoutType(turnout->getType());
+          addressPage->setPreviousPage(TURNOUT_PAGE);
+          addressPage->display();
         } else if(_pageMode == PAGE_MODE::NORMAL) {
           turnout->toggle();
           _turnoutButtons[slot].setPictureID(getDefaultTurnoutPictureID(turnout));

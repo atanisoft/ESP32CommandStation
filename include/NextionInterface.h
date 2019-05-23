@@ -130,8 +130,14 @@ public:
   uint32_t getNewAddress() {
     return _newAddressString.toInt();
   }
+  uint32_t getCurrentAddress() {
+    return _address;
+  }
   TurnoutType getTurnoutType() {
     return (TurnoutType)_turnoutType;
+  }
+  void setTurnoutType(TurnoutType type) {
+    _turnoutType = type;
   }
   void refreshPage() override {}
 protected:
@@ -220,9 +226,11 @@ public:
     addressPage->display();
   }
   void deleteButtonHandler();
+  void editButtonHandler();
 protected:
   void init() override {}
   void displayPage() override {
+    _pageMode = PAGE_MODE::NORMAL;
     refreshPage();
   }
   void previousPageCallback(DCCPPNextionPage *);
@@ -240,7 +248,7 @@ private:
   NextionButton _nextButton;
   NextionButton _addButton;
   NextionButton _delButton;
-  NextionButton _setupButton;
+  NextionButton _editButton;
   enum PAGE_MODE {
     NORMAL, ADDITION, DELETION, EDIT
   };
