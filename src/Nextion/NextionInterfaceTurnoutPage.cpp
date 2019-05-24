@@ -445,12 +445,7 @@ void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
   if(_pageMode == PAGE_MODE::EDIT) {
     auto turnout = TurnoutManager::getTurnoutByAddress(addressPage->getCurrentAddress());
     if(turnout) {
-      // if we have a new address use it
-      if(addressPage->getNewAddress() > 0) {
-        turnout->update(addressPage->getNewAddress(), -1, addressPage->getTurnoutType());
-      } else {
-        turnout->setType(addressPage->getTurnoutType());
-      }
+      turnout->update(addressPage->getNewAddress(), -1, addressPage->getTurnoutType());
     } else {
       LOG(WARNING, "[Nextion] Turnout with address %d no longer exists", addressPage->getCurrentAddress());
     }

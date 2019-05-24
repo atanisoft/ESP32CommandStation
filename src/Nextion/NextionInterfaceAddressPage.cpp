@@ -148,9 +148,12 @@ void NextionAddressPage::displayPage() {
   if(_address) {
     _currentAddress.setTextAsNumber(_address);
     _currentAddress.show();
+    _newAddressString = String(_address);
+    _newAddress.setTextAsNumber(_address);
+  } else {
+    _newAddressString = "";
+    _newAddress.setTextAsNumber(0);
   }
-  _newAddressString = "";
-  _newAddress.setTextAsNumber(0);
   if (getReturnPage() == THROTTLE_PAGE) {
     _addressPic.setPictureID(LOCO_PIC);
     _boardAddress.hide();
