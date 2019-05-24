@@ -145,14 +145,15 @@ void NextionAddressPage::removeNumber(const NextionButton *button) {
 }
 
 void NextionAddressPage::displayPage() {
+  _newAddressString = "";
+  _newAddress.setTextAsNumber(0);
   if(_address) {
     _currentAddress.setTextAsNumber(_address);
     _currentAddress.show();
-    _newAddressString = String(_address);
-    _newAddress.setTextAsNumber(_address);
-  } else {
-    _newAddressString = "";
-    _newAddress.setTextAsNumber(0);
+    if(getReturnPage() == TURNOUT_PAGE) {
+      _newAddressString = String(_address);
+      _newAddress.setTextAsNumber(_address);
+    }
   }
   if (getReturnPage() == THROTTLE_PAGE) {
     _addressPic.setPictureID(LOCO_PIC);
