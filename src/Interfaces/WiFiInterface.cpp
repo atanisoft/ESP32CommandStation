@@ -276,5 +276,6 @@ void *jmriClientHandler(void *arg) {
   if(it != jmriClients.end()) {
     jmriClients.erase(it);
   }
+  ::close(fd);
   return nullptr;
 }
