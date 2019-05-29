@@ -113,6 +113,7 @@ void GenericMotorBoard::showStatus() {
 void GenericMotorBoard::check() {
 	// if we have exceeded the CURRENT_SAMPLE_TIME we need to check if we are over/under current.
 	if(isOn() && ((millis() - _lastCheckTime) > motorBoardCheckInterval)) {
+        _lastCheckTime = millis();
 		_current = captureSample(motorBoardADCSampleCount);
 		if(_current >= _triggerValue) {
       LOG(INFO, "[%s] Overcurrent detected %2.2f mA (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
@@ -133,8 +134,7 @@ void GenericMotorBoard::check() {
         LOG(INFO, "[%s] Overcurrent cleared %2.2f mA, %d ms before re-enable (raw: %d)", _name.c_str(), getCurrentDraw(), _triggerClearedCountdown * motorBoardCheckInterval, _current);
       }
     }
-	}
-  _lastCheckTime = millis();
+  }
 }
 
 uint16_t GenericMotorBoard::captureSample(uint8_t sampleCount, bool logResults) {
