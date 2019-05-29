@@ -545,7 +545,7 @@ void Esp32WiFiManager::start_wifi_system()
     ESP_ERROR_CHECK(esp_wifi_start());
 
     uint8_t attempt = 0;
-    EventBits_t bits;
+    EventBits_t bits = 0;
     uint32_t bitMask = WIFI_CONNECTED_BIT;
     while (++attempt <= MAX_CONNECTION_CHECK_ATTEMPTS)
     {
