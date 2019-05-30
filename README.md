@@ -1,38 +1,38 @@
-# What is DCC++ESP32?
-DCC++ESP32 is an open-source hardware and software Command Station for the operation of DCC-equipped model railroads.
+# What is ESP32 Command Station?
+ESP32 Command Station is an open-source hardware and software Command Station for the operation of DCC-equipped model railroads.
 
-The DCC++ESP32 Command Station consists of an ESP32 micro controller connected to at least one Motor Shield that can be connected directly to the tracks of a model railroad.
+The ESP32 Command Station consists of an ESP32 micro controller connected to at least one Motor Shield that can be connected directly to the tracks of a model railroad.
 
 ## Whats in this Repository
-This repository, DCCppESP32, contains a complete DCC++ESP32 Command Station code designed for compiling and uploading into an ESP32. All source files are in the folder named src and header files are under include (including index_html.h which is generated during the build in PlatformIO IDE, for Arduino IDE be sure to download the latest released version of this file and place it in the include directory).
+This repository, ESP32CommandStation, contains a complete ESP32 Command Station code designed for compiling and uploading into an ESP32. All source files are in the folder named src and header files are under include (including index_html.h which is generated during the build in PlatformIO IDE, for Arduino IDE be sure to download the latest released version of this file and place it in the include directory).
 
-To utilize this code, download a release zip file from this repository and open the included project file in PlatformIO IDE, and the dependent libraries listed under the "lib" folder (see the readme.txt file for details). No code modifications should be required *EXCEPT* for configuring which features you want to use, see the [Building DCC++ESP32](#building-dccesp32) section further down for specifics.
+To utilize this code, download a release zip file from this repository and open the included project file in PlatformIO IDE, and the dependent libraries listed under the "lib" folder (see the readme.txt file for details). No code modifications should be required *EXCEPT* for configuring which features you want to use, see the [Building ESP32 Command Station](#building-esp32commandstation) section further down for specifics.
 
 The latest production release of the code is 1.2.2:
 * Supports almost any variant of the ESP32.
 * Built-in configuration for both the original Arduino Motor Shield, Pololu MC33926 Motor Shield or BTS7960B based Motor Shield.
-* Built-in web interface for controlling locomotives or configuring the DCC++ESP32 Command Station.
+* Built-in web interface for controlling locomotives or configuring the ESP32 Command Station.
 * Built-in support for LCC either via WiFi or a hardware CAN transceiver, please see the section below on LCC if you intend on using this feature.
 
 Detailed diagrams showing connections to the supported Motor Shields, OLED or LCD screens can be found in the Wiki.
 
 ## Supported ESP32 Boards
-The DCC++ESP32 Command Station has been tested on a variety of ESP32 boards available on the internet, the current preferred format is either the Arduino Uno R3 formated boards (easy to use with the Arduino Motor Shield) or the TTGO T1 with the integrated SD Card. However, almost any variant of the ESP32 will work as long as there are enough pins available for the Motor Driver connections.
+The ESP32 Command Station has been tested on a variety of ESP32 boards available on the internet, the current preferred format is either the Arduino Uno R3 formated boards (easy to use with the Arduino Motor Shield) or the TTGO T1 with the integrated SD Card. However, almost any variant of the ESP32 will work as long as there are enough pins available for the Motor Driver connections.
 
 ## Supported Motor Boards
-The DCC++ESP32 Command Station currently supports three types of Motor Boards.
+The ESP32 Command Station currently supports three types of Motor Boards.
 * [Arduino Motor Shield Rev3](https://store.arduino.cc/usa/arduino-motor-shield-rev3). There are various clones of this board avialable throughout the internet, many of these clones will work but many will not.
 * [Pololu MC33926 Motor Driver](https://www.pololu.com/product/2503) or [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213). There are a few variants on this board available from Pololu and they all should function identically. It is not necessary to have the Arduino shield format and all the majority of the testing has been carried out using the carrier format.
-* BTS 7960B. This is a *VERY* high current H-Bridge based circuit, in the DCC++ESP32 Command Station code it is software limited to either 5A or 10A.
+* BTS 7960B. This is a *VERY* high current H-Bridge based circuit, in the ESP32 Command Station code it is software limited to either 5A or 10A.
 
-# Building DCC++ESP32
-Building the DCC++ESP32 code is easiest using PlatformIO IDE which can be installed from http://platformio.org/platformio-ide. When installing PlatformIO IDE be sure to add Python to the default path (if prompted). Using [Atom](https://atom.io/) or [Visual Studio Code](https://code.visualstudio.com/) does not make that much of a difference in compilation/usage of the included PlatformIO project file. Currently all development and testing is conducted with [Visual Studio Code](https://code.visualstudio.com/).
+# Building ESP32CommandStation
+Building the ESP32 Command Statoni code is easiest using PlatformIO IDE which can be installed from http://platformio.org/platformio-ide. When installing PlatformIO IDE be sure to add Python to the default path (if prompted). Using [Atom](https://atom.io/) or [Visual Studio Code](https://code.visualstudio.com/) does not make that much of a difference in compilation/usage of the included PlatformIO project file. Currently all development and testing is conducted with [Visual Studio Code](https://code.visualstudio.com/).
 
-The DCC++ESP32 Command Station consists of multiple modules, some of which are required and others are optional. The list below covers the various modules:
+The ESP32 Command Station consists of multiple modules, some of which are required and others are optional. The list below covers the various modules:
 
 | Module | Description |
 | ------ | ----------- |
-| WiFi | This is a required module as it makes the DCC++ESP32 Command Station accessible to JMRI, throttles or WiFi enabled devices via the web interface. |
+| WiFi | This is a required module as it makes the ESP32 Command Station accessible to JMRI, throttles or WiFi enabled devices via the web interface. |
 | MotorBoard | This is a required module as it is used to generate the DCC signal supplied to the track. |
 | OLED and LCD | These are optional modules, only one can be included at a time. This module provides support for displaying runtime statistics and state information (IP Address, track power, track power utilization, etc) |
 | LocoNet | This is an optional module that provides capability for the Command Station to interface with LocoNet devices. |
@@ -119,7 +119,7 @@ With the ESP32 there are 16 analog inputs, unfortunately many of these are not r
 Note that on the Arduino Uno form factor ESP32 boards, the A0 and A1 pins may connect to GPIO 0 and GPIO 4 and a pair of jumpers will be required for successful current sense reporting. On these boards a jump from A0 to A4 and A1 to A5 will work for ADC1_CHANNEL_0 and ADC1_CHANNEL_3 as listed above, or a jumper A0 to A2 and use ADC1_CHANNEL_7 for OPS and A1 to A3 and use ADC1_CHANNEL_6 for PROG.
 
 ##### BTS7960B connections
-The BTS7960B motor driver, also known at IBT_2, is a high amperage half h-bridge based motor driver. It is best suited as a standalone booster for the OPS DCC signal but can be used directly connected to the DCC++ESP32 Command Station. It is not known if this motor driver is suitable for use on the PROG track.
+The BTS7960B motor driver, also known at IBT_2, is a high amperage half h-bridge based motor driver. It is best suited as a standalone booster for the OPS DCC signal but can be used directly connected to the ESP32 Command Station. It is not known if this motor driver is suitable for use on the PROG track.
 
 | ESP32 pin | BTS7960B pin |
 | --------- | ---------- |
@@ -205,7 +205,7 @@ All other parameters can be left as their defaults.
 | INFO_SCREEN_LCD_COLUMNS | This is the number of columns the LCD screen can display, both 16 and 20 column displays are supported. |
 
 ### Configuring the LocoNet module (Optional)
-If you have an existing LocoNet bus the DCC++ESP32 Command Station can interact with these devices. Currently only the following OP Codes are implemented:
+If you have an existing LocoNet bus the ESP32 Command Station can interact with these devices. Currently only the following OP Codes are implemented:
 
 | OPC | Description |
 | --- | ----------- |
@@ -264,7 +264,7 @@ The S88 module allows reading of multiple S88 sensor buses. Each bus will have a
 All buses will share the above three lines but have a unique data line connected to individual pins on the ESP32. The buses will need to be configured through the web interface after startup.
 
 ### Configuring the LCC module (Optional but recommended)
-LCC is the Layout Command Control standard from the NMRA. The LCC module allows the DCC++ESP32 Command Station to interface with LCC devices either via WiFi or physical CAN bus connections.
+LCC is the Layout Command Control standard from the NMRA. The LCC module allows the ESP32 Command Station to interface with LCC devices either via WiFi or physical CAN bus connections.
 
 #### Supported LCC well-known event IDs
 When this module is enabled the Command Station will receive and respond to certain LCC well-known events listed below with their function:
@@ -282,7 +282,7 @@ When this module is enabled the Command Station will receive and respond to cert
 #### LCC Configuration
 | PARAM | Description |
 | ----- | ----------- |
-| LCC_NODE_ID | This is the unique 64bit node ID for the DCC++ESP32 Command Station. You are encouraged to have your own unique ID but it is not mandatory. You can get a unique ID range [here](https://registry.openlcb.org/requestuniqueidrange) and assign one ID from the range here. The default value is 05.01.01.01.3F.00 (without dots) which indicates it is the first ID in the 05.01.01.01.3F.{00-FF} range. |
+| LCC_NODE_ID | This is the unique 64bit node ID for the ESP32 Command Station. You are encouraged to have your own unique ID but it is not mandatory. You can get a unique ID range [here](https://registry.openlcb.org/requestuniqueidrange) and assign one ID from the range here. The default value is 05.01.01.01.3F.00 (without dots) which indicates it is the first ID in the 05.01.01.01.3F.{00-FF} range. |
 | LCC_CAN_RX_PIN | This is the pin connected to the CAN transceiver RX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 | LCC_CAN_TX_PIN | This is the pin connected to the CAN transceiver TX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 
