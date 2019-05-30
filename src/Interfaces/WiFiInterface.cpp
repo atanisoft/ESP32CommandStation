@@ -253,6 +253,8 @@ void WiFiInterface::print(const __FlashStringHelper *fmt, ...) {
 void *jmriClientHandler(void *arg) {
   int fd = (int)arg;
   DCCPPProtocolConsumer consumer;
+  // tell JMRI about our state:
+  consumer.feed((uint8_t*)"<s>", 3);
   std::unique_ptr<uint8_t> buf(new uint8_t[128]);
   HASSERT(buf.get() != nullptr);
   while(true) {
