@@ -21,7 +21,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // RELEASE VERSION
 /////////////////////////////////////////////////////////////////////////////////////
 
-#define VERSION "1.2.5"
+#define VERSION "1.3.0"
 
 #include <Arduino.h>
 #include <algorithm>
@@ -36,6 +36,18 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <utils/StringPrintf.hxx>
 
 #include "Config.h"
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// The following parameters define how many preamble bits will be transmitted as part
+// of the DCC packet to the track. For some older sound decodes it may be necessary
+// to increase from 22 bits on the PROG track to 30 or even 40.
+//
+// The maximum number of preamble bits is 50. For OPS the minimum to send is 11 but
+// 16 is recommended for RailCom support.
+
+#define OPS_TRACK_PREAMBLE_BITS 16
+#define PROG_TRACK_PREAMBLE_BITS 22
 
 #if !defined(OPS_TRACK_PREAMBLE_BITS)
 #define OPS_TRACK_PREAMBLE_BITS 16

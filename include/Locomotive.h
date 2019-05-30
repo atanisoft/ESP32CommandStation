@@ -26,6 +26,7 @@ class Locomotive {
 public:
   Locomotive(uint8_t);
   Locomotive(JsonObject &);
+  Locomotive(const char *);
   virtual ~Locomotive() {}
   uint8_t getRegister() {
     return _registerNumber;
@@ -42,6 +43,7 @@ public:
     } else if(speed > 128) {
       speed = 128;
     }
+    LOG(INFO, "[Loco %d] speed: %d", _locoAddress, speed);
     _speed = speed;
   }
   int8_t getSpeed() {
@@ -83,7 +85,7 @@ private:
   int8_t _speed;
   bool _direction;
   bool _orientation;
-  uint32_t _lastUpdate;
+  uint64_t _lastUpdate;
   bool _functionsChanged;
   bool _functionState[MAX_LOCOMOTIVE_FUNCTIONS];
   std::vector<uint8_t> _functionPackets[MAX_LOCOMOTIVE_FUNCTION_PACKETS];
@@ -96,6 +98,7 @@ public:
     setLocoAddress(address);
   }
   LocomotiveConsist(JsonObject &);
+  LocomotiveConsist(const char *);
   virtual ~LocomotiveConsist();
   void showStatus();
   void toJson(JsonObject &, bool=true, bool=true);
@@ -126,6 +129,7 @@ public:
   RosterEntry(uint16_t address) : _description(""), _address(address), _type(""),
     _idleOnStartup(false), _defaultOnThrottles(false) {}
   RosterEntry(const JsonObject &);
+  RosterEntry(const char *);
   void toJson(JsonObject &);
   void setDescription(String description) {
     _description = description;
@@ -181,7 +185,7 @@ public:
   static void processConsistThrottle(const std::vector<String>);
   static void showStatus();
   static void showConsistStatus();
-  static void updateTask(void *param);
+  static void update();
   static void emergencyStop();
   static uint8_t getActiveLocoCount() {
     return _locos.length();
@@ -204,8 +208,6 @@ private:
   static LinkedList<RosterEntry *> _roster;
   static LinkedList<Locomotive *> _locos;
   static LinkedList<LocomotiveConsist *> _consists;
-  static TaskHandle_t _taskHandle;
-  static xSemaphoreHandle _lock;
 };
 
 // <t {REGISTER} {LOCO} {SPEED} {DIRECTION}> command handler, this command

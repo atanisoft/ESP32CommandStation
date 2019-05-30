@@ -30,6 +30,7 @@ public:
   bool exists(const char *);
   void remove(const char *);
   JsonObject &load(const char *);
+  JsonObject &load(const char *, DynamicJsonBuffer &);
   void store(const char *, const JsonObject &);
   JsonObject &createRootNode(bool=true);
 };

@@ -87,6 +87,15 @@ JsonObject &ConfigurationManager::load(const char *name) {
   return root;
 }
 
+JsonObject &ConfigurationManager::load(const char *name, DynamicJsonBuffer &buffer) {
+  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  LOG(INFO, "[Config] Loading %s", configFilePath.c_str());
+  File configFile = CONFIG_FS.open(configFilePath.c_str(), FILE_READ);
+  JsonObject &root = buffer.parseObject(configFile);
+  configFile.close();
+  return root;
+}
+
 void ConfigurationManager::store(const char *name, const JsonObject &json) {
   std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
   LOG(INFO, "[Config] Storing %s", configFilePath.c_str());

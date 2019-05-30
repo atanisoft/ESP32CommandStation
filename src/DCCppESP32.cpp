@@ -399,6 +399,7 @@ void loop() {
     esp32_restart();
   }
   MotorBoardManager::check();
+  LocomotiveManager::update();
   if(!otaInProgress) {
     InfoScreen::update();
 #if LCC_ENABLED

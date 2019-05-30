@@ -77,18 +77,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// The following parameters define how many preamble bits will be transmitted as part
-// of the DCC packet to the track. For some older sound decodes it may be necessary
-// to increase from 22 bits on the PROG track to 30 or even 40.
-//
-// The maximum number of preamble bits is 50. For OPS the minimum to send is 11 but
-// 16 is recommended for RailCom support.
-
-#define OPS_TRACK_PREAMBLE_BITS 16
-#define PROG_TRACK_PREAMBLE_BITS 22
-
-/////////////////////////////////////////////////////////////////////////////////////
-//
 // The following pins are considered reserved pins by Espressif and should not
 // generally be used by:
 // GPIO6, GPIO7, GPIO8, GPIO9, GPIO10, GPIO11 -- used by flash

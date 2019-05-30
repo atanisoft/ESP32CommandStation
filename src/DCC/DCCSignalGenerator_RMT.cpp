@@ -21,16 +21,16 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 static constexpr uint8_t RMT_CLOCK_DIVIDER = 80;
 
 // number of microseconds for each half of the DCC signal for a zero
-static constexpr uint32_t ZERO_BIT_PULSE = 98;
+static constexpr uint32_t ZERO_BIT_PULSE_USEC = 98;
 
 // number of microseconds for each half of the DCC signal for a one
-static constexpr uint32_t ONE_BIT_PULSE = 58;
+static constexpr uint32_t ONE_BIT_PULSE_USEC = 58;
 
-static constexpr TickType_t PREAMBLE_MAX_DELAY = 1000000000L;
+static constexpr TickType_t MAX_PACKET_TX_TIME = 100000L;
 
-static constexpr rmt_item32_t DCC_ZERO_BIT = {{{ ZERO_BIT_PULSE, 1, ZERO_BIT_PULSE, 0 }}};
-static constexpr rmt_item32_t DCC_ONE_BIT = {{{ ONE_BIT_PULSE, 1, ONE_BIT_PULSE, 0 }}};
-
+static constexpr rmt_item32_t DCC_ZERO_BIT = {{{ ZERO_BIT_PULSE_USEC, 1, ZERO_BIT_PULSE_USEC, 0 }}};
+static constexpr rmt_item32_t DCC_ONE_BIT = {{{ ONE_BIT_PULSE_USEC, 1, ONE_BIT_PULSE_USEC, 0 }}};
+/*
 // pre-encoded DCC preamble in RMT format
 static constexpr rmt_item32_t DCC_PREAMBLE[] = {
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
@@ -47,16 +47,15 @@ static constexpr rmt_item32_t DCC_PREAMBLE[] = {
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
     DCC_ONE_BIT, DCC_ONE_BIT
 };
+*/
 
-constexpr uint8_t MAX_DCC_PACKET_BITS = 64;
+constexpr uint8_t MAX_DCC_PACKET_BITS = 128;
 
 constexpr uint32_t RMT_TASK_STACK_SIZE = 3084;
-constexpr BaseType_t RMT_TASK_PRIORITY = 10;
+constexpr BaseType_t RMT_TASK_PRIORITY = 3;
 
-// TODO: remove preamble bits from Packet
-// this skips the preamble bits that come pre-encoded in the packet by the DCCSignalGenerator code
 #define CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-    for(int index = 22; \
+    for(int index = 0; \
         index < packet->numberOfBits; \
         index++, encodedBitCount++) { \
         if(packet->buffer[index / 8] & DCC_PACKET_BIT_MASK[index % 8]) { \
@@ -64,7 +63,11 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
         } else { \
             encodedPacket[encodedBitCount].val = DCC_ZERO_BIT.val; \
         } \
-    }
+    } \
+    encodedPacket[encodedBitCount++].val = DCC_ONE_BIT.val;
+// NOTE: the above extra one bit is to ensure the RMT sends the last bit of the packet without
+// stretching the LOW wave portion. This extra bit will be ignored by the decoders as an extra
+// preamble bit.
 
 #define RMT_TRANSMIT_BITS(signal, bits, count, wait) \
     ESP_ERROR_CHECK(rmt_write_items(signal->_rmtChannel, bits, count, wait));
@@ -79,7 +82,6 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
             uint8_t encodedBitCount = 0; \
             rmt_item32_t encodedPacket[MAX_DCC_PACKET_BITS]; \
             CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-            RMT_TRANSMIT_BITS(signal, DCC_PREAMBLE, preambleBitCount, true) \
             RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, true) \
             packet->currentBit = packet->numberOfBits; \
         } \
@@ -92,10 +94,13 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
             uint8_t encodedBitCount = 0; \
             rmt_item32_t encodedPacket[MAX_DCC_PACKET_BITS]; \
             CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-            RMT_TRANSMIT_BITS(signal, DCC_PREAMBLE, preambleBitCount, false) \
-            /* TODO: RailCom Cutout, 488uS */ \
-            RMT_WAIT_FOR_TRANSMIT_COMPLETE(signal, PREAMBLE_MAX_DELAY) \
             RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, true) \
+            /* TODO: RailCom Cutout, 488uS
+            RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, false);
+            digitalWrite(signal->_railComEnablePin, HIGH);
+            vTaskDelay(488);
+            digitalWrite(signal->_railComEnablePin, LOW);
+            RMT_WAIT_FOR_TRANSMIT_COMPLETE(signal, MAX_PACKET_TX_TIME); */\
             packet->currentBit = packet->numberOfBits; \
         } \
     }
@@ -119,7 +124,7 @@ static void RMT_task_entry(void *param) {
 SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) :
     SignalGenerator(name, maxPackets, signalID, signalPin), _rmtChannel((rmt_channel_t)signalID) {
     LOG(INFO, "[%s] Configuring RMT-%d using pin %d and bit timing: zero: %duS, one: %duS",
-        _name.c_str(), _rmtChannel, signalPin, ZERO_BIT_PULSE, ONE_BIT_PULSE);
+        _name.c_str(), _rmtChannel, signalPin, ZERO_BIT_PULSE_USEC, ONE_BIT_PULSE_USEC);
 
     _stopRequest = xSemaphoreCreateBinary();
     _stopComplete = xSemaphoreCreateBinary();
