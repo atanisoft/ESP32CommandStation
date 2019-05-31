@@ -43,10 +43,12 @@ When configuring the motor board module you will need to pick the type of motor 
 | MOTORBOARD TYPE | Name | Max Current (Amps) | Current Limit (Amps) |
 | --------------- | ---- | ------------------ | -------------------- |
 | ARDUINO_SHIELD | [Arduino Motor Shield (L298 compatible)](#arduino-motor-shield-l298) | 2 Amp | 1.75 Amp |
-| LMD18200 | [LDM18200 Motor Driver](#lmd18200-motor-driver) | 3 Amd | 2.75 Amp |
+| LMD18200 | [LDM18200 Motor Driver](#lmd18200-motor-driver) | 3 Amp | 2.75 Amp |
 | POLOLU | [Pololu MC33926 Motor Driver (Shield)](#pololu-motor-driver-shield-connections) (or [Carrier](#pololu-motor-driver-carrier-connections) ) | 2.5 Amp | 2.25 Amp |
 | BTS7960B_5A | [BTS 7960B](#bts7960b-connections) | 43 Amp | 5 Amp |
 | BTS7960B_10A | [BTS 7960B](#bts7960b-connections) | 43 Amp | 10 Amp |
+
+Note: LMD18200 will be supported starting in v1.3.0
 
 ## DCC Signal Splitting
 Some motor boards require a split signal pair rather than a single pin. For these a circuit similar to the one below will be required:
