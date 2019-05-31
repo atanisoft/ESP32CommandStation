@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,11 +15,11 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 /**********************************************************************
 
-DCC++ESP32 COMMAND STATION supports optional OUTPUT control of any unused pins
+The ESP32 Command Station supports optional OUTPUT control of any unused pins
 for custom purposes. Pins can be activited or de-activated. The default is to
 set ACTIVE pins HIGH and INACTIVE pins LOW. However, this default behavior can
 be inverted for any pin in which case ACTIVE=LOW and INACTIVE=HIGH.

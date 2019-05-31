@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -16,14 +16,13 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 The DCC++ protocol specification is
 COPYRIGHT (c) 2013-2016 Gregg E. Berman
-and has been adapter for use in DCC++ESP32.
+and has been adapter for use in ESP32 COMMAND STATION.
 
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #include "Turnouts.h"
-#include "Outputs.h"
 #include "S88Sensors.h"
 #include "RemoteSensors.h"
 
@@ -201,12 +200,12 @@ public:
 };
 
 // <s> command handler, this command sends the current status for all parts of
-// the DCC++ESP32 COMMAND STATION. JMRI uses this command as a keep-alive heartbeat
+// the ESP32 Command Station. JMRI uses this command as a keep-alive heartbeat
 // command.
 class StatusCommand : public DCCPPProtocolCommand {
 public:
   void process(const std::vector<String> arguments) {
-    wifiInterface.print(F("<iDCC++ COMMAND STATION FOR ESP32: V-%s / %s %s>"),
+    wifiInterface.print(F("<iDCC++ ESP32 Command Station: V-%s / %s %s>"),
       VERSION, __DATE__, __TIME__);
     MotorBoardManager::showStatus();
     LocomotiveManager::showStatus();

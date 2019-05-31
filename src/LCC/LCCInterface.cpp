@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2019 Mike Dunston
 
@@ -15,7 +15,7 @@ COPYRIGHT (c) 2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #if LCC_ENABLED
 
@@ -80,7 +80,7 @@ public:
     void factory_reset(int fd) override
     {
         LOG(INFO, "Factory Reset Helper invoked");
-        cfg.userinfo().name().write(fd, "DCC++ESP32 Command Station");
+        cfg.userinfo().name().write(fd, "ESP32 Command Station");
         cfg.userinfo().description().write(fd, "");
     }
 } factory_reset_helper;

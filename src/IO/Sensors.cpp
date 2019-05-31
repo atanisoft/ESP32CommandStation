@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,11 +15,11 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 /**********************************************************************
 
-DCC++ESP32 COMMAND STATION supports Sensor inputs that can be connected to any
+The ESP32 Command Station supports Sensor inputs that can be connected to any
 unused ESP32 pin. Sensors can be of any type (infrared, magentic, mechanical...).
 The only requirement is that when "activated" the Sensor must force the
 specified pin LOW (i.e. to ground), and when not activated, this pin should
@@ -49,7 +49,7 @@ command:
 where
 
   ID:     the numeric ID (0-32767) of the sensor
-  PIN:    the arduino pin number the sensor is connected to
+  PIN:    the pin number the sensor is connected to
   PULLUP: 1=use internal pull-up resistor for PIN, 0=don't use internal pull-up
           resistor for PIN
 

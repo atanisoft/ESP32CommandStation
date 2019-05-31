@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2018-2019 Mike Dunston
 
@@ -19,7 +19,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 #include <ArduinoJson.h>
 
-// Class definition for the Configuration Management system in DCC++ESP32
+// Class definition for the Configuration Management system in ESP32 Command Station
 class ConfigurationManager {
 public:
   ConfigurationManager();

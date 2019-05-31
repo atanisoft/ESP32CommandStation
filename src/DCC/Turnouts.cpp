@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,11 +15,11 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 /**********************************************************************
 
-DCC++ESP32 COMMAND STATION can keep track of the direction of any turnout that is
+The ESP32 Command Station can keep track of the direction of any turnout that is
 controlled by a DCC stationary accessory decoder.  All turnouts, as well as any
 other DCC accessories connected in this fashion, can always be operated using
 the DCC COMMAND STATION Accessory command:

@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2018 Dan Worth
 COPYRIGHT (c) 2018-2019 Mike Dunston
@@ -16,12 +16,12 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 #include "RemoteSensors.h"
 
 /**********************************************************************
 
-DCC++ESP32 COMMAND STATION supports remote sensor inputs that are connected via a
+The ESP32 Command Station supports remote sensor inputs that are connected via a
 WiFi connection. Remote Sensors are dynamically created during startup or by a
 remote sensor reporting its state.
 

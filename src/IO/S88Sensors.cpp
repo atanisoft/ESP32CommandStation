@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,12 +15,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 #include "S88Sensors.h"
 
 /**********************************************************************
 
-DCC++ESP32 COMMAND STATION supports multiple S88 Sensor busses.
+The ESP32 Command Station supports multiple S88 Sensor busses.
 
 To have the command station monitor an S88 sensor, first define/edit/delete
 an S88 Sensor Bus using the following variations on the "S88" command:

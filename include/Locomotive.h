@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -16,8 +16,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 **********************************************************************/
 
 #pragma once
-
-#include "DCCppESP32.h"
 
 #define MAX_LOCOMOTIVE_FUNCTIONS 29
 #define MAX_LOCOMOTIVE_FUNCTION_PACKETS 5

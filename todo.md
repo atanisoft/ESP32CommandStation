@@ -1,4 +1,4 @@
-# DCC++ESP32 Feature/Bug Tracking list
+# ESP32 Command Station Feature/Bug Tracking list
 This document tracks features and bug fixes that are planned.
 
 ## v1.3.0

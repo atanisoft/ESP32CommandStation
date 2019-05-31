@@ -27,8 +27,8 @@ namespace openlcb {
     const SimpleNodeStaticValues SNIP_STATIC_DATA = {
         4,
         "github.com/atanisoft (Mike Dunston)",
-        "DCC++ESP32",
-        "ESP32",
+        "ESP32 Command Station",
+        "ESP32-v1",
         VERSION
     };
 

@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2018-2019 Mike Dunston
 
@@ -15,10 +15,10 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 /**********************************************************************
-DCC++ESP32 COMMAND STATION supports multiple Locomotive Consists, using either
+ESP32 COMMAND STATION supports multiple Locomotive Consists, using either
 command station consisting or decoder assisted consisting.
 
   <C ID LEAD TRAIL [{OTHER}]> : Creates a consist using ID with LEAD and TRAIL
