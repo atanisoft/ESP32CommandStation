@@ -5,32 +5,23 @@ layout: default
 # Configuring the MotorBoard module
 Open include/Config_MotorBoard.h and adjust values to match your configuration, the defaults are set for an Arduino Uno form factor ESP32 with an attached Arduino motor shield.
 
+## Configuration Parameters
+
 | PARAM | Description |
 | ----- | ----------- |
 | MOTORBOARD_NAME_OPS | This is the name for the Operations track DCC signal. |
 | MOTORBOARD_ENABLE_PIN_OPS | This is the ESP32 pin that is connected to the motor board "enable" pin, for Arduino motor shields this is typically "PWMA". |
-| MOTORBOARD_CURRENT_SENSE_OPS | This is the ESP32 Analog input channel as defined below that is connected to the motor shield's current sense output pin, for Arduino motor shields this is usually A0. |
-| MOTORBOARD_TYPE_OPS | This tells the Command Station what type of motor board is connected for the Operations track, this controls the current limiting configuration. Details for supported values are below. |
+| MOTORBOARD_CURRENT_SENSE_OPS | This is the ESP32 Analog input channel as defined below that is connected to the motor shield's current sense output pin, for Arduino motor shields this is usually A0. Supported Current Sense pins can be found [here](#supported-analog-channels). |
+| MOTORBOARD_TYPE_OPS | This tells the Command Station what type of motor board is connected for the Operations track, this controls the current limiting configuration. More details can be found [here](#supported-motor-boards). |
 | DCC_SIGNAL_PIN_OPERATIONS | This is the DCC signal pin for the Operations track, this should be connected to the "direction" pin of the motor board, for Arduino motor shields this is the "DIRA" pin. |
 
 | PARAM | Description |
 | ----- | ----------- |
 | MOTORBOARD_NAME_PROG | This is the name for the Programming track DCC signal. |
 | MOTORBOARD_ENABLE_PIN_PROG | This is the ESP32 pin that is connected to the motor board "enable" pin, for Arduino motor shields this is typically "PWMB". |
-| MOTORBOARD_CURRENT_SENSE_PROG | This is the ESP32 Analog input channel as defined below that is connected to the motor shield's current sense output pin, for Arduino motor shields this is usually A1. |
-| MOTORBOARD_TYPE_PROG | This tells the Command Station what type of motor board is connected for the Programming track, this controls the current limiting configuration. Details for supported values are below. |
+| MOTORBOARD_CURRENT_SENSE_PROG | This is the ESP32 Analog input channel as defined below that is connected to the motor shield's current sense output pin, for Arduino motor shields this is usually A1. Supported Current Sense pins can be found [here](#supported-analog-channels). |
+| MOTORBOARD_TYPE_PROG | This tells the Command Station what type of motor board is connected for the Programming track, this controls the current limiting configuration. More details can be found [here](#supported-motor-boards). |
 | DCC_SIGNAL_PIN_PROGRAMMING | This is the DCC signal pin for the Programming track, this should be connected to the "direction" pin of the motor board, for Arduino motor shields this is the "DIRB" pin. |
-
-## Supported Motor Boards
-When configuring the motor board module you will need to pick the type of motor board that is being used, the following table shows the supported options and their current limits:
-
-| MOTORBOARD TYPE | Name | Max Current (Amps) | Current Limit (Amps) |
-| --------------- | ---- | ------------------ | -------------------- |
-| ARDUINO_SHIELD | Arduino Motor Shield (L298 compatible) | 2 Amp | 1.75 Amp |
-| LMD18200 | LDM18200 Motor Driver | 3 Amd | 2.75 Amp |
-| POLOLU | Pololu MC33926 Motor Driver (or Carrier) | 2.5 Amp | 2.25 Amp |
-| BTS7960B_5A | BTS 7960B | 43 Amp | 5 Amp |
-| BTS7960B_10A | BTS 7960B | 43 Amp | 10 Amp |
 
 ## Supported Analog Channels
 With the ESP32 there are 16 analog inputs, unfortunately many of these are not reliable when WiFi is active and only those connected to ADC1 should be used. The table below provides the channel names and pin numbers for them:
@@ -46,10 +37,22 @@ With the ESP32 there are 16 analog inputs, unfortunately many of these are not r
 
 Note that on the Arduino Uno form factor ESP32 boards, the A0 and A1 pins may connect to GPIO 0 and GPIO 4 and a pair of jumpers will be required for successful current sense reporting. On these boards a jump from A0 to A4 and A1 to A5 will work for ADC1_CHANNEL_0 and ADC1_CHANNEL_3 as listed above, or a jumper A0 to A2 and use ADC1_CHANNEL_7 for OPS and A1 to A3 and use ADC1_CHANNEL_6 for PROG.
 
+## Supported Motor Boards
+When configuring the motor board module you will need to pick the type of motor board that is being used, the following table shows the supported options and their current limits:
+
+| MOTORBOARD TYPE | Name | Max Current (Amps) | Current Limit (Amps) |
+| --------------- | ---- | ------------------ | -------------------- |
+| ARDUINO_SHIELD | [Arduino Motor Shield (L298 compatible)](#arduino-motor-shield-l298) | 2 Amp | 1.75 Amp |
+| LMD18200 | [LDM18200 Motor Driver](#lmd18200-motor-driver) | 3 Amd | 2.75 Amp |
+| POLOLU | [Pololu MC33926 Motor Driver (Shield)](#pololu-motor-driver-shield-connections) (or [Carrier](#pololu-motor-driver-carrier-connections) ) | 2.5 Amp | 2.25 Amp |
+| BTS7960B_5A | [BTS 7960B](#bts7960b-connections) | 43 Amp | 5 Amp |
+| BTS7960B_10A | [BTS 7960B](#bts7960b-connections) | 43 Amp | 10 Amp |
+
 ## DCC Signal Splitting
 Some motor boards require a split signal pair rather than a single pin. For these a circuit similar to the one below will be required:
 
 ![DCC Signal Split](dcc-signal-split.png)
+
 
 ## Arduino Motor Shield (L298)
 If you are using an UNO formfactor ESP32 device this is by far the easiest to configure. Simply plug the motor shield into the ESP32 device and add two jumpers from A0 to A4 and A1 to A5. The jumpers are required due to the ESP32 devices typically having GPIO 0 and GPIO 2 in the A0 and A1 locations, these use ADC2 and are not usable.
