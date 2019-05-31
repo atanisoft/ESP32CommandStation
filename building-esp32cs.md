@@ -1,29 +1,6 @@
-# What is ESP32 Command Station?
-ESP32 Command Station is an open-source hardware and software Command Station for the operation of DCC-equipped model railroads.
-
-The ESP32 Command Station consists of an ESP32 micro controller connected to at least one Motor Shield that can be connected directly to the tracks of a model railroad.
-
-## Whats in this Repository
-This repository, ESP32CommandStation, contains a complete ESP32 Command Station code designed for compiling and uploading into an ESP32. All source files are in the folder named src and header files are under include (including index_html.h which is generated during the build in PlatformIO IDE, for Arduino IDE be sure to download the latest released version of this file and place it in the include directory).
-
-To utilize this code, download a release zip file from this repository and open the included project file in PlatformIO IDE, and the dependent libraries listed under the "lib" folder (see the readme.txt file for details). No code modifications should be required *EXCEPT* for configuring which features you want to use, see the [Building ESP32 Command Station](#building-esp32commandstation) section further down for specifics.
-
-The latest production release of the code is 1.2.2:
-* Supports almost any variant of the ESP32.
-* Built-in configuration for both the original Arduino Motor Shield, Pololu MC33926 Motor Shield or BTS7960B based Motor Shield.
-* Built-in web interface for controlling locomotives or configuring the ESP32 Command Station.
-* Built-in support for LCC either via WiFi or a hardware CAN transceiver, please see the section below on LCC if you intend on using this feature.
-
-Detailed diagrams showing connections to the supported Motor Shields, OLED or LCD screens can be found in the Wiki.
-
-## Supported ESP32 Boards
-The ESP32 Command Station has been tested on a variety of ESP32 boards available on the internet, the current preferred format is either the Arduino Uno R3 formated boards (easy to use with the Arduino Motor Shield) or the TTGO T1 with the integrated SD Card. However, almost any variant of the ESP32 will work as long as there are enough pins available for the Motor Driver connections.
-
-## Supported Motor Boards
-The ESP32 Command Station currently supports three types of Motor Boards.
-* [Arduino Motor Shield Rev3](https://store.arduino.cc/usa/arduino-motor-shield-rev3). There are various clones of this board avialable throughout the internet, many of these clones will work but many will not.
-* [Pololu MC33926 Motor Driver](https://www.pololu.com/product/2503) or [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213). There are a few variants on this board available from Pololu and they all should function identically. It is not necessary to have the Arduino shield format and all the majority of the testing has been carried out using the carrier format.
-* BTS 7960B. This is a *VERY* high current H-Bridge based circuit, in the ESP32 Command Station code it is software limited to either 5A or 10A.
+---
+layout: default
+---
 
 # Building ESP32CommandStation
 Building the ESP32 Command Statoni code is easiest using PlatformIO IDE which can be installed from http://platformio.org/platformio-ide. When installing PlatformIO IDE be sure to add Python to the default path (if prompted). Using [Atom](https://atom.io/) or [Visual Studio Code](https://code.visualstudio.com/) does not make that much of a difference in compilation/usage of the included PlatformIO project file. Currently all development and testing is conducted with [Visual Studio Code](https://code.visualstudio.com/).
@@ -39,6 +16,7 @@ The ESP32 Command Station consists of multiple modules, some of which are requir
 | Nextion | This is an optional module that provides a touch screen interface with a throttle and a few extra features for accessories. |
 | S88 | This is an optional module that allows the Command Station to poll one (or more) S88 busses as sensor inputs. |
 | LCC | This is an optional module that allows the Command Station to interface with other LCC devices either through a physical CAN bus or through WiFi connections to a LCC HUB device. |
+
 
 ## Building with Arduino IDE
 It is not recommended to build with the Arduino IDE due to the custom partition table and build scripts which are not supported within the Arduino IDE.
@@ -285,5 +263,3 @@ When this module is enabled the Command Station will receive and respond to cert
 | LCC_NODE_ID | This is the unique 64bit node ID for the ESP32 Command Station. You are encouraged to have your own unique ID but it is not mandatory. You can get a unique ID range [here](https://registry.openlcb.org/requestuniqueidrange) and assign one ID from the range here. The default value is 05.01.01.01.3F.00 (without dots) which indicates it is the first ID in the 05.01.01.01.3F.{00-FF} range. |
 | LCC_CAN_RX_PIN | This is the pin connected to the CAN transceiver RX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 | LCC_CAN_TX_PIN | This is the pin connected to the CAN transceiver TX pin. This is optional, if left as -1 the CAN connection will not be configured. |
-
--March 22, 2019
