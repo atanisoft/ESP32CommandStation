@@ -323,7 +323,9 @@ void NextionThrottlePage::displayPage() {
 }
 
 void NextionThrottlePage::previousPageCallback(DCCPPNextionPage *previousPage) {
-  changeLocoAddress(static_cast<NextionAddressPage *>(previousPage)->getNewAddress());
+  if(previousPage == nextionPages[ADDRESS_PAGE]) {
+    changeLocoAddress(static_cast<NextionAddressPage *>(previousPage)->getNewAddress());
+  }
 }
 
 void NextionThrottlePage::refreshLocomotiveDetails()
