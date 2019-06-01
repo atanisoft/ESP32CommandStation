@@ -221,15 +221,15 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
 }
 
 void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
- 	auto jsonResponse = new AsyncJsonResponse();
+  auto jsonResponse = new AsyncJsonResponse();
   if(!MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->isOn()) {
     MotorBoardManager::powerOn(MOTORBOARD_NAME_PROG);
   }
-	// new programmer request
-	if (request->method() == HTTP_GET) {
-		if (request->arg(JSON_PROG_ON_MAIN).equalsIgnoreCase(JSON_VALUE_TRUE)) {
-			jsonResponse->setCode(STATUS_NOT_ALLOWED);
-		} else if(request->hasArg(JSON_IDENTIFY_NODE)) {
+  // new programmer request
+  if (request->method() == HTTP_GET) {
+    if (request->arg(JSON_PROG_ON_MAIN).equalsIgnoreCase(JSON_VALUE_TRUE)) {
+      jsonResponse->setCode(STATUS_NOT_ALLOWED);
+    } else if(request->hasArg(JSON_IDENTIFY_NODE)) {
       JsonObject &node = jsonResponse->getRoot();
       if(enterProgrammingMode()) {
         int16_t decoderConfig = readCV(CV_NAMES::DECODER_CONFIG);
@@ -325,7 +325,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
         LOG(WARNING, "Programmer already in use");
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
-		}
+    }
   } else if(request->method() == HTTP_POST && request->hasArg(JSON_PROG_ON_MAIN)) {
     if (request->arg(JSON_PROG_ON_MAIN).equalsIgnoreCase(JSON_VALUE_TRUE)) {
       if(request->hasArg(JSON_CV_BIT_NODE)) {
@@ -335,8 +335,8 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
         writeOpsCVByte(request->arg(JSON_ADDRESS_NODE).toInt(), request->arg(JSON_CV_NODE).toInt(),
           request->arg(JSON_VALUE_NODE).toInt());
       }
-			jsonResponse->setCode(STATUS_OK);
-		} else {
+      jsonResponse->setCode(STATUS_OK);
+    } else {
       bool writeSuccess = false;
       if(enterProgrammingMode()) {
         if(request->hasArg(JSON_CV_BIT_NODE)) {
@@ -352,19 +352,19 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
       } else {
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
-		}
+    }
   } else {
     jsonResponse->setCode(STATUS_BAD_REQUEST);
   }
   LOG(VERBOSE, "Setting response size");
-	jsonResponse->setLength();
+  jsonResponse->setLength();
   LOG(VERBOSE, "Sending response, %d bytes", jsonResponse->getSize());
-	request->send(jsonResponse);
+  request->send(jsonResponse);
   LOG(VERBOSE, "sent");
  }
 
 void DCCPPWebServer::handlePower(AsyncWebServerRequest *request) {
- 	auto jsonResponse = new AsyncJsonResponse(true);
+  auto jsonResponse = new AsyncJsonResponse(true);
   if(request->method() == HTTP_GET) {
     if(request->params()) {
       ((JsonArray &)jsonResponse->getRoot()).createNestedObject()[JSON_STATE_NODE] = MotorBoardManager::isTrackPowerOn() ? JSON_VALUE_TRUE : JSON_VALUE_FALSE;
@@ -389,8 +389,8 @@ void DCCPPWebServer::handlePower(AsyncWebServerRequest *request) {
       jsonResponse->setCode(STATUS_BAD_REQUEST);
     }
   }
- 	jsonResponse->setLength();
- 	request->send(jsonResponse);
+  jsonResponse->setLength();
+  request->send(jsonResponse);
  }
 
 void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {

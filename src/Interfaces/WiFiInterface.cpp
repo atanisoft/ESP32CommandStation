@@ -80,18 +80,18 @@ void WiFiInterface::begin() {
   nextionTitlePage->setStatusText(0, "Initializing WiFi");
 #endif
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init WiFI"));
-	InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("IP:Pending"));
+  InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("IP:Pending"));
 #if defined(WIFI_STATIC_IP_ADDRESS) && defined(WIFI_STATIC_IP_GATEWAY) && defined(WIFI_STATIC_IP_SUBNET)
-	IPAddress staticIP, gatewayIP, subnetMask, dnsServer;
-	staticIP.fromString(WIFI_STATIC_IP_ADDRESS);
-	gatewayIP.fromString(WIFI_STATIC_IP_GATEWAY);
-	subnetMask.fromString(WIFI_STATIC_IP_SUBNET);
+  IPAddress staticIP, gatewayIP, subnetMask, dnsServer;
+  staticIP.fromString(WIFI_STATIC_IP_ADDRESS);
+  gatewayIP.fromString(WIFI_STATIC_IP_GATEWAY);
+  subnetMask.fromString(WIFI_STATIC_IP_SUBNET);
 #if defined(WIFI_STATIC_IP_DNS)
-	dnsServer.fromString(WIFI_STATIC_IP_DNS);
+  dnsServer.fromString(WIFI_STATIC_IP_DNS);
 #else
-	dnsServer.fromString("8.8.8.8");
+  dnsServer.fromString("8.8.8.8");
 #endif
-	WiFi.config(staticIP, gatewayIP, subnetMask, dnsServer);
+  WiFi.config(staticIP, gatewayIP, subnetMask, dnsServer);
 #endif
 
   WiFi.mode(WIFI_STA);
@@ -176,7 +176,7 @@ void WiFiInterface::begin() {
   if (WiFi.status() != WL_CONNECTED) {
 #if INFO_SCREEN_ENABLED
   #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
-		InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
+    InfoScreen::replaceLine(INFO_SCREEN_IP_ADDR_LINE, F("WiFi Connection"));
     InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Failed"));
   #else
     InfoScreen::print(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
@@ -228,26 +228,26 @@ void WiFiInterface::begin() {
 }
 
 void WiFiInterface::showInitInfo() {
-	print(F("<N1: %s>"), WiFi.localIP().toString().c_str());
+  print(F("<N1: %s>"), WiFi.localIP().toString().c_str());
 }
 
 void WiFiInterface::send(const String &buf) {
   for (const int client : jmriClients) {
     ::write(client, buf.c_str(), buf.length());
   }
-	dccppWebServer.broadcastToWS(buf);
+  dccppWebServer.broadcastToWS(buf);
 #if HC12_RADIO_ENABLED
-	HC12Interface::send(buf);
+  HC12Interface::send(buf);
 #endif
 }
 
 void WiFiInterface::print(const __FlashStringHelper *fmt, ...) {
-	char buf[256] = {0};
-	va_list args;
-	va_start(args, fmt);
-	vsnprintf_P(buf, sizeof(buf), (const char *)fmt, args);
-	va_end(args);
-	send(buf);
+  char buf[256] = {0};
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf_P(buf, sizeof(buf), (const char *)fmt, args);
+  va_end(args);
+  send(buf);
 }
 
 void *jmriClientHandler(void *arg) {

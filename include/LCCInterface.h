@@ -19,7 +19,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 class LCCInterface {
 public:
-	LCCInterface();
+  LCCInterface();
   void init();
   void update();
 };

@@ -31,11 +31,11 @@ LinkedList<GenericMotorBoard *> motorBoards([](GenericMotorBoard *board) {delete
 
 class NonMonitoredMotorBoard : public GenericMotorBoard {
 public:
-	NonMonitoredMotorBoard(uint8_t enablePin, String name) : GenericMotorBoard(ADC1_CHANNEL_0, enablePin, 0, 0, name, false) {}
-	virtual void check() {}
-	virtual uint16_t captureSample(uint8_t sampleCount, bool logResults=false) {
-		return 0;
-	}
+  NonMonitoredMotorBoard(uint8_t enablePin, String name) : GenericMotorBoard(ADC1_CHANNEL_0, enablePin, 0, 0, name, false) {}
+  virtual void check() {}
+  virtual uint16_t captureSample(uint8_t sampleCount, bool logResults=false) {
+    return 0;
+  }
 };
 
 GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enablePin,
@@ -55,12 +55,12 @@ void GenericMotorBoard::powerOn(bool announce) {
   LOG(INFO, "[%s] Enabling DCC Signal", _name.c_str());
   digitalWrite(_enablePin, HIGH);
   _state = true;
-	if(announce) {
+  if(announce) {
 #if LOCONET_ENABLED
     locoNet.reportPower(true);
 #endif
-		wifiInterface.print(F("<p1 %s>"), _name.c_str());
-	}
+    wifiInterface.print(F("<p1 %s>"), _name.c_str());
+  }
 
   // enable the DCC signal
   if(_progTrack && !dccSignal[DCC_SIGNAL_PROGRAMMING]->isEnabled()) {
@@ -80,15 +80,15 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
 #if LOCONET_ENABLED
         locoNet.send(OPC_IDLE, 0, 0);
 #endif
-			  wifiInterface.print(F("<p2 %s>"), _name.c_str());
-		  } else {
+        wifiInterface.print(F("<p2 %s>"), _name.c_str());
+      } else {
 #if LOCONET_ENABLED
         locoNet.reportPower(false);
 #endif
-			  wifiInterface.print(F("<p0 %s>"), _name.c_str());
+        wifiInterface.print(F("<p0 %s>"), _name.c_str());
       }
-		}
-	}
+    }
+  }
   if(!overCurrent) {
     // disable the DCC signal
     if(_progTrack) {
@@ -107,29 +107,29 @@ void GenericMotorBoard::showStatus() {
     } else {
       wifiInterface.print(F("<p0 %s>"), _name.c_str());
     }
-	}
+  }
 }
 
 void GenericMotorBoard::check() {
-	// if we have exceeded the CURRENT_SAMPLE_TIME we need to check if we are over/under current.
-	if(isOn() && ((millis() - _lastCheckTime) > motorBoardCheckInterval)) {
+  // if we have exceeded the CURRENT_SAMPLE_TIME we need to check if we are over/under current.
+  if(isOn() && ((millis() - _lastCheckTime) > motorBoardCheckInterval)) {
         _lastCheckTime = millis();
-		_current = captureSample(motorBoardADCSampleCount);
-		if(_current >= _triggerValue) {
+    _current = captureSample(motorBoardADCSampleCount);
+    if(_current >= _triggerValue) {
       LOG(INFO, "[%s] Overcurrent detected %2.2f mA (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
-			powerOff(true, true);
-			_triggered = true;
+      powerOff(true, true);
+      _triggered = true;
       _triggerClearedCountdown = motorBoardCheckFaultCountdownInterval;
       _triggerRecurrenceCount = 0;
     } else if(_current >= _triggerValue && _triggered) {
       _triggerRecurrenceCount++;
       LOG(INFO, "[%s] Overcurrent persists (%d ms) %2.2f mA (raw: %d)", _name.c_str(), _triggerRecurrenceCount * motorBoardCheckInterval, getCurrentDraw(), _current);
-		} else if(_current < _triggerValue && _triggered) {
+    } else if(_current < _triggerValue && _triggered) {
       _triggerClearedCountdown--;
       if(_triggerClearedCountdown == 0) {
         LOG(INFO, "[%s] Overcurrent cleared %2.2f mA, enabling (raw: %d)", _name.c_str(), getCurrentDraw(), _current);
-  			powerOn();
-  			_triggered=false;
+        powerOn();
+        _triggered=false;
       } else {
         LOG(INFO, "[%s] Overcurrent cleared %2.2f mA, %d ms before re-enable (raw: %d)", _name.c_str(), getCurrentDraw(), _triggerClearedCountdown * motorBoardCheckInterval, _current);
       }
@@ -192,17 +192,17 @@ void MotorBoardManager::registerNonMonitoredBoard(uint8_t enablePin, String name
 
 GenericMotorBoard *MotorBoardManager::getBoardByName(String name) {
   for (const auto& board : motorBoards) {
-		if(board->getName() == name) {
+    if(board->getName() == name) {
       return board;
     }
-	}
+  }
   return nullptr;
 }
 
 void MotorBoardManager::check() {
   for (const auto& board : motorBoards) {
-		board->check();
-	}
+    board->check();
+  }
 }
 
 void MotorBoardManager::powerOnAll() {
@@ -270,8 +270,8 @@ int MotorBoardManager::getLastRead(const String name) {
 
 void MotorBoardManager::showStatus() {
   for (const auto& board : motorBoards) {
-		board->showStatus();
-	}
+    board->showStatus();
+  }
 }
 
 std::vector<String> MotorBoardManager::getBoardNames() {
@@ -300,7 +300,7 @@ void MotorBoardManager::getState(JsonArray &array) {
       board[JSON_STATE_NODE] = JSON_VALUE_OFF;
       board[JSON_USAGE_NODE] = 0;
     }
- 	}
+  }
 }
 
 bool MotorBoardManager::isTrackPowerOn() {

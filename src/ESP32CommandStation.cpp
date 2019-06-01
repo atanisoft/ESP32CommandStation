@@ -45,9 +45,9 @@ void esp32_restart() {
 }
 
 void setup() {
-	Serial.begin(115200L);
-	Serial.setDebugOutput(true);
-	LOG(INFO, "ESP32-CS v%s starting up", VERSION);
+  Serial.begin(115200L);
+  Serial.setDebugOutput(true);
+  LOG(INFO, "ESP32-CS v%s starting up", VERSION);
 #ifndef ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
   restrictedPins.push_back(0);
   restrictedPins.push_back(2);
@@ -62,14 +62,14 @@ void setup() {
   restrictedPins.push_back(15);
 #endif
 
-	// set up ADC1 here since we use it for all motor boards
-	adc1_config_width(ADC_WIDTH_BIT_12);
+  // set up ADC1 here since we use it for all motor boards
+  adc1_config_width(ADC_WIDTH_BIT_12);
 
-	InfoScreen::init();
-	InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, F("ESP32-CS: v%s"), VERSION);
+  InfoScreen::init();
+  InfoScreen::replaceLine(INFO_SCREEN_STATION_INFO_LINE, F("ESP32-CS: v%s"), VERSION);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Starting Up"));
 #if INFO_SCREEN_STATION_INFO_LINE == INFO_SCREEN_IP_ADDR_LINE
-	delay(500);
+  delay(500);
 #endif
 #if NEXTION_ENABLED
   nextionInterfaceInit();
@@ -85,22 +85,27 @@ void setup() {
 #if LCC_ENABLED
   lccInterface.init();
 #endif
-	wifiInterface.begin();
+  wifiInterface.begin();
   MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_OPS,
-		MOTORBOARD_ENABLE_PIN_OPS, MOTORBOARD_TYPE_OPS, MOTORBOARD_NAME_OPS);
+                                   MOTORBOARD_ENABLE_PIN_OPS,
+                                   MOTORBOARD_TYPE_OPS,
+                                   MOTORBOARD_NAME_OPS);
   MotorBoardManager::registerBoard(MOTORBOARD_CURRENT_SENSE_PROG,
-		MOTORBOARD_ENABLE_PIN_PROG, MOTORBOARD_TYPE_PROG, MOTORBOARD_NAME_PROG, true);
+                                   MOTORBOARD_ENABLE_PIN_PROG,
+                                   MOTORBOARD_TYPE_PROG,
+                                   MOTORBOARD_NAME_PROG,
+                                   true);
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
-	InfoScreen::replaceLine(INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
+  InfoScreen::replaceLine(INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
 #endif
-	DCCPPProtocolHandler::init();
-	OutputManager::init();
-	TurnoutManager::init();
-	SensorManager::init();
+  DCCPPProtocolHandler::init();
+  OutputManager::init();
+  TurnoutManager::init();
+  SensorManager::init();
 #if S88_ENABLED
-	S88BusManager::init();
+  S88BusManager::init();
 #endif
-	RemoteSensorManager::init();
+  RemoteSensorManager::init();
   LocomotiveManager::init();
 #if HC12_RADIO_ENABLED
   HC12Interface::init();
@@ -252,7 +257,7 @@ void setup() {
   MotorBoardManager::powerOnAll();
 #endif
 
-	LOG(INFO, "ESP32 Command Station READY!");
+  LOG(INFO, "ESP32 Command Station READY!");
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("ESP32-CS READY!"));
 }
 

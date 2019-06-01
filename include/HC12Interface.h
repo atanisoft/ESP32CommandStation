@@ -21,7 +21,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 class HC12Interface {
 public:
-	static void init();
+  static void init();
   static void update();
   static void send(const String &buf);
 };

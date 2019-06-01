@@ -132,15 +132,15 @@ void LocomotiveManager::processConsistThrottle(const std::vector<String> argumen
 
 void LocomotiveManager::showStatus() {
   for (const auto& loco : _locos) {
-		loco->showStatus();
-	}
+    loco->showStatus();
+  }
   showConsistStatus();
 }
 
 void LocomotiveManager::showConsistStatus() {
   for (const auto& consist : _consists) {
-		consist->showStatus();
-	}
+    consist->showStatus();
+  }
 }
 
 void LocomotiveManager::update() {
@@ -155,7 +155,7 @@ void LocomotiveManager::update() {
 void LocomotiveManager::emergencyStop() {
   for (const auto& loco : _locos) {
     loco->setSpeed(-1);
-	}
+  }
   sendDCCEmergencyStop();
 }
 

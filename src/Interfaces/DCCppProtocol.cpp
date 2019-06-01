@@ -309,12 +309,12 @@ void DCCPPProtocolHandler::process(const String &commandString) {
 
 void DCCPPProtocolHandler::registerCommand(DCCPPProtocolCommand *cmd) {
   for (const auto& command : registeredCommands) {
-		if(command->getID() == cmd->getID()) {
+    if(command->getID() == cmd->getID()) {
       LOG_ERROR("Ignoring attempt to register second command with ID: %s",
         cmd->getID().c_str());
       return;
     }
-	}
+  }
   LOG(VERBOSE, "Registering interface command %s", cmd->getID().c_str());
   registeredCommands.add(cmd);
 }

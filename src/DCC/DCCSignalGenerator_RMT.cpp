@@ -52,7 +52,9 @@ static constexpr rmt_item32_t DCC_PREAMBLE[] = {
 constexpr uint8_t MAX_DCC_PACKET_BITS = 128;
 
 constexpr uint32_t RMT_TASK_STACK_SIZE = 3084;
-constexpr BaseType_t RMT_TASK_PRIORITY = 3;
+constexpr BaseType_t RMT_TASK_PRIORITY = ESP_TASK_TCPIP_PRIO;
+constexpr BaseType_t RMT_TASK_CORE = 0;
+
 
 #define CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
     for(int index = 0; \
@@ -90,18 +92,16 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 3;
 #define RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, preambleBitCount) \
     while(xSemaphoreTake(signal->_stopRequest, 0) != pdTRUE) { \
         auto packet = signal->getPacket(); \
-        if(packet) { \
+        if (packet) { \
             uint8_t encodedBitCount = 0; \
             rmt_item32_t encodedPacket[MAX_DCC_PACKET_BITS]; \
             CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
             RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, true) \
-            /* TODO: RailCom Cutout, 488uS
-            RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, false);
-            digitalWrite(signal->_railComEnablePin, HIGH);
-            vTaskDelay(488);
-            digitalWrite(signal->_railComEnablePin, LOW);
-            RMT_WAIT_FOR_TRANSMIT_COMPLETE(signal, MAX_PACKET_TX_TIME); */\
             packet->currentBit = packet->numberOfBits; \
+            /* TODO: RailCom Cutout, 488uS
+            digitalWrite(signal->_railComEnablePin, HIGH); \
+            signal->receiveRailComData(); \
+            digitalWrite(signal->_railComEnablePin, LOW); */\
         } \
     }
 
@@ -155,7 +155,8 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
 void SignalGenerator_RMT::enable() {
     LOG(INFO, "[%s] Creating RMT feeder task", _name.c_str());
     xSemaphoreGive(_stopComplete);
-    xTaskCreate(RMT_task_entry, _name.c_str(), RMT_TASK_STACK_SIZE, this, RMT_TASK_PRIORITY, nullptr);
+    xTaskCreatePinnedToCore(RMT_task_entry, _name.c_str(), RMT_TASK_STACK_SIZE,
+                            this, RMT_TASK_PRIORITY, nullptr, RMT_TASK_CORE);
 }
 
 void SignalGenerator_RMT::disable() {
