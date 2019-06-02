@@ -118,31 +118,32 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(ne
   _fwdButton(nextion, THROTTLE_PAGE, fwd, "Fwd"),
   _revButton(nextion, THROTTLE_PAGE, rev, "Rev"),
   _locoAddress(nextion, THROTTLE_PAGE, locoaddr, "LocoAddr"),
-  _setup(nextion, THROTTLE_PAGE, 34, "b2"),
-  _accessories(nextion, THROTTLE_PAGE, acc, "Acc"),
+  _setupButton(nextion, THROTTLE_PAGE, 35, "Setup"),
+  _accessoriesButton(nextion, THROTTLE_PAGE, acc, "Acc"),
   _downButton(nextion, THROTTLE_PAGE, dec, "Dec"),
   _upButton(nextion, THROTTLE_PAGE, inc, "Inc"),
   _speedSlider(nextion, THROTTLE_PAGE, throttleslider, "Throttle"),
   _speedNumber(nextion, THROTTLE_PAGE, throttlenum, "ThrottleNum") {
+
   for(int index = 0; index < 3; index++) {
     _locoButtons[index].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
         static_cast<NextionThrottlePage*>(nextionPages[THROTTLE_PAGE])->activateLoco(static_cast<NextionButton *>(widget));
       }
     });
-  }
-  for(int index = 0; index < 3; index++) {
     _fgroupButtons[index].attachCallback([](NextionEventType type, INextionTouchable *widget) {
       if(type == NEX_EVENT_PUSH) {
         static_cast<NextionThrottlePage*>(nextionPages[THROTTLE_PAGE])->activateFunctionGroup(static_cast<NextionButton *>(widget));
       }
     });
   }
+
   _fwdButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       static_cast<NextionThrottlePage*>(nextionPages[THROTTLE_PAGE])->setLocoDirection(true);
     }
   });
+
   _revButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       static_cast<NextionThrottlePage*>(nextionPages[THROTTLE_PAGE])->setLocoDirection(false);
@@ -155,6 +156,7 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(ne
       }
     });
   }
+
   _locoAddress.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(nextionPages[ADDRESS_PAGE]);
@@ -164,19 +166,31 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(ne
       addressPage->display();
     }
   });
-  _accessories.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+
+  _accessoriesButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
       NextionTurnoutPage *turnoutPage = static_cast<NextionTurnoutPage *>(nextionPages[TURNOUT_PAGE]);
       turnoutPage->setPreviousPage(THROTTLE_PAGE);
       turnoutPage->display();
     }
   });
+
+  _setupButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
+    if(type == NEX_EVENT_PUSH) {
+      NextionSetupPage *setupPage = static_cast<NextionSetupPage *>(nextionPages[SETUP_PAGE]);
+      setupPage->setPreviousPage(THROTTLE_PAGE);
+      setupPage->display();
+    }
+  });
+
   _downButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     static_cast<NextionThrottlePage*>(nextionPages[THROTTLE_PAGE])->decreaseLocoSpeed();
   });
+
   _upButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     static_cast<NextionThrottlePage*>(nextionPages[THROTTLE_PAGE])->increaseLocoSpeed();
   });
+
   _speedSlider.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_POP) {
       NextionSlider *slider = static_cast<NextionSlider *>(widget);
@@ -201,16 +215,15 @@ void NextionThrottlePage::activateLoco(const NextionButton *button) {
 }
 
 void NextionThrottlePage::activateFunctionGroup(const NextionButton *button) {
-  // turn off all buttons
-  uint8_t fgrp_buts[6] = {FG1_PIC_OFF, FG2_PIC_OFF, FG3_PIC_OFF, FG1_PIC_ON, FG2_PIC_ON, FG3_PIC_ON};
-  for(int index = 0; index < 3; index++) {
-    _fgroupButtons[index].setPictureID(fgrp_buts[index]);
-  }
-  // find and activate the selected button
+  uint8_t off_images[3] = {FG1_PIC_OFF, FG2_PIC_OFF, FG3_PIC_OFF};
+  uint8_t on_images[3] = {FG1_PIC_ON, FG2_PIC_ON, FG3_PIC_ON};
+  // find and activate the selected button, disable other function group buttons
   for(int index = 0; index < 3; index++) {
     if (button == &_fgroupButtons[index]) {
-      _fgroupButtons[index].setPictureID(fgrp_buts[index + 3]);
+      _fgroupButtons[index].setPictureID(on_images[index]);
       _activeFunctionGroup = index;
+    } else {
+      _fgroupButtons[index].setPictureID(off_images[index]);
     }
   }
   refreshFunctionButtons();

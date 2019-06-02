@@ -53,8 +53,8 @@ DCCPPNextionPage *nextionPages[MAX_PAGES] = {
   new NextionAddressPage(nextion),
   new NextionThrottlePage(nextion),
   new NextionTurnoutPage(nextion),
-  nullptr,
-  nullptr
+  new NextionSetupPage(nextion),
+  /* new NextionRoutesPage(nextion) */ nullptr
 };
 
 static constexpr char const * NEXTION_DISPLAY_TYPE_STRINGS[] = {
