@@ -17,6 +17,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "ESP32CommandStation.h"
 #include <ESPAsyncWebServer.h>
+#include <SPIFFSEditor.h>
 #include <AsyncJson.h>
 #include <Update.h>
 
@@ -218,6 +219,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     }
   });
   addHandler(&webSocket);
+  addHandler(new SPIFFSEditor(SPIFFS));
 }
 
 void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {

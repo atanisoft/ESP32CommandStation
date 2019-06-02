@@ -34,6 +34,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 - [x] Reintroduce websocket usage for pushing commands back to the CS (improves performance).
 - [x] auto-refresh of status pages
 - [x] add busy/wait spinner for when data is loading (or being refreshed) in the web interface.
+- [x] Adding SPIFFSEditor for easy access to view/edit configuration data.
 
 #### S88 Sensors
 
@@ -43,7 +44,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 #### Configuration
 
 - [x] rename of WIFI_SSID to SSID_NAME and WIFI_PASSWORD to SSID_PASSWORD to be in sync with upcoming changes.
-- [ ] Split up monolithic json files to instead be individual files in unique directories.
+- [x] Split up monolithic json files to instead be individual files.
 
 #### General
 
@@ -75,6 +76,7 @@ The entries below are not tracked to a specific release or in any particular pri
 - [ ] investigate tcp/ip hang (AsyncTCP LwIP crash? consider replacements for AsyncWebServer?)
 - [ ] WiThrottle support (https://github.com/atanisoft/DCCppESP32/issues/15)
 - [ ] Expose Loco Consist creation.
+- [ ] Add strict validation of input parameter data.
 
 ### LCC Integration
 
