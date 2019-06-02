@@ -99,16 +99,18 @@ static constexpr const char * OUTPUTS_JSON_FILE = "outputs.json";
 
 void OutputManager::init() {
   LOG(INFO, "[Output] Initializing outputs");
-  JsonObject &root = configStore.load(OUTPUTS_JSON_FILE);
-  JsonVariant count = root[JSON_COUNT_NODE];
-  uint16_t outputCount = count.success() ? count.as<int>() : 0;
-  LOG(INFO, "[Output] Found %d outputs", outputCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Outputs"), outputCount);
-  if(outputCount > 0) {
-    for(auto output : root.get<JsonArray>(JSON_OUTPUTS_NODE)) {
-      outputs.add(new Output(output.as<JsonObject &>()));
+  if(configStore.exists(OUTPUTS_JSON_FILE)) {
+    JsonObject &root = configStore.load(OUTPUTS_JSON_FILE);
+    JsonVariant count = root[JSON_COUNT_NODE];
+    uint16_t outputCount = count.success() ? count.as<int>() : 0;
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Outputs"), outputCount);
+    if(outputCount > 0) {
+      for(auto output : root.get<JsonArray>(JSON_OUTPUTS_NODE)) {
+        outputs.add(new Output(output.as<JsonObject &>()));
+      }
     }
   }
+  LOG(INFO, "[Output] Loaded %d outputs", outputs.length());
 }
 
 void OutputManager::clear() {

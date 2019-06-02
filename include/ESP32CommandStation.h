@@ -302,7 +302,7 @@ extern bool otaInProgress;
 #endif
 
 #if LCC_ENABLED
-  #if LCC_CAN_RX_PIN != -1
+  #if LCC_CAN_RX_PIN != NOT_A_PIN
     #if S88_ENABLED
       #if S88_CLOCK_PIN == LCC_CAN_RX_PIN
       #error "Invalid Configuration detected, LCC_CAN_RX_PIN and S88_CLOCK_PIN must be unique."
@@ -331,7 +331,7 @@ extern bool otaInProgress;
       #endif
     #endif
   #endif
-  #if LCC_CAN_TX_PIN != -1
+  #if LCC_CAN_TX_PIN != NOT_A_PIN
     #if S88_ENABLED
       #if S88_CLOCK_PIN == LCC_CAN_TX_PIN
       #error "Invalid Configuration detected, LCC_CAN_TX_PIN and S88_CLOCK_PIN must be unique."
@@ -360,7 +360,7 @@ extern bool otaInProgress;
       #endif
     #endif
   #endif
-  #if LCC_CAN_RX_PIN == LCC_CAN_TX_PIN && LCC_CAN_RX_PIN != -1 && LCC_CAN_TX_PIN != -1
+  #if LCC_CAN_RX_PIN == LCC_CAN_TX_PIN && LCC_CAN_RX_PIN != NOT_A_PIN && LCC_CAN_TX_PIN != NOT_A_PIN
     #error "Invalid Configuration detected, LCC_CAN_RX_PIN and LCC_CAN_TX_PIN must be unique."
   #endif
 #endif

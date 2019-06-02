@@ -84,16 +84,18 @@ static constexpr const char *TURNOUT_TYPE_STRINGS[] = {
 
 void TurnoutManager::init() {
   LOG(INFO, "[Turnout] Initializing turnout list");
-  JsonObject &root = configStore.load(TURNOUTS_JSON_FILE);
-  JsonVariant count = root[JSON_COUNT_NODE];
-  uint16_t turnoutCount = count.success() ? count.as<int>() : 0;
-  LOG(INFO, "[Turnout] Found %d turnouts", turnoutCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Turnouts"), turnoutCount);
-  if(turnoutCount > 0) {
-    for(auto turnout : root.get<JsonArray>(JSON_TURNOUTS_NODE)) {
-      turnouts.add(new Turnout(turnout.as<JsonObject &>()));
+  if(configStore.exists(TURNOUTS_JSON_FILE)) {
+    JsonObject &root = configStore.load(TURNOUTS_JSON_FILE);
+    JsonVariant count = root[JSON_COUNT_NODE];
+    uint16_t turnoutCount = count.success() ? count.as<int>() : 0;
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Turnouts"), turnoutCount);
+    if(turnoutCount > 0) {
+      for(auto turnout : root.get<JsonArray>(JSON_TURNOUTS_NODE)) {
+        turnouts.add(new Turnout(turnout.as<JsonObject &>()));
+      }
     }
   }
+  LOG(INFO, "[Turnout] Loaded %d turnouts", turnouts.length());
 }
 
 void TurnoutManager::clear() {

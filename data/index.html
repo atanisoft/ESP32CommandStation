@@ -1368,26 +1368,28 @@ function BSTabRefresh(section) {
  }
 }
 function changeLocomotive(newAddress) {
- console.log("selected loco:", newAddress);
- $.get({
-  url: '/locomotive?address=' + newAddress,
-  success : function (data, status, xhr) {
-   console.log(data);
-   fireLocoEvents = false;
-   $("#selected-loco-address").val(newAddress);
-   $("#throttle-speed").val(data.speed).slider("refresh");
-   $("#throttle-direction").prop("checked", data.dir === 'REV').flipswitch("refresh");
-   $.each(data.functions, function(index, item) {
-    $(String.format("#funct_{0}", item.id)).prop('checked', item.state).flipswitch("refresh");
-   });
-   enableLocomotiveInputs();
-   fireLocoEvents = true;
-  },
-  error : function(xhr, status, error) {
-   alert("The command station reported a failure in aquiring locomotive:" + newAddress);
-   console.log("Failed to retrieve locomotive details from command station:", error);
-  }
- });
+ if(newAddress !== "") {
+  console.log("selected loco:", newAddress);
+  $.get({
+   url: '/locomotive?address=' + newAddress,
+   success : function (data, status, xhr) {
+    console.log(data);
+    fireLocoEvents = false;
+    $("#selected-loco-address").val(newAddress);
+    $("#throttle-speed").val(data.speed).slider("refresh");
+    $("#throttle-direction").prop("checked", data.dir === 'REV').flipswitch("refresh");
+    $.each(data.functions, function(index, item) {
+     $(String.format("#funct_{0}", item.id)).prop('checked', item.state).flipswitch("refresh");
+    });
+    enableLocomotiveInputs();
+    fireLocoEvents = true;
+   },
+   error : function(xhr, status, error) {
+    alert("The command station reported a failure in aquiring locomotive:" + newAddress);
+    console.log("Failed to retrieve locomotive details from command station:", error);
+   }
+  });
+ }
 }
 function disableS88Tab() {
  console.log("Disabling S88 section");

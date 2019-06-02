@@ -85,17 +85,19 @@ static constexpr const char * SENSORS_JSON_FILE = "sensors.json";
 
 void SensorManager::init() {
   _lock = xSemaphoreCreateMutex();
-  LOG(INFO, "[Sensors] Initializing sensors list");
-  JsonObject &root = configStore.load(SENSORS_JSON_FILE);
-  JsonVariant count = root[JSON_COUNT_NODE];
-  uint16_t sensorCount = count.success() ? count.as<int>() : 0;
-  LOG(INFO, "[Sensors] Found %d sensors", sensorCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Sensors"), sensorCount);
-  if(sensorCount > 0) {
-    for(auto sensor : root.get<JsonArray>(JSON_SENSORS_NODE)) {
-      sensors.add(new Sensor(sensor.as<JsonObject &>()));
+  LOG(INFO, "[Sensors] Initializing sensors");
+  if(configStore.exists(SENSORS_JSON_FILE)) {
+    JsonObject &root = configStore.load(SENSORS_JSON_FILE);
+    JsonVariant count = root[JSON_COUNT_NODE];
+    uint16_t sensorCount = count.success() ? count.as<int>() : 0;
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Sensors"), sensorCount);
+    if(sensorCount > 0) {
+      for(auto sensor : root.get<JsonArray>(JSON_SENSORS_NODE)) {
+        sensors.add(new Sensor(sensor.as<JsonObject &>()));
+      }
     }
   }
+  LOG(INFO, "[Sensors] Loaded %d sensors", sensors.length());
   xTaskCreate(sensorTask, "SensorManager", SENSOR_TASK_STACK_SIZE, NULL, SENSOR_TASK_PRIORITY, &_taskHandle);
 }
 

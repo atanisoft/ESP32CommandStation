@@ -79,17 +79,17 @@ void S88BusManager::init() {
   pinMode(S88_RESET_PIN, OUTPUT);
   pinMode(S88_LOAD_PIN, OUTPUT);
 
-  LOG(VERBOSE, "[S88] Initializing SensorBus list");
+  LOG(INFO, "[S88] Initializing SensorBus list");
   JsonObject &root = configStore.load(S88_SENSORS_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t s88BusCount = count.success() ? count.as<int>() : 0;
-  LOG(VERBOSE, "[S88] Found %d Buses", s88BusCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d S88 Bus"), s88BusCount);
   if(s88BusCount > 0) {
     for(auto bus : root.get<JsonArray>(JSON_SENSORS_NODE)) {
       s88SensorBus.add(new S88SensorBus(bus.as<JsonObject &>()));
     }
   }
+  LOG(INFO, "[S88] Loaded %d Sensor Buses", s88SensorBus.length());
   _s88SensorLock = xSemaphoreCreateMutex();
   xTaskCreate(s88SensorTask, "S88SensorManager", S88_SENSOR_TASK_STACK_SIZE, NULL, S88_SENSOR_TASK_PRIORITY, &_taskHandle);
 }

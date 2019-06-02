@@ -149,10 +149,10 @@ DccPacketQueueInjector dccPacketInjector;
 DccAccyConsumer dccAccessoryConsumer{openmrn.stack()->node(), &dccPacketInjector};
 
 #if LCC_USE_SPIFFS
-#define CDI_CONFIG_PREFIX "/spiffs/"
+#define CDI_CONFIG_PREFIX "/spiffs"
 #define LCC_FS SPIFFS
 #elif LCC_USE_SD
-#define CDI_CONFIG_PREFIX "/sdcard/"
+#define CDI_CONFIG_PREFIX "/sdcard"
 #define LCC_FS SD_MMC
 #endif
 
