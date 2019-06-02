@@ -16,7 +16,7 @@ The ESP32 Command Station consists of an ESP32 micro controller connected to at 
 * Custom PCB with all required hardware "on-board" for LCC, DCC signal generation, RailCom detection and expansion ports (I2C and UART).
 
 ## Latest public release
-The latest production release of the code is v1.2.3.
+The latest production release of the code is [![GitHub release](https://img.shields.io/github/release/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/releases).
 
 ## Latest development updates
 The development branch is where all "in-progress" work will be made available, there is no guarantee of stability of the project when using this version of the code.
