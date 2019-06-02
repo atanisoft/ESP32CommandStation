@@ -259,16 +259,13 @@ private:
 class NextionSetupPage : public DCCPPNextionPage {
 public:
   NextionSetupPage(Nextion &);
-  void refreshPage() override {
-    _ipAddrText.setText(WiFi.localIP().toString().c_str());
-  }
+  void refreshPage() override {}
 protected:
-  void init() override {
+  void init() override {}
+  void displayPage() override {
     _versionText.setText(VERSION);
     _ssidText.setText(SSID_NAME);
-  }
-  void displayPage() override {
-    refreshPage();
+    _ipAddrText.setText(WiFi.localIP().toString().c_str());
   }
 
 private:
