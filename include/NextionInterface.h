@@ -35,7 +35,7 @@ enum NEXTION_PAGES {
   ADDRESS_PAGE = 1,
   THROTTLE_PAGE = 2,
   TURNOUT_PAGE = 3,
-  CONFIG_PAGE = 4,
+  SETUP_PAGE = 4,
   ROUTES_PAGE = 5,
   MAX_PAGES
 };
@@ -193,8 +193,8 @@ private:
   NextionButton _fwdButton;
   NextionButton _revButton;
   NextionButton _locoAddress;
-  NextionButton _setup;
-  NextionButton _accessories;
+  NextionButton _setupButton;
+  NextionButton _accessoriesButton;
   NextionButton _downButton;
   NextionButton _upButton;
   NextionSlider _speedSlider;
@@ -206,7 +206,7 @@ public:
   NextionTurnoutPage(Nextion &);
   void toggleTurnout(const NextionButton *);
   
-  virtual void refreshPage();
+  void refreshPage() override;
   void incrementTurnoutPage() {
     _turnoutStartIndex += getTurnoutsPerPageCount();
     refresh();
@@ -254,6 +254,31 @@ private:
   };
   int16_t _turnoutStartIndex{0};
   PAGE_MODE _pageMode{PAGE_MODE::NORMAL};
+};
+
+class NextionSetupPage : public DCCPPNextionPage {
+public:
+  NextionSetupPage(Nextion &);
+  void refreshPage() override {
+    _ipAddrText.setText(WiFi.localIP().toString().c_str());
+  }
+protected:
+  void init() override {
+    _versionText.setText(VERSION);
+    _ssidText.setText(SSID_NAME);
+  }
+  void displayPage() override {
+    refreshPage();
+  }
+
+private:
+  NextionButton _saveButton;
+  NextionButton _quitButton;
+  NextionButton _undoButton;
+  NextionButton _routesButton;
+  NextionText _versionText;
+  NextionText _ipAddrText;
+  NextionText _ssidText;
 };
 
 enum TURNOUT_IMAGE_IDS {
