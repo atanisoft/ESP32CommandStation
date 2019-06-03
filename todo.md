@@ -68,13 +68,13 @@ The entries below are not tracked to a specific release or in any particular pri
 
 - [ ] move wifi config to NVS/SPIFFS.
 - [ ] dynamic command station config via web
-- [ ] SoftAP support for initial config and "non-home" network. (https://github.com/atanisoft/DCCppESP32/issues/4)
+- [ ] SoftAP support for initial config and "non-home" network. (https://github.com/atanisoft/ESP32CommandStation/issues/4)
 
 ### Web Interface
 
 - [ ] add dialog for failed CS requests.
 - [ ] investigate tcp/ip hang (AsyncTCP LwIP crash? consider replacements for AsyncWebServer?)
-- [ ] WiThrottle support (https://github.com/atanisoft/DCCppESP32/issues/15)
+- [ ] WiThrottle support (https://github.com/atanisoft/ESP32CommandStation/issues/15)
 - [ ] Expose Loco Consist creation.
 - [ ] Add strict validation of input parameter data.
 

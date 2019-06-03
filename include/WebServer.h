@@ -21,9 +21,9 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "InfoScreen.h"
 
-class DCCPPWebServer : public AsyncWebServer {
+class ESP32CSWebServer : public AsyncWebServer {
 public:
-  DCCPPWebServer();
+  ESP32CSWebServer();
   void begin() {
     MDNS.addService("http", "tcp", 80);
     AsyncWebServer::begin();

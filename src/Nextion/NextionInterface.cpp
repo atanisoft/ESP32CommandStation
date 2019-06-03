@@ -48,7 +48,7 @@ constexpr TickType_t NEXTION_INTERFACE_UPDATE_INTERVAL = pdMS_TO_TICKS(50);
 constexpr uint8_t NEXTION_INTERFACE_TASK_PRIORITY = 2;
 constexpr uint16_t NEXTION_INTERFACE_TASK_STACK_SIZE = DEFAULT_THREAD_STACKSIZE;
 
-DCCPPNextionPage *nextionPages[MAX_PAGES] = {
+ESP32NextionPage *nextionPages[MAX_PAGES] = {
   new NextionTitlePage(nextion),
   new NextionAddressPage(nextion),
   new NextionThrottlePage(nextion),

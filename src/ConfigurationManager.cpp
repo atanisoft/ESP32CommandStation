@@ -31,7 +31,7 @@ StaticJsonBuffer<20480> jsonConfigBuffer;
 #define CONFIG_FS SD_MMC
 #endif
 
-static constexpr const char *DCCPPESP32_CONFIG_DIR = "/DCCppESP32";
+static constexpr const char *ESP32CS_CONFIG_DIR = "/ESP32CS";
 
 ConfigurationManager::ConfigurationManager() {
 }
@@ -58,26 +58,26 @@ void ConfigurationManager::init() {
     LOG(FATAL, "[Config] Aborting due to SD_MMC mount failure.");
   }
 #endif
-  CONFIG_FS.mkdir(DCCPPESP32_CONFIG_DIR);
+  CONFIG_FS.mkdir(ESP32CS_CONFIG_DIR);
 }
 
 void ConfigurationManager::clear() {
-  CONFIG_FS.rmdir(DCCPPESP32_CONFIG_DIR);
-  CONFIG_FS.mkdir(DCCPPESP32_CONFIG_DIR);
+  CONFIG_FS.rmdir(ESP32CS_CONFIG_DIR);
+  CONFIG_FS.mkdir(ESP32CS_CONFIG_DIR);
 }
 
 bool ConfigurationManager::exists(const char *name) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
   return CONFIG_FS.exists(configFilePath.c_str());
 }
 
 void ConfigurationManager::remove(const char *name) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
   CONFIG_FS.remove(configFilePath.c_str());
 }
 
 JsonObject &ConfigurationManager::load(const char *name) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
   LOG(INFO, "[Config] Loading %s", configFilePath.c_str());
   File configFile = CONFIG_FS.open(configFilePath.c_str(), FILE_READ);
   jsonConfigBuffer.clear();
@@ -87,7 +87,7 @@ JsonObject &ConfigurationManager::load(const char *name) {
 }
 
 JsonObject &ConfigurationManager::load(const char *name, DynamicJsonBuffer &buffer) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
   LOG(INFO, "[Config] Loading %s", configFilePath.c_str());
   File configFile = CONFIG_FS.open(configFilePath.c_str(), FILE_READ);
   JsonObject &root = buffer.parseObject(configFile);
@@ -96,7 +96,7 @@ JsonObject &ConfigurationManager::load(const char *name, DynamicJsonBuffer &buff
 }
 
 void ConfigurationManager::store(const char *name, const JsonObject &json) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
   LOG(INFO, "[Config] Storing %s", configFilePath.c_str());
   File configFile = CONFIG_FS.open(configFilePath.c_str(), FILE_WRITE);
   if(!configFile) {

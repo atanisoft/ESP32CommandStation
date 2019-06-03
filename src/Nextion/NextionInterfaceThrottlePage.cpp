@@ -89,7 +89,7 @@ const uint8_t FG3_PIC_ON=76;
 // Throttle Page
 /************************************************************************************************************/
 //
-NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : DCCPPNextionPage(nextion, THROTTLE_PAGE, "2"),
+NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : ESP32NextionPage(nextion, THROTTLE_PAGE, "2"),
   _activeLoco(0),
   _activeFunctionGroup(0),
   _locoNumbers {0, 0, 0},
@@ -335,7 +335,7 @@ void NextionThrottlePage::displayPage() {
   refreshLocomotiveDetails();
 }
 
-void NextionThrottlePage::previousPageCallback(DCCPPNextionPage *previousPage) {
+void NextionThrottlePage::previousPageCallback(ESP32NextionPage *previousPage) {
   if(previousPage == nextionPages[ADDRESS_PAGE]) {
     changeLocoAddress(static_cast<NextionAddressPage *>(previousPage)->getNewAddress());
   }

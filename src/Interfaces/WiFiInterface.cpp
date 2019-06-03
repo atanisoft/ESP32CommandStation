@@ -55,7 +55,7 @@ char WIFI_PASS[] = SSID_PASSWORD;
 
 void *jmriClientHandler(void *arg);
 
-DCCPPWebServer dccppWebServer;
+ESP32CSWebServer esp32csWebServer;
 std::vector<int> jmriClients;
 std::unique_ptr<SocketListener> JMRIListener;
 bool wifiConnected = false;
@@ -119,17 +119,17 @@ void WiFiInterface::begin() {
     if (!MDNS.begin(HOSTNAME)) {
       LOG_ERROR("[WiFi] Failed to start mDNS");
     } else {
-      LOG(INFO, "[WiFi] Adding dccpp.tcp service to mDNS advertiser");
-      MDNS.addService("dccpp", "tcp", DCCPP_JMRI_CLIENT_PORT);
+      LOG(INFO, "[WiFi] Adding esp32cs.tcp service to mDNS advertiser");
+      MDNS.addService("esp32cs", "tcp", JMRI_CLIENT_PORT);
     }
 
-    JMRIListener.reset(new SocketListener(DCCPP_JMRI_CLIENT_PORT, [](int fd) {
+    JMRIListener.reset(new SocketListener(JMRI_CLIENT_PORT, [](int fd) {
       os_thread_create(nullptr, StringPrintf("jmri-%d", fd).c_str(),
                        JMRI_CLIENT_PRIORITY, JMRI_CLIENT_STACK_SIZE,
                        jmriClientHandler, (void *)fd);
       jmriClients.push_back(fd);
     }));
-    dccppWebServer.begin();
+    esp32csWebServer.begin();
 #if NEXTION_ENABLED
     static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->clearStatusText();
     // transition to next screen since WiFi connection is complete
@@ -248,7 +248,7 @@ void WiFiInterface::send(const String &buf) {
   for (const int client : jmriClients) {
     ::write(client, buf.c_str(), buf.length());
   }
-  dccppWebServer.broadcastToWS(buf);
+  esp32csWebServer.broadcastToWS(buf);
 #if HC12_RADIO_ENABLED
   HC12Interface::send(buf);
 #endif

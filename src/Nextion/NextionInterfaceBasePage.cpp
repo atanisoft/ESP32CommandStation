@@ -24,7 +24,7 @@ constexpr uint8_t ON_PIC_ON=55;
 constexpr uint8_t OFF_PIC_OFF=56;
 constexpr uint8_t OFF_PIC_ON=57;
 
-DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const String &pageName) :
+ESP32NextionPage::ESP32NextionPage(Nextion &nextion, const uint8_t pageID, const String &pageName) :
   NextionPage(nextion, pageID, 0, pageName),
   _onButton(nextion, pageID, 1, "On"),
   _stopButton(nextion, pageID, 2, "Stop"),
@@ -46,7 +46,7 @@ DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const
   });
 }
 
-void DCCPPNextionPage::display() {
+void ESP32NextionPage::display() {
   if(!show()) {
     LOG_ERROR("[Nextion] Display of page %s was not successful.", m_name.c_str());
   } else {
@@ -60,12 +60,12 @@ void DCCPPNextionPage::display() {
   displayPage();
 }
 
-void DCCPPNextionPage::refresh() {
+void ESP32NextionPage::refresh() {
   refreshPowerButtons();
   refreshPage();
 }
 
-void DCCPPNextionPage::setTrackPower(bool on) {
+void ESP32NextionPage::setTrackPower(bool on) {
   if(on) {
     MotorBoardManager::powerOnAll();
   } else {
@@ -74,12 +74,12 @@ void DCCPPNextionPage::setTrackPower(bool on) {
   refreshPowerButtons();
 }
 
-void DCCPPNextionPage::sendEStop() {
+void ESP32NextionPage::sendEStop() {
   LocomotiveManager::emergencyStop();
   refresh();
 }
 
-void DCCPPNextionPage::displayPreviousPage(bool invokeCallback) {
+void ESP32NextionPage::displayPreviousPage(bool invokeCallback) {
   if(_returnPageID > 0) {
     nextionPages[_returnPageID]->display();
     if(invokeCallback) {
@@ -88,7 +88,7 @@ void DCCPPNextionPage::displayPreviousPage(bool invokeCallback) {
   }
 }
 
-void DCCPPNextionPage::refreshPowerButtons() {
+void ESP32NextionPage::refreshPowerButtons() {
   if(MotorBoardManager::isTrackPowerOn()) {
     _onButton.setPictureID(ON_PIC_ON);
     _offButton.setPictureID(OFF_PIC_OFF);

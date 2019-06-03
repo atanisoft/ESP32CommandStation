@@ -49,12 +49,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // DEFINE PORT TO USE FOR JMRI WiFi INTERFACE
 //
-#define DCCPP_JMRI_CLIENT_PORT 2560
+#define JMRI_CLIENT_PORT 2560
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // DEFINE HOSTNAME TO USE FOR WiFi CONNECTIONS AND mDNS BROADCASTS
 //
-#define HOSTNAME "DCCpp32"
+#define HOSTNAME "ESP32CS"
 
 /////////////////////////////////////////////////////////////////////////////////////

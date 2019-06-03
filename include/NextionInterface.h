@@ -50,9 +50,9 @@ enum NEXTION_DEVICE_TYPE {
   UNKOWN_DISPLAY
 };
 
-class DCCPPNextionPage : public NextionPage {
+class ESP32NextionPage : public NextionPage {
 public:
-  DCCPPNextionPage(Nextion &, uint8_t, const String &);
+  ESP32NextionPage(Nextion &, uint8_t, const String &);
   void display();
   void refresh();
   virtual void refreshPage() = 0;
@@ -75,7 +75,7 @@ protected:
   // Called anytime the page gets displayed, should be used for refresh of components etc.
   virtual void displayPage() = 0;
 
-  virtual void previousPageCallback(DCCPPNextionPage *previousPage) {}
+  virtual void previousPageCallback(ESP32NextionPage *previousPage) {}
 private:
   NextionButton _onButton;
   NextionButton _stopButton;
@@ -85,12 +85,12 @@ private:
   void refreshPowerButtons();
 };
 
-extern DCCPPNextionPage *nextionPages[MAX_PAGES];
+extern ESP32NextionPage *nextionPages[MAX_PAGES];
 extern NEXTION_DEVICE_TYPE nextionDeviceType;
 
-class NextionTitlePage : public DCCPPNextionPage {
+class NextionTitlePage : public ESP32NextionPage {
 public:
-  NextionTitlePage(Nextion &nextion) : DCCPPNextionPage(nextion, TITLE_PAGE, "0"),
+  NextionTitlePage(Nextion &nextion) : ESP32NextionPage(nextion, TITLE_PAGE, "0"),
     _versionText(nextion, TITLE_PAGE, 3, "Version"),
     _statusText {
       NextionText(nextion, TITLE_PAGE, 4, "Status1"), 
@@ -118,7 +118,7 @@ private:
   NextionText _statusText[5];
 };
 
-class NextionAddressPage : public DCCPPNextionPage {
+class NextionAddressPage : public ESP32NextionPage {
 public:
   NextionAddressPage(Nextion &);
   void setCurrentAddress(uint32_t address) {
@@ -160,7 +160,7 @@ private:
   String _newAddressString{""};
 };
 
-class NextionThrottlePage : public DCCPPNextionPage {
+class NextionThrottlePage : public ESP32NextionPage {
 public:
   NextionThrottlePage(Nextion &);
   void activateLoco(const NextionButton *);
@@ -179,7 +179,7 @@ public:
 protected:
   void init() override;
   void displayPage() override;
-  void previousPageCallback(DCCPPNextionPage *);
+  void previousPageCallback(ESP32NextionPage *);
 private:
   void refreshLocomotiveDetails();
   void refreshFunctionButtons();
@@ -201,7 +201,7 @@ private:
   NextionNumber _speedNumber;
 };
 
-class NextionTurnoutPage : public DCCPPNextionPage {
+class NextionTurnoutPage : public ESP32NextionPage {
 public:
   NextionTurnoutPage(Nextion &);
   void toggleTurnout(const NextionButton *);
@@ -233,7 +233,7 @@ protected:
     _pageMode = PAGE_MODE::NORMAL;
     refreshPage();
   }
-  void previousPageCallback(DCCPPNextionPage *);
+  void previousPageCallback(ESP32NextionPage *);
 private:
   static constexpr int TURNOUTS_PER_PAGE_3_2_DISPLAY = 15;
   static constexpr int TURNOUTS_PER_PAGE_3_5_DISPLAY = 24;
@@ -256,7 +256,7 @@ private:
   PAGE_MODE _pageMode{PAGE_MODE::NORMAL};
 };
 
-class NextionSetupPage : public DCCPPNextionPage {
+class NextionSetupPage : public ESP32NextionPage {
 public:
   NextionSetupPage(Nextion &);
   void refreshPage() override {}
