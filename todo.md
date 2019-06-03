@@ -18,7 +18,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 #### LCC Integration
 
-- [x] Integrate the WiFiConfiguration CDI element.
+- [x] Integrate the WiFiConfiguration CDI element. Note, the Esp32WiFiManager code can be very noisy on the serial output and thus a PR will be submitted for adjusting log levels at runtime. In the meantime, this can be controlled via the CDI editor in JMRI by setting the uplink behavior to "manual only" to disable the Uplink/mDNS log messages.
 
 #### Nextion Interface
 
