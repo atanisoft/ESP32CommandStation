@@ -33,8 +33,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include <string>
 
-#if defined(HC12_RADIO_ENABLED) && HC12_RADIO_ENABLED
+#if HC12_RADIO_ENABLED
 #include "HC12Interface.h"
+#endif
+
+#if LCC_ENABLED
+#include "LCCInterface.h"
 #endif
 
 static constexpr char const * WIFI_ENC_TYPES[] = {
@@ -97,6 +101,9 @@ void WiFiInterface::begin() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(true);
   WiFi.onEvent([](system_event_id_t event) {
+#if LCC_ENABLED
+    lccInterface.processWiFiEvent(event);
+#endif
     if (wifiConnected) {
       return;
     }
@@ -131,6 +138,9 @@ void WiFiInterface::begin() {
 
   }, SYSTEM_EVENT_STA_GOT_IP);
   WiFi.onEvent([](system_event_id_t event) {
+#if LCC_ENABLED
+    lccInterface.processWiFiEvent(event);
+#endif
     wifiConnected = false;
 #if INFO_SCREEN_ENABLED
   #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
@@ -141,6 +151,9 @@ void WiFiInterface::begin() {
 #endif
   }, SYSTEM_EVENT_STA_LOST_IP);
   WiFi.onEvent([](system_event_id_t event) {
+#if LCC_ENABLED
+    lccInterface.processWiFiEvent(event);
+#endif
     if(wifiConnected) {
       LOG(WARNING, "[WiFi] Connection to WiFi lost, reconnecting...");
       WiFi.begin(WIFI_SSID, WIFI_PASS);

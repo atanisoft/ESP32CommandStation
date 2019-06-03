@@ -208,5 +208,9 @@ void LCCInterface::update() {
     openmrn.loop();
 }
 
+void LCCInterface::processWiFiEvent(system_event_id_t event) {
+    wifi_mgr.process_wifi_event(event);
+}
+
 #endif
 
