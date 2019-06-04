@@ -14,7 +14,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 - [x] fix signal generation so it doesn't crash up when spi_flash disables cache.
 - [x] adjust motor board powerOn/powerOff to enable/disable DCC signal instead of using global power-on/off.
-- [x] allow adjustment of the DCC preamble bit count, default is 16 (OPS) and 22 (PROG). The OPS value is constrained between 11 and 20 and PROG between 22 and 50.
+- [ ] implement RailCom cut-out for OPS track.
 
 #### LCC Integration
 
@@ -59,10 +59,10 @@ The entries below are not tracked to a specific release or in any particular pri
 
 ### DCC System
 
-- [ ] implement RailCom cut-out for OPS track.
 - [ ] continue sending eStop packet until eStop is cleared.
 - [ ] implement BG task for prog track.
 - [ ] remove hardware timer legacy code and refactor signal generation for RMT only.
+- [ ] allow adjustment of the DCC preamble bit count, default is 16 (OPS) and 22 (PROG). The OPS value is constrained between 11 and 20 and PROG between 22 and 50.
 
 ### Config
 

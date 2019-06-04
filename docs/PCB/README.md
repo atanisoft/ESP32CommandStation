@@ -30,7 +30,7 @@ In addition to LCC the PCB provides headers for I2C (2x) and a Serial1 (for Next
 26 : Serial1 TX
 27 : RAILCOM ENABLE
 28-31 : NOT AVAILABLE
-32 : RAILCOM DIRECTION
+32 : OPS BRAKE
 33 : RAILCOM DATA
 34 : RAILCOM SHORT
 35 : OPS-THERM
@@ -48,8 +48,8 @@ The on-board LMD18200 chip will provide up to 3A for the OPS output but the code
 ## CS Status via RGB LED
 Using GPIO 22 it is possible to wire an RGB LED using WS2811 (or similar) to display the CS status, current design considerations are as follows:
 
-LED 1: WiFi status (GREEN = connected, RED = disconnected, YELLOW = connecting)
-LED 2: OPS track status (GREEN = NORMAL/ACTIVE/ON, BLACK = OFF, YELLOW = 75% CURRENT DRAW, RED = FAULT/SHORT, FLASHING RED = THERMAL FAULT)
-LED 3: PROG track status (GREEN = NORMAL/ACTIVE/ON, BLACK = OFF, YELLOW = 75% CURRENT DRAW, RED = FAULT/SHORT)
+LED 1: WiFi status (GREEN = connected, RED = disconnected, FLASHING GREEN = connecting)
+LED 2: OPS track status (GREEN = ON, BLACK = OFF, RED = FAULT/SHORT, FLASHING RED = THERMAL FAULT)
+LED 3: PROG track status (GREEN = ON, BLACK = OFF, RED = FAULT/SHORT)
 
 Additional status LEDs could be added if needed.
