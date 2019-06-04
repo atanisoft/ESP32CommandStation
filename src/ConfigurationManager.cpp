@@ -21,7 +21,7 @@ ConfigurationManager configStore;
 
 StaticJsonBuffer<20480> jsonConfigBuffer;
 
-#if !defined(CONFIG_USE_SPIFFS) && !defined(COFNIG_USE_SD)
+#if !defined(CONFIG_USE_SPIFFS) && !defined(CONFIG_USE_SD)
 #define CONFIG_USE_SPIFFS true
 #endif
 
@@ -31,7 +31,13 @@ StaticJsonBuffer<20480> jsonConfigBuffer;
 #define CONFIG_FS SD_MMC
 #endif
 
+// All ESP32 Command Station configuration files live under this directory on
+// the configured filesystem starting with v1.3.0.
 static constexpr const char *ESP32CS_CONFIG_DIR = "/ESP32CS";
+
+// Prior to v1.3.0 this was the configuration location, it is retained here only
+// to support migration of data from previous releases.
+static constexpr const char *OLD_CONFIG_DIR = "/DCCppESP32";
 
 ConfigurationManager::ConfigurationManager() {
 }
@@ -67,7 +73,12 @@ void ConfigurationManager::clear() {
 }
 
 bool ConfigurationManager::exists(const char *name) {
+  std::string oldConfigFilePath = StringPrintf("%s/%s", OLD_CONFIG_DIR, name);
   std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
+  if(CONFIG_FS.exists(oldConfigFilePath.c_str()) && !CONFIG_FS.exists(configFilePath.c_str())) {
+    LOG(INFO, "[Config] Migrating configuration file %s to %s.", oldConfigFilePath.c_str(), configFilePath.c_str());
+    CONFIG_FS.rename(oldConfigFilePath.c_str(), configFilePath.c_str());
+  }
   return CONFIG_FS.exists(configFilePath.c_str());
 }
 
