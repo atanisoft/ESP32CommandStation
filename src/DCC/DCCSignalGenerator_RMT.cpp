@@ -210,10 +210,10 @@ void SignalGenerator_RMT::receiveRailComData() {
     } else {
         dcc::Feedback feedback;
         auto dataPtr = data.begin();
-        feedback.add_ch1_data(*++dataPtr);
-        feedback.add_ch1_data(*++dataPtr);
+        feedback.add_ch1_data(*dataPtr++);
+        feedback.add_ch1_data(*dataPtr++);
         while(dataPtr != data.end()) {
-            feedback.add_ch2_data(*++dataPtr);
+            feedback.add_ch2_data(*dataPtr++);
         }
         //_railComData.push_back(feedback);
         LOG(INFO, "[%s] RailCom: %s", _name.c_str(), railcom_debug(feedback).c_str());
