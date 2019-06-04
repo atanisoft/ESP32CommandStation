@@ -333,8 +333,8 @@
     <div data-role="navbar">
      <ul>
       <li><a href="#throttlePage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
-      <li><a href="#" id="throttle-loco-select-add" data-icon="ui-icon-plus" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Add</a></li>
-      <li><a href="#throttlePage" id="throttle-loco-select-confirm" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
+      <li id="throttle-loco-select-add-li"><a href="#" id="throttle-loco-select-add" data-icon="ui-icon-plus" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Manual</a></li>
+      <li id="throttle-loco-select-confirm-li"><a href="#throttlePage" id="throttle-loco-select-confirm" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
      </ul>
     </div>
    </div>
@@ -385,7 +385,7 @@
     </div>
     <div class="ui-field-contain">
      <label for="bs-sensor-pullup">Pull Up:</label>
-     <input type="checkbox" id="bs-sensor-pullup" data-role="flipswitch" data-off-text="Of" data-on-text="On" />
+     <input type="checkbox" id="bs-sensor-pullup" data-role="flipswitch" data-off-text="Off" data-on-text="On" />
     </div>
    </div>
    <div role="footer">
@@ -475,12 +475,12 @@
      <textarea id="bs-loco-desc" rows="5" cols="40"></textarea>
     </div>
     <div class="ui-field-contain">
-     <label for="bs-loco-idle">Idle by default:</label>
-     <input type="checkbox" id="bs-loco-idle" data-role="flipswitch" data-off-text="Off" data-on-text="On" />
+     <label for="bs-loco-idle">Automatically add this locomotive to the "Active Locomotives" list on Command Station startup?</label>
+     <input type="checkbox" id="bs-loco-idle" data-role="flipswitch" data-off-text="No" data-on-text="Yes" />
     </div>
     <div class="ui-field-contain">
-     <label for="bs-loco-default">Default on Throttle:</label>
-     <input type="checkbox" id="bs-loco-default" data-role="flipswitch" data-off-text="Off" data-on-text="On" />
+     <label for="bs-loco-default">Include this locomotive in the Throttle locomotive list?</label>
+     <input type="checkbox" id="bs-loco-default" data-role="flipswitch" data-off-text="No" data-on-text="Yes" />
     </div>
    </div>
    <div role="footer">
@@ -582,13 +582,6 @@ function initPage() {
  } else {
   online = false;
   disableS88Tab();
-  $("#throttle-loco-list").hide();
-  $("#throttle-loco-select-manual").show();
-  $("#throttle-loco-select-add").hide();
-  $("#throttle-loco-select-confirm").on("vclick", function(event, ui) {
-   changeLocomotive($("#throttle-loco-select-manual-address").val());
-   $("#throttle-loco-select").popup("close");
-  });
  }
  $('#clock').clock({"timeFormat":"H:i:s"});
  setupThrottle();
@@ -625,7 +618,7 @@ function setupThrottle() {
    url:'/locomotive/roster',
    fields: ['address', 'type', 'description'],
    filter : function(record) {
-    return record.defaultOnThrottles;
+    return record.defaultOnThrottles === "true";
    },
    failureHandler: function(jqxhr, status, error) {
     console.log('Failed to retrieve locomotive list from command station, switching to manual');
@@ -636,9 +629,19 @@ function setupThrottle() {
    refreshCallback: function() {
     $("#throttle-loco-list tr").on("vclick", function(event, ui) {
      changeLocomotive($(event.target).parent().children(":eq(0)").text().substr(7));
-     enableTrackPower();
      $("#throttle-loco-select").popup("close");
     });
+    if($("#throttle-loco-list tr td").children().length == 0) {
+      $("#throttle-loco-list").hide();
+      $("#throttle-loco-select-add-li").hide();
+      $("#throttle-loco-select-manual").show();
+      $("#throttle-loco-select-confirm-li").show();
+    } else {
+      $("#throttle-loco-list").show();
+      $("#throttle-loco-select-add-li").show();
+      $("#throttle-loco-select-manual").hide();
+      $("#throttle-loco-select-confirm-li").hide();
+    }
     $("#throttle-loco-select").popup("open");
    }});
  });
@@ -653,20 +656,21 @@ function setupThrottle() {
  });
  if(online) {
   $("#throttle-loco-select-manual").hide();
-  $("#throttle-loco-select-confirm").on("vclick", function(event, ui) {
-   if($("#throttle-loco-list").is(":visible")) {
-    changeLocomotive($(event.target).parent().children(":eq(0)").text().substr(7));
-   } else {
-    changeLocomotive($("#throttle-loco-select-manual-address").val());
-   }
-   enableTrackPower();
-   $("#throttle-loco-select").popup("close");
-  });
   $("#throttle-loco-select-add").on("vclick", function(event, ui) {
+   $("#throttle-loco-select-add-li").hide();
    $("#throttle-loco-list").hide();
    $("#throttle-loco-select-manual").show();
+   $("#throttle-loco-select-confirm-li").show();
   });
+ } else {
+  $("#throttle-loco-list").hide();
+  $("#throttle-loco-select-manual").show();
+  $("#throttle-loco-select-add-li").hide();
  }
+ $("#throttle-loco-select-confirm").on("vclick", function(event, ui) {
+   changeLocomotive($("#throttle-loco-select-manual-address").val());
+   $("#throttle-loco-select").popup("close");
+  });
  $('[id^=funct_]').each(function() {
   var functionID = $(this).prop('id').substr(6);
   var label=functionID;
@@ -937,7 +941,7 @@ function setupBSRoster() {
   $('#bs-loco-type').val("");
   $('#bs-loco-desc').val("");
   $('#bs-loco-idle').prop('checked', false);
-  $('#bs-loco-default').prop('checked', false);
+  $('#bs-loco-default').prop('checked', true);
   $('#bs-loco-editor').popup('open', {positionTo:'window'});
  });
  $('#bs-loco-refresh').on('vclick', function() {
@@ -1210,7 +1214,7 @@ function BSTabRefresh(section) {
         console.log('Edit sensor', data);
         $('#bs-sensor-id').val(data.id);
         $('#bs-sensor-pin').val(data.pin);
-        $('#bs-sensor-pullUp').val(data.pullUp);
+        $('#bs-sensor-pullUp').prop('checked', data.pullUp === 'true');
         $('#bs-sensor-editor').popup('open', {positionTo:'window'});
        }
       });
@@ -1296,9 +1300,9 @@ function BSTabRefresh(section) {
         console.log('Edit output', data);
         $('#bs-output-id').val(data.id);
         $('#bs-output-pin').val(data.pin);
-        $('#bs-output-logic').val(data.flags.includes('activeLow'));
-        $('#bs-output-startup-state').val(data.flags.includes('force'));
-        $('#bs-output-default-state').val(data.flags.includes('force(on)'));
+        $('#bs-output-logic').prop('checked', data.flags.includes('activeLow'));
+        $('#bs-output-startup-state').prop('checked', data.flags.includes('force'));
+        $('#bs-output-default-state').prop('checked', data.flags.includes('force(on)'));
         $('#bs-output-editor').popup('open', {positionTo:'window'});
        }
       });
@@ -1341,11 +1345,11 @@ function BSTabRefresh(section) {
       $.ajax({url: String.format('/locomotive/roster?address={0}', idParts[1]),
        success:function(data, status, jqxhr) {
         console.log('Edit roster entry', data);
-        $('#bs-loco-address').val(data.address);
+        $('#bs-loco-addr').val(data.address);
         $('#bs-loco-type').val(data.type);
         $('#bs-loco-desc').val(data.description);
-        $('#bs-loco-idle').val(data.idleOnStartup);
-        $('#bs-loco-default').val(data.defaultOnThrottles);
+        $('#bs-loco-idle').prop('checked', data.idleOnStartup === 'true');
+        $('#bs-loco-default').prop('checked', data.defaultOnThrottles === 'true');
         $('#bs-loco-editor').popup('open', {positionTo:'window'});
        }
       });
@@ -1383,6 +1387,7 @@ function changeLocomotive(newAddress) {
     });
     enableLocomotiveInputs();
     fireLocoEvents = true;
+    enableTrackPower();
    },
    error : function(xhr, status, error) {
     alert("The command station reported a failure in aquiring locomotive:" + newAddress);
