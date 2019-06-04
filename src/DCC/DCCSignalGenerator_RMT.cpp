@@ -128,6 +128,7 @@ static void RMT_task_entry(void *param) {
         RMT_TRANSMIT_DCC(signal, PROG_TRACK_PREAMBLE_BITS)
     } else if(signal->_outputEnablePin != NOT_A_PIN && signal->_brakeEnablePin != NOT_A_PIN && 
               signal->_railComEnablePin != NOT_A_PIN && signal->_railComShortPin != NOT_A_PIN) {
+        LOG(INFO, "[%s] Enabling RailCom detection", signal->getName());
         // Enable RailCom detection on OPS output
         RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, OPS_TRACK_PREAMBLE_BITS)
     } else {
@@ -200,7 +201,6 @@ void SignalGenerator_RMT::disable() {
 }
 
 void SignalGenerator_RMT::receiveRailComData() {
-    dcc::Feedback feedback;
     std::vector<uint8_t> data(8);
     while(uartAvailable(_railComUART)) {
         data.push_back(uartRead(_railComUART));
@@ -208,13 +208,14 @@ void SignalGenerator_RMT::receiveRailComData() {
     if(data.size() < 2 || data.size() > 8) {
         LOG_ERROR("[%s] Invalid RailCom data length of %d received.", _name.c_str(), data.size());
     } else {
+        dcc::Feedback feedback;
         auto dataPtr = data.begin();
-        feedback.add_ch1_data(*dataPtr++);
-        feedback.add_ch1_data(*dataPtr++);
+        feedback.add_ch1_data(*++dataPtr);
+        feedback.add_ch1_data(*++dataPtr);
         while(dataPtr != data.end()) {
-            feedback.add_ch2_data(*dataPtr++);
+            feedback.add_ch2_data(*++dataPtr);
         }
-        _railComData.push_back(feedback);
+        //_railComData.push_back(feedback);
         LOG(INFO, "[%s] RailCom: %s", _name.c_str(), railcom_debug(feedback).c_str());
     }
 }
