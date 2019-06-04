@@ -49,6 +49,16 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define OPS_TRACK_PREAMBLE_BITS 16
 #define PROG_TRACK_PREAMBLE_BITS 22
 
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// DEFINE WHICH PINS ARE USED FOR OPS RAILCOM DETECTION
+//
+#define OPS_BRAKE_ENABLE_PIN NOT_A_PIN
+#define OPS_RAILCOM_ENABLE_PIN NOT_A_PIN
+#define OPS_RAILCOM_SHORT_PIN NOT_A_PIN
+#define OPS_RAILCOM_UART 2
+#define OPS_RAILCOM_UART_RX_PIN NOT_A_PIN
+
 #if !defined(OPS_TRACK_PREAMBLE_BITS)
 #define OPS_TRACK_PREAMBLE_BITS 16
 #endif

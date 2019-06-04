@@ -52,21 +52,22 @@ GenericMotorBoard::GenericMotorBoard(adc1_channel_t senseChannel, uint8_t enable
 }
 
 void GenericMotorBoard::powerOn(bool announce) {
-  LOG(INFO, "[%s] Enabling DCC Signal", _name.c_str());
-  digitalWrite(_enablePin, HIGH);
-  _state = true;
-  if(announce) {
+  if(!_state) {
+    LOG(INFO, "[%s] Enabling DCC Signal", _name.c_str());
+    digitalWrite(_enablePin, HIGH);
+    _state = true;
+    if(announce) {
 #if LOCONET_ENABLED
-    locoNet.reportPower(true);
+      locoNet.reportPower(true);
 #endif
-    wifiInterface.print(F("<p1 %s>"), _name.c_str());
-  }
-
-  // enable the DCC signal
-  if(_progTrack && !dccSignal[DCC_SIGNAL_PROGRAMMING]->isEnabled()) {
-    dccSignal[DCC_SIGNAL_PROGRAMMING]->startSignal(false);
-  } else if(!dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
-    dccSignal[DCC_SIGNAL_OPERATIONS]->startSignal();
+      wifiInterface.print(F("<p1 %s>"), _name.c_str());
+    }
+    // enable the DCC signal
+    if(_progTrack && !dccSignal[DCC_SIGNAL_PROGRAMMING]->isEnabled()) {
+      dccSignal[DCC_SIGNAL_PROGRAMMING]->startSignal(false);
+    } else if(!dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
+      dccSignal[DCC_SIGNAL_OPERATIONS]->startSignal();
+    }
   }
 }
 
