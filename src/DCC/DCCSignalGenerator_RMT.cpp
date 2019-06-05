@@ -17,6 +17,11 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "ESP32CommandStation.h"
 
+#if LCC_ENABLED
+#include <dcc/RailcomHub.hxx>
+extern dcc::RailcomHubFlow railComHub;
+#endif
+
 // APB/REF clock divider to use for the RMT module
 static constexpr uint8_t RMT_CLOCK_DIVIDER = 80;
 
@@ -209,13 +214,20 @@ void SignalGenerator_RMT::receiveRailComData() {
         LOG_ERROR("[%s] Invalid RailCom data length of %d received.", _name.c_str(), data.size());
     } else {
         dcc::Feedback feedback;
+        feedback.reset(0);
         auto dataPtr = data.begin();
         feedback.add_ch1_data(*dataPtr++);
         feedback.add_ch1_data(*dataPtr++);
         while(dataPtr != data.end()) {
             feedback.add_ch2_data(*dataPtr++);
         }
+#if LCC_ENABLED
+        auto buf = railComHub.alloc();
+        memcpy(buf->data()->data(), &feedback, sizeof(dcc::Feedback));
+        railComHub.send(buf);
+#else
         //_railComData.push_back(feedback);
         LOG(INFO, "[%s] RailCom: %s", _name.c_str(), railcom_debug(feedback).c_str());
+#endif
     }
 }

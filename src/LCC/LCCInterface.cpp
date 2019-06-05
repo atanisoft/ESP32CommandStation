@@ -33,6 +33,8 @@ COPYRIGHT (c) 2019 Mike Dunston
 #include <openlcb/DccAccyProducer.hxx>
 #include <openlcb/CallbackEventHandler.hxx>
 #include <dcc/PacketFlowInterface.hxx>
+#include <dcc/RailcomHub.hxx>
+#include <dcc/RailcomPortDebug.hxx>
 #include <openlcb/ConfiguredTcpConnection.hxx>
 
 #include "LCCCDI.h"
@@ -65,6 +67,10 @@ static constexpr ConfigDef cfg(0);
 
 // WiFi manager instance, this will cover the LCC uplink etc.
 Esp32WiFiManager wifi_mgr(openmrn.stack(), cfg.seg().wifi());
+
+// RailCom Hub interface for LCC
+dcc::RailcomHubFlow railComHub(openmrn.stack()->service());
+dcc::RailcomPrintfFlow railComDataDumper(&railComHub);
 
 // when the command station starts up the first time the config is blank
 // and needs to be reset to factory settings. This class being declared here
