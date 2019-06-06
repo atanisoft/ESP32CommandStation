@@ -63,6 +63,7 @@ WiFiInterface wifiInterface;
 
 constexpr int JMRI_CLIENT_PRIORITY = 0;
 constexpr size_t JMRI_CLIENT_STACK_SIZE = 4096;
+constexpr uint16_t JMRI_LISTENER_PORT = 2560;
 
 static constexpr const char *WIFI_STATUS_STRINGS[] =
 {
@@ -120,10 +121,10 @@ void WiFiInterface::begin() {
       LOG_ERROR("[WiFi] Failed to start mDNS");
     } else {
       LOG(INFO, "[WiFi] Adding esp32cs.tcp service to mDNS advertiser");
-      MDNS.addService("esp32cs", "tcp", JMRI_CLIENT_PORT);
+      MDNS.addService("esp32cs", "tcp", JMRI_LISTENER_PORT);
     }
 
-    JMRIListener.reset(new SocketListener(JMRI_CLIENT_PORT, [](int fd) {
+    JMRIListener.reset(new SocketListener(JMRI_LISTENER_PORT, [](int fd) {
       os_thread_create(nullptr, StringPrintf("jmri-%d", fd).c_str(),
                        JMRI_CLIENT_PRIORITY, JMRI_CLIENT_STACK_SIZE,
                        jmriClientHandler, (void *)fd);
