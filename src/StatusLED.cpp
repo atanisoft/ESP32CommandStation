@@ -18,145 +18,60 @@ COPYRIGHT (c) 2019 Mike Dunston
 #include "ESP32CommandStation.h"
 
 #if STATUS_LED_ENABLED
-constexpr uint8_t STATUS_LED_RMT_DIVIDER = 2;
-constexpr rmt_channel_t STATUS_LED_RMT_CHANNEL = RMT_CHANNEL_3;
-constexpr gpio_num_t STATUS_LED_GPIO = (gpio_num_t)STATUS_LED_DATA_PIN;
 
-static constexpr uint32_t ZERO_BIT_PULSE_HIGH = 14;
-static constexpr uint32_t ONE_BIT_PULSE_HIGH = 52;
-static constexpr uint32_t BIT_PULSE_LOW = 52;
-static constexpr uint32_t RESET_PULSE = 52;
+#include <NeoPixelBus.h>
 
-static constexpr rmt_item32_t WS2811_ZERO_BIT = {{{ ZERO_BIT_PULSE_HIGH, 1, BIT_PULSE_LOW, 0 }}};
-static constexpr rmt_item32_t WS2811_ONE_BIT = {{{ ONE_BIT_PULSE_HIGH, 1, BIT_PULSE_LOW, 0 }}};
-static constexpr rmt_item32_t WS2811_RESET_BIT = {{{ RESET_PULSE, 1, RESET_PULSE, 0 }}};
-
-constexpr rmt_item32_t LED_RED_DATA[] = {
-    /* RED */
-    WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT,
-    WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT,
-    /* GREEN */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    /* BLUE */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT
-};
-
-constexpr rmt_item32_t LED_GREEN_DATA[] = {
-    /* RED */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    /* GREEN */
-    WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT,
-    WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT,
-    /* BLUE */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT
-};
-
-constexpr rmt_item32_t LED_YELLOW_DATA[] = {
-    /* RED */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    /* GREEN */
-    WS2811_ZERO_BIT, WS2811_ONE_BIT, WS2811_ONE_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ONE_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    /* BLUE */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT
-};
-
-constexpr rmt_item32_t LED_OFF_DATA[] = {
-    /* RED */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    /* GREEN */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    /* BLUE */
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT,
-    WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT, WS2811_ZERO_BIT
-};
+NeoPixelBus<NeoRgbFeature, Neo800KbpsMethod> statusLEDDriver(3, STATUS_LED_DATA_PIN);
+static RgbColor RGB_RED = RgbColor(128, 0, 0);
+static RgbColor RGB_GREEN = RgbColor(0, 128, 0);
+static RgbColor RGB_YELLOW = RgbColor(128, 128, 0);
+static RgbColor RGB_OFF = RgbColor(0);
 
 STATUS_LED_COLOR statusLEDs[STATUS_LED::MAX_STATUS_LED] = {STATUS_LED_COLOR::LED_OFF, STATUS_LED_COLOR::LED_OFF, STATUS_LED_COLOR::LED_OFF};
 bool statusLEDOn[STATUS_LED::MAX_STATUS_LED] = {false, false, false};
-rmt_item32_t statusLEDPacket[(24*STATUS_LED::MAX_STATUS_LED)+1];
 
 void updateStatusLEDs(void *arg) {
+    statusLEDDriver.Begin();
     while(true) {
         for(int led = 0; led < STATUS_LED::MAX_STATUS_LED; led++) {
-            switch(statusLEDs[led]) {
-                case LED_OFF:
-                    memcpy(&statusLEDPacket[led * 24], LED_OFF_DATA, 24);
-                    break;
-                case LED_RED:
-                    memcpy(&statusLEDPacket[led * 24], LED_RED_DATA, 24);
-                    break;
-                case LED_GREEN:
-                    memcpy(&statusLEDPacket[led * 24], LED_GREEN_DATA, 24);
-                    break;
-                case LED_YELLOW:
-                    memcpy(&statusLEDPacket[led * 24], LED_YELLOW_DATA, 24);
-                    break;
-                case LED_RED_BLINK:
-                    if(statusLEDOn[led]) {
-                        memcpy(&statusLEDPacket[led * 24], LED_OFF_DATA, 24);
-                    } else {
-                        memcpy(&statusLEDPacket[led * 24], LED_RED_DATA, 24);
-                    }
-                    statusLEDOn[led] = !statusLEDOn[led];
-                    break;
-                case LED_GREEN_BLINK:
-                    if(statusLEDOn[led]) {
-                        memcpy(&statusLEDPacket[led * 24], LED_OFF_DATA, 24);
-                    } else {
-                        memcpy(&statusLEDPacket[led * 24], LED_GREEN_DATA, 24);
-                    }
-                    statusLEDOn[led] = !statusLEDOn[led];
-                    break;
-                case LED_YELLOW_BLINK:
-                    if(statusLEDOn[led]) {
-                        memcpy(&statusLEDPacket[led * 24], LED_OFF_DATA, 24);
-                    } else {
-                        memcpy(&statusLEDPacket[led * 24], LED_YELLOW_DATA, 24);
-                    }
-                    statusLEDOn[led] = !statusLEDOn[led];
-                    break;
+            LOG(VERBOSE, "[STATUS] %d : %d / %d", led, statusLEDs[led], statusLEDOn[led]);
+            if(statusLEDs[led] == LED_RED_BLINK || statusLEDs[led] == LED_GREEN_BLINK || statusLEDs[led] == LED_YELLOW_BLINK) {
+                if(statusLEDOn[led]) {
+                    statusLEDDriver.SetPixelColor(led, RGB_OFF);
+                } else if(statusLEDs[led] == LED_RED_BLINK) {
+                    statusLEDDriver.SetPixelColor(led, RGB_RED);
+                } else if(statusLEDs[led] == LED_GREEN_BLINK) {
+                    statusLEDDriver.SetPixelColor(led, RGB_GREEN);
+                } else if(statusLEDs[led] == LED_YELLOW_BLINK) {
+                    statusLEDDriver.SetPixelColor(led, RGB_YELLOW);
+                }
+                statusLEDOn[led] = !statusLEDOn[led];
             }
         }
-        statusLEDPacket[24*STATUS_LED::MAX_STATUS_LED].val = WS2811_RESET_BIT.val;
-        rmt_write_items(STATUS_LED_RMT_CHANNEL, statusLEDPacket, (24*STATUS_LED::MAX_STATUS_LED)+1, true);
-        vTaskDelay(pdMS_TO_TICKS(1500));
+        if(statusLEDDriver.IsDirty()) {
+            statusLEDDriver.Show();
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
 void setStatusLED(const STATUS_LED led, const STATUS_LED_COLOR color) {
     statusLEDs[led] = color;
+    statusLEDOn[led] = true;
+    if(statusLEDs[led] == LED_RED || statusLEDs[led] == LED_RED_BLINK) {
+        statusLEDDriver.SetPixelColor(led, RGB_RED);
+    } else if(statusLEDs[led] == LED_GREEN || statusLEDs[led] == LED_GREEN_BLINK) {
+        statusLEDDriver.SetPixelColor(led, RGB_GREEN);
+    } else if(statusLEDs[led] == LED_YELLOW || statusLEDs[led] == LED_YELLOW_BLINK) {
+        statusLEDDriver.SetPixelColor(led, RGB_YELLOW);
+    } else if(statusLEDs[led] == LED_OFF) {
+        statusLEDDriver.SetPixelColor(led, RGB_OFF);
+        statusLEDOn[led] = false;
+    }
 }
 
 void initStatusLEDs() {
-    rmt_config_t rmtConfig = {
-        .rmt_mode = RMT_MODE_TX,
-        .channel = STATUS_LED_RMT_CHANNEL,
-        .clk_div = STATUS_LED_RMT_DIVIDER,
-        .gpio_num = STATUS_LED_GPIO,
-        .mem_block_num = 1,
-        {
-            .tx_config = {
-                .loop_en = false,
-                .carrier_freq_hz = 0,
-                .carrier_duty_percent = 0,
-                .carrier_level = rmt_carrier_level_t::RMT_CARRIER_LEVEL_LOW,
-                .carrier_en = 0,
-                .idle_level = rmt_idle_level_t::RMT_IDLE_LEVEL_LOW,
-                .idle_output_en = 0
-            }
-        }
-    };
-    ESP_ERROR_CHECK(rmt_config(&rmtConfig));
-    ESP_ERROR_CHECK(rmt_driver_install(STATUS_LED_RMT_CHANNEL, 0, 0));
-    xTaskCreate(updateStatusLEDs, "LED", 2048, nullptr, 1, nullptr);
+   xTaskCreatePinnedToCore(updateStatusLEDs, "LED", 2048, nullptr, 2, nullptr, 1);
 }
 
 #endif

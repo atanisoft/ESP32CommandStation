@@ -151,13 +151,16 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
     _rmtChannel((rmt_channel_t)signalID), _signalPin(signalPin), _outputEnablePin(outputEnablePin),
     _brakeEnablePin(brakeEnablePin), _railComEnablePin(railComEnablePin), _railComShortPin(railComShortPin) {
 
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, "%s RMT Init", getName());
+
     LOG(INFO, "[%s] Configuring RMT-%d using pin %d and bit timing: zero: %duS, one: %duS",
-        _name.c_str(), _rmtChannel, _signalPin, ZERO_BIT_PULSE_USEC, ONE_BIT_PULSE_USEC);
+        getName(), _rmtChannel, _signalPin, ZERO_BIT_PULSE_USEC, ONE_BIT_PULSE_USEC);
 
     if(_outputEnablePin != NOT_A_PIN && _railComEnablePin != NOT_A_PIN && _brakeEnablePin != NOT_A_PIN &&
        railComReceivePin != NOT_A_PIN && railComUART != NOT_A_PIN) {
+        InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, "%s RailCom Init", getName());
         LOG(INFO, "[%s] Configuring RailCom detector (hb-en: %d, rc-en: %d, br-en: %d, rc: %d, uart: %d)",
-            _name.c_str(), _outputEnablePin, _railComEnablePin, _brakeEnablePin, railComReceivePin, railComUART);
+            getName(), _outputEnablePin, _railComEnablePin, _brakeEnablePin, railComReceivePin, railComUART);
         pinMode(_railComEnablePin, OUTPUT);
         digitalWrite(_railComEnablePin, LOW);
         pinMode(_brakeEnablePin, OUTPUT);
@@ -192,19 +195,19 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
 }
 
 void SignalGenerator_RMT::enable() {
-    LOG(INFO, "[%s] Creating RMT feeder task", _name.c_str());
+    LOG(INFO, "[%s] Creating RMT feeder task", getName());
     xSemaphoreGive(_stopComplete);
-    xTaskCreatePinnedToCore(RMT_task_entry, _name.c_str(), RMT_TASK_STACK_SIZE,
+    xTaskCreatePinnedToCore(RMT_task_entry, getName(), RMT_TASK_STACK_SIZE,
                             this, RMT_TASK_PRIORITY, nullptr, RMT_TASK_CORE);
 }
 
 void SignalGenerator_RMT::disable() {
-    LOG(INFO, "[%s] Requesting RMT feeder task to stop", _name.c_str());
+    LOG(INFO, "[%s] Requesting RMT feeder task to stop", getName());
     xSemaphoreGive(_stopRequest);
     while(xSemaphoreTake(_stopComplete, pdMS_TO_TICKS(250)) != pdTRUE) {
-        LOG(INFO, "[%s] RMT feeder task still running...", _name.c_str());
+        LOG(INFO, "[%s] RMT feeder task still running...", getName());
     }
-    LOG(INFO, "[%s] RMT Feeder task stopped", _name.c_str());
+    LOG(INFO, "[%s] RMT Feeder task stopped", getName());
 }
 
 void SignalGenerator_RMT::receiveRailComData() {
@@ -213,7 +216,7 @@ void SignalGenerator_RMT::receiveRailComData() {
         data.push_back(uartRead(_railComUART));
     }
     if(data.size() < 2 || data.size() > 8) {
-        LOG_ERROR("[%s] Invalid RailCom data length of %d received.", _name.c_str(), data.size());
+        LOG_ERROR("[%s] Invalid RailCom data length of %d received.", getName(), data.size());
     } else {
         dcc::Feedback feedback;
         feedback.reset(0);
@@ -229,7 +232,7 @@ void SignalGenerator_RMT::receiveRailComData() {
         railComHub.send(buf);
 #else
         //_railComData.push_back(feedback);
-        LOG(VERBOSE, "[%s] RailCom: %s", _name.c_str(), railcom_debug(feedback).c_str());
+        LOG(VERBOSE, "[%s] RailCom: %s", getName(), railcom_debug(feedback).c_str());
 #endif
     }
 }

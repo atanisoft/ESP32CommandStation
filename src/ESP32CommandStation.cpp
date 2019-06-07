@@ -79,13 +79,6 @@ void setup() {
   nextionInterfaceInit();
 #endif
   configStore.init();
-#if USE_RMT_FOR_DCC
-  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_RMT("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS);
-  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_RMT("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING);
-#else
-  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_HardwareTimer("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS);
-  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_HardwareTimer("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING);
-#endif
 #if LCC_ENABLED
   lccInterface.init();
 #endif
@@ -99,9 +92,14 @@ void setup() {
                                    MOTORBOARD_TYPE_PROG,
                                    MOTORBOARD_NAME_PROG,
                                    true);
-#if INFO_SCREEN_TRACK_POWER_LINE >= 0
-  InfoScreen::replaceLine(INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
+#if USE_RMT_FOR_DCC
+  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_RMT("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS, MOTORBOARD_ENABLE_PIN_OPS);
+  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_RMT("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING, MOTORBOARD_ENABLE_PIN_PROG);
+#else
+  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_HardwareTimer("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS);
+  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_HardwareTimer("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING);
 #endif
+
   DCCPPProtocolHandler::init();
   OutputManager::init();
   TurnoutManager::init();
@@ -259,6 +257,8 @@ void setup() {
 
 #if ENERGIZE_OPS_TRACK_ON_STARTUP
   MotorBoardManager::powerOnAll();
+#elif INFO_SCREEN_TRACK_POWER_LINE >= 0
+  InfoScreen::replaceLine(INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
 #endif
 
   LOG(INFO, "ESP32 Command Station READY!");
