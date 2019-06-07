@@ -128,10 +128,10 @@ void WiFiInterface::begin() {
     }
 
     JMRIListener.reset(new SocketListener(JMRI_LISTENER_PORT, [](int fd) {
+      jmriClients.push_back(fd);
       os_thread_create(nullptr, StringPrintf("jmri-%d", fd).c_str(),
                        JMRI_CLIENT_PRIORITY, JMRI_CLIENT_STACK_SIZE,
                        jmriClientHandler, (void *)fd);
-      jmriClients.push_back(fd);
     }));
     esp32csWebServer.begin();
 #if NEXTION_ENABLED

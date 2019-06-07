@@ -49,6 +49,20 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define OPS_TRACK_PREAMBLE_BITS 16
 #define PROG_TRACK_PREAMBLE_BITS 22
 
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// The following pin is used for three WS2811 LEDs to indicate the Command Station
+// status in a visual manner.
+//
+// LED 1: WiFi status (GREEN = connected, RED = disconnected, FLASHING GREEN = connecting, FLASHING YELLOW = AP not found, YELLOW = connection failed)
+// LED 2: OPS track status (GREEN = ON, BLACK = OFF, RED = FAULT/SHORT, FLASHING RED = THERMAL FAULT)
+// LED 3: PROG track status (GREEN = ON, BLACK = OFF, RED = FAULT/SHORT)
+//
+// Uncomment the following define to enable this functionality.
+// 
+// #define STATUS_LED_DATA_PIN 22
+
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // DEFINE WHICH PINS ARE USED FOR OPS RAILCOM DETECTION

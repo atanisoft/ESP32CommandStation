@@ -56,7 +56,7 @@ static constexpr rmt_item32_t DCC_PREAMBLE[] = {
 
 constexpr uint8_t MAX_DCC_PACKET_BITS = 128;
 
-constexpr uint32_t RMT_TASK_STACK_SIZE = 3084;
+constexpr uint32_t RMT_TASK_STACK_SIZE = 4096;
 constexpr BaseType_t RMT_TASK_PRIORITY = ESP_TASK_TCPIP_PRIO;
 constexpr BaseType_t RMT_TASK_CORE = 0;
 
@@ -146,16 +146,18 @@ static void RMT_task_entry(void *param) {
 }
 
 SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin,
-    uint8_t outputEnablePin, uint8_t brakeEnablePin, uint8_t railComEnablePin, uint8_t railComShortPin,
-    uint8_t railComUART, uint8_t railComReceivePin) : SignalGenerator(name, maxPackets, signalID, signalPin),
+    int8_t outputEnablePin, int8_t brakeEnablePin, int8_t railComEnablePin, int8_t railComShortPin,
+    int8_t railComUART, int8_t railComReceivePin) : SignalGenerator(name, maxPackets, signalID, signalPin),
     _rmtChannel((rmt_channel_t)signalID), _signalPin(signalPin), _outputEnablePin(outputEnablePin),
     _brakeEnablePin(brakeEnablePin), _railComEnablePin(railComEnablePin), _railComShortPin(railComShortPin) {
 
     LOG(INFO, "[%s] Configuring RMT-%d using pin %d and bit timing: zero: %duS, one: %duS",
         _name.c_str(), _rmtChannel, _signalPin, ZERO_BIT_PULSE_USEC, ONE_BIT_PULSE_USEC);
 
-    if(_railComEnablePin != NOT_A_PIN && _brakeEnablePin != NOT_A_PIN &&
+    if(_outputEnablePin != NOT_A_PIN && _railComEnablePin != NOT_A_PIN && _brakeEnablePin != NOT_A_PIN &&
        railComReceivePin != NOT_A_PIN && railComUART != NOT_A_PIN) {
+        LOG(INFO, "[%s] Configuring RailCom detector (hb-en: %d, rc-en: %d, br-en: %d, rc: %d, uart: %d)",
+            _name.c_str(), _outputEnablePin, _railComEnablePin, _brakeEnablePin, railComReceivePin, railComUART);
         pinMode(_railComEnablePin, OUTPUT);
         digitalWrite(_railComEnablePin, LOW);
         pinMode(_brakeEnablePin, OUTPUT);
@@ -227,7 +229,7 @@ void SignalGenerator_RMT::receiveRailComData() {
         railComHub.send(buf);
 #else
         //_railComData.push_back(feedback);
-        LOG(INFO, "[%s] RailCom: %s", _name.c_str(), railcom_debug(feedback).c_str());
+        LOG(VERBOSE, "[%s] RailCom: %s", _name.c_str(), railcom_debug(feedback).c_str());
 #endif
     }
 }

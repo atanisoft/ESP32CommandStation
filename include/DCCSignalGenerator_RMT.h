@@ -23,17 +23,17 @@ COPYRIGHT (c) 2019 Mike Dunston
 class SignalGenerator_RMT : public SignalGenerator {
 public:
   SignalGenerator_RMT(String, uint16_t, uint8_t, uint8_t,
-                      uint8_t=NOT_A_PIN, uint8_t=NOT_A_PIN,
-                      uint8_t=NOT_A_PIN, uint8_t=NOT_A_PIN,
-                      uint8_t=NOT_A_PIN, uint8_t=NOT_A_PIN);
+                      int8_t=NOT_A_PIN, int8_t=NOT_A_PIN,
+                      int8_t=NOT_A_PIN, int8_t=NOT_A_PIN,
+                      int8_t=NOT_A_PIN, int8_t=NOT_A_PIN);
   SemaphoreHandle_t _stopRequest;
   SemaphoreHandle_t _stopComplete;
   const rmt_channel_t _rmtChannel;
-  const uint8_t _signalPin;
-  const uint8_t _outputEnablePin;
-  const uint8_t _brakeEnablePin;
-  const uint8_t _railComEnablePin;
-  const uint8_t _railComShortPin;
+  const int8_t _signalPin;
+  const int8_t _outputEnablePin;
+  const int8_t _brakeEnablePin;
+  const int8_t _railComEnablePin;
+  const int8_t _railComShortPin;
   void receiveRailComData();
 protected:
   void enable() override;
