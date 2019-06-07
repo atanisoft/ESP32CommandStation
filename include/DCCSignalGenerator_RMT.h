@@ -18,7 +18,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #include "DCCSignalGenerator.h"
 #include <driver/rmt.h>
-#include <dcc/Railcom.hxx>
+#include <dcc/RailCom.hxx>
 
 class SignalGenerator_RMT : public SignalGenerator {
 public:
