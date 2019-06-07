@@ -230,7 +230,6 @@ public:
 protected:
   void init() override {}
   void displayPage() override {
-    _pageMode = PAGE_MODE::NORMAL;
     refreshPage();
   }
   void previousPageCallback(ESP32NextionPage *);
