@@ -102,6 +102,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // Uncomment the following define to enable this functionality.
 // 
-#define STATUS_LED_DATA_PIN 22
+// #define STATUS_LED_DATA_PIN 22
 
 /////////////////////////////////////////////////////////////////////////////////////
