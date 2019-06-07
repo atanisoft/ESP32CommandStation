@@ -169,17 +169,15 @@ NextionThrottlePage::NextionThrottlePage(Nextion &nextion) : ESP32NextionPage(ne
 
   _accessoriesButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
-      NextionTurnoutPage *turnoutPage = static_cast<NextionTurnoutPage *>(nextionPages[TURNOUT_PAGE]);
-      turnoutPage->setPreviousPage(THROTTLE_PAGE);
-      turnoutPage->display();
+      nextionPages[TURNOUT_PAGE]->setPreviousPage(THROTTLE_PAGE);
+      nextionPages[TURNOUT_PAGE]->display();
     }
   });
 
   _setupButton.attachCallback([](NextionEventType type, INextionTouchable *widget) {
     if(type == NEX_EVENT_PUSH) {
-      NextionSetupPage *setupPage = static_cast<NextionSetupPage *>(nextionPages[SETUP_PAGE]);
-      setupPage->setPreviousPage(THROTTLE_PAGE);
-      setupPage->display();
+      nextionPages[SETUP_PAGE]->setPreviousPage(THROTTLE_PAGE);
+      nextionPages[SETUP_PAGE]->display();
     }
   });
 
