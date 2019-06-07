@@ -345,27 +345,30 @@ void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
 }
 
 void TurnoutExCommandAdapter::process(const std::vector<String> arguments) {
-  if(arguments.empty()) {
-    wifiInterface.send(COMMAND_FAILED_RESPONSE);
-  } else {
-    int32_t turnoutID = arguments[0].toInt();
-    if(turnoutID > 0) {
-      auto turnout = TurnoutManager::getTurnoutByID(arguments[0].toInt());
-      if(turnout && arguments.size() == 1) {
-        turnout->toggle();
-      } else if(turnout) {
-        turnout->setType((TurnoutType)arguments[1].toInt());
-      } else {
-        wifiInterface.send(COMMAND_FAILED_RESPONSE);
+  bool sendSuccess = false;
+  if(!arguments.empty()) {
+    if(arguments[0].toInt() >= 0) {
+      if(arguments.size() == 1 && TurnoutManager::toggleByID(arguments[0].toInt())) {
+        // no response required for throw as it will automatically be sent by the turnout
+        return;
+      } else if(arguments.size() == 3 &&
+                TurnoutManager::createOrUpdate(arguments[0].toInt(), arguments[1].toInt(), -1, (TurnoutType)arguments[2].toInt())) {
+        sendSuccess = true;
       }
     } else {
       auto turnout = TurnoutManager::getTurnoutByAddress(arguments[1].toInt());
       if(turnout) {
         turnout->setType((TurnoutType)arguments[2].toInt());
-      } else {
-        TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount() + 1, arguments[1].toInt(), -1, (TurnoutType)arguments[2].toInt());
+        sendSuccess = true;
+      } else if(TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount() + 1, arguments[1].toInt(), -1, (TurnoutType)arguments[2].toInt())) {
+        sendSuccess = true;
       }
     }
+  }
+  if(sendSuccess) {
+    wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
+  } else {
+    wifiInterface.send(COMMAND_FAILED_RESPONSE);
   }
 }
 
