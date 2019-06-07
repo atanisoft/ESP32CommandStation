@@ -59,6 +59,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define OPS_RAILCOM_UART 2
 #define OPS_RAILCOM_UART_RX_PIN NOT_A_PIN
 
+#if !defined(STATUS_LED_DATA_PIN)
+#define STATUS_LED_ENABLED false
+#else
+#define STATUS_LED_ENABLED true
+#endif
+
 #if !defined(OPS_TRACK_PREAMBLE_BITS)
 #define OPS_TRACK_PREAMBLE_BITS 16
 #endif
@@ -173,6 +179,30 @@ void esp32_restart();
 
 extern bool otaComplete;
 extern bool otaInProgress;
+
+#if STATUS_LED_ENABLED
+
+enum STATUS_LED_COLOR {
+    LED_OFF,
+    LED_RED,
+    LED_GREEN,
+    LED_YELLOW,
+    LED_RED_BLINK,
+    LED_GREEN_BLINK,
+    LED_YELLOW_BLINK,
+};
+
+enum STATUS_LED {
+    WIFI_LED,
+    OPS_LED,
+    PROG_LED,
+    MAX_STATUS_LED
+};
+
+void initStatusLEDs();
+void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
+#endif
+
 
 #define MUTEX_LOCK(mutex)    do {} while (xSemaphoreTake(mutex, portMAX_DELAY) != pdPASS)
 #define MUTEX_UNLOCK(mutex)  xSemaphoreGive(mutex)

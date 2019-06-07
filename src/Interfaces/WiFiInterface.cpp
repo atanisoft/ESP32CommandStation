@@ -105,6 +105,9 @@ void WiFiInterface::begin() {
 #if LCC_ENABLED
     lccInterface.processWiFiEvent(event);
 #endif
+#if STATUS_LED_ENABLED
+    setStatusLED(STATUS_LED::WIFI_LED, STATUS_LED_COLOR::LED_GREEN);
+#endif
     if (wifiConnected) {
       return;
     }
@@ -142,6 +145,9 @@ void WiFiInterface::begin() {
 #if LCC_ENABLED
     lccInterface.processWiFiEvent(event);
 #endif
+#if STATUS_LED_ENABLED
+    setStatusLED(STATUS_LED::WIFI_LED, STATUS_LED_COLOR::LED_RED);
+#endif
     wifiConnected = false;
 #if INFO_SCREEN_ENABLED
   #if INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS < 20
@@ -154,6 +160,9 @@ void WiFiInterface::begin() {
   WiFi.onEvent([](system_event_id_t event) {
 #if LCC_ENABLED
     lccInterface.processWiFiEvent(event);
+#endif
+#if STATUS_LED_ENABLED
+    setStatusLED(STATUS_LED::WIFI_LED, STATUS_LED_COLOR::LED_GREEN_BLINK);
 #endif
     if(wifiConnected) {
       LOG(WARNING, "[WiFi] Connection to WiFi lost, reconnecting...");
@@ -168,6 +177,9 @@ void WiFiInterface::begin() {
 #endif
   LOG(INFO, "[WiFi] WiFi details:\nHostname:%s\nMAC:%s\nSSID: %s", HOSTNAME, WiFi.macAddress().c_str(), WIFI_SSID);
   WiFi.setHostname(HOSTNAME);
+#if STATUS_LED_ENABLED
+  setStatusLED(STATUS_LED::WIFI_LED, STATUS_LED_COLOR::LED_GREEN_BLINK);
+#endif
   if (WiFi.begin(WIFI_SSID, WIFI_PASS) != WL_CONNECT_FAILED) {
     LOG(INFO, "[WiFi] Waiting for WiFi to connect");
 #if NEXTION_ENABLED
@@ -196,8 +208,14 @@ void WiFiInterface::begin() {
     InfoScreen::print(3, INFO_SCREEN_IP_ADDR_LINE, F("Failed"));
     if (WiFi.status() == WL_NO_SSID_AVAIL) {
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("SSID not found"));
+#if STATUS_LED_ENABLED
+      setStatusLED(STATUS_LED::WIFI_LED, STATUS_LED_COLOR::LED_YELLOW_BLINK);
+#endif
     } else {
       InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Generic WiFi fail"));
+#if STATUS_LED_ENABLED
+      setStatusLED(STATUS_LED::WIFI_LED, STATUS_LED_COLOR::LED_YELLOW);
+#endif
     }
   #endif
 #endif

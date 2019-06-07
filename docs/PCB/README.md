@@ -48,7 +48,7 @@ The on-board LMD18200 chip will provide up to 3A for the OPS output but the code
 ## CS Status via RGB LED
 Using GPIO 22 it is possible to wire an RGB LED using WS2811 (or similar) to display the CS status, current design considerations are as follows:
 
-LED 1: WiFi status (GREEN = connected, RED = disconnected, FLASHING GREEN = connecting)
+LED 1: WiFi status (GREEN = connected, RED = disconnected, FLASHING GREEN = connecting, FLASHING YELLOW = AP not found, YELLOW = connection failed)
 LED 2: OPS track status (GREEN = ON, BLACK = OFF, RED = FAULT/SHORT, FLASHING RED = THERMAL FAULT)
 LED 3: PROG track status (GREEN = ON, BLACK = OFF, RED = FAULT/SHORT)
 

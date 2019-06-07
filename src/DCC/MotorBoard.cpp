@@ -65,8 +65,14 @@ void GenericMotorBoard::powerOn(bool announce) {
     // enable the DCC signal
     if(_progTrack && !dccSignal[DCC_SIGNAL_PROGRAMMING]->isEnabled()) {
       dccSignal[DCC_SIGNAL_PROGRAMMING]->startSignal(false);
+#if STATUS_LED_ENABLED
+      setStatusLED(STATUS_LED::PROG_LED, STATUS_LED_COLOR::LED_GREEN);
+#endif
     } else if(!dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
       dccSignal[DCC_SIGNAL_OPERATIONS]->startSignal();
+#if STATUS_LED_ENABLED
+      setStatusLED(STATUS_LED::OPS_LED, STATUS_LED_COLOR::LED_GREEN);
+#endif
     }
   }
 }
@@ -82,11 +88,17 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
         locoNet.send(OPC_IDLE, 0, 0);
 #endif
         wifiInterface.print(F("<p2 %s>"), _name.c_str());
+#if STATUS_LED_ENABLED
+        setStatusLED(STATUS_LED::OPS_LED, STATUS_LED_COLOR::LED_RED);
+#endif
       } else {
 #if LOCONET_ENABLED
         locoNet.reportPower(false);
 #endif
         wifiInterface.print(F("<p0 %s>"), _name.c_str());
+#if STATUS_LED_ENABLED
+        setStatusLED(STATUS_LED::OPS_LED, STATUS_LED_COLOR::LED_GREEN);
+#endif
       }
     }
   }
@@ -94,8 +106,14 @@ void GenericMotorBoard::powerOff(bool announce, bool overCurrent) {
     // disable the DCC signal
     if(_progTrack) {
       dccSignal[DCC_SIGNAL_PROGRAMMING]->stopSignal();
+#if STATUS_LED_ENABLED
+      setStatusLED(STATUS_LED::PROG_LED, STATUS_LED_COLOR::LED_OFF);
+#endif
     } else if(MotorBoardManager::getCountOfOPSBoards() == 1) {
       dccSignal[DCC_SIGNAL_OPERATIONS]->stopSignal();
+#if STATUS_LED_ENABLED
+      setStatusLED(STATUS_LED::OPS_LED, STATUS_LED_COLOR::LED_OFF);
+#endif
     }
   }
 }
@@ -214,6 +232,9 @@ void MotorBoardManager::powerOnAll() {
       board->showStatus();
     }
   }
+#if STATUS_LED_ENABLED
+  setStatusLED(STATUS_LED::OPS_LED, STATUS_LED_COLOR::LED_GREEN);
+#endif
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::print(13, INFO_SCREEN_TRACK_POWER_LINE, F("ON   "));
 #endif
@@ -230,6 +251,9 @@ void MotorBoardManager::powerOffAll() {
       board->showStatus();
     }
   }
+#if STATUS_LED_ENABLED
+  setStatusLED(STATUS_LED::OPS_LED, STATUS_LED_COLOR::LED_OFF);
+#endif
 #if INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::print(13, INFO_SCREEN_TRACK_POWER_LINE, F("OFF  "));
 #endif

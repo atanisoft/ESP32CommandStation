@@ -47,7 +47,7 @@ void esp32_restart() {
 void setup() {
   Serial.begin(115200L);
   Serial.setDebugOutput(true);
-  LOG(INFO, "ESP32-CS v%s starting up", VERSION);
+  LOG(INFO, "ESP32 Command Station v%s starting up", VERSION);
 #ifndef ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
   restrictedPins.push_back(0);
   restrictedPins.push_back(2);
@@ -60,6 +60,10 @@ void setup() {
   restrictedPins.push_back(11);
   restrictedPins.push_back(12);
   restrictedPins.push_back(15);
+#endif
+
+#if STATUS_LED_ENABLED
+  initStatusLEDs();
 #endif
 
   // set up ADC1 here since we use it for all motor boards
