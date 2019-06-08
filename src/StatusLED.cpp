@@ -60,6 +60,8 @@ static NEO_COLOR_TYPE RGB_OFF = NEO_COLOR_TYPE(0);
 
 STATUS_LED_COLOR statusLEDColors[STATUS_LED::MAX_STATUS_LED] = {STATUS_LED_COLOR::LED_OFF, STATUS_LED_COLOR::LED_OFF, STATUS_LED_COLOR::LED_OFF};
 bool statusLEDState[STATUS_LED::MAX_STATUS_LED] = {false, false, false};
+int64_t statusLEDStateUpdate[STATUS_LED::MAX_STATUS_LED] = {0, 0, 0};
+TaskHandle_t statusTaskHandle;
 
 void updateStatusLEDs(void *arg) {
     statusLED.Begin();
@@ -68,7 +70,9 @@ void updateStatusLEDs(void *arg) {
     statusLED.Show();
     while(true) {
         for(int led = 0; led < STATUS_LED::MAX_STATUS_LED; led++) {
-            if(statusLEDColors[led] == LED_RED_BLINK || statusLEDColors[led] == LED_GREEN_BLINK || statusLEDColors[led] == LED_YELLOW_BLINK) {
+            // if the LED is set to blink and it has been at least 450ms since we updated it, update it
+            if((statusLEDColors[led] == LED_RED_BLINK || statusLEDColors[led] == LED_GREEN_BLINK || statusLEDColors[led] == LED_YELLOW_BLINK) &&
+               (esp_timer_get_time() - 450 > statusLEDStateUpdate[led])) {
                 if(statusLEDState[led]) {
                     statusLED.SetPixelColor(led, RGB_OFF);
                 } else if(statusLEDColors[led] == LED_RED_BLINK) {
@@ -79,30 +83,35 @@ void updateStatusLEDs(void *arg) {
                     statusLED.SetPixelColor(led, RGB_YELLOW);
                 }
                 statusLEDState[led] = !statusLEDState[led];
+                statusLEDStateUpdate[led] = esp_timer_get_time();
             }
         }
         statusLED.Show();
-        vTaskDelay(pdMS_TO_TICKS(500));
+        // go to sleep for up to ~500ms
+        ulTaskNotifyTake(true, pdMS_TO_TICKS(500));
     }
 }
 
 void setStatusLED(const STATUS_LED led, const STATUS_LED_COLOR color) {
     statusLEDColors[led] = color;
-    statusLEDState[led] = true;
-    if(statusLEDColors[led] == LED_RED || statusLEDColors[led] == LED_RED_BLINK) {
+    statusLEDState[led] = false;
+    statusLEDStateUpdate[led] = 0;
+    // BLINK state will be handled in the task exclusively
+    if(statusLEDColors[led] == LED_RED) {
         statusLED.SetPixelColor(led, RGB_RED);
-    } else if(statusLEDColors[led] == LED_GREEN || statusLEDColors[led] == LED_GREEN_BLINK) {
+    } else if(statusLEDColors[led] == LED_GREEN) {
         statusLED.SetPixelColor(led, RGB_GREEN);
-    } else if(statusLEDColors[led] == LED_YELLOW || statusLEDColors[led] == LED_YELLOW_BLINK) {
+    } else if(statusLEDColors[led] == LED_YELLOW) {
         statusLED.SetPixelColor(led, RGB_YELLOW);
     } else if(statusLEDColors[led] == LED_OFF) {
         statusLED.SetPixelColor(led, RGB_OFF);
-        statusLEDState[led] = false;
     }
+    // wake up task to update the LEDs
+    xTaskNotifyGive(statusTaskHandle);
 }
 
 void initStatusLEDs() {
-   xTaskCreatePinnedToCore(updateStatusLEDs, "LED", 2048, nullptr, 2, nullptr, 1);
+   xTaskCreatePinnedToCore(updateStatusLEDs, "LED", 2048, nullptr, 2, &statusTaskHandle, 1);
 }
 
 #endif
