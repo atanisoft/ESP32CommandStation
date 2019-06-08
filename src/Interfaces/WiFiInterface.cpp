@@ -157,16 +157,20 @@ void WiFiInterface::begin() {
   #endif
 #endif
   }, SYSTEM_EVENT_STA_LOST_IP);
-  WiFi.onEvent([](system_event_id_t event) {
+  WiFi.onEvent([](system_event_id_t event, system_event_info_t info) {
 #if LCC_ENABLED
     lccInterface.processWiFiEvent(event);
 #endif
 #if STATUS_LED_ENABLED
-    setStatusLED(STATUS_LED::WIFI_LED, STATUS_LED_COLOR::LED_GREEN_BLINK);
+    setStatusLED(STATUS_LED::WIFI_LED, STATUS_LED_COLOR::LED_RED);
 #endif
-    if(wifiConnected) {
+    if (wifiConnected) {
       LOG(WARNING, "[WiFi] Connection to WiFi lost, reconnecting...");
       WiFi.begin(WIFI_SSID, WIFI_PASS);
+    } else if (info.disconnected.reason == WIFI_REASON_AUTH_FAIL) {
+      // AUTH_FAIL usually works after a reboot, log the failure and with
+      // level FATAL it will reboot.
+      LOG(FATAL, "[WiFi] WiFI connect failed (AUTH_FAIL), restarting");
     }
   }, SYSTEM_EVENT_STA_DISCONNECTED);
 
@@ -189,7 +193,7 @@ void WiFiInterface::begin() {
     // until we get a real final result
     uint8_t attemptsRemaining = 10;
     uint8_t wifiStatus = WiFi.waitForConnectResult();
-    while(wifiStatus != WL_CONNECTED && wifiStatus != WL_NO_SSID_AVAIL && wifiStatus != WL_CONNECT_FAILED && attemptsRemaining--) {
+    while (wifiStatus != WL_CONNECTED && wifiStatus != WL_NO_SSID_AVAIL && wifiStatus != WL_CONNECT_FAILED && attemptsRemaining--) {
       esp_task_wdt_reset();
       LOG(INFO, "[WiFi] WiFi not connected yet, status: %d (%s), attempts remaining: %d", wifiStatus, WIFI_STATUS_STRINGS[wifiStatus], attemptsRemaining);
 #if NEXTION_ENABLED
@@ -231,17 +235,17 @@ void WiFiInterface::begin() {
     // since we couldn't connect to the configured SSID, perform a scan to help in
     // troubleshooting.
     int networks = WiFi.scanNetworks();
-    if(networks) {
+    if (networks) {
       bool ssidMatch = false;
       LOG(INFO, "Available WiFi networks:");
-      for(int index = 0; index < networks; index++) {
+      for (int index = 0; index < networks; index++) {
         LOG(INFO, "SSID: %s (RSSI: %d) Encryption: %s",
           WiFi.SSID(index).c_str(), WiFi.RSSI(index), WIFI_ENC_TYPES[WiFi.encryptionType(index)]);
-        if(WiFi.SSID(index).equalsIgnoreCase(WIFI_SSID)) {
+        if (WiFi.SSID(index).equalsIgnoreCase(WIFI_SSID)) {
           ssidMatch = true;
         }
       }
-      if(ssidMatch) {
+      if (ssidMatch) {
         LOG(WARNING, "Expected SSID was found, perhaps an incorrect value was provided in Config_WiFi.h WIFI_PASSWORD?");
 #if INFO_SCREEN_ENABLED && (INFO_SCREEN_OLED || (INFO_SCREEN_LCD && INFO_SCREEN_LCD_COLUMNS >= 20))
         InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("BAD SSID PASSWORD!"));
@@ -291,13 +295,13 @@ void *jmriClientHandler(void *arg) {
   // tell JMRI about our state
   DCCPPProtocolHandler::process("s");
 
-  while(true) {
+  while (true) {
     int bytesRead = ::read(fd, buf.get(), 128);
     if (bytesRead < 0 && (errno == EINTR || errno == EAGAIN)) {
       // no data to read yet
-    } else if(bytesRead > 0) {
+    } else if (bytesRead > 0) {
       consumer.feed(buf.get(), bytesRead);
-    } else if(bytesRead == 0) {
+    } else if (bytesRead == 0) {
       // EOF, close client
       LOG(INFO, "[JMRI %d] disconnected", fd);
       break;
@@ -309,7 +313,7 @@ void *jmriClientHandler(void *arg) {
   }
   // remove client FD
   std::vector<int>::iterator it = std::find(jmriClients.begin(), jmriClients.end(), fd);
-  if(it != jmriClients.end()) {
+  if (it != jmriClients.end()) {
     jmriClients.erase(it);
   }
   ::close(fd);
