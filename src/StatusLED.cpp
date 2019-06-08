@@ -19,54 +19,85 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #if STATUS_LED_ENABLED
 
-#include <NeoPixelBus.h>
+#include <NeoPixelBrightnessBus.h>
 
-NeoPixelBus<NeoRgbFeature, Neo800KbpsMethod> statusLEDDriver(3, STATUS_LED_DATA_PIN);
-static RgbColor RGB_RED = RgbColor(128, 0, 0);
-static RgbColor RGB_GREEN = RgbColor(0, 128, 0);
-static RgbColor RGB_YELLOW = RgbColor(128, 128, 0);
-static RgbColor RGB_OFF = RgbColor(0);
+#if STATUS_LED_COLOR_ORDER == RGB
+#define NEO_COLOR_MODE NeoRgbFeature
+#define NEO_COLOR_TYPE RgbColor
+#elif STATUS_LED_COLOR_ORDER == GRB
+#define NEO_COLOR_MODE NeoGrbFeature
+#define NEO_COLOR_TYPE RgbColor
+#elif STATUS_LED_COLOR_ORDER == RGBW
+#define NEO_COLOR_MODE NeoRgbwFeature
+#define NEO_COLOR_TYPE RgbwColor
+#elif STATUS_LED_COLOR_ORDER == GRBW
+#define NEO_COLOR_MODE NeoGrbwFeature
+#define NEO_COLOR_TYPE RgbwColor
+#elif STATUS_LED_COLOR_ORDER == BRG
+#define NEO_COLOR_MODE NeoBrgFeature
+#define NEO_COLOR_TYPE RgbColor
+#elif STATUS_LED_COLOR_ORDER == RBG
+#define NEO_COLOR_MODE NeoRbgFeature
+#define NEO_COLOR_TYPE RgbColor
+#endif
 
-STATUS_LED_COLOR statusLEDs[STATUS_LED::MAX_STATUS_LED] = {STATUS_LED_COLOR::LED_OFF, STATUS_LED_COLOR::LED_OFF, STATUS_LED_COLOR::LED_OFF};
-bool statusLEDOn[STATUS_LED::MAX_STATUS_LED] = {false, false, false};
+#if STATUS_LED_TYPE == WS281X_800
+#define NEO_METHOD Neo800KbpsMethod
+#elif STATUS_LED_TYPE == WS281X_400
+#define NEO_METHOD Neo400KbpsMethod
+#elif STATUS_LED_TYPE == SK6812
+#define NEO_METHOD NeoSk6812Method
+#elif STATUS_LED_TYPE == LC6812
+#define NEO_METHOD NeoLc8812Method
+#endif
+
+NeoPixelBrightnessBus<NEO_COLOR_MODE, NEO_METHOD> statusLED(STATUS_LED::MAX_STATUS_LED, STATUS_LED_DATA_PIN);
+
+static NEO_COLOR_TYPE RGB_RED = NEO_COLOR_TYPE(255, 0, 0);
+static NEO_COLOR_TYPE RGB_GREEN = NEO_COLOR_TYPE(0, 255, 0);
+static NEO_COLOR_TYPE RGB_YELLOW = NEO_COLOR_TYPE(255, 255, 0);
+static NEO_COLOR_TYPE RGB_OFF = NEO_COLOR_TYPE(0);
+
+STATUS_LED_COLOR statusLEDColors[STATUS_LED::MAX_STATUS_LED] = {STATUS_LED_COLOR::LED_OFF, STATUS_LED_COLOR::LED_OFF, STATUS_LED_COLOR::LED_OFF};
+bool statusLEDState[STATUS_LED::MAX_STATUS_LED] = {false, false, false};
 
 void updateStatusLEDs(void *arg) {
-    statusLEDDriver.Begin();
+    statusLED.Begin();
+    statusLED.SetBrightness(STATUS_LED_BRIGHTNESS);
+    statusLED.ClearTo(RGB_OFF);
+    statusLED.Show();
     while(true) {
         for(int led = 0; led < STATUS_LED::MAX_STATUS_LED; led++) {
-            LOG(VERBOSE, "[STATUS] %d : %d / %d", led, statusLEDs[led], statusLEDOn[led]);
-            if(statusLEDs[led] == LED_RED_BLINK || statusLEDs[led] == LED_GREEN_BLINK || statusLEDs[led] == LED_YELLOW_BLINK) {
-                if(statusLEDOn[led]) {
-                    statusLEDDriver.SetPixelColor(led, RGB_OFF);
-                } else if(statusLEDs[led] == LED_RED_BLINK) {
-                    statusLEDDriver.SetPixelColor(led, RGB_RED);
-                } else if(statusLEDs[led] == LED_GREEN_BLINK) {
-                    statusLEDDriver.SetPixelColor(led, RGB_GREEN);
-                } else if(statusLEDs[led] == LED_YELLOW_BLINK) {
-                    statusLEDDriver.SetPixelColor(led, RGB_YELLOW);
+            if(statusLEDColors[led] == LED_RED_BLINK || statusLEDColors[led] == LED_GREEN_BLINK || statusLEDColors[led] == LED_YELLOW_BLINK) {
+                if(statusLEDState[led]) {
+                    statusLED.SetPixelColor(led, RGB_OFF);
+                } else if(statusLEDColors[led] == LED_RED_BLINK) {
+                    statusLED.SetPixelColor(led, RGB_RED);
+                } else if(statusLEDColors[led] == LED_GREEN_BLINK) {
+                    statusLED.SetPixelColor(led, RGB_GREEN);
+                } else if(statusLEDColors[led] == LED_YELLOW_BLINK) {
+                    statusLED.SetPixelColor(led, RGB_YELLOW);
                 }
-                statusLEDOn[led] = !statusLEDOn[led];
+                statusLEDState[led] = !statusLEDState[led];
             }
         }
-        if(statusLEDDriver.IsDirty()) {
-            statusLEDDriver.Show();
-        }
+        statusLED.Show();
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
 void setStatusLED(const STATUS_LED led, const STATUS_LED_COLOR color) {
-    statusLEDs[led] = color;
-    statusLEDOn[led] = true;
-    if(statusLEDs[led] == LED_RED || statusLEDs[led] == LED_RED_BLINK) {
-        statusLEDDriver.SetPixelColor(led, RGB_RED);
-    } else if(statusLEDs[led] == LED_GREEN || statusLEDs[led] == LED_GREEN_BLINK) {
-        statusLEDDriver.SetPixelColor(led, RGB_GREEN);
-    } else if(statusLEDs[led] == LED_YELLOW || statusLEDs[led] == LED_YELLOW_BLINK) {
-        statusLEDDriver.SetPixelColor(led, RGB_YELLOW);
-    } else if(statusLEDs[led] == LED_OFF) {
-        statusLEDDriver.SetPixelColor(led, RGB_OFF);
-        statusLEDOn[led] = false;
+    statusLEDColors[led] = color;
+    statusLEDState[led] = true;
+    if(statusLEDColors[led] == LED_RED || statusLEDColors[led] == LED_RED_BLINK) {
+        statusLED.SetPixelColor(led, RGB_RED);
+    } else if(statusLEDColors[led] == LED_GREEN || statusLEDColors[led] == LED_GREEN_BLINK) {
+        statusLED.SetPixelColor(led, RGB_GREEN);
+    } else if(statusLEDColors[led] == LED_YELLOW || statusLEDColors[led] == LED_YELLOW_BLINK) {
+        statusLED.SetPixelColor(led, RGB_YELLOW);
+    } else if(statusLEDColors[led] == LED_OFF) {
+        statusLED.SetPixelColor(led, RGB_OFF);
+        statusLEDState[led] = false;
     }
 }
 

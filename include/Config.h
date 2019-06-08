@@ -29,6 +29,13 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
+// The Status module allows the Command Station to report visually the current state
+// of the WiFi, OPS and PROG outputs.
+//#include "Config_Status.h"
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
 // The following line alters the default behavior of the ESP32 Command Station
 // in such that it will automatically energize the OPS track power on startup. This
 // may not be desirable and is left disabled by default. Uncomment the next line to

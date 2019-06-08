@@ -49,13 +49,13 @@ The primary focus for this will be improving the LCC integration and solve the c
 #### General
 
 - [x] Remove usage of log_X macros in favor of LOG.
+- [x] Status LED output for WiFi, OPS and PROG.
 
 ## Future planning:
 The entries below are not tracked to a specific release or in any particular priority order.
 
 ### General
 
-- [ ] Status LED output for WiFi, OPS and PROG.
 
 ### S88 Sensors
 

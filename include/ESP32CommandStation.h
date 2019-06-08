@@ -49,20 +49,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define OPS_TRACK_PREAMBLE_BITS 16
 #define PROG_TRACK_PREAMBLE_BITS 22
 
-
-/////////////////////////////////////////////////////////////////////////////////////
-//
-// The following pin is used for three WS2811 LEDs to indicate the Command Station
-// status in a visual manner.
-//
-// LED 1: WiFi status (GREEN = connected, RED = disconnected, FLASHING GREEN = connecting, FLASHING YELLOW = AP not found, YELLOW = connection failed)
-// LED 2: OPS track status (GREEN = ON, BLACK = OFF, RED = FAULT/SHORT, FLASHING RED = THERMAL FAULT)
-// LED 3: PROG track status (GREEN = ON, BLACK = OFF, RED = FAULT/SHORT)
-//
-// Uncomment the following define to enable this functionality.
-// 
-// #define STATUS_LED_DATA_PIN 22
-
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // DEFINE WHICH PINS ARE USED FOR OPS RAILCOM DETECTION
@@ -243,6 +229,22 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
 #error "Invalid Configuration detected, DCC_SIGNAL_PIN_OPERATIONS and DCC_SIGNAL_PIN_PROGRAMMING must be unique."
 #endif
 
+#if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == MOTORBOARD_ENABLE_PIN_OPS
+#error "Invalid Configuration detected, STATUS_LED_DATA_PIN and MOTORBOARD_ENABLE_PIN_OPS must be unique."
+#endif
+
+#if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == MOTORBOARD_ENABLE_PIN_PROG
+#error "Invalid Configuration detected, STATUS_LED_DATA_PIN and MOTORBOARD_ENABLE_PIN_PROG must be unique."
+#endif
+
+#if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == DCC_SIGNAL_PIN_OPERATIONS
+#error "Invalid Configuration detected, STATUS_LED_DATA_PIN and DCC_SIGNAL_PIN_OPERATIONS must be unique."
+#endif
+
+#if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == DCC_SIGNAL_PIN_PROGRAMMING
+#error "Invalid Configuration detected, STATUS_LED_DATA_PIN and DCC_SIGNAL_PIN_PROGRAMMING must be unique."
+#endif
+
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED && defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
 #error "Invalid Configuration detected, it is not supported to include both OLED and LCD support."
 #endif
@@ -250,6 +252,12 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
 #if NEXTION_ENABLED
   #if NEXTION_RX_PIN == NEXTION_TX_PIN
   #error "Invalid Configuration detected, NEXTION_RX_PIN and NEXTION_TX_PIN must be unique."
+  #endif
+  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == NEXTION_RX_PIN
+  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and NEXTION_RX_PIN must be unique."
+  #endif
+  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == NEXTION_TX_PIN
+  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and NEXTION_TX_PIN must be unique."
   #endif
   #if HC12_RADIO_ENABLED
     #if NEXTION_UART_NUM == HC12_UART_NUM
@@ -299,6 +307,12 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
   #if HC12_RX_PIN == HC12_TX_PIN
   #error "Invalid Configuration detected, HC12_RX_PIN and HC12_TX_PIN must be unique."
   #endif
+  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == HC12_RX_PIN
+  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and NEXTION_TX_PIN must be unique."
+  #endif
+  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == HC12_TX_PIN
+  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and HC12_TX_PIN must be unique."
+  #endif
   #if S88_ENABLED
     #if S88_CLOCK_PIN == HC12_RX_PIN
     #error "Invalid Configuration detected, the HC12_RX_PIN and S88_CLOCK_PIN must be unique."
@@ -333,6 +347,12 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
 #endif
 
 #if LOCONET_ENABLED
+  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == LOCONET_RX_PIN
+  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and LOCONET_RX_PIN must be unique."
+  #endif
+  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == LOCONET_TX_PIN
+  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and LOCONET_TX_PIN must be unique."
+  #endif
   #if S88_ENABLED
     #if S88_CLOCK_PIN == LOCONET_RX_PIN
     #error "Invalid Configuration detected, the LOCONET_RX_PIN and S88_CLOCK_PIN must be unique."
@@ -357,6 +377,9 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
 
 #if LCC_ENABLED
   #if LCC_CAN_RX_PIN != NOT_A_PIN
+    #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == LCC_CAN_RX_PIN
+    #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and LCC_CAN_RX_PIN must be unique."
+    #endif
     #if S88_ENABLED
       #if S88_CLOCK_PIN == LCC_CAN_RX_PIN
       #error "Invalid Configuration detected, LCC_CAN_RX_PIN and S88_CLOCK_PIN must be unique."
@@ -386,6 +409,9 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
     #endif
   #endif
   #if LCC_CAN_TX_PIN != NOT_A_PIN
+    #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == LCC_CAN_TX_PIN
+    #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and LCC_CAN_TX_PIN must be unique."
+    #endif
     #if S88_ENABLED
       #if S88_CLOCK_PIN == LCC_CAN_TX_PIN
       #error "Invalid Configuration detected, LCC_CAN_TX_PIN and S88_CLOCK_PIN must be unique."
