@@ -20,6 +20,7 @@ John Plocher created the circuit shown below, it works great for a DIY interface
 Newer versions of this circuit can be found on his [website](http://www.spcoast.com/wiki/index.php/LocoShield), they use a different IC and have not been tested.
 
 ## LocoNet Supported OpCodes
+
 | OPC | Description |
 | --- | ----------- |
 | OPC_GPON | Turns track power on. |
