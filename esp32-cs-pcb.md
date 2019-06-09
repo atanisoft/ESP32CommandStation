@@ -13,18 +13,20 @@ The ESP32 Command Station works quite well with off the shelf components but the
 * Integrated JTAG interface for easier debugging and flashing of firmware.
 * Single Power Supply interface with reverse polarity protection.
 
-## PCB Schematic and Bill of Materials
+## PCB Schematic
 The PCB schematic is available [here (SVG)](ESP32-CS-LMD18200.svg) or [here (PDF)](ESP32-CS-LMD18200.pdf).
+
+## Bill of Materials
 The BOM can be viewed [here](ESP32-CS-BOM.html).
 
-## Command Station PCB Kits
+## PCB Kits
 Kits will be made available soon in three varieties:
 
 1. Fully assembled and tested.
 2. Partially assembled and tested (SMD components will be soldered to the PCB and tested for proper functionality).
 3. PCB and parts only (no assembly or testing).
 
-## ESP32 Pins used on the PCB
+## ESP32 Pin Usage
 The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 
 | GPIO Pin | Usage |
@@ -68,7 +70,7 @@ The on-board LMD18200 h-bridge will provide up to 3A for the OPS track output, t
 ### DCC Power Supply requirements
 The DCC-POWER connections supply power to the DCC track outputs as well as the PCB itself. It is recommended to use a 14-18v DC power supply rated for 5 Amps. The LMD18200 and L298 h-bridges used by the PCB will reduce the track output voltage by approximately 2v compared to the DCC-POWER supply voltage.
 
-## Command Station Status LED
+## Status LEDs
 GPIO 22 is connected to three APA106/WS2812 (or similar) RGB LEDs. APA106 and WS2812 use different pin assignments for GND and 5V, care must be taken to account for this.
 
 | LED | Usage | Output Details |
@@ -86,7 +88,7 @@ The LED-PIN2 and LED-PIN3 solder jumper pads on the back side of the PCB can be 
 
 The LEDs included in the PCB kit are F5 diffused APA106 LEDs.
 
-## Expansion interfaces
+## Expansion Interfaces
 The PCB comes equipped with two I2C ports, UART1, OPS-EXT, SD-Module and JTAG. These have can a variety of uses with the most common listed below:
 
 | Port | Usage |

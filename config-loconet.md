@@ -5,6 +5,21 @@ layout: default
 # Configuring the LocoNet module
 If you have an existing LocoNet bus the ESP32 Command Station can interact with these devices. Currently only the following OP Codes are implemented:
 
+## LocoNet Configuration
+
+| PARAM | Description |
+| ----- | ----------- |
+| LOCONET_RX_PIN | This should be connected to the RX input from the LocoNet interface. |
+| LOCONET_TX_PIN | This should be connected to the TX output from the LocoNet interface. |
+| LOCONET_UART | This is the hardware UART on the ESP32 to use for the LocoNet interface. |
+
+## LocoNet Interface circuit
+John Plocher created the circuit shown below, it works great for a DIY interface as it only requires a handful of components.
+![LocoNet Interface](LocoNetInterface.png)
+
+Newer versions of this circuit can be found on his [website](http://www.spcoast.com/wiki/index.php/LocoShield), they use a different IC and have not been tested.
+
+## LocoNet Supported OpCodes
 | OPC | Description |
 | --- | ----------- |
 | OPC_GPON | Turns track power on. |
@@ -24,19 +39,6 @@ The following are not implemented but are planned:
 | OPC_SW_REQ | Turnout requests |
 | OPC_SW_REP | Turnout report |
 
-## LocoNet Configuration
-
-| PARAM | Description |
-| ----- | ----------- |
-| LOCONET_RX_PIN | This should be connected to the RX input from the LocoNet interface. |
-| LOCONET_TX_PIN | This should be connected to the TX output from the LocoNet interface. |
-| LOCONET_UART | This is the hardware UART on the ESP32 to use for the LocoNet interface. |
-
-## LocoNet Interface circuit
-John Plocher created the circuit shown below, it works great for a DIY interface as it only requires a handful of components.
-![LocoNet Interface](LocoNetInterface.png)
-
-Newer versions of this circuit can be found on his [website](http://www.spcoast.com/wiki/index.php/LocoShield), they use a different IC and have not been tested.
 
 [Return to Building ESP32 Command Station](./building-esp32cs.html)<br/>
 [Return to ESP32 Command Station](./index.html)
