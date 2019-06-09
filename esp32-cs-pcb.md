@@ -19,9 +19,10 @@ The BOM can be viewed [here](ESP32-CS-BOM.html).
 
 ## Command Station PCB Kits
 Kits will be made available soon in three varieties:
-1) Fully assembled and tested.
-2) Partially assembled and tested (SMD components will be soldered to the PCB and tested for proper functionality).
-3) PCB and parts only (no assembly or testing).
+
+1. Fully assembled and tested.
+2. Partially assembled and tested (SMD components will be soldered to the PCB and tested for proper functionality).
+3. PCB and parts only (no assembly or testing).
 
 ## ESP32 Pins used on the PCB
 The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
