@@ -13,3 +13,6 @@ The Nextion interface is an optional module that allows to control up to three t
 | NEXTION_TX_PIN | This is the ESP32 pin connected to the Nextion TX pin. Default is 27, any unused pin can be used. |
 
 Note: currently only Nextion 3.2" displays are supported and the nextion/DCCppESP32.hmi file will need to be compiled and uploaded to the Nextion screen via the Nextion Editor.
+
+[Return to Building ESP32 Command Station](./building-esp32cs.html)
+[Return to ESP32 Command Station](./index.html)

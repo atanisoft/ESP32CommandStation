@@ -26,3 +26,4 @@ When this module is enabled the Command Station will receive and respond to cert
 | LCC_CAN_TX_PIN | This is the pin connected to the CAN transceiver TX pin. This is optional, if left as -1 the CAN connection will not be configured. |
 
 [Return to Building ESP32 Command Station](./building-esp32cs.html)
+[Return to ESP32 Command Station](./index.html)

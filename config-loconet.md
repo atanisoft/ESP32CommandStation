@@ -39,3 +39,4 @@ John Plocher created the circuit shown below, it works great for a DIY interface
 Newer versions of this circuit can be found on his [website](http://www.spcoast.com/wiki/index.php/LocoShield), they use a different IC and have not been tested.
 
 [Return to Building ESP32 Command Station](./building-esp32cs.html)
+[Return to ESP32 Command Station](./index.html)

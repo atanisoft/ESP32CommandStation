@@ -12,11 +12,11 @@ The ESP32 Command Station consists of an ESP32 micro controller connected to at 
 * Supports almost any variant of the ESP32.
 * Built-in configuration for both the original Arduino Motor Shield, Pololu MC33926 Motor Shield or BTS7960B based Motor Shield.
 * Built-in web interface for controlling locomotives or configuring the ESP32 Command Station.
-* Built-in support for LCC either via WiFi or a hardware CAN transceiver, please see the section below on LCC if you intend on using this feature.
-* Custom PCB with all required hardware "on-board" for LCC, DCC signal generation, RailCom detection and expansion ports (I2C and UART).
+* Built-in support for LCC either via WiFi or a hardware CAN transceiver, please see [LCC](./config-lcc.html) if you intend on using this feature.
+* [Custom PCB](./esp32-cs-pcb.html) with all required hardware on-board for LCC, DCC signal generation, RailCom detection and expansion ports (I2C and UART).
 
 ## Latest public release
-The latest production release of the code is [![GitHub release](https://img.shields.io/github/release/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/releases).
+The latest production release of the code is [![GitHub release](https://img.shields.io/github/release/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/releases) [![GitHub release date](https://img.shields.io/github/release-date/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/releases).
 
 ## Latest development updates
 The development branch is where all "in-progress" work will be made available, there is no guarantee of stability of the project when using this version of the code.

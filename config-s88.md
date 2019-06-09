@@ -14,3 +14,4 @@ The S88 module allows reading of multiple S88 sensor buses. Each bus will have a
 All buses will share the above three lines but have a unique data line connected to individual pins on the ESP32. The buses will need to be configured through the web interface after startup.
 
 [Return to Building ESP32 Command Station](./building-esp32cs.html)
+[Return to ESP32 Command Station](./index.html)

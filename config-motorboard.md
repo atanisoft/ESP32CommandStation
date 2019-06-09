@@ -122,3 +122,4 @@ Note #1: The M1 D1 and M2 D1 pins need to be pulled LOW when the PWM pin is pull
 Note #2: Similar to the BTS7960B motor driver, the [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213) requires an inverted DCC signal to be provided, the DCC Signal Split circuit can be used for this.
 
 [Return to Building ESP32 Command Station](./building-esp32cs.html)
+[Return to ESP32 Command Station](./index.html)
