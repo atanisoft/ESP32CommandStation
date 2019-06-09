@@ -94,3 +94,5 @@ The PCB comes equipped with two I2C ports, UART1, OPS-EXT, SD-Module and JTAG. T
 | SD-Module | When using the ESP32 DevKit-C board it is highly recommended to use an SD card adapter module to reduce wear on the ESP32 built-in Flash (used for SPIFFS). |
 | JTAG | Used as a debugger or firmware flashing interface, this has overlapping pins with the SD-Module (and SD card slot on the TTGO-T1). |
 | OPS-EXT | This allows for an expansion board to provide the OPS track signal and DCC power via other h-bridges that will not be monitored by the Command Station. Note: The signal provided by this interface will have the RailCom cut-out and will be in a LOW state for up to 488uS between DCC packets. |
+
+[Return to ESP32 Command Station](./index.html)
