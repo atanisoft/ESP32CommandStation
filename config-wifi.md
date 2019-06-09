@@ -31,5 +31,5 @@ By default the Command Station supports remote sensors reporting their status vi
 | REMOTE_SENSORS_DECAY | This controls the lifespan of a remote sensor's "active" status, if the sensor does not report an update within this number of milliseconds the sensor will automatically transition to inactive status. |
 | REMOTE_SENSORS_FIRST_SENSOR | This is the first sensor ID that will be used for any remote sensors the Command Station manages and reports via the ```<S>``` command. |
 
-[Return to Building ESP32 Command Station](./building-esp32cs.html)
+[Return to Building ESP32 Command Station](./building-esp32cs.html)<br/>
 [Return to ESP32 Command Station](./index.html)
