@@ -3,7 +3,7 @@ layout: default
 ---
 
 # LCC / Layout Command Control
-LCC is Layout Command Control, an NMRA standard. The ESP32 Command Station can connect with LCC devices either via WiFi or physical CAN bus connections. Details about LCC can be found [here](https://openlcb.org/).
+LCC is Layout Command Control, an NMRA standard, that allows compatible devices to interact on a dedicated bus seperate from the DCC bus. Common usages of this would be for track side signals and block detection. The ESP32 Command Station can connect with LCC devices either via WiFi or physical CAN bus connections. Details about LCC can be found [here](https://openlcb.org/).
 
 ## Supported LCC well-known event IDs
 When this module is used the Command Station will receive and respond to certain LCC well-known events listed below with their function:
