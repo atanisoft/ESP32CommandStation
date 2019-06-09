@@ -18,6 +18,8 @@
         <h1 class="header">{{ site.title | default: site.github.repository_name }}</h1>
         <p class="header">{{ site.description | default: site.github.project_tagline }}</p>
 
+        {% include toc.html html=content %}
+
         <ul>
           {% if site.show_downloads %}
             <li class="download"><a class="buttons" href="{{ site.github.zip_url }}">Download ZIP</a></li>
@@ -35,8 +37,6 @@
             <li><a class="buttons github" href="{{ site.github.owner_url }}">GitHub Profile</a></li>
           </ul>
         {% endif %}
-
-        {% include toc.html html=content %}
       </header>
 
       <section>
