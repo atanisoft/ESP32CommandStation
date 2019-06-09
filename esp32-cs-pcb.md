@@ -69,9 +69,11 @@ The DCC-POWER connections supply power to the DCC track outputs as well as the P
 ## Command Station Status LED
 GPIO 22 is connected to three APA106/WS2812 (or similar) RGB LEDs. APA106 and WS2812 use different pin assignments for GND and 5V, care must be taken to account for this.
 
-LED 1: WiFi status (GREEN = connected, FLASHING GREEN = connecting, RED = disconnected, YELLOW = connection failed, FLASHING YELLOW = AP not found)
-LED 2: OPS track status (GREEN = ON, BLACK/CLEAR = OFF, RED = FAULT/SHORT, FLASHING RED = THERMAL FAULT)
-LED 3: PROG track status (GREEN = ON, BLACK/CLEAR = OFF, RED = FAULT/SHORT)
+| LED | Usage | Output Details |
+| --- | ----- | -------------- |
+| 1 | WiFi Status | Green - Connected<br/>Green (flashing) - Connecting<br/>Red - Disconnected<br/>Yellow - Connection failed<br/>Yellow (flashing) - AP not found |
+| 2 | OPS Track Status | Green - On<br/> Clear/Off - Off<br/>Red - Fault/Short<br/> Red (flashing) - H-bridge thermal warning |
+| 2 | PROG Track Status | Green - On<br/> Clear/Off - Off<br/>Red - Fault/Short |
 
 Flashing LEDs use an on/off frequency of 450ms-500ms.
 
@@ -84,6 +86,7 @@ The LEDs included in the PCB kit are F5 diffused APA106 LEDs.
 
 ## Expansion interfaces
 The PCB comes equipped with two I2C ports, UART1, OPS-EXT, SD-Module and JTAG. These have can a variety of uses with the most common listed below:
+
 | Port | Usage |
 | ---- | ----- |
 | I2C | OLED or LCD Screen. |
