@@ -56,7 +56,6 @@ The entries below are not tracked to a specific release or in any particular pri
 
 ### General
 
-
 ### S88 Sensors
 
 - [ ] Add S88 sensor data to InfoScreen status line, 16 sensor output rotation.
