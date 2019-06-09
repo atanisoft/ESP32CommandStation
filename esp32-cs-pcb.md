@@ -4,13 +4,14 @@ layout: default
 
 # ESP32 Command Station PCB
 The ESP32 Command Station works quite well with off the shelf components but there isn't a standard design for integrating all of the components. This PCB provides a standard board for the ESP32 Command Station project based on either the TTGO-T1 ESP32 board or the ESP32 DevKit-C board with all components on-board to provided:
-1) OPS Track output (3 Amp) supporting RailCom detection.
-2) PROG Track output (250 mA).
-3) Native LCC interface with two RJ45 ports.
-4) Two I2C interfaces for OLED/LCD display usage (additional usages may be developed in the future).
-5) UART interface for LocoNet or Nextion display usage.
-6) Integrated JTAG interface for easier debugging and flashing of firmware.
-7) Single Power Supply interface with reverse polarity protection.
+
+* OPS Track output (3 Amp) supporting RailCom detection.
+* PROG Track output (250 mA).
+* Native LCC interface with two RJ45 ports.
+* Two I2C interfaces for OLED/LCD display usage (additional usages may be developed in the future).
+* UART interface for LocoNet or Nextion display usage.
+* Integrated JTAG interface for easier debugging and flashing of firmware.
+* Single Power Supply interface with reverse polarity protection.
 
 ## PCB Schematic and Bill of Materials
 The PCB schematic is available [here (SVG)](ESP32-CS-LMD18200.svg) or [here (PDF)](ESP32-CS-LMD18200.pdf).
