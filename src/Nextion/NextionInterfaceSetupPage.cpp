@@ -26,7 +26,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 /************************************************************************************************************/
 //
 NextionSetupPage::NextionSetupPage(Nextion &nextion) : 
-  ESP32NextionPage(nextion, SETUP_PAGE, "4"),
+  BaseNextionPage(nextion, SETUP_PAGE, "4"),
   _saveButton(nextion, SETUP_PAGE, 4, "Save"),
   _quitButton(nextion, SETUP_PAGE, 6, "Quit"),
   _undoButton(nextion, SETUP_PAGE, 5, "Undo"),

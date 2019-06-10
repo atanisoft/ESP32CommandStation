@@ -47,7 +47,7 @@ constexpr uint8_t TURNOUT_PIC=141;
 /************************************************************************************************************/
 //
 NextionAddressPage::NextionAddressPage(Nextion &nextion) :
-  ESP32NextionPage(nextion, ADDRESS_PAGE, "1"),
+  BaseNextionPage(nextion, ADDRESS_PAGE, "1"),
   _buttons {
     NextionButton(nextion, ADDRESS_PAGE, num1, "b1"),
     NextionButton(nextion, ADDRESS_PAGE, num2, "b2"),

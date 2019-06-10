@@ -175,7 +175,7 @@ constexpr uint8_t slot59ButtonID=129;
 /************************************************************************************************************/
 //
 NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
-  ESP32NextionPage(nextion, TURNOUT_PAGE, "3"),
+  BaseNextionPage(nextion, TURNOUT_PAGE, "3"),
   _turnoutButtons {
     NextionButton(nextion, TURNOUT_PAGE, slot0ButtonID, "To0"),
     NextionButton(nextion, TURNOUT_PAGE, slot1ButtonID, "To1"),
@@ -439,7 +439,7 @@ void NextionTurnoutPage::refreshPage() {
   }
 }
 
-void NextionTurnoutPage::previousPageCallback(ESP32NextionPage *previousPage) {
+void NextionTurnoutPage::previousPageCallback(BaseNextionPage *previousPage) {
   NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(previousPage);
   if(_pageMode == PAGE_MODE::EDIT) {
     auto turnout = TurnoutManager::getTurnoutByAddress(addressPage->getCurrentAddress());
