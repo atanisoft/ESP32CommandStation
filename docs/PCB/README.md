@@ -23,7 +23,7 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 
 | GPIO Pin | Usage |
 | -------- | ----- |
-| 0 | FREE (restrictions apply) |
+| 0 | OPS THERMAL (ACTIVE LOW) |
 | 1 | UART0 TX |
 | 2 | SD-MISO |
 | 3 | UART0 RX |
@@ -50,7 +50,7 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | 32 | OPS BRAKE |
 | 33 | RAILCOM DATA |
 | 34 | RAILCOM SHORT |
-| 35 | OPS-THERM |
+| 35 | RAILCOM DIRECTION |
 | 36 (SVP) | OPS CURRENT SENSE (INPUT ONLY) |
 | 37 | NOT AVAILABLE |
 | 38 | NOT AVAILABLE |
