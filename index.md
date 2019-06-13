@@ -13,7 +13,7 @@ The ESP32 Command Station consists of an ESP32 micro controller connected to at 
 * Built-in configuration for both the original Arduino Motor Shield, Pololu MC33926 Motor Shield or BTS7960B based Motor Shield.
 * Built-in web interface for controlling locomotives or configuring the ESP32 Command Station.
 * Built-in support for LCC either via WiFi or a hardware CAN transceiver, please see [LCC](./config-lcc.html) if you intend on using this feature.
-* [Custom PCB](./esp32-cs-pcb.html) with all required hardware on-board for LCC, DCC signal generation, RailCom detection and expansion ports (I2C and UART).
+* A Custom PCB with all required hardware on-board for LCC, DCC signal generation, RailCom detection and expansion ports (I2C and UART) will be available soon.
 
 ### Supported ESP32 Boards
 The ESP32 Command Station has been tested on a variety of ESP32 boards available on the internet, the current preferred format is either the Arduino Uno R3 formated boards (easy to use with the Arduino Motor Shield) or the TTGO T1 with the integrated SD Card. However, almost any variant of the ESP32 will work as long as there are enough pins available for the Motor Driver connections.
