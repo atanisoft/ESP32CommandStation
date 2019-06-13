@@ -31,7 +31,7 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 
 | GPIO Pin | Usage |
 | -------- | ----- |
-| 0 | OPS THERMAL (ACTIVE LOW)) |
+| 0 | OPS THERMAL (ACTIVE LOW) |
 | 1 | UART0 TX |
 | 2 | SD-MISO |
 | 3 | UART0 RX |
