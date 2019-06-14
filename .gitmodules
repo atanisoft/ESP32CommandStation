@@ -24,4 +24,4 @@
 	url = https://github.com/mathertel/LiquidCrystal_PCF8574
 [submodule "cmake/syslib/arduino-esp32"]
 	path = cmake/syslib/arduino-esp32
-	url = https://github.com/espressif/arduino-esp32.git
+	url = ../../espressif/arduino-esp32.git
