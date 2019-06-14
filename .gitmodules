@@ -4,15 +4,9 @@
 [submodule "cmake/syslib/AsyncTCP"]
 	path = cmake/syslib/AsyncTCP
 	url = https://github.com/me-no-dev/AsyncTCP.git
-[submodule "cmake/esp8266-oled-ssd1306"]
-	path = cmake/esp8266-oled-ssd1306
-	url = https://github.com/squix78/esp8266-oled-ssd1306.git
 [submodule "cmake/ESPAsyncWebServer"]
 	path = cmake/ESPAsyncWebServer
 	url = https://github.com/me-no-dev/ESPAsyncWebServer.git
-[submodule "cmake/LiquidCrystal_PCF8574"]
-	path = cmake/LiquidCrystal_PCF8574
-	url = https://github.com/mathertel/LiquidCrystal_PCF8574
 [submodule "cmake/syslib/esp8266-oled-ssd1306"]
 	path = cmake/syslib/esp8266-oled-ssd1306
 	url = https://github.com/squix78/esp8266-oled-ssd1306.git
