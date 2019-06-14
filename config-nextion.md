@@ -12,7 +12,19 @@ The Nextion interface is an optional module that allows to control up to three t
 | NEXTION_RX_PIN | This is the ESP32 pin connected to the Nextion RX pin. Default is 14, any unused pin can be used. |
 | NEXTION_TX_PIN | This is the ESP32 pin connected to the Nextion TX pin. Default is 27, any unused pin can be used. |
 
-Note: currently only Nextion 3.2" displays are supported and the nextion/DCCppESP32.hmi file will need to be compiled and uploaded to the Nextion screen via the Nextion Editor.
+# Supported Nextion Displays
+There are many sizes of Nextion displays available on the market. At this time only the following displays are supported:
+
+| Size (inches) | Type | Part # (prefix only) | HMI File |
+| ------------- | ---- | -------------------- | -------- |
+| 3.2 | Basic | NX4024T | nextion/ESP32CS_Nextion3.2_B.HMI |
+| 3.2 | Enhanced | NX4024K | nextion/ESP32CS_Nextion3.2_B.HMI |
+| 3.5 | Basic | NX4832T | nextion/ESP32CS_Nextion3.5_B.HMI |
+| 3.5 | Enhanced | NX4832K | nextion/ESP32CS_Nextion3.5_E.HMI |
+| 5.0 | Basic | NX8048T | nextion/ESP32CS_Nextion5.0_B.HMI |
+| 5.0 | Enhanced | NX8048K | nextion/ESP32CS_Nextion5.0_E.HMI |
+
+For each of these, the HMI file will need to be compiled and uploaded to the Nextion device using the [Nextion Editor](https://nextion.itead.cc/resources/download/nextion-editor/).
 
 [Return to Building ESP32 Command Station](./building-esp32cs.html)<br/>
 [Return to ESP32 Command Station](./index.html)
