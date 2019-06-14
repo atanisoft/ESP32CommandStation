@@ -15,6 +15,7 @@ The ESP32 Command Station works quite well with off the shelf components but the
 
 ## PCB Schematic
 The PCB schematic is available [here (SVG)](ESP32-CS-LMD18200.svg) or [here (PDF)](ESP32-CS-LMD18200.pdf).
+Gerber files can be found [here](ESP32-CS-gerber.zip) (v1.0 - June 2019)
 
 ## Bill of Materials
 The BOM can be viewed [here](ESP32-CS-BOM.html).
