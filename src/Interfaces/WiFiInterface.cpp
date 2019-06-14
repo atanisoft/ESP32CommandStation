@@ -23,7 +23,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <IPAddress.h>
 #include "WebServer.h"
 #include <esp_log.h>
-#include <esp_wifi_internal.h>
+//#include <esp_wifi_internal.h>
 #include <esp_task_wdt.h>
 
 #include <freertos_drivers/arduino/WifiDefs.hxx>
