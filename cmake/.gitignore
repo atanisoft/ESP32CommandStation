@@ -1,0 +1,7 @@
+/.vs/
+/CodeDB/
+/VisualGDBCache/
+/build/
+/VisualGDB/
+*.vgdbproj.Heath.user
+/ESP32CommandStation.sln

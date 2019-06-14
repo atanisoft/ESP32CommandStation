@@ -1,0 +1,327 @@
+<?xml version="1.0"?>
+<VisualGDBProjectSettings2 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <ConfigurationName>Debug</ConfigurationName>
+  <Project xsi:type="com.visualgdb.project.external.esp-idf">
+    <ProjectModeSettings>
+      <ProjectGUID>45835c8a-7835-496a-8bf7-bf0f0e6b67fa</ProjectGUID>
+      <GroupSourcesByTypes>true</GroupSourcesByTypes>
+      <GroupSourcesByPaths>true</GroupSourcesByPaths>
+      <HeaderScanMode>SourceDirs</HeaderScanMode>
+    </ProjectModeSettings>
+  </Project>
+  <Build xsi:type="com.visualgdb.build.cmake">
+    <ToolchainID>
+      <ID>com.visualgdb.xtensa-esp32-elf</ID>
+      <Version>
+        <GCC>5.2.0</GCC>
+        <GDB>7.10</GDB>
+        <Revision>16</Revision>
+      </Version>
+    </ToolchainID>
+    <RelativeSourceDirectory />
+    <ConfigurationType>DEBUG</ConfigurationType>
+    <BinaryDirectory>VisualGDB/$(ConfigurationName)</BinaryDirectory>
+    <MakeCommandTemplate>
+      <SkipWhenRunningCommandList>false</SkipWhenRunningCommandList>
+      <RemoteHost>
+        <HostName>BuildMachine</HostName>
+        <Transport>BuiltinShortcut</Transport>
+      </RemoteHost>
+      <Command>$(VISUALGDB_DIR)/ninja.exe</Command>
+      <WorkingDirectory>$(BuildDir)</WorkingDirectory>
+      <BackgroundMode xsi:nil="true" />
+    </MakeCommandTemplate>
+    <CMakeCommand>
+      <SkipWhenRunningCommandList>false</SkipWhenRunningCommandList>
+      <RemoteHost>
+        <HostName>BuildMachine</HostName>
+        <Transport>BuiltinShortcut</Transport>
+      </RemoteHost>
+      <Command>$(SYSPROGS_CMAKE_PATH)</Command>
+      <BackgroundMode xsi:nil="true" />
+    </CMakeCommand>
+    <UpdateSourcesInCMakeFile>true</UpdateSourcesInCMakeFile>
+    <ExportCompileCommands>false</ExportCompileCommands>
+    <DisableToolchainFile>false</DisableToolchainFile>
+    <CMakeMakefileType>Ninja</CMakeMakefileType>
+    <DeployAsRoot>false</DeployAsRoot>
+    <CleanMode>b</CleanMode>
+    <ProjectModeSettings>
+      <ProjectItemSettings>
+        <GroupSourcesByTypes>true</GroupSourcesByTypes>
+        <GroupSourcesByPaths>true</GroupSourcesByPaths>
+        <GroupTargetsByPaths>true</GroupTargetsByPaths>
+        <AutoRefreshProject>true</AutoRefreshProject>
+        <SortTargetsByName>true</SortTargetsByName>
+        <UseCMakeUpToDateCheck>false</UseCMakeUpToDateCheck>
+        <RedundantTargetMode>HideOuterProjectTargets</RedundantTargetMode>
+        <SortSourcesByName>true</SortSourcesByName>
+        <BuildAllTargetsInSubdir>false</BuildAllTargetsInSubdir>
+        <FoldSingleItemPathLevels>true</FoldSingleItemPathLevels>
+      </ProjectItemSettings>
+      <TargetSpecificSettings />
+      <SetLDLibraryPathFromDependentArtifacts>true</SetLDLibraryPathFromDependentArtifacts>
+      <ProjectGUID>8f1f2812-2814-4c41-bead-2a195f0e07da</ProjectGUID>
+      <VirtualFolders />
+      <ConfigurationNameCase>Upper</ConfigurationNameCase>
+      <DefaultHeaderDiscoveryMode>HeaderDirectoryAndSubdirectories</DefaultHeaderDiscoveryMode>
+      <ESPIDFExtension>
+        <IDFCheckout>
+          <Version>master</Version>
+          <Subdirectory>esp-idf/master</Subdirectory>
+          <Type>ESPIDF</Type>
+        </IDFCheckout>
+        <COMPort>COM7</COMPort>
+        <BaudRate>115200</BaudRate>
+      </ESPIDFExtension>
+    </ProjectModeSettings>
+  </Build>
+  <CustomBuild>
+    <PreSyncActions />
+    <PreBuildActions />
+    <PostBuildActions />
+    <PreCleanActions />
+    <PostCleanActions />
+  </CustomBuild>
+  <CustomDebug>
+    <PreDebugActions />
+    <PostDebugActions />
+    <DebugStopActions />
+    <BreakMode>Default</BreakMode>
+    <CustomBreakCommand>
+      <SkipWhenRunningCommandList>false</SkipWhenRunningCommandList>
+      <RemoteHost>
+        <HostName>BuildMachine</HostName>
+        <Transport>BuiltinShortcut</Transport>
+      </RemoteHost>
+      <BackgroundMode xsi:nil="true" />
+    </CustomBreakCommand>
+  </CustomDebug>
+  <DeviceTerminalSettings>
+    <Connection xsi:type="com.sysprogs.terminal.connection.serial">
+      <ComPortName>COM7</ComPortName>
+      <AdvancedSettings>
+        <BaudRate>115200</BaudRate>
+        <DataBits>8</DataBits>
+        <Parity>None</Parity>
+        <StopBits>One</StopBits>
+        <FlowControl>None</FlowControl>
+      </AdvancedSettings>
+    </Connection>
+    <LastConnectionTime>0</LastConnectionTime>
+    <EchoTypedCharacters>false</EchoTypedCharacters>
+    <ClearContentsWhenReconnecting>false</ClearContentsWhenReconnecting>
+    <ReconnectAutomatically>false</ReconnectAutomatically>
+    <DisplayMode>ASCII</DisplayMode>
+    <Colors>
+      <Background>
+        <Alpha>255</Alpha>
+        <Red>0</Red>
+        <Green>0</Green>
+        <Blue>0</Blue>
+      </Background>
+      <Disconnected>
+        <Alpha>255</Alpha>
+        <Red>169</Red>
+        <Green>169</Green>
+        <Blue>169</Blue>
+      </Disconnected>
+      <Text>
+        <Alpha>255</Alpha>
+        <Red>211</Red>
+        <Green>211</Green>
+        <Blue>211</Blue>
+      </Text>
+      <Echo>
+        <Alpha>255</Alpha>
+        <Red>144</Red>
+        <Green>238</Green>
+        <Blue>144</Blue>
+      </Echo>
+      <Inactive>
+        <Alpha>255</Alpha>
+        <Red>169</Red>
+        <Green>169</Green>
+        <Blue>169</Blue>
+      </Inactive>
+    </Colors>
+    <HexSettings>
+      <MaximumBytesPerLine>16</MaximumBytesPerLine>
+      <ShowTextView>true</ShowTextView>
+      <BreaksAroundEcho>true</BreaksAroundEcho>
+      <AutoSend>true</AutoSend>
+      <SendAsHex>true</SendAsHex>
+      <TimeoutForAutoBreak>0</TimeoutForAutoBreak>
+    </HexSettings>
+    <LineEnding>LF</LineEnding>
+    <TreatLFAsCRLF>false</TreatLFAsCRLF>
+    <KeepOpenAfterExit>true</KeepOpenAfterExit>
+    <ShowAfterProgramming>true</ShowAfterProgramming>
+  </DeviceTerminalSettings>
+  <CustomShortcuts>
+    <Shortcuts />
+    <ShowMessageAfterExecuting>true</ShowMessageAfterExecuting>
+  </CustomShortcuts>
+  <UserDefinedVariables />
+  <ImportedPropertySheets />
+  <CodeSense>
+    <Enabled>True</Enabled>
+    <ExtraSettings>
+      <HideErrorsInSystemHeaders>true</HideErrorsInSystemHeaders>
+      <SupportLightweightReferenceAnalysis>true</SupportLightweightReferenceAnalysis>
+      <DiscoverySettings>
+        <Mode>Enabled</Mode>
+        <SearchInProjectDir>true</SearchInProjectDir>
+        <SearchInSourceDirs>true</SearchInSourceDirs>
+        <SearchInIncludeSubdirs>true</SearchInIncludeSubdirs>
+      </DiscoverySettings>
+      <CheckForClangFormatFiles>true</CheckForClangFormatFiles>
+      <FormattingEngine xsi:nil="true" />
+    </ExtraSettings>
+    <CodeAnalyzerSettings>
+      <Enabled>false</Enabled>
+      <SelectedAnalyzers>
+        <string>apiModeling.google.GTest</string>
+        <string>core.builtin.BuiltinFunctions</string>
+        <string>core.builtin.NoReturnFunctions</string>
+        <string>core.CallAndMessage</string>
+        <string>core.DivideZero</string>
+        <string>core.DynamicTypePropagation</string>
+        <string>core.NonnilStringConstants</string>
+        <string>core.NonNullParamChecker</string>
+        <string>core.NullDereference</string>
+        <string>core.StackAddressEscape</string>
+        <string>core.UndefinedBinaryOperatorResult</string>
+        <string>core.uninitialized.ArraySubscript</string>
+        <string>core.uninitialized.Assign</string>
+        <string>core.uninitialized.Branch</string>
+        <string>core.uninitialized.CapturedBlockVariable</string>
+        <string>core.uninitialized.UndefReturn</string>
+        <string>core.VLASize</string>
+        <string>cplusplus.NewDelete</string>
+        <string>cplusplus.NewDeleteLeaks</string>
+        <string>cplusplus.SelfAssignment</string>
+        <string>deadcode.DeadStores</string>
+        <string>nullability.NullPassedToNonnull</string>
+        <string>nullability.NullReturnedFromNonnull</string>
+        <string>security.insecureAPI.getpw</string>
+        <string>security.insecureAPI.gets</string>
+        <string>security.insecureAPI.mkstemp</string>
+        <string>security.insecureAPI.mktemp</string>
+        <string>security.insecureAPI.UncheckedReturn</string>
+        <string>security.insecureAPI.vfork</string>
+        <string>unix.API</string>
+        <string>unix.cstring.BadSizeArg</string>
+        <string>unix.cstring.NullArg</string>
+        <string>unix.Malloc</string>
+        <string>unix.MallocSizeof</string>
+        <string>unix.MismatchedDeallocator</string>
+        <string>unix.StdCLibraryFunctions</string>
+        <string>unix.Vfork</string>
+      </SelectedAnalyzers>
+      <ExtraArguments>
+        <string>-analyzer-store=region</string>
+        <string>-analyzer-opt-analyze-nested-blocks</string>
+        <string>-analyzer-eagerly-assume</string>
+      </ExtraArguments>
+    </CodeAnalyzerSettings>
+  </CodeSense>
+  <Configurations>
+    <VisualGDBConfiguration>
+      <Name>Debug</Name>
+      <BuildSettingsExtension xsi:type="com.visualgdb.build.external.esp-idf.extension">
+        <OutputSubdirectory>Debug</OutputSubdirectory>
+        <SDKConfigFile>sdkconfig-debug</SDKConfigFile>
+        <EnableVerboseBuild>false</EnableVerboseBuild>
+      </BuildSettingsExtension>
+    </VisualGDBConfiguration>
+    <VisualGDBConfiguration>
+      <Name>Release</Name>
+      <BuildSettingsExtension xsi:type="com.visualgdb.build.external.esp-idf.extension">
+        <OutputSubdirectory>Release</OutputSubdirectory>
+        <SDKConfigFile>sdkconfig-release</SDKConfigFile>
+        <EnableVerboseBuild>false</EnableVerboseBuild>
+      </BuildSettingsExtension>
+    </VisualGDBConfiguration>
+  </Configurations>
+  <ProgramArgumentsSuggestions />
+  <Debug xsi:type="com.visualgdb.debug.embedded">
+    <AdditionalStartupCommands />
+    <AdditionalGDBSettings>
+      <Features>
+        <DisableAutoDetection>false</DisableAutoDetection>
+        <UseFrameParameter>false</UseFrameParameter>
+        <SimpleValuesFlagSupported>false</SimpleValuesFlagSupported>
+        <ListLocalsSupported>false</ListLocalsSupported>
+        <ByteLevelMemoryCommandsAvailable>false</ByteLevelMemoryCommandsAvailable>
+        <ThreadInfoSupported>false</ThreadInfoSupported>
+        <PendingBreakpointsSupported>false</PendingBreakpointsSupported>
+        <SupportTargetCommand>false</SupportTargetCommand>
+        <ReliableBreakpointNotifications>false</ReliableBreakpointNotifications>
+      </Features>
+      <EnableSmartStepping>false</EnableSmartStepping>
+      <FilterSpuriousStoppedNotifications>false</FilterSpuriousStoppedNotifications>
+      <ForceSingleThreadedMode>false</ForceSingleThreadedMode>
+      <UseAppleExtensions>false</UseAppleExtensions>
+      <CanAcceptCommandsWhileRunning>false</CanAcceptCommandsWhileRunning>
+      <MakeLogFile>false</MakeLogFile>
+      <IgnoreModuleEventsWhileStepping>true</IgnoreModuleEventsWhileStepping>
+      <UseRelativePathsOnly>false</UseRelativePathsOnly>
+      <ExitAction>None</ExitAction>
+      <DisableDisassembly>false</DisableDisassembly>
+      <ExamineMemoryWithXCommand>false</ExamineMemoryWithXCommand>
+      <StepIntoNewInstanceEntry>app_main</StepIntoNewInstanceEntry>
+      <ExamineRegistersInRawFormat>true</ExamineRegistersInRawFormat>
+      <DisableSignals>false</DisableSignals>
+      <EnableAsyncExecutionMode>false</EnableAsyncExecutionMode>
+      <EnableNonStopMode>false</EnableNonStopMode>
+      <MaxBreakpointLimit>0</MaxBreakpointLimit>
+    </AdditionalGDBSettings>
+    <DebugMethod>
+      <ID>openocd</ID>
+      <InterfaceID>esp32-devkit</InterfaceID>
+      <InterfaceSerialNumber>8&amp;11C8F377&amp;0&amp;3</InterfaceSerialNumber>
+      <Configuration xsi:type="com.visualgdb.edp.openocd.settings.esp32">
+        <CommandLine>-f interface/ftdi/esp32_devkitj_v1.cfg -c "adapter_khz 24000" -f target/esp32.cfg</CommandLine>
+        <ExtraParameters>
+          <Frequency xsi:nil="true" />
+          <BoostedFrequency xsi:nil="true" />
+          <ConnectUnderReset>false</ConnectUnderReset>
+        </ExtraParameters>
+        <LoadProgressGUIThreshold>131072</LoadProgressGUIThreshold>
+        <ProgramMode>Auto</ProgramMode>
+        <StartupCommands>
+          <string>set remotetimeout 60</string>
+          <string>target remote :$$SYS:GDB_PORT$$</string>
+          <string>mon gdb_breakpoint_override hard</string>
+          <string>mon reset halt</string>
+          <string>load</string>
+        </StartupCommands>
+        <ProgramFLASHUsingExternalTool>false</ProgramFLASHUsingExternalTool>
+        <PreferredGDBPort>0</PreferredGDBPort>
+        <PreferredTelnetPort>0</PreferredTelnetPort>
+        <SuggestionLogicRevision>1</SuggestionLogicRevision>
+        <CheckFLASHSize>true</CheckFLASHSize>
+        <FLASHSettings>
+          <Size>size2MB</Size>
+          <Frequency>freq40M</Frequency>
+          <Mode>DIO</Mode>
+        </FLASHSettings>
+        <PatchBootloader>true</PatchBootloader>
+      </Configuration>
+    </DebugMethod>
+    <AutoDetectRTOS>true</AutoDetectRTOS>
+    <SemihostingSupport>Enabled</SemihostingSupport>
+    <SemihostingPollingDelay>0</SemihostingPollingDelay>
+    <StepIntoEntryPoint>false</StepIntoEntryPoint>
+    <ReloadFirmwareOnReset>true</ReloadFirmwareOnReset>
+    <ValidateEndOfStackAddress>true</ValidateEndOfStackAddress>
+    <StopAtEntryPoint>false</StopAtEntryPoint>
+    <EnableVirtualHalts>false</EnableVirtualHalts>
+    <DynamicAnalysisSettings />
+    <EndOfStackSymbol>_estack</EndOfStackSymbol>
+    <TimestampProviderTicksPerSecond>0</TimestampProviderTicksPerSecond>
+    <KeepConsoleAfterExit>true</KeepConsoleAfterExit>
+    <CheckInterfaceDrivers>true</CheckInterfaceDrivers>
+  </Debug>
+</VisualGDBProjectSettings2>
