@@ -33,7 +33,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // of the WiFi, OPS and PROG outputs.
 //#include "Config_Status.h"
 
-
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // The following line alters the default behavior of the ESP32 Command Station
