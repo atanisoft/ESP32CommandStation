@@ -48,7 +48,7 @@ menu "DCC/LCC Model Train Command Station"
 
 	  choice MOTORBOARD_CURRENT_SENSE_OPS
 	    bool "Main track current sense ADC channel"
-	    default "ADC1_CHANNEL_0"
+	    default ADC1_CHANNEL_0
 	    help
 		  Specify what input pin is used for current sense on the main track. Default is ADC1_CHANNEL_0 (Pin 36)
 	  config ADC1_CHANNEL_0
@@ -110,7 +110,7 @@ menu "DCC/LCC Model Train Command Station"
 
 	  choice MOTORBOARD_CURRENT_SENSE_PROG
 	    bool "Programming track current sense ADC channel"
-	    default "ADC1_CHANNEL_3"
+	    default ADC1_CHANNEL_3
 	    help
 		  Specify what input pin is used for current sense on the programming track. Default is ADC1_CHANNEL_3 (Pin 39).
 	  config ADC1_CHANNEL_0
