@@ -15,33 +15,6 @@ add_definitions(
   -DMBEDTLS_KEY_EXCHANGE_PSK_ENABLED
 )
 
-# espressif IDF has the 'git_submodule_check' function which we want to use,
-# include the git_submodules cmake module:
-set(IDF_PATH $ENV{IDF_PATH})
-set(CMAKE_MODULE_PATH
-        "${IDF_PATH}/tools/cmake"
-        "${IDF_PATH}/tools/cmake/third_party"
-        ${CMAKE_MODULE_PATH})
-include(utilities)
-include(git_submodules)                                                   
-
-#--------------------------------------------------------------------------------------
-# this part is similar to the platformio.ini section:
-#lib_deps=
-#    ArduinoJson@5.13.4
-#    AsyncTCP
-#    ESP Async WebServer
-#    ESP8266_SSD1306
-#    LiquidCrystal_PCF8574
-# ----------------------------------------------------------------------------
-# git submodule add https://github.com/bblanchon/ArduinoJson.git; git checkout v5.13.4
-# git submodule add https://github.com/me-no-dev/AsyncTCP.git
-# git submodule add https://github.com/mathertel/LiquidCrystal_PCF8574
-# git submodule add https://github.com/me-no-dev/ESPAsyncWebServer.git
-# git submodule add https://github.com/squix78/esp8266-oled-ssd1306.git
-# 
-# clone the modules, if they are not there yet
-git_submodule_check("${CMAKE_CURRENT_SOURCE_DIR}")
 
 #--------------------------------------------------------------------------------------
 # include the arduino simulation layer as an extra component:

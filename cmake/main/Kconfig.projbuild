@@ -1,0 +1,193 @@
+#-----------------------------------------------------------------------
+# DCC/LCC Configuration options. 
+# See https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
+# for syntax used.
+# The CMake build system will generate the "sdkconfig.h" file from this
+# configuration when started with "idf.py menuconfig"
+# Every 'config SOMETHING' entry will result in a 
+#       '#define CONFIG_SOMETHING ...' 
+# entry.
+#-----------------------------------------------------------------------
+menu "DCC/LCC Model Train Command Station"
+
+  #-----------------------------------------------------------------------
+	menu "Wifi"
+		config HOSTNAME
+			string "Device hostname"
+			default "DCCpp32"
+			help
+				define hostname to use for WiFi connections and mDNS broadcasts
+			
+		config SSID_NAME
+			string "WiFi SSID"
+			default "myssid"
+			help
+				SSID (network name) for the command station to connect to.
+
+		config SSID_PASSWORD
+			string "WiFi Password"
+			default "mypassword"
+			help
+				WiFi password (WPA or WPA2) for command station to use.
+				Can be left blank if the network has no security set.
+	endmenu
+
+
+  #-----------------------------------------------------------------------
+	menu "MotorBoard"
+    config MOTORBOARD_ENABLE_PIN_OPS
+        int "Main track motorboard enable pin (default 25)"
+        range 0 34
+        default 25
+        help
+            GPIO number used to enable the motorboard.
+
+            Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
+
+            GPIOs 35-39 are input-only so cannot be used as outputs.
+
+	  choice MOTORBOARD_CURRENT_SENSE_OPS
+	    bool "Main track current sense ADC channel"
+	    default "ADC1_CHANNEL_0"
+	    help
+		  Specify what input pin is used for current sense on the main track. Default is ADC1_CHANNEL_0 (Pin 36)
+	  config ADC1_CHANNEL_0
+	    bool "ADC1_CHANNEL_0 - Pin 36 (other name SVP/VP)"
+	  config ADC1_CHANNEL_3
+	    bool "ADC1_CHANNEL_3 - Pin 39 (other name SVN/VN)"
+	  config ADC1_CHANNEL_4
+	    bool "ADC1_CHANNEL_4 - Pin 32"		
+	  config ADC1_CHANNEL_5
+	    bool "ADC1_CHANNEL_5 - Pin 33"				
+	  config ADC1_CHANNEL_6
+	    bool "ADC1_CHANNEL_6 - Pin 34"						
+	  config ADC1_CHANNEL_7
+	    bool "ADC1_CHANNEL_7 - Pin 35"								
+    endchoice
+    config MOTORBOARD_CURRENT_SENSE_OPS
+      int
+      default 0 if ADC1_CHANNEL_0
+      default 3 if ADC1_CHANNEL_3
+      default 4 if ADC1_CHANNEL_4
+      default 5 if ADC1_CHANNEL_5
+      default 6 if ADC1_CHANNEL_6
+      default 7 if ADC1_CHANNEL_7
+
+    choice MOTORBOARD_TYPE_OPS
+      bool "Main track motor board type"
+      default MOTORBOARD_TYPE_OPS_ARDUINO_SHIELD
+      help
+          Specify what motorboard is used at the main operations track
+      config MOTORBOARD_TYPE_OPS_ARDUINO_SHIELD
+          bool "Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A"
+      config MOTORBOARD_TYPE_OPS_POLOLU
+          bool "Pololu MC33926 Motor Driver (shield or carrier). Max Output 2.5A"
+      config MOTORBOARD_TYPE_OPS_LMD18200
+          bool "LMD18200"
+      config MOTORBOARD_TYPE_OPS_BTS7960B_5A
+          bool "Infineon Technologies BTS 7960 Motor Driver Module. Max Output 5A"
+      config MOTORBOARD_TYPE_OPS_BTS7960B_10A
+          bool "Infineon Technologies BTS 7960 Motor Driver Module. Max Output 10A"
+    endchoice
+    config MOTORBOARD_TYPE_OPS
+        int
+        default 0 if MOTORBOARD_TYPE_OPS_ARDUINO_SHIELD
+        default 1 if MOTORBOARD_TYPE_OPS_POLOLU
+        default 2 if MOTORBOARD_TYPE_OPS_LMD18200
+        default 3 if MOTORBOARD_TYPE_OPS_BTS7960B_5A
+        default 4 if MOTORBOARD_TYPE_OPS_BTS7960B_10A
+
+    config MOTORBOARD_ENABLE_PIN_PROG
+        int "Programming track motorboard enable pin (default 23)"
+        range 0 34
+        default 23
+        help
+            GPIO number used to enable the motorboard. 
+
+            Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
+
+            GPIOs 35-39 are input-only so cannot be used as outputs.
+
+	  choice MOTORBOARD_CURRENT_SENSE_PROG
+	    bool "Programming track current sense ADC channel"
+	    default "ADC1_CHANNEL_3"
+	    help
+		  Specify what input pin is used for current sense on the programming track. Default is ADC1_CHANNEL_3 (Pin 39).
+	  config ADC1_CHANNEL_0
+	    bool "ADC1_CHANNEL_0 - Pin 36 (other name SVP/VP)"
+	  config ADC1_CHANNEL_3
+	    bool "ADC1_CHANNEL_3 - Pin 39 (other name SVN/VN)"
+	  config ADC1_CHANNEL_4
+	    bool "ADC1_CHANNEL_4 - Pin 32"		
+	  config ADC1_CHANNEL_5
+	    bool "ADC1_CHANNEL_5 - Pin 33"				
+	  config ADC1_CHANNEL_6
+	    bool "ADC1_CHANNEL_6 - Pin 34"						
+	  config ADC1_CHANNEL_7
+	    bool "ADC1_CHANNEL_7 - Pin 35"								
+    endchoice
+    config MOTORBOARD_CURRENT_SENSE_PROG
+      int
+      default 0 if ADC1_CHANNEL_0
+      default 3 if ADC1_CHANNEL_3
+      default 4 if ADC1_CHANNEL_4
+      default 5 if ADC1_CHANNEL_5
+      default 6 if ADC1_CHANNEL_6
+      default 7 if ADC1_CHANNEL_7
+
+    choice MOTORBOARD_TYPE_PROG
+      bool "Programming track motor board type"
+      default MOTORBOARD_TYPE_PROG_ARDUINO_SHIELD
+      help
+          Specify what motorboard is used at the programming operations track
+      config MOTORBOARD_TYPE_PROG_ARDUINO_SHIELD
+          bool "Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A"
+      config MOTORBOARD_TYPE_PROG_POLOLU
+          bool "Pololu MC33926 Motor Driver (shield or carrier). Max Output 2.5A"
+      config MOTORBOARD_TYPE_PROG_LMD18200
+          bool "LMD18200"
+      config MOTORBOARD_TYPE_PROG_BTS7960B_5A
+          bool "Infineon Technologies BTS 7960 Motor Driver Module. Max Output 5A"
+      config MOTORBOARD_TYPE_PROG_BTS7960B_10A
+          bool "Infineon Technologies BTS 7960 Motor Driver Module. Max Output 10A"
+    endchoice
+    config MOTORBOARD_TYPE_PROG
+        int 
+        default 0 if MOTORBOARD_TYPE_PROG_ARDUINO_SHIELD
+        default 1 if MOTORBOARD_TYPE_PROG_POLOLU
+        default 2 if MOTORBOARD_TYPE_PROG_LMD18200
+        default 3 if MOTORBOARD_TYPE_PROG_BTS7960B_5A
+        default 4 if MOTORBOARD_TYPE_PROG_BTS7960B_10A
+
+  endmenu
+
+  #-----------------------------------------------------------------------
+  config DCC_SIGNAL_PIN_OPERATIONS
+      int "DCC signal pin main track (M1DIR)"
+      range 0 34
+      default 19
+      help
+          GPIO number used to for the DCC signal on the main track.
+          Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
+          GPIOs 35-39 are input-only so cannot be used as outputs.
+
+  #-----------------------------------------------------------------------
+  config DCC_SIGNAL_PIN_PROGRAMMING
+      int "DCC signal pin programming track (M2DIR)"
+      range 0 34
+      default 18
+      help
+          GPIO number used to for the DCC signal on the programming track.
+          Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
+          GPIOs 35-39 are input-only so cannot be used as outputs.
+
+  config DCCPP_JMRI_CLIENT_PORT
+      int "JMRI Wifi interface port"
+      default 2560
+      help
+        Set the port to use for JMRI Wifi interface
+
+
+
+
+endmenu

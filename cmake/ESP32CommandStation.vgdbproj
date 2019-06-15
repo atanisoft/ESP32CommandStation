@@ -2,6 +2,10 @@
 <VisualGDBProjectSettings2 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <ConfigurationName>Debug</ConfigurationName>
   <Project xsi:type="com.visualgdb.project.external.esp-idf">
+    <CustomSourceDirectories>
+      <Directories />
+      <PathStyle>Unknown</PathStyle>
+    </CustomSourceDirectories>
     <ProjectModeSettings>
       <ProjectGUID>45835c8a-7835-496a-8bf7-bf0f0e6b67fa</ProjectGUID>
       <GroupSourcesByTypes>true</GroupSourcesByTypes>
