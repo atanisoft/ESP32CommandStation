@@ -25,8 +25,22 @@ static constexpr const char * OLD_CONSISTS_JSON_FILE = "consists.json";
 static constexpr const char * CONSISTS_JSON_FILE = "lococonsists.json";
 static constexpr const char * CONSIST_ENTRY_JSON_FILE = "consist-%d.json";
 
+// Priority for the LocomotiveManager periodic update task, this needs to
+// be higher than the loopTask priority (1) so it runs often.
+static constexpr UBaseType_t LOCO_MGR_TASK_PRIORITY = 5;
+
+// Stack size to allocate for the LocomotiveManager periodic update task.
+// TODO: reduce this after measuring actual usage.
+static constexpr uint32_t LOCO_MGR_TASK_STACK_SIZE = 3072;
+
+// Interval at which to wake up the LocomotiveManager periodic update task.
+static constexpr TickType_t LOCO_MGR_TASK_INTERVAL = pdMS_TO_TICKS(10);
+
+// ESP32 Core which to run the LocomotiveManager periodic update task.
+static constexpr uint8_t LOCO_MGR_CORE_AFFINITY = 1;
+
 // Active Locomotive instances, these will have periodic update packets sent
-// at least every 50ms.
+// at least every 40ms.
 LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {
   delete loco;
 });
@@ -166,12 +180,19 @@ void LocomotiveManager::showConsistStatus() {
   }
 }
 
-void LocomotiveManager::update() {
-  for (const auto& loco : _locos) {
-    loco->sendLocoUpdate();
-  }
-  for (const auto& loco : _consists) {
-    loco->sendLocoUpdate();
+void LocomotiveManager::update(void *arg) {
+  TickType_t lastWakeupTick = xTaskGetTickCount();
+  while(true) {
+    // We only queue packets if the OPS track output is enabled.
+    if(dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
+      for (const auto& loco : _locos) {
+        loco->sendLocoUpdate();
+      }
+      for (const auto& loco : _consists) {
+        loco->sendLocoUpdate();
+      }
+    }
+    vTaskDelayUntil(&lastWakeupTick, LOCO_MGR_TASK_INTERVAL);
   }
 }
 
@@ -316,6 +337,10 @@ void LocomotiveManager::init() {
   if (persistNeeded) {
     store();
   }
+
+  // create background task for sending periodic updates to active locomotives/consists.
+  xTaskCreatePinnedToCore(update, "LocoMgr", LOCO_MGR_TASK_STACK_SIZE, NULL,
+                          LOCO_MGR_TASK_PRIORITY, nullptr, LOCO_MGR_CORE_AFFINITY);
 }
 
 void LocomotiveManager::clear() {

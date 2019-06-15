@@ -183,7 +183,7 @@ public:
   static void processConsistThrottle(const std::vector<String>);
   static void showStatus();
   static void showConsistStatus();
-  static void update();
+  static void update(void *);
   static void emergencyStop();
   static uint8_t getActiveLocoCount() {
     return _locos.length();

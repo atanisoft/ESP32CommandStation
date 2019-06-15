@@ -49,8 +49,11 @@ Locomotive::Locomotive(JsonObject &json) : _registerNumber(-1), _lastUpdate(0), 
 }
 
 void Locomotive::sendLocoUpdate() {
-  // check if it has been at least 50mS since we last sent out the LOCO packets
-  if(esp_timer_get_time() < (_lastUpdate + MSEC_TO_USEC(50))) {
+  // This check ensures we do not send updates to the locomotive too quickly and
+  // ensures at least 40uS has passed since the last update was sent. Between this
+  // check and the LocomotiveManager update task sleeping for 10mS an update should
+  // be sent every 40-50mS.
+  if(esp_timer_get_time() < (_lastUpdate + MSEC_TO_USEC(40))) {
     return;
   }
   LOG(VERBOSE, "[Loco %d, speed: %d, dir: %s] Queuing packets",
