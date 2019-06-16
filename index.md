@@ -21,7 +21,7 @@ The ESP32 Command Station has been tested on a variety of ESP32 boards available
 ## Latest public release
 The latest production release of the code is [![GitHub release](https://img.shields.io/github/release/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/releases) [![GitHub release date](https://img.shields.io/github/release-date/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/releases).
 
-## Development updates
+## Dev updates
 The development branch is where all "in-progress" work will be made available, there is no guarantee of stability of the project when using this version of the code.
 
 ## How to Build
