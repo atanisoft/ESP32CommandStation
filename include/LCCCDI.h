@@ -17,7 +17,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #pragma once
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 #include <openlcb/ConfigRepresentation.hxx>
 #include <openlcb/MemoryConfig.hxx>
 #include <openlcb/TractionCvCdi.hxx>
@@ -27,14 +27,14 @@ namespace openlcb {
     const SimpleNodeStaticValues SNIP_STATIC_DATA = {
         4,
         "github.com/atanisoft (Mike Dunston)",
-        "DCC++ESP32",
-        "ESP32",
+        "ESP32 Command Station",
+        "ESP32-v1",
         VERSION
     };
 
     /// Modify this value every time the EEPROM needs to be cleared on the node
     /// after an update.
-    static constexpr uint16_t CANONICAL_VERSION = 0x0125;
+    static constexpr uint16_t CANONICAL_VERSION = 0x0130;
 
     /// Defines the main segment in the configuration CDI. This is laid out at
     /// origin 128 to give space for the ACDI user data at the beginning.

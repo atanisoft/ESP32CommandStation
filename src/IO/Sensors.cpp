@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,11 +15,11 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 /**********************************************************************
 
-DCC++ESP32 COMMAND STATION supports Sensor inputs that can be connected to any
+The ESP32 Command Station supports Sensor inputs that can be connected to any
 unused ESP32 pin. Sensors can be of any type (infrared, magentic, mechanical...).
 The only requirement is that when "activated" the Sensor must force the
 specified pin LOW (i.e. to ground), and when not activated, this pin should
@@ -49,7 +49,7 @@ command:
 where
 
   ID:     the numeric ID (0-32767) of the sensor
-  PIN:    the arduino pin number the sensor is connected to
+  PIN:    the pin number the sensor is connected to
   PULLUP: 1=use internal pull-up resistor for PIN, 0=don't use internal pull-up
           resistor for PIN
 
@@ -85,17 +85,19 @@ static constexpr const char * SENSORS_JSON_FILE = "sensors.json";
 
 void SensorManager::init() {
   _lock = xSemaphoreCreateMutex();
-  LOG(INFO, "[Sensors] Initializing sensors list");
-  JsonObject &root = configStore.load(SENSORS_JSON_FILE);
-  JsonVariant count = root[JSON_COUNT_NODE];
-  uint16_t sensorCount = count.success() ? count.as<int>() : 0;
-  LOG(INFO, "[Sensors] Found %d sensors", sensorCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Sensors"), sensorCount);
-  if(sensorCount > 0) {
-    for(auto sensor : root.get<JsonArray>(JSON_SENSORS_NODE)) {
-      sensors.add(new Sensor(sensor.as<JsonObject &>()));
+  LOG(INFO, "[Sensors] Initializing sensors");
+  if(configStore.exists(SENSORS_JSON_FILE)) {
+    JsonObject &root = configStore.load(SENSORS_JSON_FILE);
+    JsonVariant count = root[JSON_COUNT_NODE];
+    uint16_t sensorCount = count.success() ? count.as<int>() : 0;
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Sensors"), sensorCount);
+    if(sensorCount > 0) {
+      for(auto sensor : root.get<JsonArray>(JSON_SENSORS_NODE)) {
+        sensors.add(new Sensor(sensor.as<JsonObject &>()));
+      }
     }
   }
+  LOG(INFO, "[Sensors] Loaded %d sensors", sensors.length());
   xTaskCreate(sensorTask, "SensorManager", SENSOR_TASK_STACK_SIZE, NULL, SENSOR_TASK_PRIORITY, &_taskHandle);
 }
 

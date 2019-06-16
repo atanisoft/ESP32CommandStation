@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,22 +15,13 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "sdkconfig.h"
-
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // DEFINE WiFi Parameters
 //
-#ifdef CONFIG_SSID_NAME
-  #define SSID_NAME CONFIG_SSID_NAME
-#else
-  #define SSID_NAME "SSID_NAME_HERE"
-#endif
-#ifdef CONFIG_SSID_PASSWORD
-  #define SSID_PASSWORD CONFIG_SSID_PASSWORD
-#else
-  #define SSID_PASSWORD "SSID_PASSWORD_HERE"
-#endif
+#define SSID_NAME "SSID_NAME_HERE"
+#define SSID_PASSWORD "SSID_PASSWORD_HERE"
+
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // DEFINE STATIC IP ADDRESS DETAILS OR LEAVE COMMENTED FOR DHCP
@@ -56,21 +47,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// DEFINE PORT TO USE FOR JMRI WiFi INTERFACE
-//
-#ifdef CONFIG_DCCPP_JMRI_CLIENT_PORT
-  #define DCCPP_JMRI_CLIENT_PORT CONFIG_DCCPP_JMRI_CLIENT_PORT
-#else
-  #define DCCPP_JMRI_CLIENT_PORT 2560
-#endif
-
-/////////////////////////////////////////////////////////////////////////////////////
-//
 // DEFINE HOSTNAME TO USE FOR WiFi CONNECTIONS AND mDNS BROADCASTS
 //
-#ifdef CONFIG_HOSTNAME
-  #define HOSTNAME CONFIG_HOSTNAME
-#else
-  #define HOSTNAME "DCCpp32"
-#endif
+#define HOSTNAME "ESP32CS"
+
 /////////////////////////////////////////////////////////////////////////////////////

@@ -1,8 +1,7 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2018-2019 NormHal
-COPYRIGHT (c) 2018-2019 Mike Dunston
+COPYRIGHT (c) 2018-2019 NormHal, Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -16,7 +15,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #if NEXTION_ENABLED
 
@@ -25,7 +24,7 @@ constexpr uint8_t ON_PIC_ON=55;
 constexpr uint8_t OFF_PIC_OFF=56;
 constexpr uint8_t OFF_PIC_ON=57;
 
-DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const String &pageName) :
+BaseNextionPage::BaseNextionPage(Nextion &nextion, const uint8_t pageID, const String &pageName) :
   NextionPage(nextion, pageID, 0, pageName),
   _onButton(nextion, pageID, 1, "On"),
   _stopButton(nextion, pageID, 2, "Stop"),
@@ -47,7 +46,7 @@ DCCPPNextionPage::DCCPPNextionPage(Nextion &nextion, const uint8_t pageID, const
   });
 }
 
-void DCCPPNextionPage::display() {
+void BaseNextionPage::display() {
   if(!show()) {
     LOG_ERROR("[Nextion] Display of page %s was not successful.", m_name.c_str());
   } else {
@@ -61,12 +60,12 @@ void DCCPPNextionPage::display() {
   displayPage();
 }
 
-void DCCPPNextionPage::refresh() {
+void BaseNextionPage::refresh() {
   refreshPowerButtons();
   refreshPage();
 }
 
-void DCCPPNextionPage::setTrackPower(bool on) {
+void BaseNextionPage::setTrackPower(bool on) {
   if(on) {
     MotorBoardManager::powerOnAll();
   } else {
@@ -75,12 +74,12 @@ void DCCPPNextionPage::setTrackPower(bool on) {
   refreshPowerButtons();
 }
 
-void DCCPPNextionPage::sendEStop() {
+void BaseNextionPage::sendEStop() {
   LocomotiveManager::emergencyStop();
   refresh();
 }
 
-void DCCPPNextionPage::displayPreviousPage(bool invokeCallback) {
+void BaseNextionPage::displayPreviousPage(bool invokeCallback) {
   if(_returnPageID > 0) {
     nextionPages[_returnPageID]->display();
     if(invokeCallback) {
@@ -89,7 +88,7 @@ void DCCPPNextionPage::displayPreviousPage(bool invokeCallback) {
   }
 }
 
-void DCCPPNextionPage::refreshPowerButtons() {
+void BaseNextionPage::refreshPowerButtons() {
   if(MotorBoardManager::isTrackPowerOn()) {
     _onButton.setPictureID(ON_PIC_ON);
     _offButton.setPictureID(OFF_PIC_OFF);

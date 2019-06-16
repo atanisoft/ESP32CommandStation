@@ -3,5 +3,5 @@
 /VisualGDBCache/
 /build/
 /VisualGDB/
-*.vgdbproj.Heath.user
+*.vgdbproj.*.user
 /ESP32CommandStation.sln

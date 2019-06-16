@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2019 Mike Dunston
 
@@ -17,6 +17,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #pragma once
 
+constexpr const char * JSON_FILE_NODE = "file";
 
 constexpr const char * JSON_NAME_NODE = "name";
 constexpr const char * JSON_STATE_NODE = "state";

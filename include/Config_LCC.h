@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -24,7 +24,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // pin definitions below to valid pin numbers.
 //
 
-// This is the LCC node identifier for the DCC++ESP32 Command Station. It is
+// This is the LCC node identifier for the ESP32 Command Station. It is
 // recommended, but not required, to request your own ID range via:
 // https://registry.openlcb.org/requestuniqueidrange
 //

@@ -1,8 +1,7 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2018-2019 NormHal
-COPYRIGHT (c) 2018-2019 Mike Dunston
+COPYRIGHT (c) 2018-2019 NormHal, Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -16,7 +15,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #if NEXTION_ENABLED
 
@@ -176,7 +175,7 @@ constexpr uint8_t slot59ButtonID=129;
 /************************************************************************************************************/
 //
 NextionTurnoutPage::NextionTurnoutPage(Nextion &nextion) :
-  DCCPPNextionPage(nextion, TURNOUT_PAGE, "3"),
+  BaseNextionPage(nextion, TURNOUT_PAGE, "3"),
   _turnoutButtons {
     NextionButton(nextion, TURNOUT_PAGE, slot0ButtonID, "To0"),
     NextionButton(nextion, TURNOUT_PAGE, slot1ButtonID, "To1"),
@@ -440,7 +439,7 @@ void NextionTurnoutPage::refreshPage() {
   }
 }
 
-void NextionTurnoutPage::previousPageCallback(DCCPPNextionPage *previousPage) {
+void NextionTurnoutPage::previousPageCallback(BaseNextionPage *previousPage) {
   NextionAddressPage *addressPage = static_cast<NextionAddressPage *>(previousPage);
   if(_pageMode == PAGE_MODE::EDIT) {
     auto turnout = TurnoutManager::getTurnoutByAddress(addressPage->getCurrentAddress());

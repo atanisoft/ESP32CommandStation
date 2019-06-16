@@ -1,8 +1,7 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2018-2019 NormHal
-COPYRIGHT (c) 2018-2019 Mike Dunston
+COPYRIGHT (c) 2018-2019 NormHal, Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -16,7 +15,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #include <bits/stdc++.h> 
 
@@ -49,13 +48,13 @@ constexpr TickType_t NEXTION_INTERFACE_UPDATE_INTERVAL = pdMS_TO_TICKS(50);
 constexpr uint8_t NEXTION_INTERFACE_TASK_PRIORITY = 2;
 constexpr uint16_t NEXTION_INTERFACE_TASK_STACK_SIZE = DEFAULT_THREAD_STACKSIZE;
 
-DCCPPNextionPage *nextionPages[MAX_PAGES] = {
+BaseNextionPage *nextionPages[MAX_PAGES] = {
   new NextionTitlePage(nextion),
   new NextionAddressPage(nextion),
   new NextionThrottlePage(nextion),
   new NextionTurnoutPage(nextion),
-  nullptr,
-  nullptr
+  new NextionSetupPage(nextion),
+  /* new NextionRoutesPage(nextion) */ nullptr
 };
 
 static constexpr char const * NEXTION_DISPLAY_TYPE_STRINGS[] = {

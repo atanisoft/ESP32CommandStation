@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,8 +15,9 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 #include <ESPAsyncWebServer.h>
+#include <SPIFFSEditor.h>
 #include <AsyncJson.h>
 #include <Update.h>
 
@@ -87,7 +88,7 @@ static const char * _err2str(uint8_t _error){
     return ("UNKNOWN");
 }
 
-DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
+ESP32CSWebServer::ESP32CSWebServer() : AsyncWebServer(80), webSocket("/ws") {
   rewrite("/", "/index.html");
   on("/index.html", HTTP_GET,
     [](AsyncWebServerRequest *request) {
@@ -115,25 +116,25 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     request->send(jsonResponse);
   });
   on("/programmer", HTTP_GET | HTTP_POST,
-    std::bind(&DCCPPWebServer::handleProgrammer, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handleProgrammer, this, std::placeholders::_1));
   on("/power", HTTP_GET | HTTP_PUT,
-    std::bind(&DCCPPWebServer::handlePower, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handlePower, this, std::placeholders::_1));
   on("/outputs", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
-    std::bind(&DCCPPWebServer::handleOutputs, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handleOutputs, this, std::placeholders::_1));
   on("/turnouts", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
-    std::bind(&DCCPPWebServer::handleTurnouts, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handleTurnouts, this, std::placeholders::_1));
   on("/sensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
-    std::bind(&DCCPPWebServer::handleSensors, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handleSensors, this, std::placeholders::_1));
 #if S88_ENABLED
   on("/s88sensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
-    std::bind(&DCCPPWebServer::handleS88Sensors, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handleS88Sensors, this, std::placeholders::_1));
 #endif
   on("/remoteSensors", HTTP_GET | HTTP_POST | HTTP_DELETE,
-    std::bind(&DCCPPWebServer::handleRemoteSensors, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handleRemoteSensors, this, std::placeholders::_1));
   on("/config", HTTP_POST | HTTP_DELETE,
-    std::bind(&DCCPPWebServer::handleConfig, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handleConfig, this, std::placeholders::_1));
   on("/locomotive", HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_DELETE,
-    std::bind(&DCCPPWebServer::handleLocomotive, this, std::placeholders::_1));
+    std::bind(&ESP32CSWebServer::handleLocomotive, this, std::placeholders::_1));
   on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
     request->send(STATUS_OK, "text/plain", _err2str(Update.getError()));
   }, [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
@@ -192,7 +193,7 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
       AwsEventType type, void * arg, uint8_t *data, size_t len) {
     if (type == WS_EVT_CONNECT) {
       webSocketClients.add(new WebSocketClient(client->id(), client->remoteIP()));
-      client->printf("DCC++ESP32 v%s. READY!", VERSION);
+      client->printf("<iDCC++ ESP32 Command Station: V-%s / %s %s>", VERSION, __DATE__, __TIME__);
   #if INFO_SCREEN_WS_CLIENTS_LINE >= 0
       InfoScreen::print(12, INFO_SCREEN_WS_CLIENTS_LINE, F("%02d"), webSocketClients.length());
   #endif
@@ -218,18 +219,19 @@ DCCPPWebServer::DCCPPWebServer() : AsyncWebServer(80), webSocket("/ws") {
     }
   });
   addHandler(&webSocket);
+  addHandler(new SPIFFSEditor(SPIFFS));
 }
 
-void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
- 	auto jsonResponse = new AsyncJsonResponse();
+void ESP32CSWebServer::handleProgrammer(AsyncWebServerRequest *request) {
+  auto jsonResponse = new AsyncJsonResponse();
   if(!MotorBoardManager::getBoardByName(MOTORBOARD_NAME_PROG)->isOn()) {
     MotorBoardManager::powerOn(MOTORBOARD_NAME_PROG);
   }
-	// new programmer request
-	if (request->method() == HTTP_GET) {
-		if (request->arg(JSON_PROG_ON_MAIN).equalsIgnoreCase(JSON_VALUE_TRUE)) {
-			jsonResponse->setCode(STATUS_NOT_ALLOWED);
-		} else if(request->hasArg(JSON_IDENTIFY_NODE)) {
+  // new programmer request
+  if (request->method() == HTTP_GET) {
+    if (request->arg(JSON_PROG_ON_MAIN).equalsIgnoreCase(JSON_VALUE_TRUE)) {
+      jsonResponse->setCode(STATUS_NOT_ALLOWED);
+    } else if(request->hasArg(JSON_IDENTIFY_NODE)) {
       JsonObject &node = jsonResponse->getRoot();
       if(enterProgrammingMode()) {
         int16_t decoderConfig = readCV(CV_NAMES::DECODER_CONFIG);
@@ -325,7 +327,7 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
         LOG(WARNING, "Programmer already in use");
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
-		}
+    }
   } else if(request->method() == HTTP_POST && request->hasArg(JSON_PROG_ON_MAIN)) {
     if (request->arg(JSON_PROG_ON_MAIN).equalsIgnoreCase(JSON_VALUE_TRUE)) {
       if(request->hasArg(JSON_CV_BIT_NODE)) {
@@ -335,8 +337,8 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
         writeOpsCVByte(request->arg(JSON_ADDRESS_NODE).toInt(), request->arg(JSON_CV_NODE).toInt(),
           request->arg(JSON_VALUE_NODE).toInt());
       }
-			jsonResponse->setCode(STATUS_OK);
-		} else {
+      jsonResponse->setCode(STATUS_OK);
+    } else {
       bool writeSuccess = false;
       if(enterProgrammingMode()) {
         if(request->hasArg(JSON_CV_BIT_NODE)) {
@@ -352,19 +354,19 @@ void DCCPPWebServer::handleProgrammer(AsyncWebServerRequest *request) {
       } else {
         jsonResponse->setCode(STATUS_SERVER_ERROR);
       }
-		}
+    }
   } else {
     jsonResponse->setCode(STATUS_BAD_REQUEST);
   }
   LOG(VERBOSE, "Setting response size");
-	jsonResponse->setLength();
+  jsonResponse->setLength();
   LOG(VERBOSE, "Sending response, %d bytes", jsonResponse->getSize());
-	request->send(jsonResponse);
+  request->send(jsonResponse);
   LOG(VERBOSE, "sent");
  }
 
-void DCCPPWebServer::handlePower(AsyncWebServerRequest *request) {
- 	auto jsonResponse = new AsyncJsonResponse(true);
+void ESP32CSWebServer::handlePower(AsyncWebServerRequest *request) {
+  auto jsonResponse = new AsyncJsonResponse(true);
   if(request->method() == HTTP_GET) {
     if(request->params()) {
       ((JsonArray &)jsonResponse->getRoot()).createNestedObject()[JSON_STATE_NODE] = MotorBoardManager::isTrackPowerOn() ? JSON_VALUE_TRUE : JSON_VALUE_FALSE;
@@ -389,11 +391,11 @@ void DCCPPWebServer::handlePower(AsyncWebServerRequest *request) {
       jsonResponse->setCode(STATUS_BAD_REQUEST);
     }
   }
- 	jsonResponse->setLength();
- 	request->send(jsonResponse);
+  jsonResponse->setLength();
+  request->send(jsonResponse);
  }
 
-void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
+void ESP32CSWebServer::handleOutputs(AsyncWebServerRequest *request) {
   auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->params());
   if (request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE)) {
     JsonArray &array = jsonResponse->getRoot();
@@ -435,7 +437,7 @@ void DCCPPWebServer::handleOutputs(AsyncWebServerRequest *request) {
   request->send(jsonResponse);
 }
 
-void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
+void ESP32CSWebServer::handleTurnouts(AsyncWebServerRequest *request) {
   // GET /turnouts - full list of turnouts, note that turnout state is STRING type for display
   // GET /turnouts?readbleStrings=[0,1] - full list of turnouts, turnout state will be returned as true/false (boolean) when readableStrings=0.
   // GET /turnouts?address=<address> - retrieve turnout by DCC address
@@ -519,7 +521,7 @@ void DCCPPWebServer::handleTurnouts(AsyncWebServerRequest *request) {
   request->send(jsonResponse);
 }
 
-void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
+void ESP32CSWebServer::handleSensors(AsyncWebServerRequest *request) {
   auto jsonResponse = new AsyncJsonResponse(request->method() == HTTP_GET && !request->params());
   if (request->method() == HTTP_GET && !request->hasArg(JSON_ID_NODE)) {
     JsonArray &array = jsonResponse->getRoot();
@@ -551,7 +553,7 @@ void DCCPPWebServer::handleSensors(AsyncWebServerRequest *request) {
   request->send(jsonResponse);
 }
 
-void DCCPPWebServer::handleConfig(AsyncWebServerRequest *request) {
+void ESP32CSWebServer::handleConfig(AsyncWebServerRequest *request) {
   std::vector<String> arguments;
   if(request->method() == HTTP_POST) {
     DCCPPProtocolHandler::getCommandHandler("E")->process(arguments);
@@ -561,7 +563,7 @@ void DCCPPWebServer::handleConfig(AsyncWebServerRequest *request) {
 }
 
 #if S88_ENABLED
-void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
+void ESP32CSWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
   auto jsonResponse = new AsyncJsonResponse(true);
   if(request->method() == HTTP_GET) {
     JsonArray &array = jsonResponse->getRoot();
@@ -582,7 +584,7 @@ void DCCPPWebServer::handleS88Sensors(AsyncWebServerRequest *request) {
 }
 #endif
 
-void DCCPPWebServer::handleRemoteSensors(AsyncWebServerRequest *request) {
+void ESP32CSWebServer::handleRemoteSensors(AsyncWebServerRequest *request) {
   auto jsonResponse = new AsyncJsonResponse(true);
   if(request->method() == HTTP_GET) {
     JsonArray &array = jsonResponse->getRoot();
@@ -597,7 +599,7 @@ void DCCPPWebServer::handleRemoteSensors(AsyncWebServerRequest *request) {
   request->send(jsonResponse);
 }
 
-void DCCPPWebServer::handleLocomotive(AsyncWebServerRequest *request) {
+void ESP32CSWebServer::handleLocomotive(AsyncWebServerRequest *request) {
   // method - url pattern - meaning
   // ANY /locomotive/estop - send emergency stop to all locomotives
   // GET /locomotive/roster - roster

@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,22 +15,27 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
+
+#if LCC_ENABLED
+#include <dcc/RailcomHub.hxx>
+extern dcc::RailcomHubFlow railComHub;
+#endif
 
 // APB/REF clock divider to use for the RMT module
 static constexpr uint8_t RMT_CLOCK_DIVIDER = 80;
 
 // number of microseconds for each half of the DCC signal for a zero
-static constexpr uint32_t ZERO_BIT_PULSE = 98;
+static constexpr uint32_t ZERO_BIT_PULSE_USEC = 98;
 
 // number of microseconds for each half of the DCC signal for a one
-static constexpr uint32_t ONE_BIT_PULSE = 58;
+static constexpr uint32_t ONE_BIT_PULSE_USEC = 58;
 
-static constexpr TickType_t PREAMBLE_MAX_DELAY = 1000000000L;
+static constexpr TickType_t MAX_PACKET_TX_TIME = 100000L;
 
-static constexpr rmt_item32_t DCC_ZERO_BIT = {{{ ZERO_BIT_PULSE, 1, ZERO_BIT_PULSE, 0 }}};
-static constexpr rmt_item32_t DCC_ONE_BIT = {{{ ONE_BIT_PULSE, 1, ONE_BIT_PULSE, 0 }}};
-
+static constexpr rmt_item32_t DCC_ZERO_BIT = {{{ ZERO_BIT_PULSE_USEC, 1, ZERO_BIT_PULSE_USEC, 0 }}};
+static constexpr rmt_item32_t DCC_ONE_BIT = {{{ ONE_BIT_PULSE_USEC, 1, ONE_BIT_PULSE_USEC, 0 }}};
+/*
 // pre-encoded DCC preamble in RMT format
 static constexpr rmt_item32_t DCC_PREAMBLE[] = {
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
@@ -47,16 +52,17 @@ static constexpr rmt_item32_t DCC_PREAMBLE[] = {
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
     DCC_ONE_BIT, DCC_ONE_BIT
 };
+*/
 
-constexpr uint8_t MAX_DCC_PACKET_BITS = 64;
+constexpr uint8_t MAX_DCC_PACKET_BITS = 128;
 
-constexpr uint32_t RMT_TASK_STACK_SIZE = 3084;
-constexpr BaseType_t RMT_TASK_PRIORITY = 10;
+constexpr uint32_t RMT_TASK_STACK_SIZE = 4096;
+constexpr BaseType_t RMT_TASK_PRIORITY = ESP_TASK_TCPIP_PRIO;
+constexpr BaseType_t RMT_TASK_CORE = 0;
 
-// TODO: remove preamble bits from Packet
-// this skips the preamble bits that come pre-encoded in the packet by the DCCSignalGenerator code
+
 #define CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-    for(int index = 22; \
+    for(int index = 0; \
         index < packet->numberOfBits; \
         index++, encodedBitCount++) { \
         if(packet->buffer[index / 8] & DCC_PACKET_BIT_MASK[index % 8]) { \
@@ -64,7 +70,11 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
         } else { \
             encodedPacket[encodedBitCount].val = DCC_ZERO_BIT.val; \
         } \
-    }
+    } \
+    encodedPacket[encodedBitCount++].val = DCC_ONE_BIT.val;
+// NOTE: the above extra one bit is to ensure the RMT sends the last bit of the packet without
+// stretching the LOW wave portion. This extra bit will be ignored by the decoders as an extra
+// preamble bit.
 
 #define RMT_TRANSMIT_BITS(signal, bits, count, wait) \
     ESP_ERROR_CHECK(rmt_write_items(signal->_rmtChannel, bits, count, wait));
@@ -79,24 +89,38 @@ constexpr BaseType_t RMT_TASK_PRIORITY = 10;
             uint8_t encodedBitCount = 0; \
             rmt_item32_t encodedPacket[MAX_DCC_PACKET_BITS]; \
             CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-            RMT_TRANSMIT_BITS(signal, DCC_PREAMBLE, preambleBitCount, true) \
             RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, true) \
             packet->currentBit = packet->numberOfBits; \
         } \
     }
+constexpr uint8_t RAILCOM_PACKET_END_DELAY = 1;
+constexpr uint8_t RAILCOM_BRAKE_ENABLE_DELAY = 1;
+constexpr uint8_t RAILCOM_BRAKE_DISABLE_DELAY = 10;
 
 #define RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, preambleBitCount) \
     while(xSemaphoreTake(signal->_stopRequest, 0) != pdTRUE) { \
         auto packet = signal->getPacket(); \
-        if(packet) { \
+        if (packet) { \
             uint8_t encodedBitCount = 0; \
             rmt_item32_t encodedPacket[MAX_DCC_PACKET_BITS]; \
             CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-            RMT_TRANSMIT_BITS(signal, DCC_PREAMBLE, preambleBitCount, false) \
-            /* TODO: RailCom Cutout, 488uS */ \
-            RMT_WAIT_FOR_TRANSMIT_COMPLETE(signal, PREAMBLE_MAX_DELAY) \
             RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, true) \
             packet->currentBit = packet->numberOfBits; \
+            digitalWrite(signal->_signalPin, LOW); \
+            delayMicroseconds(RAILCOM_PACKET_END_DELAY); \
+            digitalWrite(signal->_brakeEnablePin, HIGH); \
+            delayMicroseconds(RAILCOM_BRAKE_ENABLE_DELAY); \
+            digitalWrite(signal->_outputEnablePin, LOW); \
+            digitalWrite(signal->_railComEnablePin, HIGH); \
+            signal->receiveRailComData(); \
+            digitalWrite(signal->_railComEnablePin, LOW); \
+            if(digitalRead(signal->_railComShortPin)) { \
+                /* TBD */ \
+            } \
+            digitalWrite(signal->_outputEnablePin, HIGH); \
+            delayMicroseconds(RAILCOM_BRAKE_DISABLE_DELAY); \
+            digitalWrite(signal->_brakeEnablePin, LOW); \
+            /* signal pin will reset with next packet automatically */ \
         } \
     }
 
@@ -105,21 +129,44 @@ static void RMT_task_entry(void *param) {
     xSemaphoreTake(signal->_stopComplete, portMAX_DELAY);
     LOG(INFO, "[%s] RMT feeder task starting up", signal->getName());
     if(signal->_rmtChannel == DCC_SIGNAL_PROGRAMMING) {
-        // for PROG track we need to use a longer preamble
+        // for PROG track there is no RailCom support
         RMT_TRANSMIT_DCC(signal, PROG_TRACK_PREAMBLE_BITS)
-    } else {
-        // for OPS track we can use a shorter preamble
+    } else if(signal->_outputEnablePin != NOT_A_PIN && signal->_brakeEnablePin != NOT_A_PIN && 
+              signal->_railComEnablePin != NOT_A_PIN && signal->_railComShortPin != NOT_A_PIN) {
+        LOG(INFO, "[%s] Enabling RailCom detection", signal->getName());
+        // Enable RailCom detection on OPS output
         RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, OPS_TRACK_PREAMBLE_BITS)
+    } else {
+        // No RailCom support
+        RMT_TRANSMIT_DCC(signal, OPS_TRACK_PREAMBLE_BITS)
     }
     LOG(INFO, "[%s] RMT feeder task shut down", signal->getName());
     xSemaphoreGive(signal->_stopComplete);
     vTaskDelete(NULL);
 }
 
-SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) :
-    SignalGenerator(name, maxPackets, signalID, signalPin), _rmtChannel((rmt_channel_t)signalID) {
+SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin,
+    int8_t outputEnablePin, int8_t brakeEnablePin, int8_t railComEnablePin, int8_t railComShortPin,
+    int8_t railComUART, int8_t railComReceivePin) : SignalGenerator(name, maxPackets, signalID, signalPin),
+    _rmtChannel((rmt_channel_t)signalID), _signalPin(signalPin), _outputEnablePin(outputEnablePin),
+    _brakeEnablePin(brakeEnablePin), _railComEnablePin(railComEnablePin), _railComShortPin(railComShortPin) {
+
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, "%s RMT Init", getName());
+
     LOG(INFO, "[%s] Configuring RMT-%d using pin %d and bit timing: zero: %duS, one: %duS",
-        _name.c_str(), _rmtChannel, signalPin, ZERO_BIT_PULSE, ONE_BIT_PULSE);
+        getName(), _rmtChannel, _signalPin, ZERO_BIT_PULSE_USEC, ONE_BIT_PULSE_USEC);
+
+    if(_outputEnablePin != NOT_A_PIN && _railComEnablePin != NOT_A_PIN && _brakeEnablePin != NOT_A_PIN &&
+       railComReceivePin != NOT_A_PIN && railComUART != NOT_A_PIN) {
+        InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, "%s RailCom Init", getName());
+        LOG(INFO, "[%s] Configuring RailCom detector (hb-en: %d, rc-en: %d, br-en: %d, rc: %d, uart: %d)",
+            getName(), _outputEnablePin, _railComEnablePin, _brakeEnablePin, railComReceivePin, railComUART);
+        pinMode(_railComEnablePin, OUTPUT);
+        digitalWrite(_railComEnablePin, LOW);
+        pinMode(_brakeEnablePin, OUTPUT);
+        digitalWrite(_brakeEnablePin, LOW);
+        _railComUART = uartBegin(railComUART, 250000L, SERIAL_8N1, railComReceivePin, -1, 128, false);
+    }
 
     _stopRequest = xSemaphoreCreateBinary();
     _stopComplete = xSemaphoreCreateBinary();
@@ -129,7 +176,7 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
         .rmt_mode = RMT_MODE_TX,
         .channel = _rmtChannel,
         .clk_div = RMT_CLOCK_DIVIDER,
-        .gpio_num = (gpio_num_t)signalPin,
+        .gpio_num = (gpio_num_t)_signalPin,
         .mem_block_num = 2,
         {
             .tx_config = {
@@ -148,16 +195,44 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
 }
 
 void SignalGenerator_RMT::enable() {
-    LOG(INFO, "[%s] Creating RMT feeder task", _name.c_str());
+    LOG(INFO, "[%s] Creating RMT feeder task", getName());
     xSemaphoreGive(_stopComplete);
-    xTaskCreate(RMT_task_entry, _name.c_str(), RMT_TASK_STACK_SIZE, this, RMT_TASK_PRIORITY, nullptr);
+    xTaskCreatePinnedToCore(RMT_task_entry, getName(), RMT_TASK_STACK_SIZE,
+                            this, RMT_TASK_PRIORITY, nullptr, RMT_TASK_CORE);
 }
 
 void SignalGenerator_RMT::disable() {
-    LOG(INFO, "[%s] Requesting RMT feeder task to stop", _name.c_str());
+    LOG(INFO, "[%s] Requesting RMT feeder task to stop", getName());
     xSemaphoreGive(_stopRequest);
     while(xSemaphoreTake(_stopComplete, pdMS_TO_TICKS(250)) != pdTRUE) {
-        LOG(INFO, "[%s] RMT feeder task still running...", _name.c_str());
+        LOG(INFO, "[%s] RMT feeder task still running...", getName());
     }
-    LOG(INFO, "[%s] RMT Feeder task stopped", _name.c_str());
+    LOG(INFO, "[%s] RMT Feeder task stopped", getName());
+}
+
+void SignalGenerator_RMT::receiveRailComData() {
+    std::vector<uint8_t> data(8);
+    while(uartAvailable(_railComUART)) {
+        data.push_back(uartRead(_railComUART));
+    }
+    if(data.size() < 2 || data.size() > 8) {
+        LOG_ERROR("[%s] Invalid RailCom data length of %d received.", getName(), data.size());
+    } else {
+        dcc::Feedback feedback;
+        feedback.reset(0);
+        auto dataPtr = data.begin();
+        feedback.add_ch1_data(*dataPtr++);
+        feedback.add_ch1_data(*dataPtr++);
+        while(dataPtr != data.end()) {
+            feedback.add_ch2_data(*dataPtr++);
+        }
+#if LCC_ENABLED
+        auto buf = railComHub.alloc();
+        memcpy(buf->data()->data(), &feedback, sizeof(dcc::Feedback));
+        railComHub.send(buf);
+#else
+        //_railComData.push_back(feedback);
+        LOG(VERBOSE, "[%s] RailCom: %s", getName(), railcom_debug(feedback).c_str());
+#endif
+    }
 }

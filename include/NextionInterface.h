@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2018-2019 NormHal
 COPYRIGHT (c) 2018-2019 Mike Dunston
@@ -35,7 +35,7 @@ enum NEXTION_PAGES {
   ADDRESS_PAGE = 1,
   THROTTLE_PAGE = 2,
   TURNOUT_PAGE = 3,
-  CONFIG_PAGE = 4,
+  SETUP_PAGE = 4,
   ROUTES_PAGE = 5,
   MAX_PAGES
 };
@@ -50,9 +50,9 @@ enum NEXTION_DEVICE_TYPE {
   UNKOWN_DISPLAY
 };
 
-class DCCPPNextionPage : public NextionPage {
+class BaseNextionPage : public NextionPage {
 public:
-  DCCPPNextionPage(Nextion &, uint8_t, const String &);
+  BaseNextionPage(Nextion &, uint8_t, const String &);
   void display();
   void refresh();
   virtual void refreshPage() = 0;
@@ -75,7 +75,7 @@ protected:
   // Called anytime the page gets displayed, should be used for refresh of components etc.
   virtual void displayPage() = 0;
 
-  virtual void previousPageCallback(DCCPPNextionPage *previousPage) {}
+  virtual void previousPageCallback(BaseNextionPage *previousPage) {}
 private:
   NextionButton _onButton;
   NextionButton _stopButton;
@@ -85,12 +85,12 @@ private:
   void refreshPowerButtons();
 };
 
-extern DCCPPNextionPage *nextionPages[MAX_PAGES];
+extern BaseNextionPage *nextionPages[MAX_PAGES];
 extern NEXTION_DEVICE_TYPE nextionDeviceType;
 
-class NextionTitlePage : public DCCPPNextionPage {
+class NextionTitlePage : public BaseNextionPage {
 public:
-  NextionTitlePage(Nextion &nextion) : DCCPPNextionPage(nextion, TITLE_PAGE, "0"),
+  NextionTitlePage(Nextion &nextion) : BaseNextionPage(nextion, TITLE_PAGE, "0"),
     _versionText(nextion, TITLE_PAGE, 3, "Version"),
     _statusText {
       NextionText(nextion, TITLE_PAGE, 4, "Status1"), 
@@ -118,7 +118,7 @@ private:
   NextionText _statusText[5];
 };
 
-class NextionAddressPage : public DCCPPNextionPage {
+class NextionAddressPage : public BaseNextionPage {
 public:
   NextionAddressPage(Nextion &);
   void setCurrentAddress(uint32_t address) {
@@ -160,7 +160,7 @@ private:
   String _newAddressString{""};
 };
 
-class NextionThrottlePage : public DCCPPNextionPage {
+class NextionThrottlePage : public BaseNextionPage {
 public:
   NextionThrottlePage(Nextion &);
   void activateLoco(const NextionButton *);
@@ -179,7 +179,7 @@ public:
 protected:
   void init() override;
   void displayPage() override;
-  void previousPageCallback(DCCPPNextionPage *);
+  void previousPageCallback(BaseNextionPage *);
 private:
   void refreshLocomotiveDetails();
   void refreshFunctionButtons();
@@ -193,20 +193,20 @@ private:
   NextionButton _fwdButton;
   NextionButton _revButton;
   NextionButton _locoAddress;
-  NextionButton _setup;
-  NextionButton _accessories;
+  NextionButton _setupButton;
+  NextionButton _accessoriesButton;
   NextionButton _downButton;
   NextionButton _upButton;
   NextionSlider _speedSlider;
   NextionNumber _speedNumber;
 };
 
-class NextionTurnoutPage : public DCCPPNextionPage {
+class NextionTurnoutPage : public BaseNextionPage {
 public:
   NextionTurnoutPage(Nextion &);
   void toggleTurnout(const NextionButton *);
   
-  virtual void refreshPage();
+  void refreshPage() override;
   void incrementTurnoutPage() {
     _turnoutStartIndex += getTurnoutsPerPageCount();
     refresh();
@@ -230,10 +230,9 @@ public:
 protected:
   void init() override {}
   void displayPage() override {
-    _pageMode = PAGE_MODE::NORMAL;
     refreshPage();
   }
-  void previousPageCallback(DCCPPNextionPage *);
+  void previousPageCallback(BaseNextionPage *);
 private:
   static constexpr int TURNOUTS_PER_PAGE_3_2_DISPLAY = 15;
   static constexpr int TURNOUTS_PER_PAGE_3_5_DISPLAY = 24;
@@ -254,6 +253,28 @@ private:
   };
   int16_t _turnoutStartIndex{0};
   PAGE_MODE _pageMode{PAGE_MODE::NORMAL};
+};
+
+class NextionSetupPage : public BaseNextionPage {
+public:
+  NextionSetupPage(Nextion &);
+  void refreshPage() override {}
+protected:
+  void init() override {}
+  void displayPage() override {
+    _versionText.setText(VERSION);
+    _ssidText.setText(SSID_NAME);
+    _ipAddrText.setText(WiFi.localIP().toString().c_str());
+  }
+
+private:
+  NextionButton _saveButton;
+  NextionButton _quitButton;
+  NextionButton _undoButton;
+  NextionButton _routesButton;
+  NextionText _versionText;
+  NextionText _ipAddrText;
+  NextionText _ssidText;
 };
 
 enum TURNOUT_IMAGE_IDS {

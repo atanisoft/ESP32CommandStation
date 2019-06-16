@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2018-2019 Mike Dunston
 
@@ -15,10 +15,10 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 /**********************************************************************
-DCC++ESP32 COMMAND STATION supports multiple Locomotive Consists, using either
+ESP32 COMMAND STATION supports multiple Locomotive Consists, using either
 command station consisting or decoder assisted consisting.
 
   <C ID LEAD TRAIL [{OTHER}]> : Creates a consist using ID with LEAD and TRAIL
@@ -75,6 +75,16 @@ Configuration for command station managed consist:
 NO CV changes, when consist is addressed (either by LEAD or TRAIL loco), all
 locomotives in consist will be updated concurrently via multiple packet queuing.
 **********************************************************************/
+
+LocomotiveConsist::LocomotiveConsist(const char *filename) : Locomotive(filename) {
+  DynamicJsonBuffer buf;
+  JsonObject &entry = configStore.load(filename, buf);
+  _decoderAssisstedConsist = entry[JSON_DECODER_ASSISTED_NODE] == JSON_VALUE_TRUE;
+  for(auto loco : entry.get<JsonArray>(JSON_LOCOS_NODE)) {
+    JsonObject &locoEntry = loco.as<JsonObject &>();
+    _locos.push_back(new Locomotive(locoEntry.get<char *>(JSON_FILE_NODE)));
+  }
+}
 
 LocomotiveConsist::LocomotiveConsist(JsonObject &json) : Locomotive(json) {
   _decoderAssisstedConsist = json[JSON_DECODER_ASSISTED_NODE] == JSON_VALUE_TRUE;

@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,11 +15,11 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 /**********************************************************************
 
-DCC++ESP32 COMMAND STATION can keep track of the direction of any turnout that is
+The ESP32 Command Station can keep track of the direction of any turnout that is
 controlled by a DCC stationary accessory decoder.  All turnouts, as well as any
 other DCC accessories connected in this fashion, can always be operated using
 the DCC COMMAND STATION Accessory command:
@@ -84,16 +84,18 @@ static constexpr const char *TURNOUT_TYPE_STRINGS[] = {
 
 void TurnoutManager::init() {
   LOG(INFO, "[Turnout] Initializing turnout list");
-  JsonObject &root = configStore.load(TURNOUTS_JSON_FILE);
-  JsonVariant count = root[JSON_COUNT_NODE];
-  uint16_t turnoutCount = count.success() ? count.as<int>() : 0;
-  LOG(INFO, "[Turnout] Found %d turnouts", turnoutCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Turnouts"), turnoutCount);
-  if(turnoutCount > 0) {
-    for(auto turnout : root.get<JsonArray>(JSON_TURNOUTS_NODE)) {
-      turnouts.add(new Turnout(turnout.as<JsonObject &>()));
+  if(configStore.exists(TURNOUTS_JSON_FILE)) {
+    JsonObject &root = configStore.load(TURNOUTS_JSON_FILE);
+    JsonVariant count = root[JSON_COUNT_NODE];
+    uint16_t turnoutCount = count.success() ? count.as<int>() : 0;
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Turnouts"), turnoutCount);
+    if(turnoutCount > 0) {
+      for(auto turnout : root.get<JsonArray>(JSON_TURNOUTS_NODE)) {
+        turnouts.add(new Turnout(turnout.as<JsonObject &>()));
+      }
     }
   }
+  LOG(INFO, "[Turnout] Loaded %d turnouts", turnouts.length());
 }
 
 void TurnoutManager::clear() {
@@ -343,27 +345,30 @@ void TurnoutCommandAdapter::process(const std::vector<String> arguments) {
 }
 
 void TurnoutExCommandAdapter::process(const std::vector<String> arguments) {
-  if(arguments.empty()) {
-    wifiInterface.send(COMMAND_FAILED_RESPONSE);
-  } else {
-    int32_t turnoutID = arguments[0].toInt();
-    if(turnoutID > 0) {
-      auto turnout = TurnoutManager::getTurnoutByID(arguments[0].toInt());
-      if(turnout && arguments.size() == 1) {
-        turnout->toggle();
-      } else if(turnout) {
-        turnout->setType((TurnoutType)arguments[1].toInt());
-      } else {
-        wifiInterface.send(COMMAND_FAILED_RESPONSE);
+  bool sendSuccess = false;
+  if(!arguments.empty()) {
+    if(arguments[0].toInt() >= 0) {
+      if(arguments.size() == 1 && TurnoutManager::toggleByID(arguments[0].toInt())) {
+        // no response required for throw as it will automatically be sent by the turnout
+        return;
+      } else if(arguments.size() == 3 &&
+                TurnoutManager::createOrUpdate(arguments[0].toInt(), arguments[1].toInt(), -1, (TurnoutType)arguments[2].toInt())) {
+        sendSuccess = true;
       }
     } else {
       auto turnout = TurnoutManager::getTurnoutByAddress(arguments[1].toInt());
       if(turnout) {
         turnout->setType((TurnoutType)arguments[2].toInt());
-      } else {
-        TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount() + 1, arguments[1].toInt(), -1, (TurnoutType)arguments[2].toInt());
+        sendSuccess = true;
+      } else if(TurnoutManager::createOrUpdate(TurnoutManager::getTurnoutCount() + 1, arguments[1].toInt(), -1, (TurnoutType)arguments[2].toInt())) {
+        sendSuccess = true;
       }
     }
+  }
+  if(sendSuccess) {
+    wifiInterface.send(COMMAND_SUCCESSFUL_RESPONSE);
+  } else {
+    wifiInterface.send(COMMAND_FAILED_RESPONSE);
   }
 }
 

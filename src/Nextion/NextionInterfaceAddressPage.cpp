@@ -1,8 +1,7 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2018-2019 NormHal
-COPYRIGHT (c) 2018-2019 Mike Dunston
+COPYRIGHT (c) 2018-2019 NormHal, Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -16,7 +15,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #if NEXTION_ENABLED
 
@@ -48,7 +47,7 @@ constexpr uint8_t TURNOUT_PIC=141;
 /************************************************************************************************************/
 //
 NextionAddressPage::NextionAddressPage(Nextion &nextion) :
-  DCCPPNextionPage(nextion, ADDRESS_PAGE, "1"),
+  BaseNextionPage(nextion, ADDRESS_PAGE, "1"),
   _buttons {
     NextionButton(nextion, ADDRESS_PAGE, num1, "b1"),
     NextionButton(nextion, ADDRESS_PAGE, num2, "b2"),

@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2019 Mike Dunston
 
@@ -19,9 +19,10 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 class LCCInterface {
 public:
-	LCCInterface();
+  LCCInterface();
   void init();
   void update();
+  void processWiFiEvent(system_event_id_t event);
 };
 
 extern LCCInterface lccInterface;

@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,12 +15,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 #include "S88Sensors.h"
 
 /**********************************************************************
 
-DCC++ESP32 COMMAND STATION supports multiple S88 Sensor busses.
+The ESP32 Command Station supports multiple S88 Sensor busses.
 
 To have the command station monitor an S88 sensor, first define/edit/delete
 an S88 Sensor Bus using the following variations on the "S88" command:
@@ -79,17 +79,17 @@ void S88BusManager::init() {
   pinMode(S88_RESET_PIN, OUTPUT);
   pinMode(S88_LOAD_PIN, OUTPUT);
 
-  LOG(VERBOSE, "[S88] Initializing SensorBus list");
+  LOG(INFO, "[S88] Initializing SensorBus list");
   JsonObject &root = configStore.load(S88_SENSORS_JSON_FILE);
   JsonVariant count = root[JSON_COUNT_NODE];
   uint16_t s88BusCount = count.success() ? count.as<int>() : 0;
-  LOG(VERBOSE, "[S88] Found %d Buses", s88BusCount);
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d S88 Bus"), s88BusCount);
   if(s88BusCount > 0) {
     for(auto bus : root.get<JsonArray>(JSON_SENSORS_NODE)) {
       s88SensorBus.add(new S88SensorBus(bus.as<JsonObject &>()));
     }
   }
+  LOG(INFO, "[S88] Loaded %d Sensor Buses", s88SensorBus.length());
   _s88SensorLock = xSemaphoreCreateMutex();
   xTaskCreate(s88SensorTask, "S88SensorManager", S88_SENSOR_TASK_STACK_SIZE, NULL, S88_SENSOR_TASK_PRIORITY, &_taskHandle);
 }

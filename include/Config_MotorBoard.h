@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -14,8 +14,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
-
-#include "sdkconfig.h"
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -37,74 +35,38 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // SUPPORTED MOTORBOARD TYPES:
 // ARDUINO_SHIELD : Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A per channel https://store.arduino.cc/usa/arduino-motor-shield-rev3
+// LMD18200       : Texas Instruments LMD18200 55V 3A h-bridge. http://www.ti.com/lit/ds/symlink/lmd18200.pdf
 // POLOLU         : Pololu MC33926 Motor Driver (shield or carrier). Max Output 2.5A per channel https://www.pololu.com/product/1213 / https://www.pololu.com/product/2503
 // BTS7960B_5A    : Infineon Technologies BTS 7960 Motor Driver Module. Max Output 5A (43A actual max) https://www.infineon.com/dgdl/bts7960b-pb-final.pdf
 // BTS7960B_10A   : Infineon Technologies BTS 7960 Motor Driver Module. Max Output 10A (43A actual max) https://www.infineon.com/dgdl/bts7960b-pb-final.pdf
 
 // MAIN TRACK MOTORBOARD NAME
 #define MOTORBOARD_NAME_OPS "OPS"
-
 // MAIN TRACK NOTORBOARD ENABLED PIN
-#ifdef CONFIG_MOTORBOARD_ENABLE_PIN_OPS
-  #define MOTORBOARD_ENABLE_PIN_OPS CONFIG_MOTORBOARD_ENABLE_PIN_OPS
-#else
-  #define MOTORBOARD_ENABLE_PIN_OPS 25
-#endif
+#define MOTORBOARD_ENABLE_PIN_OPS 25
 // MAIN TRACK MOTORBOARD CURRENT SENSE ADC PIN
-#ifdef CONFIG_MOTORBOARD_CURRENT_SENSE_OPS
-  #define MOTORBOARD_CURRENT_SENSE_OPS ((adc1_channel_t)CONFIG_MOTORBOARD_CURRENT_SENSE_OPS)
-#else
-  #define MOTORBOARD_CURRENT_SENSE_OPS ADC1_CHANNEL_0
-#endif
-
+#define MOTORBOARD_CURRENT_SENSE_OPS ADC1_CHANNEL_0
 // MAIN TRACK MOTORBOARD MOTOR_BOARD_TYPE
-#ifdef CONFIG_MOTORBOARD_TYPE_OPS
-  #define MOTORBOARD_TYPE_OPS ((MOTOR_BOARD_TYPE)CONFIG_MOTORBOARD_TYPE_OPS)
-#else
-  #define MOTORBOARD_TYPE_OPS ARDUINO_SHIELD
-#endif
+#define MOTORBOARD_TYPE_OPS ARDUINO_SHIELD
 
 // PROG TRACK MOTORBOARD NAME
 #define MOTORBOARD_NAME_PROG "PROG"
-
 // PROG TRACK NOTORBOARD ENABLED PIN
-#ifdef CONFIG_MOTORBOARD_ENABLE_PIN_PROG
-  #define MOTORBOARD_ENABLE_PIN_PROG CONFIG_MOTORBOARD_ENABLE_PIN_PROG
-#else 
-  #define MOTORBOARD_ENABLE_PIN_PROG 23
-#endif
-
+#define MOTORBOARD_ENABLE_PIN_PROG 23
 // PROG TRACK MOTORBOARD CURRENT SENSE ADC PIN
-#ifdef CONFIG_MOTORBOARD_CURRENT_SENSE_PROG
-  #define MOTORBOARD_CURRENT_SENSE_PROG (adc1_channel_t)CONFIG_MOTORBOARD_CURRENT_SENSE_PROG
-#else
-  #define MOTORBOARD_CURRENT_SENSE_PROG ADC1_CHANNEL_3
-#endif
-
+#define MOTORBOARD_CURRENT_SENSE_PROG ADC1_CHANNEL_3
 // PROG TRACK MOTORBOARD MOTOR_BOARD_TYPE
-#ifdef CONFIG_MOTORBOARD_TYPE_PROG
-  #define MOTORBOARD_TYPE_PROG ((MOTOR_BOARD_TYPE)CONFIG_MOTORBOARD_TYPE_PROG)
-#else
-  #define MOTORBOARD_TYPE_PROG ARDUINO_SHIELD
-#endif
+#define MOTORBOARD_TYPE_PROG ARDUINO_SHIELD
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
 // DEFINE WHICH PINS ARE USED FOR DCC SIGNAL GENERATION
 //
 // OPERATIONS TRACK DCC SIGNAL PIN
-#ifdef CONFIG_DCC_SIGNAL_PIN_OPERATIONS
-  #define DCC_SIGNAL_PIN_OPERATIONS CONFIG_DCC_SIGNAL_PIN_OPERATIONS
-#else
-  #define DCC_SIGNAL_PIN_OPERATIONS 19
-#endif
+#define DCC_SIGNAL_PIN_OPERATIONS 19
 
 // PROGRAMMING TRACK DCC SIGNAL PIN
-#ifdef CONFIG_DCC_SIGNAL_PIN_PROGRAMMING
-  #define DCC_SIGNAL_PIN_PROGRAMMING CONFIG_DCC_SIGNAL_PIN_PROGRAMMING
-#else
-  #define DCC_SIGNAL_PIN_PROGRAMMING 18
-#endif
+#define DCC_SIGNAL_PIN_PROGRAMMING 18
 
 /////////////////////////////////////////////////////////////////////////////////////
 //

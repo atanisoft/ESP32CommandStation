@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2019 Mike Dunston
 
@@ -15,7 +15,7 @@ COPYRIGHT (c) 2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #if LCC_ENABLED
 
@@ -33,6 +33,8 @@ COPYRIGHT (c) 2019 Mike Dunston
 #include <openlcb/DccAccyProducer.hxx>
 #include <openlcb/CallbackEventHandler.hxx>
 #include <dcc/PacketFlowInterface.hxx>
+#include <dcc/RailcomHub.hxx>
+#include <dcc/RailcomPortDebug.hxx>
 #include <openlcb/ConfiguredTcpConnection.hxx>
 
 #include "LCCCDI.h"
@@ -66,6 +68,10 @@ static constexpr ConfigDef cfg(0);
 // WiFi manager instance, this will cover the LCC uplink etc.
 Esp32WiFiManager wifi_mgr(openmrn.stack(), cfg.seg().wifi());
 
+// RailCom Hub interface for LCC
+dcc::RailcomHubFlow railComHub(openmrn.stack()->service());
+dcc::RailcomPrintfFlow railComDataDumper(&railComHub);
+
 // when the command station starts up the first time the config is blank
 // and needs to be reset to factory settings. This class being declared here
 // takes care of that.
@@ -80,7 +86,7 @@ public:
     void factory_reset(int fd) override
     {
         LOG(INFO, "Factory Reset Helper invoked");
-        cfg.userinfo().name().write(fd, "DCC++ESP32 Command Station");
+        cfg.userinfo().name().write(fd, "ESP32 Command Station");
         cfg.userinfo().description().write(fd, "");
     }
 } factory_reset_helper;
@@ -149,10 +155,10 @@ DccPacketQueueInjector dccPacketInjector;
 DccAccyConsumer dccAccessoryConsumer{openmrn.stack()->node(), &dccPacketInjector};
 
 #if LCC_USE_SPIFFS
-#define CDI_CONFIG_PREFIX "/spiffs/"
+#define CDI_CONFIG_PREFIX "/spiffs"
 #define LCC_FS SPIFFS
 #elif LCC_USE_SD
-#define CDI_CONFIG_PREFIX "/sdcard/"
+#define CDI_CONFIG_PREFIX "/sdcard"
 #define LCC_FS SD_MMC
 #endif
 
@@ -206,6 +212,10 @@ void LCCInterface::init() {
 void LCCInterface::update() {
     // Call into the OpenMRN stack for its periodic updates
     openmrn.loop();
+}
+
+void LCCInterface::processWiFiEvent(system_event_id_t event) {
+    wifi_mgr.process_wifi_event(event);
 }
 
 #endif

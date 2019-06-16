@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,18 +15,56 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
-LinkedList<RosterEntry *> LocomotiveManager::_roster([](RosterEntry *entry) {delete entry;});
-LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {delete loco; });
-LinkedList<LocomotiveConsist *> LocomotiveManager::_consists([](LocomotiveConsist *consist) {delete consist; });
+static constexpr const char * OLD_ROSTER_JSON_FILE = "roster.json";
+static constexpr const char * ROSTER_JSON_FILE = "locoroster.json";
+static constexpr const char * ROSTER_ENTRY_JSON_FILE = "roster-%d.json";
 
-TaskHandle_t LocomotiveManager::_taskHandle;
-xSemaphoreHandle LocomotiveManager::_lock;
-static constexpr UBaseType_t LOCOMOTIVE_MANAGER_TASK_PRIORITY = 3;
-static constexpr size_t LOCOMOTIVE_MANAGER_TASK_STACK_SIZE = 3072;
-static constexpr const char * ROSTER_JSON_FILE = "roster.json";
-static constexpr const char * CONSISTS_JSON_FILE = "consists.json";
+static constexpr const char * OLD_CONSISTS_JSON_FILE = "consists.json";
+static constexpr const char * CONSISTS_JSON_FILE = "lococonsists.json";
+static constexpr const char * CONSIST_ENTRY_JSON_FILE = "consist-%d.json";
+
+// Priority for the LocomotiveManager periodic update task, this needs to
+// be higher than the loopTask priority (1) so it runs often.
+static constexpr UBaseType_t LOCO_MGR_TASK_PRIORITY = 5;
+
+// Stack size to allocate for the LocomotiveManager periodic update task.
+// TODO: reduce this after measuring actual usage.
+static constexpr uint32_t LOCO_MGR_TASK_STACK_SIZE = 3072;
+
+// Interval at which to wake up the LocomotiveManager periodic update task.
+static constexpr TickType_t LOCO_MGR_TASK_INTERVAL = pdMS_TO_TICKS(10);
+
+// ESP32 Core which to run the LocomotiveManager periodic update task.
+static constexpr uint8_t LOCO_MGR_CORE_AFFINITY = 1;
+
+// Active Locomotive instances, these will have periodic update packets sent
+// at least every 40ms.
+LinkedList<Locomotive *> LocomotiveManager::_locos([](Locomotive *loco) {
+  delete loco;
+});
+
+// These are the Locomotive Roster Entries that the Command Station knows about,
+// these will be presented in the various throttle interfaces.
+LinkedList<RosterEntry *> LocomotiveManager::_roster([](RosterEntry *entry) {
+  std::string filename = StringPrintf(ROSTER_ENTRY_JSON_FILE, entry->getAddress());
+  if(configStore.exists(filename.c_str())) {
+    configStore.remove(filename.c_str());
+  }
+  delete entry;
+});
+
+// These are the Locomotive Consists that the Command Station knows about, these
+// will receive periodic updates and treated as "idle" if they are not in active
+// use.
+LinkedList<LocomotiveConsist *> LocomotiveManager::_consists([](LocomotiveConsist *consist) {
+  std::string filename = StringPrintf(CONSIST_ENTRY_JSON_FILE, consist->getLocoAddress());
+  if(configStore.exists(filename.c_str())) {
+    configStore.remove(filename.c_str());
+  }
+  delete consist;
+});
 
 void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
   int registerNumber = arguments[0].toInt();
@@ -131,43 +169,37 @@ void LocomotiveManager::processConsistThrottle(const std::vector<String> argumen
 
 void LocomotiveManager::showStatus() {
   for (const auto& loco : _locos) {
-		loco->showStatus();
-	}
+    loco->showStatus();
+  }
   showConsistStatus();
 }
 
 void LocomotiveManager::showConsistStatus() {
   for (const auto& consist : _consists) {
-		consist->showStatus();
-	}
+    consist->showStatus();
+  }
 }
 
-void LocomotiveManager::updateTask(void *param) {
+void LocomotiveManager::update(void *arg) {
+  TickType_t lastWakeupTick = xTaskGetTickCount();
   while(true) {
+    // We only queue packets if the OPS track output is enabled.
     if(dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
-      MUTEX_LOCK(_lock);
       for (const auto& loco : _locos) {
-        // if it has been more than 50ms we should send a loco update packet
-        if(millis() > loco->getLastUpdate() + 50) {
-          loco->sendLocoUpdate();
-        }
+        loco->sendLocoUpdate();
       }
       for (const auto& loco : _consists) {
-        // if it has been more than 50ms we should send a loco update packet
-        if(millis() > loco->getLastUpdate() + 50) {
-          loco->sendLocoUpdate();
-        }
+        loco->sendLocoUpdate();
       }
-      MUTEX_UNLOCK(_lock);
     }
-    vTaskDelay(pdMS_TO_TICKS(25));
+    vTaskDelayUntil(&lastWakeupTick, LOCO_MGR_TASK_INTERVAL);
   }
 }
 
 void LocomotiveManager::emergencyStop() {
   for (const auto& loco : _locos) {
     loco->setSpeed(-1);
-	}
+  }
   sendDCCEmergencyStop();
 }
 
@@ -200,7 +232,6 @@ Locomotive *LocomotiveManager::getLocomotiveByRegister(const uint8_t registerNum
 }
 
 void LocomotiveManager::removeLocomotive(const uint16_t locoAddress) {
-  MUTEX_LOCK(_lock);
   Locomotive *locoToRemove = nullptr;
   for (const auto& loco : _locos) {
     if(loco->getLocoAddress() == locoAddress) {
@@ -212,11 +243,9 @@ void LocomotiveManager::removeLocomotive(const uint16_t locoAddress) {
     locoToRemove->sendLocoUpdate();
     _locos.remove(locoToRemove);
   }
-  MUTEX_UNLOCK(_lock);
 }
 
 bool LocomotiveManager::removeLocomotiveConsist(const uint16_t consistAddress) {
-  MUTEX_LOCK(_lock);
   LocomotiveConsist *consistToRemove = nullptr;
   for (const auto& consist : _consists) {
     if(consist->getLocoAddress() == consistAddress) {
@@ -226,55 +255,113 @@ bool LocomotiveManager::removeLocomotiveConsist(const uint16_t consistAddress) {
   if (consistToRemove != nullptr) {
     consistToRemove->releaseLocomotives();
     _consists.remove(consistToRemove);
-    MUTEX_UNLOCK(_lock);
     return true;
   }
-  MUTEX_UNLOCK(_lock);
   return false;
 }
 
 void LocomotiveManager::init() {
-  _lock = xSemaphoreCreateBinary();
-  JsonObject &root = configStore.load(ROSTER_JSON_FILE);
-  JsonVariant count = root[JSON_COUNT_NODE];
-  uint16_t locoCount = count.success() ? count.as<int>() : 0;
-  LOG(INFO, "[Roster] Found %d RosterEntries", locoCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Locos"), locoCount);
-  if(locoCount > 0) {
-    JsonArray &rosterEntries = root.get<JsonArray>(JSON_LOCOS_NODE);
-    for(auto entry : rosterEntries) {
-      _roster.add(new RosterEntry(entry.as<JsonObject &>()));
+  bool persistNeeded = false;
+  LOG(INFO, "[Roster] Initializing Locomotive Roster");
+  if (configStore.exists(ROSTER_JSON_FILE)) {
+    JsonObject &root = configStore.load(ROSTER_JSON_FILE);
+    JsonVariant count = root[JSON_COUNT_NODE];
+    uint16_t locoCount = count.success() ? count.as<int>() : 0;
+    LOG(INFO, "[Roster] Loading %d Locomotive Roster entries", locoCount);
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Locos"), locoCount);
+    if (locoCount > 0) {
+      JsonArray &rosterEntries = root.get<JsonArray>(JSON_LOCOS_NODE);
+      for (auto entry : rosterEntries) {
+        JsonObject &rosterEntry = entry.as<JsonObject &>();
+        if (configStore.exists(rosterEntry.get<char *>(JSON_FILE_NODE))) {
+          _roster.add(new RosterEntry(rosterEntry.get<char *>(JSON_FILE_NODE)));
+        } else {
+          LOG_ERROR("[Roster] Unable to locate Locomotive Roster entry %s!", rosterEntry.get<char *>(JSON_FILE_NODE));
+        }
+      }
     }
   }
-  JsonObject &consistRoot = configStore.load(CONSISTS_JSON_FILE);
-  count = consistRoot[JSON_COUNT_NODE];
-  uint16_t consistCount = count.success() ? count.as<int>() : 0;
-  LOG(INFO, "[Consist] Found %d Consists", consistCount);
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Found %02d Consists"), consistCount);
-  if(locoCount > 0) {
-    JsonArray &consists = root.get<JsonArray>(JSON_CONSISTS_NODE);
-    for(auto entry : consists) {
-      _consists.add(new LocomotiveConsist(entry.as<JsonObject &>()));
+
+  if (configStore.exists(OLD_ROSTER_JSON_FILE)) {
+    JsonObject &root = configStore.load(OLD_ROSTER_JSON_FILE);
+    JsonVariant count = root[JSON_COUNT_NODE];
+    uint16_t locoCount = count.success() ? count.as<int>() : 0;
+    LOG(INFO, "[Roster] Loading %d older version Locomotive Roster entries", locoCount);
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Load %02d Locos"), locoCount);
+    if (locoCount > 0) {
+      JsonArray &rosterEntries = root.get<JsonArray>(JSON_LOCOS_NODE);
+      for (auto entry : rosterEntries) {
+        _roster.add(new RosterEntry(entry.as<JsonObject &>()));
+      }
+    }
+    configStore.remove(OLD_ROSTER_JSON_FILE);
+    persistNeeded = true;
+  }
+  LOG(INFO, "[Roster] Loaded %d Locomotive Roster entries", _roster.length());
+
+  if (configStore.exists(CONSISTS_JSON_FILE)) {
+    JsonObject &consistRoot = configStore.load(CONSISTS_JSON_FILE);
+    JsonVariant count = consistRoot[JSON_COUNT_NODE];
+    uint16_t consistCount = count.success() ? count.as<int>() : 0;
+    LOG(INFO, "[Consist] Loading %d Locomotive Consists", consistCount);
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Load %02d Consists"), consistCount);
+    if (consistCount > 0) {
+      JsonArray &consists = consistRoot.get<JsonArray>(JSON_CONSISTS_NODE);
+      for(auto entry : consists) {
+        JsonObject &consistEntry = entry.as<JsonObject &>();
+        if (configStore.exists(consistEntry.get<char *>(JSON_FILE_NODE))) {
+          _consists.add(new LocomotiveConsist(consistEntry.get<char *>(JSON_FILE_NODE)));
+        } else {
+          LOG_ERROR("[Consist] Unable to locate Locomotive Consist Entry %s!", consistEntry.get<char *>(JSON_FILE_NODE));
+        }
+      }
     }
   }
-  xTaskCreate(updateTask, "LocomotiveManager", LOCOMOTIVE_MANAGER_TASK_STACK_SIZE, NULL, LOCOMOTIVE_MANAGER_TASK_PRIORITY, &_taskHandle);
+
+  if(configStore.exists(OLD_CONSISTS_JSON_FILE)) {
+    JsonObject &consistRoot = configStore.load(OLD_CONSISTS_JSON_FILE);
+    JsonVariant count = consistRoot[JSON_COUNT_NODE];
+    uint16_t consistCount = count.success() ? count.as<int>() : 0;
+    LOG(INFO, "[Consist] Loading %d older version Locomotive Consists", consistCount);
+    InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Load %02d Consists"), consistCount);
+    if (consistCount > 0) {
+      JsonArray &consists = consistRoot.get<JsonArray>(JSON_CONSISTS_NODE);
+      for (auto entry : consists) {
+        _consists.add(new LocomotiveConsist(entry.as<JsonObject &>()));
+      }
+    }
+    configStore.remove(OLD_CONSISTS_JSON_FILE);
+    persistNeeded = true;
+  }
+  LOG(INFO, "[Consist] Loaded %d Locomotive Consists", _consists.length());
+  if (persistNeeded) {
+    store();
+  }
+
+  // create background task for sending periodic updates to active locomotives/consists.
+  xTaskCreatePinnedToCore(update, "LocoMgr", LOCO_MGR_TASK_STACK_SIZE, NULL,
+                          LOCO_MGR_TASK_PRIORITY, nullptr, LOCO_MGR_CORE_AFFINITY);
 }
 
 void LocomotiveManager::clear() {
-  MUTEX_LOCK(_lock);
   _locos.free();
   _consists.free();
   _roster.free();
   store();
-  MUTEX_UNLOCK(_lock);
 }
 
 uint16_t LocomotiveManager::store() {
+  StaticJsonBuffer<1024> buf;
   JsonObject &root = configStore.createRootNode();
   JsonArray &locoArray = root.createNestedArray(JSON_LOCOS_NODE);
   uint16_t locoStoredCount = 0;
   for (const auto& entry : _roster) {
-    entry->toJson(locoArray.createNestedObject());
+    std::string filename = StringPrintf(ROSTER_ENTRY_JSON_FILE, entry->getAddress());
+    locoArray.createNestedObject()[JSON_FILE_NODE] = filename.c_str();
+    buf.clear();
+    JsonObject &entryRoot = buf.createObject();
+    entry->toJson(entryRoot);
+    configStore.store(filename.c_str(), entryRoot);
     locoStoredCount++;
   }
   root[JSON_COUNT_NODE] = locoStoredCount;
@@ -284,7 +371,12 @@ uint16_t LocomotiveManager::store() {
   JsonArray &consistArray = consistRoot.createNestedArray(JSON_CONSISTS_NODE);
   uint16_t consistStoredCount = 0;
   for (const auto& consist : _consists) {
-    consist->toJson(consistArray.createNestedObject(), false, false);
+    std::string filename = StringPrintf(CONSIST_ENTRY_JSON_FILE, consist->getLocoAddress());
+    consistArray.createNestedObject()[JSON_FILE_NODE] = filename.c_str();
+    buf.clear();
+    JsonObject &entryRoot = buf.createObject();
+    consist->toJson(entryRoot);
+    configStore.store(filename.c_str(), entryRoot);
     consistStoredCount++;
   }
   consistRoot[JSON_COUNT_NODE] = consistStoredCount;
@@ -417,6 +509,16 @@ void LocomotiveManager::removeRosterEntry(uint16_t address) {
   } else {
     LOG(WARNING, "[Roster] Roster entry for address %d doesn't exist, ignoring delete request", address);
   }
+}
+
+RosterEntry::RosterEntry(const char *filename) {
+  DynamicJsonBuffer buf;
+  JsonObject &entry = configStore.load(filename, buf);
+  _description = entry[JSON_DESCRIPTION_NODE].as<String>();
+  _address = entry[JSON_ADDRESS_NODE];
+  _type = entry[JSON_TYPE_NODE].as<String>();
+  _idleOnStartup = entry[JSON_IDLE_ON_STARTUP_NODE] == JSON_VALUE_TRUE;
+  _defaultOnThrottles = entry[JSON_DEFAULT_ON_THROTTLE_NODE] == JSON_VALUE_TRUE;
 }
 
 RosterEntry::RosterEntry(const JsonObject &json) {

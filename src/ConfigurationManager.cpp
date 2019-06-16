@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,14 +15,13 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
-
+#include "ESP32CommandStation.h"
 
 ConfigurationManager configStore;
 
 StaticJsonBuffer<20480> jsonConfigBuffer;
 
-#if !defined(CONFIG_USE_SPIFFS) && !defined(COFNIG_USE_SD)
+#if !defined(CONFIG_USE_SPIFFS) && !defined(CONFIG_USE_SD)
 #define CONFIG_USE_SPIFFS true
 #endif
 
@@ -32,7 +31,13 @@ StaticJsonBuffer<20480> jsonConfigBuffer;
 #define CONFIG_FS SD_MMC
 #endif
 
-static constexpr const char *DCCPPESP32_CONFIG_DIR = "/DCCppESP32";
+// All ESP32 Command Station configuration files live under this directory on
+// the configured filesystem starting with v1.3.0.
+static constexpr const char *ESP32CS_CONFIG_DIR = "/ESP32CS";
+
+// Prior to v1.3.0 this was the configuration location, it is retained here only
+// to support migration of data from previous releases.
+static constexpr const char *OLD_CONFIG_DIR = "/DCCppESP32";
 
 ConfigurationManager::ConfigurationManager() {
 }
@@ -59,26 +64,31 @@ void ConfigurationManager::init() {
     LOG(FATAL, "[Config] Aborting due to SD_MMC mount failure.");
   }
 #endif
-  CONFIG_FS.mkdir(DCCPPESP32_CONFIG_DIR);
+  CONFIG_FS.mkdir(ESP32CS_CONFIG_DIR);
 }
 
 void ConfigurationManager::clear() {
-  CONFIG_FS.rmdir(DCCPPESP32_CONFIG_DIR);
-  CONFIG_FS.mkdir(DCCPPESP32_CONFIG_DIR);
+  CONFIG_FS.rmdir(ESP32CS_CONFIG_DIR);
+  CONFIG_FS.mkdir(ESP32CS_CONFIG_DIR);
 }
 
 bool ConfigurationManager::exists(const char *name) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string oldConfigFilePath = StringPrintf("%s/%s", OLD_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
+  if(CONFIG_FS.exists(oldConfigFilePath.c_str()) && !CONFIG_FS.exists(configFilePath.c_str())) {
+    LOG(INFO, "[Config] Migrating configuration file %s to %s.", oldConfigFilePath.c_str(), configFilePath.c_str());
+    CONFIG_FS.rename(oldConfigFilePath.c_str(), configFilePath.c_str());
+  }
   return CONFIG_FS.exists(configFilePath.c_str());
 }
 
 void ConfigurationManager::remove(const char *name) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
   CONFIG_FS.remove(configFilePath.c_str());
 }
 
 JsonObject &ConfigurationManager::load(const char *name) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
   LOG(INFO, "[Config] Loading %s", configFilePath.c_str());
   File configFile = CONFIG_FS.open(configFilePath.c_str(), FILE_READ);
   jsonConfigBuffer.clear();
@@ -87,8 +97,17 @@ JsonObject &ConfigurationManager::load(const char *name) {
   return root;
 }
 
+JsonObject &ConfigurationManager::load(const char *name, DynamicJsonBuffer &buffer) {
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
+  LOG(INFO, "[Config] Loading %s", configFilePath.c_str());
+  File configFile = CONFIG_FS.open(configFilePath.c_str(), FILE_READ);
+  JsonObject &root = buffer.parseObject(configFile);
+  configFile.close();
+  return root;
+}
+
 void ConfigurationManager::store(const char *name, const JsonObject &json) {
-  std::string configFilePath = StringPrintf("%s/%s", DCCPPESP32_CONFIG_DIR, name);
+  std::string configFilePath = StringPrintf("%s/%s", ESP32CS_CONFIG_DIR, name);
   LOG(INFO, "[Config] Storing %s", configFilePath.c_str());
   File configFile = CONFIG_FS.open(configFilePath.c_str(), FILE_WRITE);
   if(!configFile) {

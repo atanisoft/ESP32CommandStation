@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -17,7 +17,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// The WiFi interface is part of the DCC++ESP32 core functionality
+// The WiFi interface is part of the ESP32 Command Station core functionality
 // and will require modification in the Config_WiFi.h file.
 #include "Config_WiFi.h"
 
@@ -29,7 +29,13 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// The following line alters the default behavior of the DCC++ESP32 Command Station
+// The Status module allows the Command Station to report visually the current state
+// of the WiFi, OPS and PROG outputs.
+//#include "Config_Status.h"
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
+// The following line alters the default behavior of the ESP32 Command Station
 // in such that it will automatically energize the OPS track power on startup. This
 // may not be desirable and is left disabled by default. Uncomment the next line to
 // enable this functionality.
@@ -74,18 +80,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // The LCC interface is an optional module, by default the WiFi interface is available
 // uncomment the line below if you wish to have a hardware CAN interface used as well.
 //#include "Config_LCC.h"
-
-/////////////////////////////////////////////////////////////////////////////////////
-//
-// The following parameters define how many preamble bits will be transmitted as part
-// of the DCC packet to the track. For some older sound decodes it may be necessary
-// to increase from 22 bits on the PROG track to 30 or even 40.
-//
-// The maximum number of preamble bits is 50. For OPS the minimum to send is 11 but
-// 16 is recommended for RailCom support.
-
-#define OPS_TRACK_PREAMBLE_BITS 16
-#define PROG_TRACK_PREAMBLE_BITS 22
 
 /////////////////////////////////////////////////////////////////////////////////////
 //

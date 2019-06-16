@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -21,12 +21,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 class WiFiInterface {
 public:
-	WiFiInterface();
-	void begin();
-	void showConfiguration();
-	void showInitInfo();
-	void send(const String &);
-	void print(const __FlashStringHelper *fmt, ...);
+  WiFiInterface();
+  void begin();
+  void showConfiguration();
+  void showInitInfo();
+  void send(const String &);
+void print(const __FlashStringHelper *fmt, ...);
 };
 
 extern WiFiInterface wifiInterface;

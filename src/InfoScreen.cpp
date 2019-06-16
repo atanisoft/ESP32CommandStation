@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,7 +15,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #ifndef INFO_SCREEN_SDA_PIN
 #define INFO_SCREEN_SDA_PIN SDA
@@ -92,13 +92,13 @@ void InfoScreen::init() {
   if(_enabled) {
     oledDisplay.init();
     oledDisplay.setContrast(255);
-  	if(INFO_SCREEN_OLED_VERTICAL_FLIP == true) {
-  		oledDisplay.flipScreenVertically();
-  	}
+    if(INFO_SCREEN_OLED_VERTICAL_FLIP == true) {
+      oledDisplay.flipScreenVertically();
+    }
 
     // NOTE: If the InfoScreen_OLED_font.h file is modified with a new font
     // definition, the name of the font needs to be declared on the next line.
-  	oledDisplay.setFont(Monospaced_plain_10);
+    oledDisplay.setFont(Monospaced_plain_10);
   }
 #elif INFO_SCREEN_LCD
   // Check that we can find the LCD by its address before attempting to use it.

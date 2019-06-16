@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2019 Mike Dunston
 
@@ -15,7 +15,7 @@ COPYRIGHT (c) 2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 // number of samples to take when monitoring current after a CV verify
 // (bit or byte) has been sent
@@ -49,6 +49,9 @@ bool enterProgrammingMode() {
   // check that the current is under 100mA limit, this will take ~50ms
   if(motorBoard->captureSample(50) > milliAmpStartupLimit) {
     LOG_ERROR("[PROG] current draw is over 100mA, aborting");
+#if STATUS_LED_ENABLED
+    setStatusLED(STATUS_LED::PROG_LED, STATUS_LED_COLOR::LED_RED);
+#endif
     leaveProgrammingMode();
     return false;
   }
