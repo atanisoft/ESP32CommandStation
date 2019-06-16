@@ -13,14 +13,25 @@ The ESP32 Command Station works quite well with off the shelf components but the
 * Integrated JTAG interface for easier debugging and flashing of firmware.
 * Single Power Supply interface with reverse polarity protection.
 
-## PCB Schematic
-The PCB schematic is available [here (SVG)](ESP32-CS.svg) or [here (PDF)](ESP32-CS.pdf).
-Gerber files can be found [here](ESP32-CS-gerber.zip) (v1.0 - June 2019)
+## PCB Layout
+The PCB has been designed to maximize the copper pour as a GND plane. The PCB is available as a set of gerber files as listed below:
+* [v1.0 - June 2019](ESP32-CS-gerber.zip)
+
+### PCB Front side
+Below is a rendering of the ESP32 Command Station PCB front side:
+![PCB Front](ESP32-CS-PCB-front-small.png) [full size](ESP32-CS-PCB-front.png)
+
+### PCB Back side
+Below is a rendering of the ESP32 Command Station PCB back side:
+![PCB Back](ESP32-CS-PCB-back-small.png) [full size](ESP32-CS-PCB-back.png)
+
+## Schematic
+The schematic is available [here (SVG)](ESP32-CS.svg) or [here (PDF)](ESP32-CS.pdf).
 
 ## Bill of Materials
 The BOM can be viewed [here](ESP32-CS-BOM.html).
 
-## PCB Kits
+## Kits
 Kits will be made available soon in three varieties:
 
 1. Fully assembled and tested.
@@ -79,6 +90,8 @@ GPIO 22 is connected to three APA106/WS2812 (or similar) RGB LEDs. APA106 and WS
 | 1 | WiFi Status | Green - Connected<br/>Green (flashing) - Connecting<br/>Red - Disconnected<br/>Yellow - Connection failed<br/>Yellow (flashing) - AP not found |
 | 2 | OPS Track Status | Green - On<br/> Clear/Off - Off<br/>Red - Fault/Short<br/> Red (flashing) - H-bridge thermal warning |
 | 2 | PROG Track Status | Green - On<br/> Clear/Off - Off<br/>Red - Fault/Short |
+| EXT-1 | TBD | TBD |
+| EXT-2 | TBD | TBD |
 
 Flashing LEDs use an on/off frequency of 450ms-500ms.
 
