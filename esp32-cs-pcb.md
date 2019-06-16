@@ -19,11 +19,15 @@ The PCB has been designed to maximize the copper pour as a GND plane. The PCB is
 
 ### PCB Front side
 Below is a rendering of the ESP32 Command Station PCB front side:
-![PCB Front](ESP32-CS-PCB-front-small.png) [full size](ESP32-CS-PCB-front.png)
+![PCB Front](ESP32-CS-PCB-front-small.png)
+
+[full size](ESP32-CS-PCB-front.png)
 
 ### PCB Back side
 Below is a rendering of the ESP32 Command Station PCB back side:
-![PCB Back](ESP32-CS-PCB-back-small.png) [full size](ESP32-CS-PCB-back.png)
+![PCB Back](ESP32-CS-PCB-back-small.png)
+
+[full size](ESP32-CS-PCB-back.png)
 
 ## Schematic
 The schematic is available [here (SVG)](ESP32-CS.svg) or [here (PDF)](ESP32-CS.pdf).
