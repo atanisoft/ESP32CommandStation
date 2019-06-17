@@ -71,8 +71,8 @@
       <DefaultHeaderDiscoveryMode>HeaderDirectoryAndSubdirectories</DefaultHeaderDiscoveryMode>
       <ESPIDFExtension>
         <IDFCheckout>
-          <Version>release/v3.3</Version>
-          <Subdirectory>esp-idf/v3.3</Subdirectory>
+          <Version>release/v3.2</Version>
+          <Subdirectory>esp-idf/v3.2</Subdirectory>
           <Type>ESPIDF</Type>
         </IDFCheckout>
         <BaudRate>115200</BaudRate>
@@ -114,7 +114,7 @@
     <LastConnectionTime>0</LastConnectionTime>
     <EchoTypedCharacters>false</EchoTypedCharacters>
     <ClearContentsWhenReconnecting>false</ClearContentsWhenReconnecting>
-    <ReconnectAutomatically>false</ReconnectAutomatically>
+    <ReconnectAutomatically>true</ReconnectAutomatically>
     <DisplayMode>ASCII</DisplayMode>
     <Colors>
       <Background>

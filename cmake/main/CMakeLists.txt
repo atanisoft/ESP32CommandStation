@@ -261,4 +261,11 @@ add_custom_command(OUTPUT "${INDEX_HTML_H}"
     DEPENDS "${HTML_SRC}"
     VERBATIM)
 add_custom_target(create_index_html_h ALL DEPENDS ${INDEX_HTML_H})
-add_dependencies(${COMPONENT_TARGET} create_index_html_h)         
+set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "${INDEX_HTML_H}")
+# idf 3.2 or older does not set COMPONENT_TARGET
+if(COMPONENT_TARGET)
+  target_sources("${COMPONENT_TARGET}" PRIVATE "${INDEX_HTML_H}")
+  add_dependencies(${COMPONENT_TARGET} create_index_html_h)         
+else()
+  add_dependencies(${COMPONENT_NAME} create_index_html_h)         
+endif(COMPONENT_TARGET)
