@@ -101,16 +101,6 @@
     </CustomBreakCommand>
   </CustomDebug>
   <DeviceTerminalSettings>
-    <Connection xsi:type="com.sysprogs.terminal.connection.serial">
-      <ComPortName>COM7</ComPortName>
-      <AdvancedSettings>
-        <BaudRate>115200</BaudRate>
-        <DataBits>8</DataBits>
-        <Parity>None</Parity>
-        <StopBits>One</StopBits>
-        <FlowControl>None</FlowControl>
-      </AdvancedSettings>
-    </Connection>
     <LastConnectionTime>0</LastConnectionTime>
     <EchoTypedCharacters>false</EchoTypedCharacters>
     <ClearContentsWhenReconnecting>false</ClearContentsWhenReconnecting>
