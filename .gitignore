@@ -9,6 +9,8 @@ include/index_html.h
 .vscode/launch.json
 *.code-workspace
 *.pyc
+/cmake/sdkconfig
+/cmake/sdkconfig.old
 /cmake/.vs/
 /cmake/CodeDB/
 /cmake/VisualGDBCache/
