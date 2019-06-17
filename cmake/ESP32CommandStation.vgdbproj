@@ -71,11 +71,10 @@
       <DefaultHeaderDiscoveryMode>HeaderDirectoryAndSubdirectories</DefaultHeaderDiscoveryMode>
       <ESPIDFExtension>
         <IDFCheckout>
-          <Version>master</Version>
-          <Subdirectory>esp-idf/master</Subdirectory>
+          <Version>release/v3.3</Version>
+          <Subdirectory>esp-idf/v3.3</Subdirectory>
           <Type>ESPIDF</Type>
         </IDFCheckout>
-        <COMPort>COM7</COMPort>
         <BaudRate>115200</BaudRate>
       </ESPIDFExtension>
     </ProjectModeSettings>

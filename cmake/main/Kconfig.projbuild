@@ -1,3 +1,20 @@
+#######################################################################
+# DCC COMMAND STATION FOR ESP32
+#
+# COPYRIGHT (c) 2017-2019 Mike Dunston
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see http://www.gnu.org/licenses
+#######################################################################
+
 #-----------------------------------------------------------------------
 # DCC/LCC Configuration options. 
 # See https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
@@ -8,25 +25,25 @@
 #       '#define CONFIG_SOMETHING ...' 
 # entry.
 #-----------------------------------------------------------------------
-menu "DCC/LCC Model Train Command Station"
+menu "ESP32 Command Station"
 
   #-----------------------------------------------------------------------
 	menu "Wifi"
 		config HOSTNAME
 			string "Device hostname"
-			default "DCCpp32"
+			default "esp32cs"
 			help
 				define hostname to use for WiFi connections and mDNS broadcasts
 			
 		config SSID_NAME
 			string "WiFi SSID"
-			default "myssid"
+			default "SSID_NAME_HERE"
 			help
 				SSID (network name) for the command station to connect to.
 
 		config SSID_PASSWORD
 			string "WiFi Password"
-			default "mypassword"
+			default "SSID_PASSWORD_HERE"
 			help
 				WiFi password (WPA or WPA2) for command station to use.
 				Can be left blank if the network has no security set.
@@ -48,30 +65,30 @@ menu "DCC/LCC Model Train Command Station"
 
 	  choice MOTORBOARD_CURRENT_SENSE_OPS
 	    bool "Main track current sense ADC channel"
-	    default ADC1_CHANNEL_0
+	    default 0
 	    help
 		  Specify what input pin is used for current sense on the main track. Default is ADC1_CHANNEL_0 (Pin 36)
-	  config ADC1_CHANNEL_0
+	  config ADC1_CHANNEL_0_OPS
 	    bool "ADC1_CHANNEL_0 - Pin 36 (other name SVP/VP)"
-	  config ADC1_CHANNEL_3
+	  config ADC1_CHANNEL_3_OPS
 	    bool "ADC1_CHANNEL_3 - Pin 39 (other name SVN/VN)"
-	  config ADC1_CHANNEL_4
+	  config ADC1_CHANNEL_4_OPS
 	    bool "ADC1_CHANNEL_4 - Pin 32"		
-	  config ADC1_CHANNEL_5
+	  config ADC1_CHANNEL_5_OPS
 	    bool "ADC1_CHANNEL_5 - Pin 33"				
-	  config ADC1_CHANNEL_6
+	  config ADC1_CHANNEL_6_OPS
 	    bool "ADC1_CHANNEL_6 - Pin 34"						
-	  config ADC1_CHANNEL_7
+	  config ADC1_CHANNEL_7_OPS
 	    bool "ADC1_CHANNEL_7 - Pin 35"								
     endchoice
     config MOTORBOARD_CURRENT_SENSE_OPS
       int
-      default 0 if ADC1_CHANNEL_0
-      default 3 if ADC1_CHANNEL_3
-      default 4 if ADC1_CHANNEL_4
-      default 5 if ADC1_CHANNEL_5
-      default 6 if ADC1_CHANNEL_6
-      default 7 if ADC1_CHANNEL_7
+      default 0 if ADC1_CHANNEL_0_OPS
+      default 3 if ADC1_CHANNEL_3_OPS
+      default 4 if ADC1_CHANNEL_4_OPS
+      default 5 if ADC1_CHANNEL_5_OPS
+      default 6 if ADC1_CHANNEL_6_OPS
+      default 7 if ADC1_CHANNEL_7_OPS
 
     choice MOTORBOARD_TYPE_OPS
       bool "Main track motor board type"
@@ -110,7 +127,7 @@ menu "DCC/LCC Model Train Command Station"
 
 	  choice MOTORBOARD_CURRENT_SENSE_PROG
 	    bool "Programming track current sense ADC channel"
-	    default ADC1_CHANNEL_3
+	    default 3
 	    help
 		  Specify what input pin is used for current sense on the programming track. Default is ADC1_CHANNEL_3 (Pin 39).
 	  config ADC1_CHANNEL_0
@@ -180,13 +197,6 @@ menu "DCC/LCC Model Train Command Station"
           GPIO number used to for the DCC signal on the programming track.
           Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used.
           GPIOs 35-39 are input-only so cannot be used as outputs.
-
-  config DCCPP_JMRI_CLIENT_PORT
-      int "JMRI Wifi interface port"
-      default 2560
-      help
-        Set the port to use for JMRI Wifi interface
-
 
 
 

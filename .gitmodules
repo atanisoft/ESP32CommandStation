@@ -1,6 +1,7 @@
 [submodule "cmake/syslib/ArduinoJson"]
 	path = cmake/syslib/ArduinoJson
 	url = https://github.com/bblanchon/ArduinoJson.git
+    branch = 5.x
 [submodule "cmake/syslib/AsyncTCP"]
 	path = cmake/syslib/AsyncTCP
 	url = https://github.com/me-no-dev/AsyncTCP.git

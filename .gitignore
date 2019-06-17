@@ -8,3 +8,11 @@ include/index_html.h
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 *.code-workspace
+*.pyc
+/cmake/.vs/
+/cmake/CodeDB/
+/cmake/VisualGDBCache/
+/cmake/build/
+/cmake/VisualGDB/
+/cmake/*.vgdbproj.*.user
+/cmake/ESP32CommandStation.sln

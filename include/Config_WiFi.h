@@ -19,8 +19,16 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // DEFINE WiFi Parameters
 //
-#define SSID_NAME "SSID_NAME_HERE"
-#define SSID_PASSWORD "SSID_PASSWORD_HERE"
+#ifdef CONFIG_SSID_NAME
+  #define SSID_NAME CONFIG_SSID_NAME
+#else
+  #define SSID_NAME "SSID_NAME_HERE"
+#endif
+#ifdef CONFIG_SSID_PASSWORD
+  #define SSID_PASSWORD CONFIG_SSID_PASSWORD
+#else
+  #define SSID_PASSWORD "SSID_PASSWORD_HERE"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -49,6 +57,10 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // DEFINE HOSTNAME TO USE FOR WiFi CONNECTIONS AND mDNS BROADCASTS
 //
-#define HOSTNAME "ESP32CS"
+#ifdef CONFIG_HOSTNAME
+  #define HOSTNAME CONFIG_HOSTNAME
+#else
+  #define HOSTNAME "ESP32CS"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
