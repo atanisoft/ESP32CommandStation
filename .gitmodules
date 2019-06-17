@@ -1,22 +1,22 @@
 [submodule "cmake/syslib/ArduinoJson"]
-	path = cmake/syslib/ArduinoJson
-	url = https://github.com/bblanchon/ArduinoJson.git
+    path = cmake/syslib/ArduinoJson
+    url = https://github.com/bblanchon/ArduinoJson.git
     branch = 5.x
 [submodule "cmake/syslib/AsyncTCP"]
-	path = cmake/syslib/AsyncTCP
-	url = https://github.com/me-no-dev/AsyncTCP.git
+    path = cmake/syslib/AsyncTCP
+    url = https://github.com/me-no-dev/AsyncTCP.git
 [submodule "cmake/ESPAsyncWebServer"]
-	path = cmake/ESPAsyncWebServer
-	url = https://github.com/me-no-dev/ESPAsyncWebServer.git
+    path = cmake/ESPAsyncWebServer
+    url = https://github.com/me-no-dev/ESPAsyncWebServer.git
 [submodule "cmake/syslib/esp8266-oled-ssd1306"]
-	path = cmake/syslib/esp8266-oled-ssd1306
-	url = https://github.com/squix78/esp8266-oled-ssd1306.git
+    path = cmake/syslib/esp8266-oled-ssd1306
+    url = https://github.com/squix78/esp8266-oled-ssd1306.git
 [submodule "cmake/syslib/ESPAsyncWebServer"]
-	path = cmake/syslib/ESPAsyncWebServer
-	url = https://github.com/me-no-dev/ESPAsyncWebServer.git
+    path = cmake/syslib/ESPAsyncWebServer
+    url = https://github.com/me-no-dev/ESPAsyncWebServer.git
 [submodule "cmake/syslib/LiquidCrystal_PCF8574"]
-	path = cmake/syslib/LiquidCrystal_PCF8574
-	url = https://github.com/mathertel/LiquidCrystal_PCF8574
+    path = cmake/syslib/LiquidCrystal_PCF8574
+    url = https://github.com/mathertel/LiquidCrystal_PCF8574
 [submodule "cmake/syslib/arduino-esp32"]
-	path = cmake/syslib/arduino-esp32
-	url = ../../espressif/arduino-esp32.git
+    path = cmake/syslib/arduino-esp32
+    url = https://github.com/espressif/arduino-esp32.git
