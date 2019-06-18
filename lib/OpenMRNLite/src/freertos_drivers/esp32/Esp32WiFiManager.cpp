@@ -180,14 +180,14 @@ public:
                 LOG(INFO, "[Uplink] Reconnecting to %s.", arg.c_str());
                 break;
             case MDNS_SEARCH:
-                LOG(INFO, "[Uplink] Starting mDNS searching for %s.",
+                LOG(VERBOSE, "[Uplink] Starting mDNS searching for %s.",
                     arg.c_str());
                 break;
             case MDNS_NOT_FOUND:
-                LOG(INFO, "[Uplink] mDNS search failed.");
+                LOG(VERBOSE, "[Uplink] mDNS search failed.");
                 break;
             case MDNS_FOUND:
-                LOG(INFO, "[Uplink] mDNS search succeeded.");
+                LOG(VERBOSE, "[Uplink] mDNS search succeeded.");
                 break;
             case CONNECT_MDNS:
                 LOG(INFO, "[Uplink] mDNS connecting to %s.", arg.c_str());
@@ -196,7 +196,7 @@ public:
                 LOG(INFO, "[Uplink] Connecting to %s.", arg.c_str());
                 break;
             case CONNECT_FAILED_SELF:
-                LOG(INFO,
+                LOG(VERBOSE,
                     "[Uplink] Rejecting attempt to connect to "
                     "localhost.");
                 break;
@@ -895,7 +895,7 @@ int mdns_lookup(
             // if this result has an IPv4 address process it
             if (ipaddr->addr.type == IPADDR_TYPE_V4)
             {
-                LOG(INFO,
+                LOG(VERBOSE,
                     "[mDNS] Found %s as providing service: %s on port %d.",
                     res->hostname, service, res->port);
                 inet_addr_from_ip4addr(
@@ -913,7 +913,7 @@ int mdns_lookup(
 
     if (!match_found)
     {
-        LOG(WARNING, "[mDNS] No matches found for service: %s.", service);
+        LOG(VERBOSE, "[mDNS] No matches found for service: %s.", service);
         return EAI_AGAIN;
     }
 
