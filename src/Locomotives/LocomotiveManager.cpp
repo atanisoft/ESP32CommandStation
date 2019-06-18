@@ -185,6 +185,7 @@ void LocomotiveManager::update(void *arg) {
   while(true) {
     // We only queue packets if the OPS track output is enabled.
     if(dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled()) {
+      LOG(VERBOSE, "[LocoMgr] %d active locos, %d active consists", _locos.length(), _consists.length());
       for (const auto& loco : _locos) {
         loco->sendLocoUpdate();
       }

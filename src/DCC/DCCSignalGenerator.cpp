@@ -65,9 +65,10 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
   if(drainToSendQueue) {
     drainQueue();
   }
-  LOG(VERBOSE, "[%s] queue: %d / %d", _name.c_str(), _toSend.size(), _availablePackets.size());
   while(_availablePackets.empty()) {
-    delay(2);
+    LOG(WARNING, "[%s] Packet queue full, delaying for 250uS!", _name.c_str());
+    // NOTE: This does not use the delay() call which could allow preempting the loopTask
+    delayMicroseconds(250);
   }
   Packet *packet = _availablePackets.front();
   _availablePackets.pop();
@@ -114,12 +115,13 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
   } // >3 bytes
 
   lockSendQueue();
+  LOG(VERBOSE, "[%s] Adding DCC Packet (%d bits, %d repeat)", _name.c_str(), packet->numberOfBits, packet->numberOfRepeats);
   _toSend.push(packet);
   unlockSendQueue();
 }
 
 SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) : _name(name), _signalID(signalID) {
-  LOG(INFO, "[%s] Configuring signal pin %d", _name.c_str(), signalPin);
+  LOG(INFO, "[%s] Configuring DCC signal generator using pin %d and %d max packets", _name.c_str(), signalPin, maxPackets);
   pinMode(signalPin, INPUT);
   digitalWrite(signalPin, LOW);
   pinMode(signalPin, OUTPUT);
@@ -149,7 +151,7 @@ void SignalGenerator::startSignal(bool sendIdlePackets) {
   LOG(INFO, "[%s] Adding reset packet (25 repeats) to packet queue", _name.c_str());
   loadBytePacket(resetPacket, 2, 25);
   if(sendIdlePackets) {
-    LOG(INFO, "[%s] Adding idle packet to packet queue", _name.c_str());
+    LOG(INFO, "[%s] Adding idle packet (10 repeats) to packet queue", _name.c_str());
     loadBytePacket(idlePacket, 2, 10);
   }
   enable();

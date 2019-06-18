@@ -56,7 +56,7 @@ void Locomotive::sendLocoUpdate() {
   if(esp_timer_get_time() < (_lastUpdate + MSEC_TO_USEC(40))) {
     return;
   }
-  LOG(VERBOSE, "[Loco %d, speed: %d, dir: %s] Queuing packets",
+  LOG(VERBOSE, "[Loco %d, speed: %d, dir: %s] Building speed packet",
     _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
   std::vector<uint8_t> packetBuffer;
   if(_locoAddress > 127) {
@@ -107,6 +107,7 @@ void Locomotive::toJson(JsonObject &jsonObject, bool includeSpeedDir, bool inclu
 }
 
 void Locomotive::createFunctionPackets() {
+  LOG(VERBOSE, "[Loco %d] Building Function packets", _locoAddress);
   // seed functions packets with locomotive numbers
   for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
     _functionPackets[functionPacket].clear();
