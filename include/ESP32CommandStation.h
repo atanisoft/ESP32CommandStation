@@ -116,6 +116,10 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define LCC_ENABLED false
 #endif
 
+#ifndef LCC_FORCE_FACTORY_RESET_ON_STARTUP 
+#define LCC_FORCE_FACTORY_RESET_ON_STARTUP false
+#endif
+
 #ifndef LOCONET_ENABLED
 #define LOCONET_ENABLED false
 #endif

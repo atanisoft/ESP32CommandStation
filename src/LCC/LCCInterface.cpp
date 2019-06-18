@@ -188,9 +188,11 @@ LCCInterface::LCCInterface() {
 
 void LCCInterface::init() {
     LCC_FS.mkdir(LCC_CONFIG_DIR);
-    // uncomment the next two lines to force a factory reset on startup
-    //LCC_FS.remove(LCC_CDI_FILE);
-    //LCC_FS.remove(LCC_CONFIG_FILE);
+
+#if LCC_FORCE_FACTORY_RESET_ON_STARTUP
+    LCC_FS.remove(LCC_CDI_FILE);
+    LCC_FS.remove(LCC_CONFIG_FILE);
+#endif
 
     // Create the CDI.xml dynamically
     openmrn.create_config_descriptor_xml(cfg, openlcb::CDI_FILENAME);
