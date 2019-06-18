@@ -29,7 +29,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // ADC1_CHANNEL_6 : 34
 // ADC1_CHANNEL_7 : 35
 //
-// NOTE: GPIO 37 and GPIO 38 aare not usable as they are connected to GPIO 36 and
+// NOTE: GPIO 37 and GPIO 38 are not usable as they are connected to GPIO 36 and
 // GPIO 39 internally with a capacitor. Therefore ADC1_CHANNEL_1 and ADC1_CHANNEL_2
 // are not suitable for usage, regardless of if the ESP32 board exposes these pins.
 //

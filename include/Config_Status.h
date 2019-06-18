@@ -46,3 +46,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 //
 // Possible values: RGB (default), GRB, RGBW, GRBW, BRG, RBG
 #define STATUS_LED_COLOR_ORDER RGB
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+#define STATUS_LED_ENABLED true

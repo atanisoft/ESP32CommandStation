@@ -59,17 +59,15 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #define OPS_RAILCOM_UART 2
 #define OPS_RAILCOM_UART_RX_PIN NOT_A_PIN
 
-#if !defined(STATUS_LED_DATA_PIN)
+#ifndef STATUS_LED_ENABLED
 #define STATUS_LED_ENABLED false
-#else
-#define STATUS_LED_ENABLED true
 #endif
 
-#if !defined(OPS_TRACK_PREAMBLE_BITS)
+#ifndef OPS_TRACK_PREAMBLE_BITS
 #define OPS_TRACK_PREAMBLE_BITS 16
 #endif
 
-#if !defined(PROG_TRACK_PREAMBLE_BITS)
+#ifndef PROG_TRACK_PREAMBLE_BITS
 #define PROG_TRACK_PREAMBLE_BITS 22
 #endif
 
@@ -211,12 +209,16 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
 #define MUTEX_LOCK(mutex)    do {} while (xSemaphoreTake(mutex, portMAX_DELAY) != pdPASS)
 #define MUTEX_UNLOCK(mutex)  xSemaphoreGive(mutex)
 
-// Perform some basic configuration validations to prevent common mistakes
-
+/////////////////////////////////////////////////////////////////////////////////////
+// Ensure SSID and PASSWORD are provided.
+/////////////////////////////////////////////////////////////////////////////////////
 #if !defined(SSID_NAME) || !defined(SSID_PASSWORD)
 #error "Invalid Configuration detected, Config_WiFi.h is a mandatory module."
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////////
+// Ensure the required h-bridge parameters are specified and not overlapping.
+/////////////////////////////////////////////////////////////////////////////////////
 #if !defined(MOTORBOARD_NAME_OPS) || !defined(MOTORBOARD_ENABLE_PIN_OPS) || \
   !defined(MOTORBOARD_CURRENT_SENSE_OPS) || !defined(MOTORBOARD_TYPE_OPS) || \
   !defined(MOTORBOARD_NAME_PROG) || !defined(MOTORBOARD_ENABLE_PIN_PROG) || \
@@ -249,10 +251,16 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
 #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and DCC_SIGNAL_PIN_PROGRAMMING must be unique."
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////////
+// Ensure either OLED or LCD display is active and not both.
+/////////////////////////////////////////////////////////////////////////////////////
 #if defined(INFO_SCREEN_OLED) && INFO_SCREEN_OLED && defined(INFO_SCREEN_LCD) && INFO_SCREEN_LCD
 #error "Invalid Configuration detected, it is not supported to include both OLED and LCD support."
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////////
+// Nextion interface configuration validations
+/////////////////////////////////////////////////////////////////////////////////////
 #if NEXTION_ENABLED
   #if NEXTION_UART_RX_PIN == NEXTION_UART_TX_PIN
   #error "Invalid Configuration detected, NEXTION_UART_RX_PIN and NEXTION_UART_TX_PIN must be unique."
@@ -307,6 +315,9 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
   #endif
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////////
+// HC12 Radio interface configuration validations
+/////////////////////////////////////////////////////////////////////////////////////
 #if HC12_RADIO_ENABLED
   #if HC12_RX_PIN == HC12_TX_PIN
   #error "Invalid Configuration detected, HC12_RX_PIN and HC12_TX_PIN must be unique."
@@ -350,6 +361,9 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
   #endif
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////////
+// LocoNet interface configuration validations
+/////////////////////////////////////////////////////////////////////////////////////
 #if LOCONET_ENABLED
   #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == LOCONET_RX_PIN
   #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and LOCONET_RX_PIN must be unique."
@@ -379,6 +393,9 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
   #endif
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////////
+// LCC interface configuration validations
+/////////////////////////////////////////////////////////////////////////////////////
 #if LCC_ENABLED
   #if LCC_CAN_RX_PIN != NOT_A_PIN
     #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == LCC_CAN_RX_PIN

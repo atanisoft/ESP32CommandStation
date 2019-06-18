@@ -33,6 +33,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 // S88_MAX_SENSORS_PER_BUS is defined as 512.
 //#define S88_FIRST_SENSOR S88_MAX_SENSORS_PER_BUS
 
-#define S88_ENABLED true
-
 /////////////////////////////////////////////////////////////////////////////////////
+
+#define S88_ENABLED true
