@@ -250,23 +250,23 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
 #endif
 
 #if NEXTION_ENABLED
-  #if NEXTION_RX_PIN == NEXTION_TX_PIN
-  #error "Invalid Configuration detected, NEXTION_RX_PIN and NEXTION_TX_PIN must be unique."
+  #if NEXTION_UART_RX_PIN == NEXTION_UART_TX_PIN
+  #error "Invalid Configuration detected, NEXTION_UART_RX_PIN and NEXTION_UART_TX_PIN must be unique."
   #endif
-  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == NEXTION_RX_PIN
-  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and NEXTION_RX_PIN must be unique."
+  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == NEXTION_UART_RX_PIN
+  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and NEXTION_UART_RX_PIN must be unique."
   #endif
-  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == NEXTION_TX_PIN
-  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and NEXTION_TX_PIN must be unique."
+  #if STATUS_LED_ENABLED && STATUS_LED_DATA_PIN == NEXTION_UART_TX_PIN
+  #error "Invalid Configuration detected, STATUS_LED_DATA_PIN and NEXTION_UART_TX_PIN must be unique."
   #endif
   #if HC12_RADIO_ENABLED
     #if NEXTION_UART_NUM == HC12_UART_NUM
     #error "Invalid Configuration detected, the Nextion and HC12 can not share the UART interface."
     #endif
-    #if NEXTION_RX_PIN == HC12_RX_PIN
+    #if NEXTION_UART_RX_PIN == HC12_RX_PIN
     #error "Invalid Configuration detected, the Nextion and HC12 can not share the same RX Pin."
     #endif
-    #if NEXTION_TX_PIN == HC12_TX_PIN
+    #if NEXTION_UART_TX_PIN == HC12_TX_PIN
     #error "Invalid Configuration detected, the Nextion and HC12 can not share the same TX Pin."
     #endif
   #endif
@@ -274,30 +274,30 @@ void setStatusLED(const STATUS_LED, const STATUS_LED_COLOR);
     #if NEXTION_UART_NUM == LOCONET_UART
     #error "Invalid Configuration detected, the Nextion and LocoNet can not share the UART interface."
     #endif
-    #if NEXTION_RX_PIN == LOCONET_RX_PIN
+    #if NEXTION_UART_RX_PIN == LOCONET_RX_PIN
     #error "Invalid Configuration detected, the Nextion and LocoNet can not share the same RX Pin."
     #endif
-    #if NEXTION_TX_PIN == LOCONET_TX_PIN
+    #if NEXTION_UART_TX_PIN == LOCONET_TX_PIN
     #error "Invalid Configuration detected, the Nextion and LocoNet can not share the same TX Pin."
     #endif
   #endif
   #if S88_ENABLED
-    #if S88_CLOCK_PIN == NEXTION_RX_PIN
+    #if S88_CLOCK_PIN == NEXTION_UART_RX_PIN
     #error "Invalid Configuration detected, the Nextion RX Pin and S88_CLOCK_PIN must be unique."
     #endif
-    #if S88_CLOCK_PIN == NEXTION_TX_PIN
+    #if S88_CLOCK_PIN == NEXTION_UART_TX_PIN
     #error "Invalid Configuration detected, the NEXTION_TX_PIN and S88_CLOCK_PIN must be unique."
     #endif
-    #if S88_RESET_PIN == NEXTION_RX_PIN
+    #if S88_RESET_PIN == NEXTION_UART_RX_PIN
     #error "Invalid Configuration detected, the Nextion RX Pin and S88_RESET_PIN must be unique."
     #endif
-    #if S88_RESET_PIN == NEXTION_TX_PIN
+    #if S88_RESET_PIN == NEXTION_UART_TX_PIN
     #error "Invalid Configuration detected, the NEXTION_TX_PIN and S88_RESET_PIN must be unique."
     #endif
-    #if S88_LOAD_PIN == NEXTION_RX_PIN
+    #if S88_LOAD_PIN == NEXTION_UART_RX_PIN
     #error "Invalid Configuration detected, the Nextion RX Pin and S88_LOAD_PIN must be unique."
     #endif
-    #if S88_LOAD_PIN == NEXTION_TX_PIN
+    #if S88_LOAD_PIN == NEXTION_UART_TX_PIN
     #error "Invalid Configuration detected, the NEXTION_TX_PIN and S88_LOAD_PIN must be unique."
     #endif
   #endif

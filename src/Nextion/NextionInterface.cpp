@@ -82,11 +82,11 @@ void nextionTask(void *param) {
 void nextionInterfaceInit() {
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init Nextion"));
 #if NEXTION_UART_NUM == 2
-  Serial2.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
+  Serial2.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_UART_RX_PIN, NEXTION_UART_TX_PIN);
 #elif NEXTION_UART_NUM == 1
-  Serial1.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
+  Serial1.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_UART_RX_PIN, NEXTION_UART_TX_PIN);
 #else
-  Serial.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_RX_PIN, NEXTION_TX_PIN);
+  #error "Invalid configuration detected for the NEXTION_UART_NUM value. Only UART 1 or UART 2 are supported for the Nextion Interface."
 #endif
   nextion.init();
 
