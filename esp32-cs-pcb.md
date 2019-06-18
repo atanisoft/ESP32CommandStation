@@ -28,11 +28,10 @@ The schematic is available [here (SVG)](ESP32-CS.svg) or [here (PDF)](ESP32-CS.p
 The BOM can be viewed [here](ESP32-CS-BOM.html).
 
 ## Kits
-Kits will be made available soon in three varieties:
+Kits will be made available soon in two varieties:
 
 1. Fully assembled and tested.
-2. Partially assembled and tested (SMD components will be soldered to the PCB and tested for proper functionality).
-3. PCB and parts only (no assembly or testing).
+2. PCB and parts only (no assembly or testing).
 
 ## ESP32 Pin Usage
 The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
