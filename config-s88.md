@@ -2,8 +2,10 @@
 layout: default
 ---
 
-# Configuring the S88 module (Optional)
+# S88 Module
 The S88 module allows reading of multiple S88 sensor buses. Each bus will have a unique data pin but shares the clock, reset and load pins.
+
+## Configuration
 
 | PARAM | Description |
 | ----- | ----------- |

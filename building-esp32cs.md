@@ -3,8 +3,9 @@ layout: default
 ---
 
 # Building the ESP32 Command Station code
-Building the ESP32 Command Station code is only possible by using PlatformIO IDE which can be installed from http://platformio.org/platformio-ide. When installing PlatformIO IDE be sure to add Python to the default path (if prompted). Using [Atom](https://atom.io/) or [Visual Studio Code](https://code.visualstudio.com/) does not make that much of a difference in compilation/usage of the included PlatformIO project file. Currently all development and testing is conducted with [Visual Studio Code](https://code.visualstudio.com/).
+Building the ESP32 Command Station code is current only possible by using PlatformIO IDE which can be installed from http://platformio.org/platformio-ide. When installing PlatformIO IDE be sure to add Python to the default path (if prompted). Using [Atom](https://atom.io/) or [Visual Studio Code](https://code.visualstudio.com/) does not make that much of a difference in compilation/usage of the included PlatformIO project file. Currently all development and testing is conducted with [Visual Studio Code](https://code.visualstudio.com/).
 
+## Configurable Modules
 The ESP32 Command Station consists of multiple modules, most of which are optional. The list below covers the various modules:
 
 | Module | Description |

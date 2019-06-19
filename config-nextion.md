@@ -2,8 +2,10 @@
 layout: default
 ---
 
-# Configuring the Nextion module
+# Nextion Module
 The Nextion interface is an optional module that allows to control up to three trains and manage turnouts. In the future it will be possible to use this as a general command station management interface.
+
+## Configuration
 
 | PARAM | Description |
 | ----- | ----------- |
@@ -12,7 +14,7 @@ The Nextion interface is an optional module that allows to control up to three t
 | NEXTION_UART_RX_PIN | This is the ESP32 pin connected to the Nextion TX pin (blue wire). Default is 14, any unused pin can be used. |
 | NEXTION_UART_TX_PIN | This is the ESP32 pin connected to the Nextion RX pin (yellow wire). Default is 27, any unused pin can be used. |
 
-# Supported Nextion Displays
+## Supported Displays
 There are many sizes of Nextion displays available on the market. At this time only the following displays are supported:
 
 | Size (inches) | Type | Part # (prefix only) | HMI File |

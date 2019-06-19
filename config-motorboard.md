@@ -2,7 +2,7 @@
 layout: default
 ---
 
-# Configuring the MotorBoard module
+# Motor Board Module
 Open include/Config_MotorBoard.h and adjust values to match your configuration, the defaults are set for an Arduino Uno form factor ESP32 with an attached Arduino motor shield.
 
 ## Configuration
@@ -54,7 +54,6 @@ Note: LMD18200 will be supported starting in v1.3.0
 Some motor boards require a split signal pair rather than a single pin. For these a circuit similar to the one below will be required:
 
 ![DCC Signal Split](dcc-signal-split.png)
-
 
 ### Arduino Motor Shield (L298)
 If you are using an UNO formfactor ESP32 device this is by far the easiest to configure. Simply plug the motor shield into the ESP32 device and add two jumpers from A0 to A4 and A1 to A5. The jumpers are required due to the ESP32 devices typically having GPIO 0 and GPIO 2 in the A0 and A1 locations, these use ADC2 and are not usable.

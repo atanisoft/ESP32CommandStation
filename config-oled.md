@@ -2,7 +2,15 @@
 layout: default
 ---
 
-# OLED Configuration
+# OLED Module
+The OLED module allows the command station to display general status information. The following information is displayed:
+1. Command Station information (version data)
+2. Command Station IP Address
+3. Number of WebSocket connections (may be replaced in the future)
+4. Track Output status (ON/OFF)
+5. Rotating status output (free heap, active loco count, track current utilization, LocoNet status, LCC status)
+
+## Configuration
 If the ESP32 board has a built in OLED screen it may automatically be usable, this depends on the board being configured correctly in the [arduino-esp32](https://github.com/espressif/arduino-esp32) release. Currently only ome of the Heltec (see note below), TTGO or D-Duino-32 boards provide the automatic configuration. If the OLED does not work out-of-box with these boards or if your board does not define OLED_SDA and OLED_SCL, you can configure it via the parameters below.
 
 | PARAM | Description |
@@ -15,7 +23,7 @@ If the ESP32 board has a built in OLED screen it may automatically be usable, th
 | INFO_SCREEN_SCL_PIN | If your ESP32 does not use a standard SCL pin (defined in the pins_arduino.h from arduino-esp32) you can define it here. |
 | INFO_SCREEN_RESET_PIN | If your OLED screen requires a reset pin to be used you can enable it by defining this parameter. Only a few OLED displays require this option and they are often attached to the ESP32 board directly in which case this option should automatically be enabled with the correct board type being selected. |
 
-##### Heltec WiFi Kit 32 / Heltec WiFi Lora 32 Configuration
+### Heltec WiFi Kit 32 / Heltec WiFi Lora 32 Configuration
 These boards have on-board OLED screens, if the automatic configuration does not work for these boards try the following settings:
 
 | PARAM | Description |

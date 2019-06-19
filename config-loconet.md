@@ -2,8 +2,8 @@
 layout: default
 ---
 
-# Configuring the LocoNet module
-If you have an existing LocoNet bus the ESP32 Command Station can interact with these devices. Currently only the following OP Codes are implemented:
+# LocoNet Module
+If you have an existing LocoNet bus the ESP32 Command Station can interact with these devices. Currently the ESP32 Command Station supports only a subset of the LocoNet protocol, this may be extended further in the future.
 
 ## LocoNet Configuration
 
