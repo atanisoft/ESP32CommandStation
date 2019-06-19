@@ -56,6 +56,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 The entries below are not tracked to a specific release or in any particular priority order.
 
 ### General (misc)
+
 - [ ] CMake and VisualGDB support (https://github.com/atanisoft/ESP32CommandStation/pull/22)
 
 ### S88 Sensors
