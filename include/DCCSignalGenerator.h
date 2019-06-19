@@ -66,16 +66,16 @@ protected:
   virtual void enable() = 0;
   virtual void disable() = 0;
   void lockSendQueue() {
-    while (xSemaphoreTake(_sendQueueMUX, portMAX_DELAY) != pdPASS) {}
+    portENTER_CRITICAL(&_sendQueueMUX);
   }
   void unlockSendQueue() {
-    xSemaphoreGive(_sendQueueMUX);
+    portEXIT_CRITICAL(&_sendQueueMUX);
   }
 
   const String _name;
   const uint8_t _signalID;
 private:
-  xSemaphoreHandle _sendQueueMUX;
+  portMUX_TYPE _sendQueueMUX = portMUX_INITIALIZER_UNLOCKED;
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
   Packet *_currentPacket;
