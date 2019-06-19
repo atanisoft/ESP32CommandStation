@@ -92,13 +92,8 @@ void setup() {
                                    MOTORBOARD_TYPE_PROG,
                                    MOTORBOARD_NAME_PROG,
                                    true);
-#if USE_RMT_FOR_DCC
   dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_RMT("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS, MOTORBOARD_ENABLE_PIN_OPS);
   dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_RMT("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING, MOTORBOARD_ENABLE_PIN_PROG);
-#else
-  dccSignal[DCC_SIGNAL_OPERATIONS] = new SignalGenerator_HardwareTimer("OPS", 512, DCC_SIGNAL_OPERATIONS, DCC_SIGNAL_PIN_OPERATIONS);
-  dccSignal[DCC_SIGNAL_PROGRAMMING] = new SignalGenerator_HardwareTimer("PROG", 10, DCC_SIGNAL_PROGRAMMING, DCC_SIGNAL_PIN_PROGRAMMING);
-#endif
 
   DCCPPProtocolHandler::init();
   OutputManager::init();

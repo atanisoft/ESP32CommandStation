@@ -131,6 +131,7 @@ SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signa
   for(int index = 0; index < maxPackets; index++) {
     _availablePackets.push(new Packet());
   }
+  os_mutex_init(&_sendQueueMUX);
 }
 
 void SignalGenerator::startSignal(bool sendIdlePackets) {
@@ -226,7 +227,7 @@ Packet *SignalGenerator::getPacket() {
     }
   }
   if(_currentPacket == nullptr) {
-    lockSendQueueISR();
+    lockSendQueue();
     if(isQueueEmpty()) {
       _currentPacket = &_idlePacket;
       _currentPacket->currentBit = 0;
@@ -234,7 +235,7 @@ Packet *SignalGenerator::getPacket() {
       _currentPacket = _toSend.front();
       _toSend.pop();
     }
-    unlockSendQueueISR();
+    unlockSendQueue();
   }
   return _currentPacket;
 }

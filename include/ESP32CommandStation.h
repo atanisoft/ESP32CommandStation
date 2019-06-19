@@ -146,18 +146,12 @@ constexpr uint16_t S88_MAX_SENSORS_PER_BUS = 512;
 #define S88_FIRST_SENSOR S88_MAX_SENSORS_PER_BUS
 #endif
 
-/////////////////////////////////////////////////////////////////////////////////////
-// Enables usage of the RMT peripheral to generate the DCC signal.
-/////////////////////////////////////////////////////////////////////////////////////
-#define USE_RMT_FOR_DCC true
-
 #include "JsonConstants.h"
 #include "ConfigurationManager.h"
 #include "WiFiInterface.h"
 #include "InfoScreen.h"
 #include "DCCppProtocol.h"
 #include "DCCSignalGenerator.h"
-#include "DCCSignalGenerator_Timer.h"
 #include "DCCSignalGenerator_RMT.h"
 #include "DCCProgrammer.h"
 #include "MotorBoard.h"

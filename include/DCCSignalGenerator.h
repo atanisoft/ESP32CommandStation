@@ -66,22 +66,16 @@ protected:
   virtual void enable() = 0;
   virtual void disable() = 0;
   void lockSendQueue() {
-    portENTER_CRITICAL(&_sendQueueMUX);
+    os_mutex_lock(&_sendQueueMUX);
   }
   void unlockSendQueue() {
-    portEXIT_CRITICAL(&_sendQueueMUX);
-  }
-  virtual void lockSendQueueISR() {
-    lockSendQueue();
-  }
-  virtual void unlockSendQueueISR() {
-    unlockSendQueue();
+    os_mutex_unlock(&_sendQueueMUX);
   }
 
   const String _name;
   const uint8_t _signalID;
-  portMUX_TYPE _sendQueueMUX = portMUX_INITIALIZER_UNLOCKED;
 private:
+  os_mutex_t _sendQueueMUX;
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
   Packet *_currentPacket;
