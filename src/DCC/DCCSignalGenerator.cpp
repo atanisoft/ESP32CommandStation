@@ -131,7 +131,7 @@ SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signa
   for(int index = 0; index < maxPackets; index++) {
     _availablePackets.push(new Packet());
   }
-  os_mutex_init(&_sendQueueMUX);
+  _sendQueueMUX = xSemaphoreCreateMutex();
 }
 
 void SignalGenerator::startSignal(bool sendIdlePackets) {

@@ -66,16 +66,16 @@ protected:
   virtual void enable() = 0;
   virtual void disable() = 0;
   void lockSendQueue() {
-    os_mutex_lock(&_sendQueueMUX);
+    while (xSemaphoreTake(_sendQueueMUX, portMAX_DELAY) != pdPASS) {}
   }
   void unlockSendQueue() {
-    os_mutex_unlock(&_sendQueueMUX);
+    xSemaphoreGive(_sendQueueMUX);
   }
 
   const String _name;
   const uint8_t _signalID;
 private:
-  os_mutex_t _sendQueueMUX;
+  xSemaphoreHandle _sendQueueMUX;
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
   Packet *_currentPacket;
