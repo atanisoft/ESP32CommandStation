@@ -133,25 +133,32 @@ class DccPacketQueueInjector : public PacketFlowInterface {
         void send(Buffer<dcc::Packet> *b, unsigned prio)
         {
             dcc::Packet *pkt = b->data();
-            dccSignal[DCC_SIGNAL_OPERATIONS]->loadBytePacket(pkt->payload, pkt->dlc, pkt->packet_header.rept_count);
-            // check if the packet looks like an accessories decoder packet
-            if(!pkt->packet_header.is_marklin && pkt->dlc == 2 && pkt->payload[0] & 0x80 && pkt->payload[1] & 0x80) {
-                // the second byte of the payload contains part of the address and is stored in ones complement format
-                uint8_t onesComplementByteTwo = (pkt->payload[1] ^ 0xF8);
-                // decode the accessories decoder address and update the TurnoutManager metadata
-                uint16_t boardAddress = (pkt->payload[0] & 0x3F) + ((onesComplementByteTwo >> 4) & 0x07);
-                uint8_t boardIndex = ((onesComplementByteTwo >> 1) % 4);
-                bool state = onesComplementByteTwo & 0x01;
-                // with the board address and index decoded from the packet we can assemble a 12bit decoder address
-                uint16_t decoderAddress = (boardAddress * 4 + boardIndex) - 3;
-                auto turnout = TurnoutManager::getTurnoutByAddress(decoderAddress);
-                if(turnout) {
-                    turnout->set(state, false);
+            if(pkt->packet_header.send_long_preamble) {
+                // prog track packet
+                dccSignal[DCC_SIGNAL_PROGRAMMING]->loadBytePacket(pkt->payload, pkt->dlc, pkt->packet_header.rept_count);
+            } else {
+                // ops track packet
+                dccSignal[DCC_SIGNAL_OPERATIONS]->loadBytePacket(pkt->payload, pkt->dlc, pkt->packet_header.rept_count);
+                // check if the packet looks like an accessories decoder packet
+                if(!pkt->packet_header.is_marklin && pkt->dlc == 2 && pkt->payload[0] & 0x80 && pkt->payload[1] & 0x80) {
+                    // the second byte of the payload contains part of the address and is stored in ones complement format
+                    uint8_t onesComplementByteTwo = (pkt->payload[1] ^ 0xF8);
+                    // decode the accessories decoder address and update the TurnoutManager metadata
+                    uint16_t boardAddress = (pkt->payload[0] & 0x3F) + ((onesComplementByteTwo >> 4) & 0x07);
+                    uint8_t boardIndex = ((onesComplementByteTwo >> 1) % 4);
+                    bool state = onesComplementByteTwo & 0x01;
+                    // with the board address and index decoded from the packet we can assemble a 12bit decoder address
+                    uint16_t decoderAddress = (boardAddress * 4 + boardIndex) - 3;
+                    auto turnout = TurnoutManager::getTurnoutByAddress(decoderAddress);
+                    if(turnout) {
+                        turnout->set(state, false);
+                    }
                 }
             }
             b->unref();
         }
 };
+
 DccPacketQueueInjector dccPacketInjector;
 
 DccAccyConsumer dccAccessoryConsumer{openmrn.stack()->node(), &dccPacketInjector};
