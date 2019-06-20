@@ -40,6 +40,10 @@ COPYRIGHT (c) 2019 Mike Dunston
 #include "LCCCDI.h"
 
 using dcc::PacketFlowInterface;
+using dcc::RailcomHubFlow;
+using dcc::RailcomPrintfFlow;
+using openlcb::CallbackEventHandler;
+using openlcb::ConfigDef;
 using openlcb::DccAccyConsumer;
 using openlcb::Defs;
 using openlcb::EventRegistry;
@@ -47,8 +51,6 @@ using openlcb::EventRegistryEntry;
 using openlcb::EventReport;
 using openlcb::Node;
 using openlcb::NodeID;
-using openlcb::ConfigDef;
-using openlcb::CallbackEventHandler;
 using openlcb::SimpleEventHandler;
 using openlcb::WriteHelper;
 
@@ -69,8 +71,8 @@ static constexpr ConfigDef cfg(0);
 Esp32WiFiManager wifi_mgr(openmrn.stack(), cfg.seg().wifi());
 
 // RailCom Hub interface for LCC
-dcc::RailcomHubFlow railComHub(openmrn.stack()->service());
-dcc::RailcomPrintfFlow railComDataDumper(&railComHub);
+RailcomHubFlow railComHub(openmrn.stack()->service());
+RailcomPrintfFlow railComDataDumper(&railComHub);
 
 // when the command station starts up the first time the config is blank
 // and needs to be reset to factory settings. This class being declared here

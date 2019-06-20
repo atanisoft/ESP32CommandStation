@@ -40,5 +40,4 @@ protected:
   void disable() override;
 private:
   uart_t *_railComUART;
-  std::vector <dcc::Feedback> _railComData;
 };
