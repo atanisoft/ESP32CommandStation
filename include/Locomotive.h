@@ -84,6 +84,7 @@ private:
   bool _direction;
   bool _orientation;
   uint64_t _lastUpdate;
+  uint64_t _lastFunctionsUpdate;
   bool _functionsChanged;
   bool _functionState[MAX_LOCOMOTIVE_FUNCTIONS];
   std::vector<uint8_t> _functionPackets[MAX_LOCOMOTIVE_FUNCTION_PACKETS];

@@ -34,7 +34,7 @@ static constexpr UBaseType_t LOCO_MGR_TASK_PRIORITY = 5;
 static constexpr uint32_t LOCO_MGR_TASK_STACK_SIZE = 3072;
 
 // Interval at which to wake up the LocomotiveManager periodic update task.
-static constexpr TickType_t LOCO_MGR_TASK_INTERVAL = pdMS_TO_TICKS(10);
+static constexpr TickType_t LOCO_MGR_TASK_INTERVAL = pdMS_TO_TICKS(25);
 
 // ESP32 Core which to run the LocomotiveManager periodic update task.
 static constexpr uint8_t LOCO_MGR_CORE_AFFINITY = 1;

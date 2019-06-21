@@ -17,6 +17,16 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "ESP32CommandStation.h"
 
+// This controls how often to send any sort of update for the
+// locomotive, it defaults to approximately every 40mS. Between
+// this interval and the LocomotiveManager 10mS interval this
+// will result in approximately every 50mS a packet will be sent.
+constexpr uint64_t LOCO_UPDATE_INTERVAL = MSEC_TO_USEC(40);
+
+// This controls how often to send the locomotive function packets,
+// default is approximately every second.
+constexpr uint64_t LOCO_FUNCTION_UPDATE_INTERVAL = SEC_TO_USEC(5);
+
 Locomotive::Locomotive(uint8_t registerNumber) :
   _registerNumber(registerNumber), _locoAddress(0), _speed(0), _direction(true),
   _lastUpdate(0), _functionsChanged(true) {
@@ -49,14 +59,11 @@ Locomotive::Locomotive(JsonObject &json) : _registerNumber(-1), _lastUpdate(0), 
 }
 
 void Locomotive::sendLocoUpdate() {
-  // This check ensures we do not send updates to the locomotive too quickly and
-  // ensures at least 40uS has passed since the last update was sent. Between this
-  // check and the LocomotiveManager update task sleeping for 10mS an update should
-  // be sent every 40-50mS.
-  if(esp_timer_get_time() < (_lastUpdate + MSEC_TO_USEC(40))) {
+  if(esp_timer_get_time() < (_lastUpdate + LOCO_UPDATE_INTERVAL)) {
     return;
   }
-  LOG(VERBOSE, "[Loco %d, speed: %d, dir: %s] Building speed packet",
+  LOG(VERBOSE, "%d [Loco %d, speed: %d, dir: %s] Building speed packet",
+    esp_log_timestamp(),
     _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
   std::vector<uint8_t> packetBuffer;
   if(_locoAddress > 127) {
@@ -72,13 +79,20 @@ void Locomotive::sendLocoUpdate() {
   } else {
     packetBuffer.push_back((uint8_t)(_speed + (_speed > 0) + _direction * 128));
   }
-  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(packetBuffer, 0);
+  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(packetBuffer);
+  // always send functions 0-8
+  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[0]);
+  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[1]);
   if(_functionsChanged) {
     _functionsChanged = false;
     createFunctionPackets();
   }
-  for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
-    dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[functionPacket], 0);
+  // if sufficient time has passed for other function packets, send them out
+  if(esp_timer_get_time() > (_lastFunctionsUpdate + LOCO_FUNCTION_UPDATE_INTERVAL)) {
+    for(uint8_t functionPacket = 2; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
+      dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[functionPacket]);
+    }
+    _lastFunctionsUpdate = esp_timer_get_time();
   }
   _lastUpdate = esp_timer_get_time();
 }
@@ -107,6 +121,8 @@ void Locomotive::toJson(JsonObject &jsonObject, bool includeSpeedDir, bool inclu
 }
 
 void Locomotive::createFunctionPackets() {
+  // reset counter so we send them out
+  _lastFunctionsUpdate = 0;
   LOG(VERBOSE, "[Loco %d] Building Function packets", _locoAddress);
   // seed functions packets with locomotive numbers
   for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
