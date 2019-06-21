@@ -18,9 +18,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include "ESP32CommandStation.h"
 
 // This controls how often to send any sort of update for the
-// locomotive, it defaults to approximately every 40mS. Between
-// this interval and the LocomotiveManager 10mS interval this
-// will result in approximately every 50mS a packet will be sent.
+// locomotive, it defaults to at least every 40mS between
+// speed/function packets.
 constexpr uint64_t LOCO_UPDATE_INTERVAL = MSEC_TO_USEC(40);
 
 // This controls how often to send the locomotive function packets,
@@ -62,8 +61,7 @@ void Locomotive::sendLocoUpdate() {
   if(esp_timer_get_time() < (_lastUpdate + LOCO_UPDATE_INTERVAL)) {
     return;
   }
-  LOG(VERBOSE, "%d [Loco %d, speed: %d, dir: %s] Building speed packet",
-    esp_log_timestamp(),
+  LOG(VERBOSE, "[Loco %d, speed: %d, dir: %s] Building speed packet",
     _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
   std::vector<uint8_t> packetBuffer;
   if(_locoAddress > 127) {
@@ -80,16 +78,12 @@ void Locomotive::sendLocoUpdate() {
     packetBuffer.push_back((uint8_t)(_speed + (_speed > 0) + _direction * 128));
   }
   dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(packetBuffer);
-  // always send functions 0-8
-  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[0]);
-  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[1]);
   if(_functionsChanged) {
     _functionsChanged = false;
     createFunctionPackets();
   }
-  // if sufficient time has passed for other function packets, send them out
   if(esp_timer_get_time() > (_lastFunctionsUpdate + LOCO_FUNCTION_UPDATE_INTERVAL)) {
-    for(uint8_t functionPacket = 2; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
+    for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
       dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[functionPacket]);
     }
     _lastFunctionsUpdate = esp_timer_get_time();
