@@ -74,6 +74,26 @@ Esp32WiFiManager wifi_mgr(openmrn.stack(), cfg.seg().wifi());
 RailcomHubFlow railComHub(openmrn.stack()->service());
 RailcomPrintfFlow railComDataDumper(&railComHub);
 
+#if LCC_CPULOAD_REPORTING
+#include <esp_spi_flash.h>
+#include <freertos_drivers/arduino/CpuLoad.hxx>
+#include <esp32-hal-timer.h>
+
+CpuLoad cpuLogTracker;
+hw_timer_t *cpuTickTimer = nullptr;
+CpuLoadLog *cpuLoadLogger = nullptr;
+constexpr uint8_t LCC_CPU_TIMER_NUMBER = 3;
+constexpr uint8_t LCC_CPU_TIMER_DIVIDER = 80;
+
+void IRAM_ATTR cpuTickTimerCallback() {
+    if (spi_flash_cache_enabled()) {
+        // Retrieves the vtable pointer from the currently running executable.
+        unsigned *pp = (unsigned *)openmrn.stack()->executor()->current();
+        cpuload_tick(pp ? pp[0] | 1 : 0);
+    }
+}
+#endif
+
 // when the command station starts up the first time the config is blank
 // and needs to be reset to factory settings. This class being declared here
 // takes care of that.
@@ -217,6 +237,14 @@ void LCCInterface::init() {
     // Add the hardware CAN device as a bridge
     openmrn.add_can_port(
         new Esp32HardwareCan("esp32can", (gpio_num_t)LCC_CAN_RX_PIN, (gpio_num_t)LCC_CAN_TX_PIN, false));
+#endif
+#if LCC_CPULOAD_REPORTING
+    cpuTickTimer = timerBegin(LCC_CPU_TIMER_NUMBER, LCC_CPU_TIMER_DIVIDER, true); // timer_id = 3; divider=80; countUp = true;
+    timerAttachInterrupt(cpuTickTimer, &cpuTickTimerCallback, true); // edge = true
+    // 1MHz clock, 163 ticks per second desired.
+    timerAlarmWrite(cpuTickTimer, 1000000/163, true);
+    timerAlarmEnable(cpuTickTimer);
+    cpuLoadLogger = new CpuLoadLog(openmrn.stack()->service());
 #endif
 }
 
