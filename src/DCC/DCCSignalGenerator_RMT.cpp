@@ -31,28 +31,29 @@ static constexpr uint32_t ZERO_BIT_PULSE_USEC = 98;
 // number of microseconds for each half of the DCC signal for a one
 static constexpr uint32_t ONE_BIT_PULSE_USEC = 58;
 
-static constexpr TickType_t MAX_PACKET_TX_TIME = 100000L;
-
 static constexpr rmt_item32_t DCC_ZERO_BIT = {{{ ZERO_BIT_PULSE_USEC, 1, ZERO_BIT_PULSE_USEC, 0 }}};
 static constexpr rmt_item32_t DCC_ONE_BIT = {{{ ONE_BIT_PULSE_USEC, 1, ONE_BIT_PULSE_USEC, 0 }}};
-/*
-// pre-encoded DCC preamble in RMT format
-static constexpr rmt_item32_t DCC_PREAMBLE[] = {
+
+// pre-encoded DCC IDLE packet in RMT format
+static constexpr rmt_item32_t DCC_IDLE_PACKET[] = {
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,     // 0xFF
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,     // 0xFF
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ZERO_BIT, DCC_ZERO_BIT,   // 0xFD
     DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
-    DCC_ONE_BIT, DCC_ONE_BIT
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ZERO_BIT,    // 0xFE
+    DCC_ZERO_BIT, DCC_ZERO_BIT, DCC_ZERO_BIT, DCC_ZERO_BIT,
+    DCC_ZERO_BIT, DCC_ZERO_BIT, DCC_ZERO_BIT, DCC_ZERO_BIT, // 0x00
+    DCC_ZERO_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,
+    DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT, DCC_ONE_BIT,     // 0x7F
+    DCC_ONE_BIT,                                            // 0x01
+    DCC_ONE_BIT
+    // NOTE: The above extra bit is to ensure the RMT sends the
+    // final bit of the DCC IDLE packet without stretching the
+    // final LOW wave portion of the bit.
 };
-*/
 
 constexpr uint8_t MAX_DCC_PACKET_BITS = 128;
 
@@ -60,68 +61,77 @@ constexpr uint32_t RMT_TASK_STACK_SIZE = 4096;
 constexpr BaseType_t RMT_TASK_PRIORITY = ESP_TASK_TCPIP_PRIO;
 constexpr BaseType_t RMT_TASK_CORE = 0;
 
+constexpr uint8_t RAILCOM_PACKET_END_DELAY_USEC = 1;
+constexpr uint8_t RAILCOM_BRAKE_ENABLE_DELAY_USEC = 1;
+constexpr uint8_t RAILCOM_BRAKE_DISABLE_DELAY_USEC = 10;
 
 #define CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-    for(int index = 0; \
-        index < packet->numberOfBits; \
-        index++, encodedBitCount++) { \
-        if(packet->buffer[index / 8] & DCC_PACKET_BIT_MASK[index % 8]) { \
+    for(encodedBitCount = 0; \
+        encodedBitCount < packet->numberOfBits; \
+        encodedBitCount++) { \
+        if(packet->buffer[encodedBitCount / 8] & DCC_PACKET_BIT_MASK[encodedBitCount % 8]) { \
             encodedPacket[encodedBitCount].val = DCC_ONE_BIT.val; \
         } else { \
             encodedPacket[encodedBitCount].val = DCC_ZERO_BIT.val; \
         } \
     } \
     encodedPacket[encodedBitCount++].val = DCC_ONE_BIT.val;
-// NOTE: the above extra one bit is to ensure the RMT sends the last bit of the packet without
-// stretching the LOW wave portion. This extra bit will be ignored by the decoders as an extra
-// preamble bit.
+// NOTE: The above extra one bit is to ensure the RMT sends the final bit of the packet without
+// stretching the LOW wave portion of the bit.
 
-#define RMT_TRANSMIT_BITS(signal, bits, count, wait) \
-    ESP_ERROR_CHECK(rmt_write_items(signal->_rmtChannel, bits, count, wait));
+// Allow for up to 100 zero bits before reporting that a DCC packet was transmitted slowly,
+// this should not normally be reported unless there is an issue with the RMT peripheral.
+constexpr uint64_t MAX_DCC_PACKET_TIME = (ZERO_BIT_PULSE_USEC * 2) * 100;
 
-#define RMT_WAIT_FOR_TRANSMIT_COMPLETE(signal, time) \
-    ESP_ERROR_CHECK(rmt_wait_tx_done(signal->_rmtChannel, time));
+#define RMT_TRANSMIT_BITS(signal, bits, count) \
+    uint64_t ts_start = esp_timer_get_time(); \
+    ESP_ERROR_CHECK(rmt_write_items(signal->_rmtChannel, bits, count, true)); \
+    uint64_t ts_end = esp_timer_get_time(); \
+    if ((ts_end - ts_start) > MAX_DCC_PACKET_TIME) { \
+        LOG(WARNING, "[%s] SLOW DCC transmit! %s:%s, %d bits", \
+            signal->getName(), uint64_to_string(ts_start).c_str(), \
+            uint64_to_string(ts_end).c_str(), count); \
+    }
 
 #define RMT_TRANSMIT_DCC(signal, preambleBitCount) \
     while(xSemaphoreTake(signal->_stopRequest, 0) != pdTRUE) { \
-        auto packet = signal->getPacket(); \
+        auto packet = signal->getNextPacket(); \
         if(packet) { \
             uint8_t encodedBitCount = 0; \
             rmt_item32_t encodedPacket[MAX_DCC_PACKET_BITS]; \
             CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-            RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, true) \
-            packet->currentBit = packet->numberOfBits; \
+            RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount) \
+        } else { \
+            RMT_TRANSMIT_BITS(signal, DCC_IDLE_PACKET, 50) \
         } \
     }
-constexpr uint8_t RAILCOM_PACKET_END_DELAY = 1;
-constexpr uint8_t RAILCOM_BRAKE_ENABLE_DELAY = 1;
-constexpr uint8_t RAILCOM_BRAKE_DISABLE_DELAY = 10;
 
 #define RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, preambleBitCount) \
     while(xSemaphoreTake(signal->_stopRequest, 0) != pdTRUE) { \
-        auto packet = signal->getPacket(); \
+        auto packet = signal->getNextPacket(); \
         if (packet) { \
             uint8_t encodedBitCount = 0; \
             rmt_item32_t encodedPacket[MAX_DCC_PACKET_BITS]; \
             CONVERT_DCC_PACKET_TO_RMT(packet, encodedPacket, encodedBitCount) \
-            RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount, true) \
-            packet->currentBit = packet->numberOfBits; \
-            digitalWrite(signal->_signalPin, LOW); \
-            delayMicroseconds(RAILCOM_PACKET_END_DELAY); \
-            digitalWrite(signal->_brakeEnablePin, HIGH); \
-            delayMicroseconds(RAILCOM_BRAKE_ENABLE_DELAY); \
-            digitalWrite(signal->_outputEnablePin, LOW); \
-            digitalWrite(signal->_railComEnablePin, HIGH); \
-            signal->receiveRailComData(); \
-            digitalWrite(signal->_railComEnablePin, LOW); \
-            if(digitalRead(signal->_railComShortPin)) { \
-                /* TBD */ \
-            } \
-            digitalWrite(signal->_outputEnablePin, HIGH); \
-            delayMicroseconds(RAILCOM_BRAKE_DISABLE_DELAY); \
-            digitalWrite(signal->_brakeEnablePin, LOW); \
-            /* signal pin will reset with next packet automatically */ \
+            RMT_TRANSMIT_BITS(signal, encodedPacket, encodedBitCount) \
+        } else { \
+            RMT_TRANSMIT_BITS(signal, DCC_IDLE_PACKET, 50) \
         } \
+        digitalWrite(signal->_signalPin, LOW); \
+        delayMicroseconds(RAILCOM_PACKET_END_DELAY_USEC); \
+        digitalWrite(signal->_brakeEnablePin, HIGH); \
+        delayMicroseconds(RAILCOM_BRAKE_ENABLE_DELAY_USEC); \
+        digitalWrite(signal->_outputEnablePin, LOW); \
+        digitalWrite(signal->_railComEnablePin, HIGH); \
+        signal->receiveRailComData(); \
+        digitalWrite(signal->_railComEnablePin, LOW); \
+        if(digitalRead(signal->_railComShortPin)) { \
+            /* TBD */ \
+        } \
+        digitalWrite(signal->_outputEnablePin, HIGH); \
+        delayMicroseconds(RAILCOM_BRAKE_DISABLE_DELAY_USEC); \
+        digitalWrite(signal->_brakeEnablePin, LOW); \
+        /* signal pin will reset with next packet automatically */ \
     }
 
 static void RMT_task_entry(void *param) {
@@ -184,9 +194,9 @@ SignalGenerator_RMT::SignalGenerator_RMT(String name, uint16_t maxPackets, uint8
                 .carrier_freq_hz = 0,
                 .carrier_duty_percent = 0,
                 .carrier_level = rmt_carrier_level_t::RMT_CARRIER_LEVEL_LOW,
-                .carrier_en = 0,
+                .carrier_en = false,
                 .idle_level = rmt_idle_level_t::RMT_IDLE_LEVEL_LOW,
-                .idle_output_en = 0
+                .idle_output_en = false
             }
         }
     };

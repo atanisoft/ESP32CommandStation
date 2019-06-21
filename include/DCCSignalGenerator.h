@@ -17,6 +17,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #pragma once
 
 #include <Arduino.h>
+#include <mutex>
 #include <queue>
 #include <stdint.h>
 
@@ -42,8 +43,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 struct Packet {
   uint8_t buffer[MAX_BYTES_IN_PACKET];
   uint8_t numberOfBits;
-  uint8_t numberOfRepeats;
-  uint8_t currentBit;
+  int8_t numberOfRepeats;
 };
 
 class SignalGenerator {
@@ -51,42 +51,101 @@ public:
   void startSignal(bool=true);
   void stopSignal();
   void loadBytePacket(const uint8_t *, uint8_t, uint8_t, bool=false);
-  void loadPacket(std::vector<uint8_t>, int, bool=false);
-  void waitForQueueEmpty();
-  bool isQueueEmpty();
-  bool isEnabled();
-  void drainQueue();
-  Packet *getPacket();
-  const char *getName() {
+  void loadPacket(std::vector<uint8_t>, int=0, bool=false);
+
+  inline void waitForQueueEmpty() {
+    while(!isQueueEmpty()) {
+      delay(1);
+    }
+  }
+
+  inline bool isQueueEmpty() {
+    std::lock_guard<std::mutex> guard(_toSendMux);
+    return _toSend.empty();
+  }
+
+  inline Packet *getNextPacket() {
+    if (_currentPacket) {
+      _currentPacket->numberOfRepeats--;
+      if (_currentPacket->numberOfRepeats <= 0) {
+        LOG(VERBOSE, "[%s %d %p] Packet Sent", getName(), esp_log_timestamp(), _currentPacket);
+        pushFreePacket(_currentPacket);
+        _currentPacket = nullptr;
+      }
+    }
+    if (_currentPacket == nullptr && !isQueueEmpty()) {
+      std::lock_guard<std::mutex> guard(_toSendMux);
+      LOG(VERBOSE, "[%s %d] Send Queue Size: %d", getName(), esp_log_timestamp(), _toSend.size());
+      _currentPacket = _toSend.front();
+      _toSend.pop();
+    }
+    if(_currentPacket) {
+      LOG(VERBOSE, "[%s %d %p] Current Packet (%d bits, %d repeats)", getName(), esp_log_timestamp(),
+          _currentPacket, _currentPacket->numberOfBits, _currentPacket->numberOfRepeats);
+    }
+    return _currentPacket;
+  }
+
+  inline const char *getName() {
     return _name.c_str();
+  }
+
+  inline bool isEnabled() {
+    return _enabled;
   }
 
 protected:
   SignalGenerator(String, uint16_t, uint8_t, uint8_t);
   virtual void enable() = 0;
   virtual void disable() = 0;
-  void lockSendQueue() {
-    portENTER_CRITICAL(&_sendQueueMUX);
-  }
-  void unlockSendQueue() {
-    portEXIT_CRITICAL(&_sendQueueMUX);
-  }
-
   const String _name;
   const uint8_t _signalID;
 private:
-  portMUX_TYPE _sendQueueMUX = portMUX_INITIALIZER_UNLOCKED;
+  inline void drainQueue() {
+    // drain any pending packets before we start the signal so we start with an empty queue
+    if(!isQueueEmpty()) {
+      LOG(INFO, "[%s] Draining packet queue", getName());
+      while(!isQueueEmpty()) {
+        std::lock_guard<std::mutex> guard(_toSendMux);
+        _currentPacket = _toSend.front();
+        _toSend.pop();
+        pushFreePacket(_currentPacket);
+      }
+    }
+  }
+
+  inline bool isFreePacketQueueEmpty() {
+    std::lock_guard<std::mutex> guard(_availablePacketsMux);
+    return _availablePackets.empty();
+  }
+
+  inline Packet *getFreePacket() {
+    while(isFreePacketQueueEmpty()) {
+      LOG(WARNING, "[%s] DCC packet queue full, delaying for 5ms!", getName());
+      delay(5);
+    }
+    std::lock_guard<std::mutex> guard(_availablePacketsMux);
+    Packet *packet = _availablePackets.front();
+    _availablePackets.pop();
+    return packet;
+  }
+
+  inline void pushFreePacket(Packet *packet) {
+    std::lock_guard<std::mutex> guard(_availablePacketsMux);
+    _availablePackets.push(packet);
+  }
+
+  inline void pushReadyPacket(Packet *packet) {
+    std::lock_guard<std::mutex> guard(_toSendMux);
+    LOG(VERBOSE, "[%s] Adding DCC Packet (%d bits, %d repeat)", getName(), packet->numberOfBits, packet->numberOfRepeats);
+    _toSend.push(packet);
+  }
+
+  std::mutex _toSendMux;
+  std::mutex _availablePacketsMux;
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
-  Packet *_currentPacket;
-
-  // pre-encoded idle packet that gets sent when the _toSend queue is empty.
-  Packet _idlePacket {
-    { 0xFF, 0xFF, 0xFD, 0xFE, 0x00, 0x7F, 0x80, 0x00, 0x00, 0x00 }, // packet bytes
-    49, // number of bits
-    0, // number of repeats
-    0 // current bit
-  };
+  Packet *_currentPacket{nullptr};
 
   bool _enabled{false};
 };

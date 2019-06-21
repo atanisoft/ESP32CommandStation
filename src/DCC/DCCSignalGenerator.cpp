@@ -62,19 +62,16 @@ void SignalGenerator::loadBytePacket(const uint8_t *data, uint8_t length, uint8_
 }
 
 void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats, bool drainToSendQueue) {
+  // minimum DCC packet size is 2 bytes (excluding preamble bits and checksum byte)
+  if(data.size() < 2) {
+    return;
+  }
   if(drainToSendQueue) {
     drainQueue();
   }
-  while(_availablePackets.empty()) {
-    LOG(WARNING, "[%s] Packet queue full, delaying for 250uS!", _name.c_str());
-    // NOTE: This does not use the delay() call which could allow preempting the loopTask
-    delayMicroseconds(250);
-  }
-  Packet *packet = _availablePackets.front();
-  _availablePackets.pop();
-
+  Packet *packet = getFreePacket();
+  memset(packet, 0, sizeof(Packet));
   packet->numberOfRepeats = numberOfRepeats;
-  packet->currentBit = 0;
 
   // calculate checksum (XOR)
   // add first byte as checksum byte
@@ -84,7 +81,7 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
   }
   data.push_back(checksum);
 
-  // standard DCC preamble
+  // 22 bit DCC preamble
   packet->buffer[0] = 0xFF;
   packet->buffer[1] = 0xFF;
   // first bit of actual data at the end of the preamble
@@ -93,35 +90,28 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
   packet->buffer[4] = data[1];
   packet->buffer[5] = data[2] >> 1;
   packet->buffer[6] = data[2] << 7;
+  packet->numberOfBits = 49;
 
-  if(data.size() == 3) {
-    packet->numberOfBits = 49;
-  } else{
+  if (data.size() >= 4) {
     packet->buffer[6] += data[3] >> 2;
     packet->buffer[7] = data[3] << 6;
-    if(data.size() == 4) {
-      packet->numberOfBits = 58;
-    } else{
-      packet->buffer[7] += data[4] >> 3;
-      packet->buffer[8] = data[4] << 5;
-      if(data.size() == 5) {
-        packet->numberOfBits = 67;
-      } else{
-        packet->buffer[8] += data[5] >> 4;
-        packet->buffer[9] = data[5] << 4;
-        packet->numberOfBits = 76;
-      } // >5 bytes
-    } // >4 bytes
-  } // >3 bytes
-
-  lockSendQueue();
-  LOG(VERBOSE, "[%s] Adding DCC Packet (%d bits, %d repeat)", _name.c_str(), packet->numberOfBits, packet->numberOfRepeats);
-  _toSend.push(packet);
-  unlockSendQueue();
+    packet->numberOfBits = 58;
+  }
+  if (data.size() >= 5) {
+    packet->buffer[7] += data[4] >> 3;
+    packet->buffer[8] = data[4] << 5;
+    packet->numberOfBits = 67;
+  }
+  if (data.size() >= 6) {
+    packet->buffer[8] += data[5] >> 4;
+    packet->buffer[9] = data[5] << 4;
+    packet->numberOfBits = 76;
+  }
+  pushReadyPacket(packet);
 }
 
 SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) : _name(name), _signalID(signalID) {
-  LOG(INFO, "[%s] Configuring DCC signal generator using pin %d and %d max packets", _name.c_str(), signalPin, maxPackets);
+  LOG(INFO, "[%s] Configuring DCC signal generator using pin %d and %d max packets", getName(), signalPin, maxPackets);
   pinMode(signalPin, INPUT);
   digitalWrite(signalPin, LOW);
   pinMode(signalPin, OUTPUT);
@@ -129,7 +119,7 @@ SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signa
   // create packets for this signal generator up front, they will be reused until
   // the command station is shutdown
   for(int index = 0; index < maxPackets; index++) {
-    _availablePackets.push(new Packet());
+    pushFreePacket(new Packet());
   }
 }
 
@@ -148,10 +138,10 @@ void SignalGenerator::startSignal(bool sendIdlePackets) {
   // this is required as part of S-9.2.4 section A
   // at least 20 reset packets and 10 idle packets must be sent upon initialization
   // of the command station to force decoders to exit service mode.
-  LOG(INFO, "[%s] Adding reset packet (25 repeats) to packet queue", _name.c_str());
+  LOG(INFO, "[%s] Adding reset packet (25 repeats) to packet queue", getName());
   loadBytePacket(resetPacket, 2, 25);
   if(sendIdlePackets) {
-    LOG(INFO, "[%s] Adding idle packet (10 repeats) to packet queue", _name.c_str());
+    LOG(INFO, "[%s] Adding idle packet (10 repeats) to packet queue", getName());
     loadBytePacket(idlePacket, 2, 10);
   }
   enable();
@@ -163,12 +153,9 @@ void SignalGenerator::stopSignal() {
     disable();
 
     // if we have a current packet being processed move it to the available
-    // queue if it is not the pre-canned idle packet.
-    if(_currentPacket != nullptr && _currentPacket != &_idlePacket) {
-      // make sure the packet is zeroed before pushing it back to the queue
-      memset(_currentPacket, 0, sizeof(Packet));
-      _availablePackets.push(_currentPacket);
-      _currentPacket = nullptr;
+    // queue.
+    if(_currentPacket) {
+      pushFreePacket(_currentPacket);
     }
 
     // drain any remaining packets that were not sent back into the available
@@ -177,64 +164,4 @@ void SignalGenerator::stopSignal() {
   }
 
   _enabled = false;
-}
-
-void SignalGenerator::waitForQueueEmpty() {
-  while(!isQueueEmpty()) {
-    vTaskDelay(pdMS_TO_TICKS(1));
-  }
-}
-
-bool SignalGenerator::isQueueEmpty() {
-  return _toSend.empty();
-}
-
-bool SignalGenerator::isEnabled() {
-  return _enabled;
-}
-
-void SignalGenerator::drainQueue() {
-  // drain any pending packets before we start the signal so we start with an empty queue
-  if(!isQueueEmpty()) {
-    // lock the queue so we can drain it
-    lockSendQueue();
-    LOG(INFO, "[%s] Draining packet queue", _name.c_str());
-    while(!isQueueEmpty()) {
-      _currentPacket = _toSend.front();
-      _toSend.pop();
-      // make sure the packet is zeroed before pushing it back to the queue
-      memset(_currentPacket, 0, sizeof(Packet));
-      _availablePackets.push(_currentPacket);
-    }
-    // unlock the queue
-    unlockSendQueue();
-  }
-}
-
-Packet *SignalGenerator::getPacket() {
-  if(_currentPacket != nullptr) {
-    if(_currentPacket->currentBit >= _currentPacket->numberOfBits) {
-      if(_currentPacket->numberOfRepeats > 0) {
-        _currentPacket->numberOfRepeats--;
-        _currentPacket->currentBit = 0;
-      } else {
-        if(_currentPacket != &_idlePacket) {
-          _availablePackets.push(_currentPacket);
-        }
-        _currentPacket = nullptr;
-      }
-    }
-  }
-  if(_currentPacket == nullptr) {
-    lockSendQueue();
-    if(isQueueEmpty()) {
-      _currentPacket = &_idlePacket;
-      _currentPacket->currentBit = 0;
-    } else {
-      _currentPacket = _toSend.front();
-      _toSend.pop();
-    }
-    unlockSendQueue();
-  }
-  return _currentPacket;
 }
