@@ -21,6 +21,13 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <queue>
 #include <stdint.h>
 
+// Signal generator is for the OPS track
+#define DCC_SIGNAL_OPERATIONS 0
+// Signal generator is for the PROG track
+#define DCC_SIGNAL_PROGRAMMING 1
+// MAX number of signal generators
+#define MAX_DCC_SIGNAL_GENERATORS 2
+
 #define MAX_BYTES_IN_PACKET 10
 
 // standard DCC packet (S-9.2)
@@ -65,23 +72,41 @@ public:
   }
 
   inline Packet *getNextPacket() {
+    bool needNewPacket = false;
     if (_currentPacket) {
       _currentPacket->numberOfRepeats--;
       if (_currentPacket->numberOfRepeats <= 0) {
-        LOG(VERBOSE, "[%s %d %p] Packet Sent", getName(), esp_log_timestamp(), _currentPacket);
+        LOG(VERBOSE, "[%s %d] DCCPacket(%p) sent", getName(), esp_log_timestamp(),
+            _currentPacket);
         pushFreePacket(_currentPacket);
         _currentPacket = nullptr;
+        needNewPacket = true;
+      } else if(_signalID == DCC_SIGNAL_OPERATIONS) {
+        // If this is the OPS signal move the packet back to the ready
+        // to transmit queue so we can avoid sending back-to-back packets
+        // to the same decoder.
+        LOG(VERBOSE, "[%s %d] Remaining DCCPacket(%p) repeats deferred", getName(),
+            esp_log_timestamp(), _currentPacket);
+        pushReadyPacket(_currentPacket);
+        // drop reference to the packet so we can send an idle between
+        // packets if there are no other packets in the toSend queue.
+        _currentPacket = nullptr;
       }
+    } else {
+      // we don't currently have a packet, check if there is one to send
+      needNewPacket = true;
     }
-    if (_currentPacket == nullptr && !isQueueEmpty()) {
+    if (needNewPacket && !isQueueEmpty()) {
       std::lock_guard<std::mutex> guard(_toSendMux);
-      LOG(VERBOSE, "[%s %d] Send Queue Size: %d", getName(), esp_log_timestamp(), _toSend.size());
+      LOG(VERBOSE, "[%s %d] DCCPacket send queue size: %d", getName(), esp_log_timestamp(),
+          _toSend.size());
       _currentPacket = _toSend.front();
       _toSend.pop();
     }
     if(_currentPacket) {
-      LOG(VERBOSE, "[%s %d %p] Current Packet (%d bits, %d repeats)", getName(), esp_log_timestamp(),
-          _currentPacket, _currentPacket->numberOfBits, _currentPacket->numberOfRepeats);
+      LOG(VERBOSE, "[%s %d] Current DCCPacket(%p) (%d bits, %d remaining repeats)", getName(),
+          esp_log_timestamp(), _currentPacket, _currentPacket->numberOfBits,
+          _currentPacket->numberOfRepeats);
     }
     return _currentPacket;
   }
@@ -162,10 +187,6 @@ static constexpr DRAM_ATTR uint8_t DCC_PACKET_BIT_MASK[] = {
   0x80, 0x40, 0x20, 0x10,
   0x08, 0x04, 0x02, 0x01
 };
-
-#define DCC_SIGNAL_OPERATIONS 0
-#define DCC_SIGNAL_PROGRAMMING 1
-#define MAX_DCC_SIGNAL_GENERATORS 2
 
 extern SignalGenerator *dccSignal[MAX_DCC_SIGNAL_GENERATORS];
 void startDCCSignalGenerators();

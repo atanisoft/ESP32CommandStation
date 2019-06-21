@@ -38,7 +38,6 @@ bool stopDCCSignalGenerators() {
 }
 
 bool isDCCSignalEnabled() {
-
   if(dccSignal[DCC_SIGNAL_OPERATIONS]->isEnabled() || dccSignal[DCC_SIGNAL_PROGRAMMING]->isEnabled()) {
     return true;
   }
@@ -111,6 +110,8 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
 }
 
 SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) : _name(name), _signalID(signalID) {
+  HASSERT(signalID < MAX_DCC_SIGNAL_GENERATORS);
+
   LOG(INFO, "[%s] Configuring DCC signal generator using pin %d and %d max packets", getName(), signalPin, maxPackets);
   pinMode(signalPin, INPUT);
   digitalWrite(signalPin, LOW);
