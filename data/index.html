@@ -586,6 +586,7 @@ function initPage() {
  $('#clock').clock({"timeFormat":"H:i:s"});
  setupThrottle();
  setupBaseStation();
+ $.ajaxSetup({timeout:5000});
 }
 function enableTrackPower() {
  sendCommand('<1>');
@@ -999,22 +1000,38 @@ function setupProgrammer() {
  $('#bs-prog-execute').on('vclick', function() {
   $('#bs-prog-result').val('pending...');
   if($('#bs-prog-action').val() === 'read') {
-   $.get({url: '/programmer',
+   $.ajax({url: '/programmer',
+    timeout: 15000,
+    type: 'GET',
     dataType: 'json',
     data: {
      'pom' : 'false',
      'cv': $('#bs-prog-cv').val()
     },
+    beforeSend: function() {
+     $.mobile.loading('show', {
+      text: String.format('Retrieving CV {0}...', $('#bs-prog-cv').val()),
+      textVisible: true,
+      textonly: false});
+    },
     success: function(data, status, xhr) {
+     setTimeout(function () {
+      $.mobile.loading('hide');
+      }, 1);
      $('#bs-prog-result').val(String.format('CV {0} has value {1}', data['cv'], data['value']));
     },
     error: function() {
+     setTimeout(function () {
+      $.mobile.loading('hide');
+      }, 1);
      $('#bs-prog-result').val(String.format('CV {0} read was not successful', $('#bs-prog-cv').val()));
     }
    });
   } else if($('#bs-prog-action').val() === 'write') {
    if($('#bs-prog-mode').prop('checked')) {
-    $.post({url: '/programmer',
+    $.ajax({url: '/programmer',
+     timeout: 15000,
+     type: 'POST',
      dataType: 'json',
      data: {
       'cv': $('#bs-prog-cv').val(),
@@ -1023,15 +1040,29 @@ function setupProgrammer() {
       'bit' : $('#bs-prog-cv-bit').val(),
       'value' : $('#bs-prog-cv-bit-value').prop('checked')
      },
+     beforeSend: function() {
+      $.mobile.loading('show', {
+       text: String.format('Writing CV {0}...', $('#bs-prog-cv').val()),
+       textVisible: true,
+       textonly: false});
+     },
      success: function(data, status, xhr) {
+      setTimeout(function () {
+       $.mobile.loading('hide');
+       }, 1);
       $('#bs-prog-result').val(String.format('CV {0} bit {1} written successfully', $('#bs-prog-cv').val(), $('#bs-prog-cv-bit').val()));
      },
      error: function() {
+      setTimeout(function () {
+       $.mobile.loading('hide');
+       }, 1);
       $('#bs-prog-result').val(String.format('CV {0} bit {1} was not written successfully', $('#bs-prog-cv').val(), $('#bs-prog-cv-bit').val()));
      }
     });
    } else {
-    $.post({url: '/programmer',
+    $.ajax({url: '/programmer',
+     timeout: 15000,
+     type: 'POST',
      dataType: 'json',
      data: {
       'cv': $('#bs-prog-cv').val(),
@@ -1039,23 +1070,46 @@ function setupProgrammer() {
       'address': $('#bs-prog-addr').val(),
       'value' : $('#bs-prog-cv-value').val()
      },
+     beforeSend: function() {
+      $.mobile.loading('show', {
+       text: String.format('Writing CV {0}...', $('#bs-prog-cv').val()),
+       textVisible: true,
+       textonly: false});
+     },
      success: function(data, status, xhr) {
+      setTimeout(function () {
+       $.mobile.loading('hide');
+       }, 1);
       $('#bs-prog-result').val(String.format('CV {0} written successfully', $('#bs-prog-cv').val()));
      },
      error: function() {
+      setTimeout(function () {
+       $.mobile.loading('hide');
+       }, 1);
       $('#bs-prog-result').val(String.format('CV {0} was not written successfully', $('#bs-prog-cv').val()));
      }
     });
    }
   } else {
-   $.get({url: '/programmer',
+   $.ajax({url: '/programmer',
+    timeout: 15000,
+    type: 'GET',
     dataType: 'json',
     data: {
      'pom' : 'false',
      'identify' : 'true',
      'create' : $('#bs-prog-create-roster').prop('checked')
     },
+    beforeSend: function() {
+      $.mobile.loading('show', {
+       text: 'Identifying decoder',
+       textVisible: true,
+       textonly: false});
+     },
     success: function(data, status, xhr) {
+     setTimeout(function () {
+      $.mobile.loading('hide');
+      }, 1);
      if(data.hasOwnProperty('loco')) {
       $('#bs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), speed table {2}.\nRoster entry has been created for the {3}',
        data['address'], data['addressMode'], data['speedTable'], data['loco']['type']));
@@ -1065,6 +1119,9 @@ function setupProgrammer() {
      }
     },
     error: function() {
+     setTimeout(function () {
+      $.mobile.loading('hide');
+      }, 1);
      $('#bs-prog-result').val('Unable to identify the decoder');
     }
    });
