@@ -238,19 +238,21 @@ void LCCInterface::init() {
     openmrn.add_can_port(
         new Esp32HardwareCan("esp32can", (gpio_num_t)LCC_CAN_RX_PIN, (gpio_num_t)LCC_CAN_TX_PIN, false));
 #endif
-#if LCC_CPULOAD_REPORTING
-    cpuTickTimer = timerBegin(LCC_CPU_TIMER_NUMBER, LCC_CPU_TIMER_DIVIDER, true); // timer_id = 3; divider=80; countUp = true;
-    timerAttachInterrupt(cpuTickTimer, &cpuTickTimerCallback, true); // edge = true
-    // 1MHz clock, 163 ticks per second desired.
-    timerAlarmWrite(cpuTickTimer, 1000000/163, true);
-    timerAlarmEnable(cpuTickTimer);
-    cpuLoadLogger = new CpuLoadLog(openmrn.stack()->service());
-#endif
 }
 
 void LCCInterface::update() {
     // Call into the OpenMRN stack for its periodic updates
     openmrn.loop();
+#if LCC_CPULOAD_REPORTING
+    if(!cpuLoadLogger) {
+        cpuTickTimer = timerBegin(LCC_CPU_TIMER_NUMBER, LCC_CPU_TIMER_DIVIDER, true);
+        timerAttachInterrupt(cpuTickTimer, &cpuTickTimerCallback, true);
+        // 1MHz clock, 163 ticks per second desired.
+        timerAlarmWrite(cpuTickTimer, 1000000/163, true);
+        timerAlarmEnable(cpuTickTimer);
+        cpuLoadLogger = new CpuLoadLog(openmrn.stack()->service());
+    }
+#endif
 }
 
 void LCCInterface::processWiFiEvent(system_event_id_t event) {
