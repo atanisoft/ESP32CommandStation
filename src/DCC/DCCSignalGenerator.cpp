@@ -109,10 +109,12 @@ void SignalGenerator::loadPacket(std::vector<uint8_t> data, int numberOfRepeats,
   pushReadyPacket(packet);
 }
 
-SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) : _name(name), _signalID(signalID) {
+SignalGenerator::SignalGenerator(String name, uint16_t maxPackets, uint8_t signalID, uint8_t signalPin) : _name(name), _signalID(signalID), _sendQueueCapacity(maxPackets) {
   HASSERT(signalID < MAX_DCC_SIGNAL_GENERATORS);
+  // set threshold to 3/4 capacity
+  _sendQueueThreshold = (uint16_t)((_sendQueueCapacity * 3) / 4);
 
-  LOG(INFO, "[%s] Configuring DCC signal generator using pin %d and %d max packets", getName(), signalPin, maxPackets);
+  LOG(INFO, "[%s] Configuring DCC signal generator using pin %d and %d max packets (threshold: %d)", getName(), signalPin, _sendQueueCapacity, _sendQueueThreshold);
   pinMode(signalPin, INPUT);
   digitalWrite(signalPin, LOW);
   pinMode(signalPin, OUTPUT);

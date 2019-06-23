@@ -81,7 +81,7 @@ void LocomotiveManager::processThrottle(const std::vector<String> arguments) {
   instance->setLocoAddress(locoAddress);
   instance->setSpeed(arguments[2].toInt());
   instance->setDirection(arguments[3].toInt() == 1);
-  instance->sendLocoUpdate();
+  instance->sendLocoUpdate(true);
   instance->showStatus();
 }
 
@@ -96,7 +96,7 @@ void LocomotiveManager::processThrottleEx(const std::vector<String> arguments) {
   if(dir >= 0) {
     instance->setDirection(dir == 1);
   }
-  instance->sendLocoUpdate();
+  instance->sendLocoUpdate(true);
   instance->showStatus();
 }
 
@@ -113,34 +113,23 @@ void LocomotiveManager::processFunction(const std::vector<String> arguments) {
   if(arguments.size() > 2) {
     int secondaryFunctionByte = arguments[2].toInt();
     if((functionByte & 0xDE) == 0xDE) {
-      for(uint8_t funcID = 13; funcID <= 20; funcID++) {
-        loco->setFunction(funcID, bitRead(secondaryFunctionByte, funcID-13));
-      }
+      loco->setFunctions(13, 20, secondaryFunctionByte);
     } else {
-      for(uint8_t funcID = 21; funcID <= 28; funcID++) {
-        loco->setFunction(funcID, bitRead(secondaryFunctionByte, funcID-21));
-      }
+      loco->setFunctions(21, 28, secondaryFunctionByte);
     }
   } else {
     // this is a request for functions FL,F1-F12
     // for safety this guarantees that first nibble of function byte will always
     // be of binary form 10XX which should always be the case for FL,F1-F12
     if((functionByte & 0xB0) == 0xB0) {
-      for(uint8_t funcID = 5; funcID <= 8; funcID++) {
-        loco->setFunction(funcID, bitRead(functionByte, funcID-5));
-      }
+      loco->setFunctions(5, 8, functionByte);
     } else if((functionByte & 0xA0) == 0xA0) {
-      for(uint8_t funcID = 9; funcID <= 12; funcID++) {
-        loco->setFunction(funcID, bitRead(functionByte, funcID-9));
-      }
+      loco->setFunctions(9, 12, functionByte);
     } else {
-      loco->setFunction(0, bitRead(functionByte, 4));
-      for(uint8_t funcID = 1; funcID <= 4; funcID++) {
-        loco->setFunction(funcID, bitRead(functionByte, funcID-1));
-      }
+      loco->setFunction(0, bitRead(functionByte, 4), true);
+      loco->setFunctions(1, 4, functionByte);
     }
   }
-  loco->sendLocoUpdate();
 }
 
 void LocomotiveManager::processFunctionEx(const std::vector<String> arguments) {
@@ -152,7 +141,6 @@ void LocomotiveManager::processFunctionEx(const std::vector<String> arguments) {
   }
   auto loco = getLocomotive(locoAddress);
   loco->setFunction(function, state);
-  loco->sendLocoUpdate();
 }
 
 void LocomotiveManager::processConsistThrottle(const std::vector<String> arguments) {
@@ -243,7 +231,6 @@ void LocomotiveManager::removeLocomotive(const uint16_t locoAddress) {
   }
   if(locoToRemove != nullptr) {
     locoToRemove->setIdle();
-    locoToRemove->sendLocoUpdate();
     _locos.remove(locoToRemove);
   }
 }

@@ -119,6 +119,15 @@ public:
     return _enabled;
   }
 
+  inline bool isQueueNearCapacity() {
+    std::lock_guard<std::mutex> guard(_toSendMux);
+    return (_sendQueueCapacity - _toSend.size()) > _sendQueueThreshold;
+  }
+  inline size_t sendQueueUtilization() {
+    std::lock_guard<std::mutex> guard(_toSendMux);
+    return _toSend.size();
+  }
+
 protected:
   SignalGenerator(String, uint16_t, uint8_t, uint8_t);
   virtual void enable() = 0;
@@ -146,8 +155,10 @@ private:
 
   inline Packet *getFreePacket() {
     while(isFreePacketQueueEmpty()) {
-      LOG(WARNING, "[%s] DCC packet queue full, delaying for 5ms!", getName());
-      delay(5);
+      // delay long enough for at least one packet to be released from the queue,
+      // this is calculated as 76 ZERO bits (~152mS).
+      LOG(WARNING, "[%s] DCC packet queue full, delaying for 300ms!", getName());
+      delay(300);
     }
     std::lock_guard<std::mutex> guard(_availablePacketsMux);
     Packet *packet = _availablePackets.front();
@@ -171,6 +182,8 @@ private:
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
   Packet *_currentPacket{nullptr};
+  uint16_t _sendQueueCapacity{0};
+  uint16_t _sendQueueThreshold{0};
 
   bool _enabled{false};
 };

@@ -17,78 +17,73 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "ESP32CommandStation.h"
 
-// This controls how often to send any sort of update for the
-// locomotive, it defaults to at least every 40mS between
-// speed/function packets.
-constexpr uint64_t LOCO_UPDATE_INTERVAL = MSEC_TO_USEC(40);
+// This controls how often to send a speed update packet to the decoder,
+// this is the minimum periodic refresh period. It will always be sent
+// when the speed changes.
+constexpr uint64_t LOCO_SPEED_PACKET_INTERVAL = MSEC_TO_USEC(100);
 
 // This controls how often to send the locomotive function packets,
 // default is approximately every second.
-constexpr uint64_t LOCO_FUNCTION_UPDATE_INTERVAL = SEC_TO_USEC(5);
+constexpr uint64_t LOCO_FUNCTION_PACKET_INTERVAL = SEC_TO_USEC(60);
 
-Locomotive::Locomotive(uint8_t registerNumber) :
-  _registerNumber(registerNumber), _locoAddress(0), _speed(0), _direction(true),
-  _lastUpdate(0), _functionsChanged(true) {
-  for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
-    _functionState[funcID] = false;
-  }
+Locomotive::Locomotive(uint8_t registerNumber) : _registerNumber(registerNumber) {
+  createFunctionPackets();
 }
 
-Locomotive::Locomotive(const char *filename) : _registerNumber(-1), _lastUpdate(0), _functionsChanged(true) {
+Locomotive::Locomotive(const char *filename) {
   DynamicJsonBuffer buf;
   JsonObject &entry = configStore.load(filename, buf);
-  for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
-    _functionState[funcID] = false;
-  }
   _locoAddress = entry[JSON_ADDRESS_NODE];
   _speed = entry[JSON_SPEED_NODE];
   _direction = entry[JSON_DIRECTION_NODE] == JSON_VALUE_FORWARD;
   _orientation = entry[JSON_ORIENTATION_NODE] == JSON_VALUE_FORWARD;
   // TODO: add function state loading
+  createFunctionPackets();
 }
 
-Locomotive::Locomotive(JsonObject &json) : _registerNumber(-1), _lastUpdate(0), _functionsChanged(true) {
-  for(uint8_t funcID = 0; funcID < MAX_LOCOMOTIVE_FUNCTIONS; funcID++) {
-    _functionState[funcID] = false;
-  }
+Locomotive::Locomotive(JsonObject &json) {
   _locoAddress = json[JSON_ADDRESS_NODE];
   _speed = json[JSON_SPEED_NODE];
   _direction = json[JSON_DIRECTION_NODE] == JSON_VALUE_FORWARD;
   _orientation = json[JSON_ORIENTATION_NODE] == JSON_VALUE_FORWARD;
 }
 
-void Locomotive::sendLocoUpdate() {
-  if(esp_timer_get_time() < (_lastUpdate + LOCO_UPDATE_INTERVAL)) {
-    return;
-  }
-  LOG(VERBOSE, "[Loco %d, speed: %d, dir: %s] Building speed packet",
-    _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
-  std::vector<uint8_t> packetBuffer;
-  if(_locoAddress > 127) {
-    packetBuffer.push_back((uint8_t)(0xC0 | highByte(_locoAddress)));
-  }
-  packetBuffer.push_back(lowByte(_locoAddress));
-  // S-9.2.1 Advanced Operations instruction
-  // using 128 speed steps
-  packetBuffer.push_back(0x3F);
-  if(_speed < 0) {
-    _speed = 0;
-    packetBuffer.push_back(1);
-  } else {
-    packetBuffer.push_back((uint8_t)(_speed + (_speed > 0) + _direction * 128));
-  }
-  dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(packetBuffer);
-  if(_functionsChanged) {
-    _functionsChanged = false;
-    createFunctionPackets();
-  }
-  if(esp_timer_get_time() > (_lastFunctionsUpdate + LOCO_FUNCTION_UPDATE_INTERVAL)) {
-    for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {
-      dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[functionPacket]);
+void Locomotive::sendLocoUpdate(bool force) {
+  if(force || esp_timer_get_time() > (_lastPacketTime + LOCO_SPEED_PACKET_INTERVAL)) {
+    LOG(VERBOSE, "[Loco %d, speed: %d, dir: %s] Building speed packet",
+      _locoAddress, _speed, _direction ? JSON_VALUE_FORWARD : JSON_VALUE_REVERSE);
+    std::vector<uint8_t> packetBuffer;
+    if(_locoAddress > 127) {
+      packetBuffer.push_back((uint8_t)(0xC0 | highByte(_locoAddress)));
     }
-    _lastFunctionsUpdate = esp_timer_get_time();
+    packetBuffer.push_back(lowByte(_locoAddress));
+    // S-9.2.1 Advanced Operations instruction
+    // using 128 speed steps
+    packetBuffer.push_back(0x3F);
+    if(_speed < 0) {
+      _speed = 0;
+      packetBuffer.push_back(1);
+    } else {
+      packetBuffer.push_back((uint8_t)(_speed + (_speed > 0) + _direction * 128));
+    }
+    dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(packetBuffer);
+    _lastPacketTime = esp_timer_get_time();
   }
-  _lastUpdate = esp_timer_get_time();
+  // if we are not sending a forced packet and are not near capacity on the send queue,
+  // push function packets that haven't been sent recently. The CS will always send
+  // function packets to the queue when a function changes. This check is necessary to
+  // ensure we don't flood the outbound queue unnecessarily.
+  if(!force && !dccSignal[DCC_SIGNAL_OPERATIONS]->isQueueNearCapacity()) {
+    for(uint8_t pkt = 0; pkt < MAX_LOCOMOTIVE_FUNCTION_PACKETS; pkt++) {
+      if(esp_timer_get_time() > (_lastFunctionsPacketTime[pkt] + LOCO_FUNCTION_PACKET_INTERVAL)) {
+        dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[pkt]);
+      }
+    }
+  }
+  // move the last update period forward regardless of sending packets. 
+  for(uint8_t pkt = 0; pkt < MAX_LOCOMOTIVE_FUNCTION_PACKETS; pkt++) {
+    _lastFunctionsPacketTime[pkt] = esp_timer_get_time();
+  }
 }
 
 void Locomotive::showStatus() {
@@ -115,8 +110,6 @@ void Locomotive::toJson(JsonObject &jsonObject, bool includeSpeedDir, bool inclu
 }
 
 void Locomotive::createFunctionPackets() {
-  // reset counter so we send them out
-  _lastFunctionsUpdate = 0;
   LOG(VERBOSE, "[Loco %d] Building Function packets", _locoAddress);
   // seed functions packets with locomotive numbers
   for(uint8_t functionPacket = 0; functionPacket < MAX_LOCOMOTIVE_FUNCTION_PACKETS; functionPacket++) {

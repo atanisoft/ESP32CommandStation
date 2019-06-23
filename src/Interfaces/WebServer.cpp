@@ -675,7 +675,7 @@ void ESP32CSWebServer::handleLocomotive(AsyncWebServerRequest *request) {
           }
         }
         if(needUpdate) {
-          loco->sendLocoUpdate();
+          loco->sendLocoUpdate(true);
           loco->showStatus();
         }
       } else if(request->method() == HTTP_DELETE) {

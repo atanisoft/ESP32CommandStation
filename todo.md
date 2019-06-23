@@ -36,6 +36,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 - [x] auto-refresh of status pages
 - [x] add busy/wait spinner for when data is loading (or being refreshed) in the web interface.
 - [x] Adding SPIFFSEditor for easy access to view/edit configuration data.
+- [x] investigate tcp/ip hang (fixed in AsyncTCP 1.1.0 and ESP Async Webserver 1.2.2)
 
 #### S88 Sensors
 
@@ -51,6 +52,7 @@ The primary focus for this will be improving the LCC integration and solve the c
 
 - [x] Remove usage of log_X macros in favor of LOG.
 - [x] Status LED output for WiFi, OPS and PROG.
+- [x] Enable WDT to prevent hangs.
 
 ## Future planning:
 The entries below are not tracked to a specific release or in any particular priority order.
@@ -66,10 +68,11 @@ The entries below are not tracked to a specific release or in any particular pri
 ### DCC System
 
 - [ ] continue sending eStop packet until eStop is cleared.
-- [ ] implement BG task for prog track.
-- [ ] refactor signal generation for better RailCom/LCC integration (UpdateLoop, RailcomHub, ProgrammingTrackBackend, LocalTrackIf).
+- [ ] rework DCC Prog Track interface so it supports multiple requests (serialized) and async response to web.
+- [ ] refactor signal generation for better RailCom/LCC integration (dcc::Packet, UpdateLoop, RailcomHub, ProgrammingTrackBackend, LocalTrackIf).
 - [ ] allow adjustment of the DCC preamble bit count, default is 16 (OPS) and 22 (PROG). The OPS value is constrained between 11 and 20 and PROG between 22 and 50.
 - [ ] test and expose OPS RailCom configuration.
+- [ ] consider moving to rmt_translator_init
 
 ### Config
 
@@ -80,10 +83,10 @@ The entries below are not tracked to a specific release or in any particular pri
 ### Web Interface
 
 - [ ] add dialog for failed CS requests.
-- [ ] investigate tcp/ip hang (AsyncTCP LwIP crash? consider replacements for AsyncWebServer?)
 - [ ] WiThrottle support (https://github.com/atanisoft/ESP32CommandStation/issues/15)
 - [ ] Expose Loco Consist creation.
 - [ ] Add strict validation of input parameter data.
+- [ ] Rework web prog req to be async rather than blocking (can cause WDT failure with retries 5+)
 
 ### LCC Integration
 

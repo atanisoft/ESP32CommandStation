@@ -26,7 +26,7 @@ public:
   Locomotive(JsonObject &);
   Locomotive(const char *);
   virtual ~Locomotive() {}
-  uint8_t getRegister() {
+  int8_t getRegister() {
     return _registerNumber;
   }
   void setLocoAddress(uint16_t locoAddress) {
@@ -59,34 +59,77 @@ public:
   bool isOrientationForward() {
     return _orientation;
   }
-  uint32_t getLastUpdate() {
-    return _lastUpdate;
-  }
   void setIdle() {
     setSpeed(0);
+    sendLocoUpdate(true);
   }
-  void sendLocoUpdate();
+  void sendLocoUpdate(bool=false);
   void showStatus();
   void toJson(JsonObject &, bool=true, bool=true);
-  void setFunction(uint8_t funcID, bool state=false) {
+
+#define _LOCO_FUNCTION_UPDATE_IMPL(funcID, pkt, offs, base, limit, sendPacket) \
+  if(funcID >= base && funcID <= limit) { \
+    if(state) { \
+      bitSet(_functionPackets[pkt][offs], funcID - base); \
+    } else { \
+      bitClear(_functionPackets[pkt][offs], funcID - base); \
+    } \
+    if(sendPacket) { \
+      dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[pkt]); \
+      _lastFunctionsPacketTime[pkt] = esp_timer_get_time(); \
+    } \
+    return; \
+  }
+
+  // batch mode function updates (used for protocol reader)
+  void setFunctions(uint8_t firstFunction, uint8_t lastFunction, uint8_t mask) {
+    for(uint8_t funcID = firstFunction; funcID <= lastFunction; funcID++) {
+      setFunction(funcID, bitRead(mask, funcID - firstFunction), funcID < lastFunction);
+    }
+  }
+
+  void setFunction(uint8_t funcID, bool state=false, bool batch=false) {
     LOG(INFO, "[Loco %d] F%d:%s", _locoAddress, funcID, state ? JSON_VALUE_ON : JSON_VALUE_OFF);
     _functionState[funcID] = state;
-    _functionsChanged = true;
+    uint8_t offs = 1;
+    if(_locoAddress > 127) {
+      offs++;
+    }
+    // handle function zero in special case
+    if(!funcID) {
+      if(state) {
+        bitSet(_functionPackets[0][offs], 4);
+      } else {
+        bitClear(_functionPackets[0][offs], 4);
+      }
+      if(!batch) {
+        dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[0]);
+        _lastFunctionsPacketTime[0] = esp_timer_get_time();
+      }
+      return;
+    }
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 0, offs, 1, 4, !batch)
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 1, offs, 5, 8, !batch)
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 2, offs, 9, 12, !batch)
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 3, offs + 1, 13, 20, !batch)
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 4, offs + 1, 21, 28, !batch)
   }
   bool isFunctionEnabled(uint8_t funcID) {
     return _functionState[funcID];
   }
 private:
   void createFunctionPackets();
-  uint8_t _registerNumber;
-  uint16_t _locoAddress;
-  int8_t _speed;
-  bool _direction;
-  bool _orientation;
-  uint64_t _lastUpdate;
-  uint64_t _lastFunctionsUpdate;
-  bool _functionsChanged;
-  bool _functionState[MAX_LOCOMOTIVE_FUNCTIONS];
+  int8_t _registerNumber{-1};
+  uint16_t _locoAddress{0};
+  int8_t _speed{0};
+  bool _direction{true};
+  bool _orientation{true};
+  uint64_t _lastPacketTime{0};
+  uint64_t _lastFunctionsPacketTime[MAX_LOCOMOTIVE_FUNCTION_PACKETS]{0,0,0,0,0};
+  bool _functionState[MAX_LOCOMOTIVE_FUNCTIONS]{false,false,false,false,false,false,false,false,
+                                                false,false,false,false,false,false,false,false,
+                                                false,false,false,false,false,false,false,false,
+                                                false,false,false,false};
   std::vector<uint8_t> _functionPackets[MAX_LOCOMOTIVE_FUNCTION_PACKETS];
 };
 
