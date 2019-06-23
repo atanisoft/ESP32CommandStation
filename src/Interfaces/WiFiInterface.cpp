@@ -28,9 +28,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <freertos_drivers/arduino/WifiDefs.hxx>
 
 #include <utils/socket_listener.hxx>
-#include <utils/macros.h>
-
-#include <string>
 
 #if HC12_RADIO_ENABLED
 #include "HC12Interface.h"

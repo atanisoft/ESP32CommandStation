@@ -26,15 +26,18 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <Arduino.h>
 #include <algorithm>
 #include <functional>
+#include <string>
 #include <StringArray.h>
 #include <ArduinoJson.h>
 #include <SPI.h>
 #include <FS.h>
 #include <SPIFFS.h>
+#include <esp_task_wdt.h>
 
 #include <utils/format_utils.hxx>
 #include <utils/logging.h>
 #include <utils/StringPrintf.hxx>
+#include <utils/macros.h>
 
 #include "Config.h"
 

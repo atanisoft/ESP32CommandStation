@@ -22,9 +22,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include "HC12Interface.h"
 #include "NextionInterface.h"
 
-#include <esp_int_wdt.h>
-#include <esp_task_wdt.h>
-
 const char * buildTime = __DATE__ " " __TIME__;
 
 std::vector<uint8_t> restrictedPins;
