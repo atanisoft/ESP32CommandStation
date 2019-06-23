@@ -32,6 +32,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <FS.h>
 #include <SPIFFS.h>
 
+#include <utils/format_utils.hxx>
 #include <utils/logging.h>
 #include <utils/StringPrintf.hxx>
 
