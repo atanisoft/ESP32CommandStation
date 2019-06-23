@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -15,7 +15,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "DCCppESP32.h"
+#include "ESP32CommandStation.h"
 
 #ifndef INFO_SCREEN_SDA_PIN
 #define INFO_SCREEN_SDA_PIN SDA
@@ -81,7 +81,7 @@ void InfoScreen::init() {
   if(Wire.endTransmission() == 0) {
     _enabled = true;
   } else {
-    ::printf("OLED/LCD screen not found at 0x%x\n", INFO_SCREEN_I2C_TEST_ADDRESS);
+    LOG(WARNING, "OLED/LCD screen not found at 0x%x\n", INFO_SCREEN_I2C_TEST_ADDRESS);
     scanI2C = true;
   }
 
@@ -92,13 +92,13 @@ void InfoScreen::init() {
   if(_enabled) {
     oledDisplay.init();
     oledDisplay.setContrast(255);
-  	if(INFO_SCREEN_OLED_VERTICAL_FLIP == true) {
-  		oledDisplay.flipScreenVertically();
-  	}
+    if(INFO_SCREEN_OLED_VERTICAL_FLIP == true) {
+      oledDisplay.flipScreenVertically();
+    }
 
     // NOTE: If the InfoScreen_OLED_font.h file is modified with a new font
     // definition, the name of the font needs to be declared on the next line.
-  	oledDisplay.setFont(Monospaced_plain_10);
+    oledDisplay.setFont(Monospaced_plain_10);
   }
 #elif INFO_SCREEN_LCD
   // Check that we can find the LCD by its address before attempting to use it.
@@ -110,20 +110,20 @@ void InfoScreen::init() {
   }
 #endif
   if(!_enabled) {
-    log_w("Unable to initialize InfoScreen");
+    LOG(WARNING, "Unable to initialize InfoScreen");
     if(scanI2C) {
-      ::printf("Scanning for I2C devices...\n");
-      ::printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
-      ::printf("00:         ");
+      LOG(INFO, "Scanning for I2C devices...\n");
+      LOG(INFO, "     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\n");
+      LOG(INFO, "00:         ");
       for (uint8_t addr=3; addr < 0x78; addr++) {
         if (addr % 16 == 0) {
-          ::printf("\n%.2x:", addr);
+          printf("\n%.2x:", addr);
         }
         Wire.beginTransmission(addr);
         if(Wire.endTransmission() == 0) {
-          ::printf(" %.2x", addr);
+          printf(" %.2x", addr);
         } else {
-          ::printf(" --");
+          printf(" --");
         }
       }
     }
@@ -141,7 +141,7 @@ void InfoScreen::clear() {
   }
 }
 
-void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...) {
+void InfoScreen::print(int col, int row, const __FlashStringHelper *format, ...) {
   char buf[512] = {0};
   va_list args;
   va_start(args, format);
@@ -160,7 +160,7 @@ void InfoScreen::printf(int col, int row, const __FlashStringHelper *format, ...
   }
 }
 
-void InfoScreen::printf(int col, int row, const String &format, ...) {
+void InfoScreen::print(int col, int row, const String &format, ...) {
   if(_enabled) {
     char buf[512] = {0};
     va_list args;
@@ -234,25 +234,23 @@ extern OpenMRN openmrn;
 void InfoScreen::update() {
   static uint8_t _rotatingStatusIndex = 0;
   static uint8_t _rotatingStatusLineCount = 3;
-  static bool _firstUpdate = true;
   static uint8_t _motorboardIndex = 0;
   static uint32_t _lastRotation = millis();
   static uint32_t _lastUpdate = millis();
 #if LOCONET_ENABLED
   static uint8_t _firstLocoNetIndex = 0;
-  if(_firstUpdate) {
+  if(!_firstLocoNetIndex) {
     _firstLocoNetIndex = _rotatingStatusLineCount;
     _rotatingStatusLineCount += 2;
   }
 #endif
 #if LCC_ENABLED
   static uint8_t _firstLCCIndex = 0;
-  if(_firstUpdate) {
+  if(!_firstLCCIndex) {
     _firstLCCIndex = _rotatingStatusLineCount;
     _rotatingStatusLineCount++;
   }
 #endif
-  _firstUpdate = false;
   // switch to next status line detail set every five seconds
   if(millis() - _lastRotation >= 5000) {
     _lastRotation = millis();

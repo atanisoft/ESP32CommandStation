@@ -28,11 +28,15 @@ struct uart_struct_t {
     intr_handle_t intr_handle;
 };
 
-LocoNetESP32Uart::LocoNetESP32Uart(uint8_t rxPin, uint8_t txPin, uint8_t uartNum, bool inverted, const BaseType_t preferedCore) :
+LocoNetESP32Uart::LocoNetESP32Uart(uint8_t rxPin, uint8_t txPin, uint8_t uartNum, bool inverted, bool enablePullup, const BaseType_t preferedCore) :
 	LocoNet(), _rxPin(rxPin), _txPin(txPin), _inverted(inverted), _preferedCore(preferedCore), _state(IDLE) {
 	DEBUG("Initializing UART(%d) with RX:%d, TX:%d", uartNum, _rxPin, _txPin);
 	_uart = uartBegin(uartNum, 16667, SERIAL_8N1, _rxPin, _txPin, 256, _inverted);
 	_rxtxTask = nullptr;
+	// note: this needs to be done after uartBegin which will set the pin mode to INPUT only.
+	if(enablePullup) {
+		pinMode(_rxPin, INPUT_PULLUP);
+	}
 }
 
 bool LocoNetESP32Uart::begin() {
@@ -127,7 +131,7 @@ void LocoNetESP32Uart::rxtxTask() {
 				// last chance check for TX_COLLISION before starting TX
 				// st_urx_out contains the status of the UART RX state machine,
 				// any value other than zero indicates it is active.
-				if(_uart->dev->status.st_urx_out ||
+				if(uartRxActive(_uart) ||
 					digitalRead(_rxPin) == !_inverted ? LOW : HIGH) {
 					startCollisionTimer();
 				} else {

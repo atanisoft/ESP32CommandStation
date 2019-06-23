@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2018-2019 Mike Dunston
 

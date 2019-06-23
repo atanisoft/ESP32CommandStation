@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -89,5 +89,13 @@ public:
   void process(const std::vector<String> arguments);
   String getID() {
     return "Z";
+  }
+};
+
+class OutputExCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String> arguments);
+  String getID() {
+    return "Zex";
   }
 };

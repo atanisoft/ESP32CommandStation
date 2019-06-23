@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -17,8 +17,16 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #pragma once
 
 #include <Arduino.h>
+#include <mutex>
 #include <queue>
 #include <stdint.h>
+
+// Signal generator is for the OPS track
+#define DCC_SIGNAL_OPERATIONS 0
+// Signal generator is for the PROG track
+#define DCC_SIGNAL_PROGRAMMING 1
+// MAX number of signal generators
+#define MAX_DCC_SIGNAL_GENERATORS 2
 
 #define MAX_BYTES_IN_PACKET 10
 
@@ -42,8 +50,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 struct Packet {
   uint8_t buffer[MAX_BYTES_IN_PACKET];
   uint8_t numberOfBits;
-  uint8_t numberOfRepeats;
-  uint8_t currentBit;
+  int8_t numberOfRepeats;
 };
 
 class SignalGenerator {
@@ -51,45 +58,132 @@ public:
   void startSignal(bool=true);
   void stopSignal();
   void loadBytePacket(const uint8_t *, uint8_t, uint8_t, bool=false);
-  void loadPacket(std::vector<uint8_t>, int, bool=false);
-  void waitForQueueEmpty();
-  bool isQueueEmpty();
-  bool isEnabled();
-  void drainQueue();
-  virtual Packet *getPacket();
+  void loadPacket(std::vector<uint8_t>, int=0, bool=false);
+
+  inline void waitForQueueEmpty() {
+    while(!isQueueEmpty()) {
+      delay(1);
+    }
+  }
+
+  inline bool isQueueEmpty() {
+    std::lock_guard<std::mutex> guard(_toSendMux);
+    return _toSend.empty();
+  }
+
+  inline Packet *getNextPacket() {
+    bool needNewPacket = false;
+    if (_currentPacket) {
+      _currentPacket->numberOfRepeats--;
+      if (_currentPacket->numberOfRepeats <= 0) {
+        LOG(VERBOSE, "[%s %d] DCCPacket(%p) sent", getName(), esp_log_timestamp(),
+            _currentPacket);
+        pushFreePacket(_currentPacket);
+        _currentPacket = nullptr;
+        needNewPacket = true;
+      } else if(_signalID == DCC_SIGNAL_OPERATIONS) {
+        // If this is the OPS signal move the packet back to the ready
+        // to transmit queue so we can avoid sending back-to-back packets
+        // to the same decoder.
+        LOG(VERBOSE, "[%s %d] Remaining DCCPacket(%p) repeats deferred", getName(),
+            esp_log_timestamp(), _currentPacket);
+        pushReadyPacket(_currentPacket);
+        // drop reference to the packet so we can send an idle between
+        // packets if there are no other packets in the toSend queue.
+        _currentPacket = nullptr;
+      }
+    } else {
+      // we don't currently have a packet, check if there is one to send
+      needNewPacket = true;
+    }
+    if (needNewPacket && !isQueueEmpty()) {
+      std::lock_guard<std::mutex> guard(_toSendMux);
+      LOG(VERBOSE, "[%s %d] DCCPacket send queue size: %d", getName(), esp_log_timestamp(),
+          _toSend.size());
+      _currentPacket = _toSend.front();
+      _toSend.pop();
+    }
+    if(_currentPacket) {
+      LOG(VERBOSE, "[%s %d] Current DCCPacket(%p) (%d bits, %d remaining repeats)", getName(),
+          esp_log_timestamp(), _currentPacket, _currentPacket->numberOfBits,
+          _currentPacket->numberOfRepeats);
+    }
+    return _currentPacket;
+  }
+
+  inline const char *getName() {
+    return _name.c_str();
+  }
+
+  inline bool isEnabled() {
+    return _enabled;
+  }
+
+  inline bool isQueueNearCapacity() {
+    std::lock_guard<std::mutex> guard(_toSendMux);
+    return (_sendQueueCapacity - _toSend.size()) > _sendQueueThreshold;
+  }
+  inline size_t sendQueueUtilization() {
+    std::lock_guard<std::mutex> guard(_toSendMux);
+    return _toSend.size();
+  }
 
 protected:
   SignalGenerator(String, uint16_t, uint8_t, uint8_t);
   virtual void enable() = 0;
   virtual void disable() = 0;
-  void lockSendQueue() {
-    portENTER_CRITICAL(&_sendQueueMUX);
-  }
-  void unlockSendQueue() {
-    portEXIT_CRITICAL(&_sendQueueMUX);
-  }
-  virtual void lockSendQueueISR() {
-    lockSendQueue();
-  }
-  virtual void unlockSendQueueISR() {
-    unlockSendQueue();
-  }
-
   const String _name;
   const uint8_t _signalID;
-  portMUX_TYPE _sendQueueMUX = portMUX_INITIALIZER_UNLOCKED;
 private:
+  inline void drainQueue() {
+    // drain any pending packets before we start the signal so we start with an empty queue
+    if(!isQueueEmpty()) {
+      LOG(INFO, "[%s] Draining packet queue", getName());
+      while(!isQueueEmpty()) {
+        std::lock_guard<std::mutex> guard(_toSendMux);
+        _currentPacket = _toSend.front();
+        _toSend.pop();
+        pushFreePacket(_currentPacket);
+      }
+    }
+  }
+
+  inline bool isFreePacketQueueEmpty() {
+    std::lock_guard<std::mutex> guard(_availablePacketsMux);
+    return _availablePackets.empty();
+  }
+
+  inline Packet *getFreePacket() {
+    while(isFreePacketQueueEmpty()) {
+      // delay long enough for at least one packet to be released from the queue,
+      // this is calculated as 76 ZERO bits (~152mS).
+      LOG(WARNING, "[%s] DCC packet queue full, delaying for 300ms!", getName());
+      delay(300);
+    }
+    std::lock_guard<std::mutex> guard(_availablePacketsMux);
+    Packet *packet = _availablePackets.front();
+    _availablePackets.pop();
+    return packet;
+  }
+
+  inline void pushFreePacket(Packet *packet) {
+    std::lock_guard<std::mutex> guard(_availablePacketsMux);
+    _availablePackets.push(packet);
+  }
+
+  inline void pushReadyPacket(Packet *packet) {
+    std::lock_guard<std::mutex> guard(_toSendMux);
+    LOG(VERBOSE, "[%s] Adding DCC Packet (%d bits, %d repeat)", getName(), packet->numberOfBits, packet->numberOfRepeats);
+    _toSend.push(packet);
+  }
+
+  std::mutex _toSendMux;
+  std::mutex _availablePacketsMux;
   std::queue<Packet *> _toSend;
   std::queue<Packet *> _availablePackets;
-  Packet *_currentPacket;
-
-  // pre-encoded idle packet that gets sent when the _toSend queue is empty.
-  Packet _idlePacket {
-    { 0xFF, 0xFF, 0xFD, 0xFE, 0x00, 0x7F, 0x80, 0x00, 0x00, 0x00 }, // packet bytes
-    49, // number of bits
-    0, // number of repeats
-    0 // current bit
-  };
+  Packet *_currentPacket{nullptr};
+  uint16_t _sendQueueCapacity{0};
+  uint16_t _sendQueueThreshold{0};
 
   bool _enabled{false};
 };
@@ -101,23 +195,11 @@ static constexpr DRAM_ATTR uint8_t resetPacket[] = {0x00, 0x00};
 // S-9.2 baseline packet (eStop, direction bit ignored)
 static constexpr DRAM_ATTR uint8_t eStopPacket[] = {0x00, 0x41};
 
-// number of microseconds for each half of the DCC signal for a zero
-static constexpr uint64_t DCC_ZERO_BIT_PULSE_DURATION=98;
-// number of microseconds for each half of the DCC signal for a one
-static constexpr uint64_t DCC_ONE_BIT_PULSE_DURATION=58;
-
-// this controls the timer tick frequency, this results in a 1uS tick frequency.
-static constexpr uint16_t DCC_TIMER_PRESCALE=80;
-
 // bitmask used by signal generator when processing DCC packet bytes
 static constexpr DRAM_ATTR uint8_t DCC_PACKET_BIT_MASK[] = {
   0x80, 0x40, 0x20, 0x10,
   0x08, 0x04, 0x02, 0x01
 };
-
-#define DCC_SIGNAL_OPERATIONS 0
-#define DCC_SIGNAL_PROGRAMMING 1
-#define MAX_DCC_SIGNAL_GENERATORS 2
 
 extern SignalGenerator *dccSignal[MAX_DCC_SIGNAL_GENERATORS];
 void startDCCSignalGenerators();

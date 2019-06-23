@@ -66,6 +66,10 @@ void Nextion::poll()
             item = item->next;
           }
         }
+        //else
+        //{
+        //  printf("%02x %02x %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+        //}
       }
     }
   }
@@ -318,17 +322,11 @@ void Nextion::sendCommand(const String &command)
 {
   if (m_flushSerialBeforeTx)
   {
-#ifdef ESP32
-    // Force clear the incoming buffer via read() instead of flush() due to a
-    // bug in how the ESP32 handles flush() when not using UART 0.
-    while(m_serialPort.available())
-    {
+    while(m_serialPort.available()) {
       m_serialPort.read();
     }
-#else
-    m_serialPort.flush();
-#endif
   }
+  //printf("TX: %s\n", command.c_str());
 
   m_serialPort.print(command);
   m_serialPort.write(0xFF);
@@ -357,13 +355,20 @@ bool Nextion::checkCommandComplete()
 {
   bool ret = false;
   uint8_t temp[4] = {0};
+  uint8_t bytesRead = m_serialPort.readBytes((char *)temp, sizeof(temp));
 
-  if (sizeof(temp) != m_serialPort.readBytes((char *)temp, sizeof(temp)))
-    ret = false;
-
-  if (temp[0] == NEX_RET_CMD_FINISHED && temp[1] == 0xFF && temp[2] == 0xFF &&
-      temp[3] == 0xFF)
+  if (bytesRead != sizeof(temp))
+  {
+    //printf("short read: %d\n", bytesRead);
+  }
+  else if (temp[0] == NEX_RET_CMD_FINISHED && temp[1] == 0xFF && temp[2] == 0xFF && temp[3] == 0xFF)
+  {
     ret = true;
+  }
+  if(!ret)
+  {
+    printf("\nNextion: %02x %02x %02x %02x\n", temp[0], temp[1], temp[2], temp[3]);
+  }
 
   return ret;
 }
@@ -402,20 +407,31 @@ size_t Nextion::receiveString(String &buffer, bool stringHeader) {
   bool have_header_flag = !stringHeader;
   uint8_t flag_count = 0;
   uint32_t start = millis();
+  buffer.reserve(128);
   while (millis() - start <= m_timeout)
   {
     while (m_serialPort.available())
     {
-      char c = m_serialPort.read();
+      uint8_t c = m_serialPort.read();
       if (!have_header_flag && c == NEX_RET_STRING_HEAD) {
         have_header_flag = true;
       } else if (have_header_flag) {
-        if (c == 0xFF) {
+        if (c == NEX_RET_CMD_FINISHED) {
+          // it appears that we received a "previous command completed successfully"
+          // response. Discard the next three bytes which will be 0xFF so we can
+          // advance to the actual response we are wanting.
+          m_serialPort.read();
+          m_serialPort.read();
+          m_serialPort.read();
+        } else if (c == 0xFF) {
           flag_count++;
-        } else if (c == 0x05) {
-          flag_count = 4;
+        } else if (c == 0x05 && !stringHeader) {
+          // this is a special case for the "connect" command
+          flag_count = 3;
+        } else if (c < 0x20 || c > 0x7F) {
+          // discard non-printable character
         } else {
-          buffer += c;
+          buffer.concat((char)c);
         }
       }
     }
@@ -424,5 +440,6 @@ size_t Nextion::receiveString(String &buffer, bool stringHeader) {
       break;
     }
   }
+  buffer.trim();
   return buffer.length();
 }

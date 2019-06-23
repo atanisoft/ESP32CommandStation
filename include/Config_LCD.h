@@ -1,8 +1,7 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2013-2016 Gregg E. Berman
-COPYRIGHT (c) 2017 Mike Dunston
+COPYRIGHT (c) 2017-2019 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

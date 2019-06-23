@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -18,7 +18,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #pragma once
 
 #include <ArduinoJson.h>
-#include <esp32-hal-log.h>
 #include "DCCppProtocol.h"
 #include "WiFiInterface.h"
 
@@ -49,11 +48,11 @@ protected:
   void set(bool state) {
     if(_lastState != state) {
       _lastState = state;
-      log_i("Sensor: %d :: %s", _sensorID, _lastState ? "ACTIVE" : "INACTIVE");
+      LOG(INFO, "Sensor: %d :: %s", _sensorID, _lastState ? "ACTIVE" : "INACTIVE");
       if(state) {
-        wifiInterface.printf(F("<Q %d>"), _sensorID);
+        wifiInterface.print(F("<Q %d>"), _sensorID);
       } else {
-        wifiInterface.printf(F("<q %d>"), _sensorID);
+        wifiInterface.print(F("<q %d>"), _sensorID);
       }
     }
   }

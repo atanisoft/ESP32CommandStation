@@ -1,5 +1,5 @@
 #######################################################################
-# DCC COMMAND STATION FOR ESP32
+# ESP32 COMMAND STATION
 #
 # COPYRIGHT (c) 2017-2019 Mike Dunston
 #
@@ -56,4 +56,4 @@ def build_index_html_h(source, target, env):
                     .format(*struct.unpack("BBBBBBBBBBBBBBBB", block)))
         f.write("};\n")
 
-env.AddPreAction('$BUILD_DIR/src/WebServer.cpp.o', build_index_html_h)
+env.AddPreAction('$BUILD_DIR/src/Interfaces/WebServer.cpp.o', build_index_html_h)

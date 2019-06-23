@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2018-2019 Mike Dunston
 
@@ -25,6 +25,17 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 #define LOCONET_RX_PIN 16
 #define LOCONET_TX_PIN 17
 #define LOCONET_UART 1
+
+// If you are using the LM311 circuit as defined on the ESP32 Command Station website
+// it is necessary to invert the logic. If you are using a different circuit you can
+// reset this parameter to false or comment the next line which will have the same effect.
+#define LOCONET_INVERTED_LOGIC true
+
+// If you are using the LM311 circuit as defined in the ESP32 Command Station website
+// and do not have a resistor connected between 3v3 (VCC) and the LOCONET_RX_PIN it
+// is necessary to enable the internal pull up for the RX pin to ensure proper logic. If
+// you have an external pull up resistor comment out this option.
+#define LOCONET_ENABLE_RX_PIN_PULLUP true
 
 /////////////////////////////////////////////////////////////////////////////////////
 

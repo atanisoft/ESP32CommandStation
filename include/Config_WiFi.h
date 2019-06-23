@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -19,8 +19,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 //
 // DEFINE WiFi Parameters
 //
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
+#define SSID_NAME "SSID_NAME_HERE"
+#define SSID_PASSWORD "SSID_PASSWORD_HERE"
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -47,14 +47,8 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// DEFINE PORT TO USE FOR JMRI WiFi INTERFACE
-//
-#define DCCPP_JMRI_CLIENT_PORT 2560
-
-/////////////////////////////////////////////////////////////////////////////////////
-//
 // DEFINE HOSTNAME TO USE FOR WiFi CONNECTIONS AND mDNS BROADCASTS
 //
-#define HOSTNAME "DCCpp32"
+#define HOSTNAME "ESP32CS"
 
 /////////////////////////////////////////////////////////////////////////////////////

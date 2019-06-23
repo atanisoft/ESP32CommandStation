@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2018-2019 Mike Dunston
 
@@ -21,9 +21,7 @@ COPYRIGHT (c) 2018-2019 Mike Dunston
 
 class HC12Interface {
 public:
-	static void init();
-  static void hc12Task(void *param);
+  static void init();
+  static void update();
   static void send(const String &buf);
-private:
-  static TaskHandle_t _taskHandle;
 };

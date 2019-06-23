@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -19,7 +19,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <ArduinoJson.h>
 #include "DCCppProtocol.h"
 
-enum TurnoutOrientation {
+enum TurnoutType {
   LEFT=0,
   RIGHT,
   WYE,
@@ -31,10 +31,10 @@ void calculateTurnoutBoardAddressAndIndex(uint16_t *boardAddress, uint8_t *board
 
 class Turnout {
 public:
-  Turnout(uint16_t, uint16_t, int8_t, bool=false, TurnoutOrientation=TurnoutOrientation::LEFT);
+  Turnout(uint16_t, uint16_t, int8_t, bool=false, TurnoutType=TurnoutType::LEFT);
   Turnout(JsonObject &);
   virtual ~Turnout() {}
-  void update(uint16_t, int8_t, TurnoutOrientation);
+  void update(uint16_t, int8_t, TurnoutType);
   void set(bool=false, bool=true);
   void toJson(JsonObject &, bool=false);
   const uint16_t getID() {
@@ -56,11 +56,11 @@ public:
     set(!_thrown);
   }
   void showStatus();
-  const TurnoutOrientation getOrientation() {
-    return _orientation;
+  const TurnoutType getType() {
+    return _type;
   }
-  void setOrientation(const TurnoutOrientation orientation) {
-    _orientation = orientation;
+  void setType(const TurnoutType type) {
+    _type = type;
   }
 private:
   uint16_t _turnoutID;
@@ -68,7 +68,7 @@ private:
   uint8_t _index;
   uint16_t _boardAddress;
   bool _thrown;
-  TurnoutOrientation _orientation;
+  TurnoutType _type;
 };
 
 class TurnoutManager {
@@ -76,12 +76,13 @@ public:
   static void init();
   static void clear();
   static uint16_t store();
-  static bool set(uint16_t, bool=false);
-  static bool toggle(uint16_t);
-  static void getState(JsonArray &);
+  static bool setByID(uint16_t, bool=false);
+  static bool toggleByID(uint16_t);
+  static bool toggleByAddress(uint16_t);
+  static void getState(JsonArray &, bool=true);
   static void showStatus();
-  static Turnout *createOrUpdate(const uint16_t, const uint16_t, const int8_t, const TurnoutOrientation=TurnoutOrientation::LEFT);
-  static bool remove(const uint16_t);
+  static Turnout *createOrUpdate(const uint16_t, const uint16_t, const int8_t, const TurnoutType=TurnoutType::LEFT);
+  static bool removeByID(const uint16_t);
   static bool removeByAddress(const uint16_t);
   static Turnout *getTurnoutByIndex(const uint16_t);
   static Turnout *getTurnoutByID(const uint16_t);
@@ -94,6 +95,13 @@ public:
   void process(const std::vector<String>);
   String getID() {
     return "T";
+  }
+};
+class TurnoutExCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String>);
+  String getID() {
+    return "Tex";
   }
 };
 

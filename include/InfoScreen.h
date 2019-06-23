@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -44,8 +44,8 @@ class InfoScreen {
   public:
     static void init();
     static void clear();
-    static void printf(int, int, const __FlashStringHelper *, ...);
-    static void printf(int, int, const String &, ...);
+    static void print(int, int, const __FlashStringHelper *, ...);
+    static void print(int, int, const String &, ...);
     static void replaceLine(int, const __FlashStringHelper *, ...);
     static void replaceLine(int, const String &, ...);
     static void update();

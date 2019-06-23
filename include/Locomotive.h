@@ -1,5 +1,5 @@
 /**********************************************************************
-DCC COMMAND STATION FOR ESP32
+ESP32 COMMAND STATION
 
 COPYRIGHT (c) 2017-2019 Mike Dunston
 
@@ -17,8 +17,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #pragma once
 
-#include "DCCppESP32.h"
-
 #define MAX_LOCOMOTIVE_FUNCTIONS 29
 #define MAX_LOCOMOTIVE_FUNCTION_PACKETS 5
 
@@ -26,8 +24,9 @@ class Locomotive {
 public:
   Locomotive(uint8_t);
   Locomotive(JsonObject &);
+  Locomotive(const char *);
   virtual ~Locomotive() {}
-  uint8_t getRegister() {
+  int8_t getRegister() {
     return _registerNumber;
   }
   void setLocoAddress(uint16_t locoAddress) {
@@ -42,6 +41,7 @@ public:
     } else if(speed > 128) {
       speed = 128;
     }
+    LOG(INFO, "[Loco %d] speed: %d", _locoAddress, speed);
     _speed = speed;
   }
   int8_t getSpeed() {
@@ -59,32 +59,77 @@ public:
   bool isOrientationForward() {
     return _orientation;
   }
-  uint32_t getLastUpdate() {
-    return _lastUpdate;
-  }
   void setIdle() {
     setSpeed(0);
+    sendLocoUpdate(true);
   }
-  void sendLocoUpdate();
+  void sendLocoUpdate(bool=false);
   void showStatus();
   void toJson(JsonObject &, bool=true, bool=true);
-  void setFunction(uint8_t funcID, bool state=false) {
+
+#define _LOCO_FUNCTION_UPDATE_IMPL(funcID, pkt, offs, base, limit, sendPacket) \
+  if(funcID >= base && funcID <= limit) { \
+    if(state) { \
+      bitSet(_functionPackets[pkt][offs], funcID - base); \
+    } else { \
+      bitClear(_functionPackets[pkt][offs], funcID - base); \
+    } \
+    if(sendPacket) { \
+      dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[pkt]); \
+      _lastFunctionsPacketTime[pkt] = esp_timer_get_time(); \
+    } \
+    return; \
+  }
+
+  // batch mode function updates (used for protocol reader)
+  void setFunctions(uint8_t firstFunction, uint8_t lastFunction, uint8_t mask) {
+    for(uint8_t funcID = firstFunction; funcID <= lastFunction; funcID++) {
+      setFunction(funcID, bitRead(mask, funcID - firstFunction), funcID < lastFunction);
+    }
+  }
+
+  void setFunction(uint8_t funcID, bool state=false, bool batch=false) {
+    LOG(INFO, "[Loco %d] F%d:%s", _locoAddress, funcID, state ? JSON_VALUE_ON : JSON_VALUE_OFF);
     _functionState[funcID] = state;
-    _functionsChanged = true;
+    uint8_t offs = 1;
+    if(_locoAddress > 127) {
+      offs++;
+    }
+    // handle function zero in special case
+    if(!funcID) {
+      if(state) {
+        bitSet(_functionPackets[0][offs], 4);
+      } else {
+        bitClear(_functionPackets[0][offs], 4);
+      }
+      if(!batch) {
+        dccSignal[DCC_SIGNAL_OPERATIONS]->loadPacket(_functionPackets[0]);
+        _lastFunctionsPacketTime[0] = esp_timer_get_time();
+      }
+      return;
+    }
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 0, offs, 1, 4, !batch)
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 1, offs, 5, 8, !batch)
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 2, offs, 9, 12, !batch)
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 3, offs + 1, 13, 20, !batch)
+    _LOCO_FUNCTION_UPDATE_IMPL(funcID, 4, offs + 1, 21, 28, !batch)
   }
   bool isFunctionEnabled(uint8_t funcID) {
     return _functionState[funcID];
   }
 private:
   void createFunctionPackets();
-  uint8_t _registerNumber;
-  uint16_t _locoAddress;
-  int8_t _speed;
-  bool _direction;
-  bool _orientation;
-  uint32_t _lastUpdate;
-  bool _functionsChanged;
-  bool _functionState[MAX_LOCOMOTIVE_FUNCTIONS];
+  int8_t _registerNumber{-1};
+  uint16_t _locoAddress{0};
+  int8_t _speed{0};
+  bool _direction{true};
+  bool _orientation{true};
+  uint64_t _lastPacketTime{0};
+  uint64_t _lastFunctionsPacketTime[MAX_LOCOMOTIVE_FUNCTION_PACKETS]{0,0,0,0,0};
+  bool _functionState[MAX_LOCOMOTIVE_FUNCTIONS]{false,false,false,false,false,false,false,false,
+                                                false,false,false,false,false,false,false,false,
+                                                false,false,false,false,false,false,false,false,
+                                                false,false,false,false};
   std::vector<uint8_t> _functionPackets[MAX_LOCOMOTIVE_FUNCTION_PACKETS];
 };
 
@@ -95,6 +140,7 @@ public:
     setLocoAddress(address);
   }
   LocomotiveConsist(JsonObject &);
+  LocomotiveConsist(const char *);
   virtual ~LocomotiveConsist();
   void showStatus();
   void toJson(JsonObject &, bool=true, bool=true);
@@ -125,6 +171,7 @@ public:
   RosterEntry(uint16_t address) : _description(""), _address(address), _type(""),
     _idleOnStartup(false), _defaultOnThrottles(false) {}
   RosterEntry(const JsonObject &);
+  RosterEntry(const char *);
   void toJson(JsonObject &);
   void setDescription(String description) {
     _description = description;
@@ -174,11 +221,13 @@ public:
   static void removeLocomotive(const uint16_t);
   static bool removeLocomotiveConsist(const uint16_t);
   static void processThrottle(const std::vector<String>);
+  static void processThrottleEx(const std::vector<String>);
   static void processFunction(const std::vector<String>);
+  static void processFunctionEx(const std::vector<String>);
   static void processConsistThrottle(const std::vector<String>);
   static void showStatus();
   static void showConsistStatus();
-  static void updateTask(void *param);
+  static void update(void *);
   static void emergencyStop();
   static uint8_t getActiveLocoCount() {
     return _locos.length();
@@ -201,8 +250,6 @@ private:
   static LinkedList<RosterEntry *> _roster;
   static LinkedList<Locomotive *> _locos;
   static LinkedList<LocomotiveConsist *> _consists;
-  static TaskHandle_t _taskHandle;
-  static xSemaphoreHandle _lock;
 };
 
 // <t {REGISTER} {LOCO} {SPEED} {DIRECTION}> command handler, this command
@@ -218,6 +265,19 @@ public:
   }
 };
 
+// <tex {LOCO} {SPEED} {DIRECTION}> command handler, this command
+// converts the provided locomotive control command into a compatible DCC
+// locomotive control packet.
+class ThrottleExCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String> arguments) {
+    LocomotiveManager::processThrottleEx(arguments);
+  }
+  String getID() {
+    return "tex";
+  }
+};
+
 // <f {LOCO} {BYTE} [{BYTE2}]> command handler, this command converts a
 // locomotive function update into a compatible DCC function control packet.
 class FunctionCommandAdapter : public DCCPPProtocolCommand {
@@ -227,6 +287,18 @@ public:
   }
   String getID() {
     return "f";
+  }
+};
+
+// <fex {LOCO} {FUNC} {STATE}]> command handler, this command converts a
+// locomotive function update into a compatible DCC function control packet.
+class FunctionExCommandAdapter : public DCCPPProtocolCommand {
+public:
+  void process(const std::vector<String> arguments) {
+    LocomotiveManager::processFunctionEx(arguments);
+  }
+  String getID() {
+    return "fex";
   }
 };
 
