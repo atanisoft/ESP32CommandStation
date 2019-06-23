@@ -64,11 +64,13 @@ int64_t statusLEDStateUpdate[STATUS_LED::MAX_STATUS_LED] = {0, 0, 0};
 TaskHandle_t statusTaskHandle;
 
 void updateStatusLEDs(void *arg) {
+    esp_task_wdt_add(NULL);
     statusLED.Begin();
     statusLED.SetBrightness(STATUS_LED_BRIGHTNESS);
     statusLED.ClearTo(RGB_OFF);
     statusLED.Show();
     while(true) {
+        esp_task_wdt_reset();
         for(int led = 0; led < STATUS_LED::MAX_STATUS_LED; led++) {
             // if the LED is set to blink and it has been at least 450ms since we updated it, update it
             if((statusLEDColors[led] == LED_RED_BLINK || statusLEDColors[led] == LED_GREEN_BLINK || statusLEDColors[led] == LED_YELLOW_BLINK) &&

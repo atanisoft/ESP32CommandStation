@@ -95,6 +95,7 @@ constexpr uint64_t MAX_DCC_PACKET_TIME = (ZERO_BIT_PULSE_USEC * 2) * 100;
 
 #define RMT_TRANSMIT_DCC(signal, preambleBitCount) \
     while(xSemaphoreTake(signal->_stopRequest, 0) != pdTRUE) { \
+        esp_task_wdt_reset(); \
         auto packet = signal->getNextPacket(); \
         if(packet) { \
             uint8_t encodedBitCount = 0; \
@@ -108,6 +109,7 @@ constexpr uint64_t MAX_DCC_PACKET_TIME = (ZERO_BIT_PULSE_USEC * 2) * 100;
 
 #define RMT_TRANSMIT_DCC_WITH_RAILCOM(signal, preambleBitCount) \
     while(xSemaphoreTake(signal->_stopRequest, 0) != pdTRUE) { \
+        esp_task_wdt_reset(); \
         auto packet = signal->getNextPacket(); \
         if (packet) { \
             uint8_t encodedBitCount = 0; \
@@ -136,6 +138,7 @@ constexpr uint64_t MAX_DCC_PACKET_TIME = (ZERO_BIT_PULSE_USEC * 2) * 100;
 
 static void RMT_task_entry(void *param) {
     SignalGenerator_RMT *signal = static_cast<SignalGenerator_RMT *>(param);
+    esp_task_wdt_add(NULL);
     xSemaphoreTake(signal->_stopComplete, portMAX_DELAY);
     LOG(INFO, "[%s] RMT feeder task starting up", signal->getName());
     if(signal->_rmtChannel == DCC_SIGNAL_PROGRAMMING) {

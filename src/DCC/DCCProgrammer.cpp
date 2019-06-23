@@ -83,6 +83,7 @@ int16_t readCV(const uint16_t cv) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(int attempt = 0; attempt < PROG_TRACK_CV_ATTEMPTS && cvValue == -1; attempt++) {
+    esp_task_wdt_reset();
     LOG(INFO, "[PROG %d/%d] Attempting to read CV %d", attempt+1, PROG_TRACK_CV_ATTEMPTS, cv);
     if(attempt) {
       LOG(VERBOSE, "[PROG] Resetting DCC Decoder");
@@ -132,6 +133,7 @@ bool writeProgCVByte(const uint16_t cv, const uint8_t cvValue) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(uint8_t attempt = 1; attempt <= PROG_TRACK_CV_ATTEMPTS && !writeVerified; attempt++) {
+    esp_task_wdt_reset();
     LOG(INFO, "[PROG %d/%d] Attempting to write CV %d as %d", attempt, PROG_TRACK_CV_ATTEMPTS, cv, cvValue);
     if(attempt) {
       LOG(VERBOSE, "[PROG] Resetting DCC Decoder");
@@ -166,6 +168,7 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value) {
   auto& signalGenerator = dccSignal[DCC_SIGNAL_PROGRAMMING];
 
   for(uint8_t attempt = 1; attempt <= PROG_TRACK_CV_ATTEMPTS && !writeVerified; attempt++) {
+    esp_task_wdt_reset();
     LOG(INFO, "[PROG %d/%d] Attempting to write CV %d bit %d as %d", attempt, PROG_TRACK_CV_ATTEMPTS, cv, bit, value);
     if(attempt) {
       LOG(VERBOSE, "[PROG] Resetting DCC Decoder");

@@ -124,7 +124,9 @@ uint16_t SensorManager::store() {
 }
 
 void SensorManager::sensorTask(void *param) {
+  esp_task_wdt_add(NULL);
   while(true) {
+    esp_task_wdt_reset();
     MUTEX_LOCK(_lock);
     for (const auto& sensor : sensors) {
       sensor->check();

@@ -66,6 +66,9 @@ void setup() {
   initStatusLEDs();
 #endif
 
+  // Enable watchdog timers
+  enableLoopWDT();
+
   // set up ADC1 here since we use it for all motor boards
   adc1_config_width(ADC_WIDTH_BIT_12);
 

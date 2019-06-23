@@ -70,10 +70,12 @@ static constexpr char const * NEXTION_DISPLAY_TYPE_STRINGS[] = {
 NEXTION_DEVICE_TYPE nextionDeviceType = NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY;
 
 void nextionTask(void *param) {
+  esp_task_wdt_add(NULL);
   nextionPages[TITLE_PAGE]->display();
   static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(3, "Detected Screen type:");
   static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(4, NEXTION_DISPLAY_TYPE_STRINGS[nextionDeviceType]);
   while(true) {
+    esp_task_wdt_reset();
     nextion.poll();
     vTaskDelay(NEXTION_INTERFACE_UPDATE_INTERVAL);
   }

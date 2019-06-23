@@ -115,7 +115,9 @@ uint8_t S88BusManager::store() {
 }
 
 void S88BusManager::s88SensorTask(void *param) {
+  esp_task_wdt_add(NULL);
   while(true) {
+    esp_task_wdt_reset();
     MUTEX_LOCK(_s88SensorLock);
     for (const auto& sensorBus : s88SensorBus) {
       sensorBus->prepForRead();
