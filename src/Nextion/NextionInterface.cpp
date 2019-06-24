@@ -17,8 +17,6 @@ COPYRIGHT (c) 2018-2019 NormHal, Mike Dunston
 
 #include "ESP32CommandStation.h"
 
-#include <bits/stdc++.h> 
-
 #ifndef NEXTION_UART_NUM
 #define NEXTION_UART_NUM 2
 #endif
@@ -45,7 +43,7 @@ Nextion nextion(Serial);
 TaskHandle_t _nextionTaskHandle;
 
 constexpr TickType_t NEXTION_INTERFACE_UPDATE_INTERVAL = pdMS_TO_TICKS(50);
-constexpr uint8_t NEXTION_INTERFACE_TASK_PRIORITY = 2;
+constexpr uint8_t NEXTION_INTERFACE_TASK_PRIORITY = 1;
 constexpr uint16_t NEXTION_INTERFACE_TASK_STACK_SIZE = DEFAULT_THREAD_STACKSIZE;
 
 BaseNextionPage *nextionPages[MAX_PAGES] = {
@@ -71,31 +69,12 @@ NEXTION_DEVICE_TYPE nextionDeviceType = NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY;
 
 void nextionTask(void *param) {
   esp_task_wdt_add(NULL);
-  nextionPages[TITLE_PAGE]->display();
-  static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(3, "Detected Screen type:");
-  static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(4, NEXTION_DISPLAY_TYPE_STRINGS[nextionDeviceType]);
-  while(true) {
-    esp_task_wdt_reset();
-    nextion.poll();
-    vTaskDelay(NEXTION_INTERFACE_UPDATE_INTERVAL);
-  }
-}
-
-void nextionInterfaceInit() {
-  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init Nextion"));
-#if NEXTION_UART_NUM == 2
-  Serial2.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_UART_RX_PIN, NEXTION_UART_TX_PIN);
-#elif NEXTION_UART_NUM == 1
-  Serial1.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_UART_RX_PIN, NEXTION_UART_TX_PIN);
-#else
-  #error "Invalid configuration detected for the NEXTION_UART_NUM value. Only UART 1 or UART 2 are supported for the Nextion Interface."
-#endif
-  nextion.init();
 
   // attempt to identify the nextion display.
   constexpr uint8_t MAX_ATTEMPTS = 3;
   uint8_t attempt = 0;
-  while(attempt++ <= MAX_ATTEMPTS && nextionDeviceType == NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY) {
+  while(attempt++ < MAX_ATTEMPTS && nextionDeviceType == NEXTION_DEVICE_TYPE::UNKOWN_DISPLAY) {
+    esp_task_wdt_reset();
     LOG(INFO, "[Nextion] [%d/%d] Attempting to identify the attached Nextion display", attempt, MAX_ATTEMPTS);
     nextion.sendCommand("DRAKJHSUYDGBNCJHGJKSHBDN");
     nextion.sendCommand("connect");
@@ -140,8 +119,30 @@ void nextionInterfaceInit() {
     LOG(WARNING, "[Nextion] Failed to identify the attached Nextion display, defaulting to 3.2\" basic display");
     nextionDeviceType = NEXTION_DEVICE_TYPE::BASIC_3_2_DISPLAY;
   }
-  xTaskCreate(nextionTask, "Nextion", NEXTION_INTERFACE_TASK_STACK_SIZE,
-    NULL, NEXTION_INTERFACE_TASK_PRIORITY, &_nextionTaskHandle);
+
+  nextionPages[TITLE_PAGE]->display();
+  static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(3, "Detected Screen type:");
+  static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE])->setStatusText(4, NEXTION_DISPLAY_TYPE_STRINGS[nextionDeviceType]);
+  while(true) {
+    esp_task_wdt_reset();
+    nextion.poll();
+    vTaskDelay(NEXTION_INTERFACE_UPDATE_INTERVAL);
+  }
+}
+
+void nextionInterfaceInit() {
+  InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("Init Nextion"));
+#if NEXTION_UART_NUM == 2
+  Serial2.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_UART_RX_PIN, NEXTION_UART_TX_PIN);
+#elif NEXTION_UART_NUM == 1
+  Serial1.begin(NEXTION_UART_BAUD, SERIAL_8N1, NEXTION_UART_RX_PIN, NEXTION_UART_TX_PIN);
+#else
+  #error "Invalid configuration detected for the NEXTION_UART_NUM value. Only UART 1 or UART 2 are supported for the Nextion Interface."
+#endif
+  nextion.init();
+
+  xTaskCreatePinnedToCore(nextionTask, "Nextion", NEXTION_INTERFACE_TASK_STACK_SIZE,
+    NULL, NEXTION_INTERFACE_TASK_PRIORITY, &_nextionTaskHandle, 1);
 }
 
 #endif

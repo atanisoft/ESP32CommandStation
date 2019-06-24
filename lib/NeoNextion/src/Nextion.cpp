@@ -3,6 +3,8 @@
 #include "Nextion.h"
 #include "INextionTouchable.h"
 
+// #define NEXTION_DEBUG 1
+
 /*!
  * \brief Creates a new device driver.
  * \param stream Stream (serial port) the device is connected to
@@ -15,6 +17,7 @@ Nextion::Nextion(Stream &stream, bool flushSerialBeforeTx)
     , m_flushSerialBeforeTx(flushSerialBeforeTx)
     , m_touchableList(NULL)
 {
+  m_serialPort.setTimeout(100);
 }
 
 /*!
@@ -66,10 +69,12 @@ void Nextion::poll()
             item = item->next;
           }
         }
-        //else
-        //{
-        //  printf("%02x %02x %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-        //}
+#if NEXTION_DEBUG
+        else
+        {
+          printf("Nextion: %02x %02x %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+        }
+#endif
       }
     }
   }
@@ -326,7 +331,9 @@ void Nextion::sendCommand(const String &command)
       m_serialPort.read();
     }
   }
-  //printf("TX: %s\n", command.c_str());
+#if NEXTION_DEBUG
+  printf("Nextion: TX: %s\n", command.c_str());
+#endif
 
   m_serialPort.print(command);
   m_serialPort.write(0xFF);
@@ -359,16 +366,17 @@ bool Nextion::checkCommandComplete()
 
   if (bytesRead != sizeof(temp))
   {
-    //printf("short read: %d\n", bytesRead);
+#if NEXTION_DEBUG
+    printf("Nextion: short read: %d\n", bytesRead);
+#endif
   }
   else if (temp[0] == NEX_RET_CMD_FINISHED && temp[1] == 0xFF && temp[2] == 0xFF && temp[3] == 0xFF)
   {
     ret = true;
   }
-  if(!ret)
-  {
-    printf("\nNextion: %02x %02x %02x %02x\n", temp[0], temp[1], temp[2], temp[3]);
-  }
+#if NEXTION_DEBUG
+  printf("Nextion: %02x %02x %02x %02x, ret: %d\n", temp[0], temp[1], temp[2], temp[3], ret);
+#endif
 
   return ret;
 }

@@ -63,9 +63,6 @@ void setup() {
   initStatusLEDs();
 #endif
 
-  // Enable watchdog timers
-  enableLoopWDT();
-
   // set up ADC1 here since we use it for all motor boards
   adc1_config_width(ADC_WIDTH_BIT_12);
 
@@ -255,6 +252,13 @@ void setup() {
 #elif INFO_SCREEN_TRACK_POWER_LINE >= 0
   InfoScreen::replaceLine(INFO_SCREEN_TRACK_POWER_LINE, F("TRACK POWER: OFF"));
 #endif
+
+  LOG(INFO, "[WatchDog] Reconfiguring Timer (15sec)");
+  // reset WDT to 15sec
+  esp_task_wdt_init(15, true);
+
+  // Enable watchdog timers
+  enableLoopWDT();
 
   LOG(INFO, "ESP32 Command Station READY!");
   InfoScreen::replaceLine(INFO_SCREEN_ROTATING_STATUS_LINE, F("ESP32-CS READY!"));
