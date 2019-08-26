@@ -1,0 +1,27 @@
+name: Test Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build on PlatformIO
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install Python Wheel
+      run: pip install wheel
+    - name: Install PlatformIO Core
+      run: pip install -U https://github.com/platformio/platformio/archive/develop.zip
+    - name: Install PlatformIO Espressif32 platform
+      run: python -m platformio platform install https://github.com/platformio/platform-espressif32.git#feature/stage
+    - name: Compile PCB
+      run: python -m platformio run --env pcb
+    - name: Compile PCB (OLED sh1106)
+      run: python -m platformio run --env pcb_oled_sh1106
+    - name: Compile PCB (OLED ssd1306)
+      run: python -m platformio run --env pcb_oled_ssd1306
+    - name: Compile PCB (LCD 16x2)
+      run: python -m platformio run --env pcb_lcd_16x2
+    - name: Compile PCB (LCD 20x4)
+      run: python -m platformio run --env pcb_lcd_20x4
