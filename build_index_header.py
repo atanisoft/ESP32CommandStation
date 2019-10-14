@@ -19,20 +19,21 @@ Import("env")
 import gzip
 import os
 import struct
-import cStringIO
+from io import BytesIO
+import shutil
 
 def build_index_html_h(source, target, env):
     if os.path.exists('%s/include/index_html.h' % env.subst('$PROJECT_DIR')):
         if os.path.getmtime('%s/data/index.html' % env.subst('$PROJECT_DIR')) < os.path.getmtime('%s/include/index_html.h' % env.subst('$PROJECT_DIR')):
             return
-    print "Attempting to compress %s/data/index.html" % env.subst('$PROJECT_DIR')
-    gzFile = cStringIO.StringIO()
-    with open('%s/data/index.html' % env.subst('$PROJECT_DIR')) as f, gzip.GzipFile(mode='wb', fileobj=gzFile) as gz:
-        gz.writelines(f)
+    print("Attempting to compress %s/data/index.html" % env.subst('$PROJECT_DIR'))
+    gzFile = BytesIO()
+    with open('%s/data/index.html' % env.subst('$PROJECT_DIR'), 'rb') as f, gzip.GzipFile(mode='wb', fileobj=gzFile) as gz:
+        shutil.copyfileobj(f, gz)
     gzFile.seek(0, os.SEEK_END)
     gzLen = gzFile.tell()
     gzFile.seek(0, os.SEEK_SET)
-    print 'Compressed index.html.gz file is %d bytes' % gzLen
+    print('Compressed index.html.gz file is %d bytes' % gzLen)
     with open('%s/include/index_html.h' % env.subst('$PROJECT_DIR'), 'w') as f:
         f.write("#pragma once\n")
         f.write("const size_t indexHtmlGz_size = {};\n".format(gzLen))
