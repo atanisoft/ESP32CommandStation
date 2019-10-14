@@ -17,13 +17,14 @@ jobs:
       run: python -m platformio platform install https://github.com/platformio/platform-espressif32.git#feature/stage
     - name: Compile Base
       run: python -m platformio run
-    - name: Compile PCB
-      run: python -m platformio run -e pcb
-    - name: Compile PCB (OLED sh1106)
-      run: python -m platformio run -e pcb_oled_sh1106
-    - name: Compile PCB (OLED ssd1306)
-      run: python -m platformio run -e pcb_oled_ssd1306
-    - name: Compile PCB (LCD 16x2)
-      run: python -m platformio run -e pcb_lcd_16x2
-    - name: Compile PCB (LCD 20x4)
-      run: python -m platformio run -e pcb_lcd_20x4
+# comment out development branch features
+#    - name: Compile PCB
+#      run: python -m platformio run -e pcb
+#    - name: Compile PCB (OLED sh1106)
+#      run: python -m platformio run -e pcb_oled_sh1106
+#    - name: Compile PCB (OLED ssd1306)
+#      run: python -m platformio run -e pcb_oled_ssd1306
+#    - name: Compile PCB (LCD 16x2)
+#      run: python -m platformio run -e pcb_lcd_16x2
+#    - name: Compile PCB (LCD 20x4)
+#      run: python -m platformio run -e pcb_lcd_20x4
