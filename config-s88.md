@@ -31,5 +31,9 @@ Each S88 bus requires four pins from the command station, the three listed above
 
 Note: The DATA pin above is defined per bus. Similarly the 5V/12V pin should *NOT* be connected to the ESP32 module but instead to a dedicated power supply for the S88 bus. The ESP32 5V pin is connected to the voltage regulator on the ESP32 and will not be able to supply sufficient power for both the ESP32 and other devices.
 
+## Additional details about S88/S88-n
+
+Additional details about S88/S88-n can be found [here](https://www.opendcc.de/s88/s88_n/s88-n_e.html).
+
 [Return to Building ESP32 Command Station](./building-esp32cs.html)<br/>
 [Return to ESP32 Command Station](./index.html)
