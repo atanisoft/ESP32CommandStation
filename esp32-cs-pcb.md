@@ -42,15 +42,15 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | 1 | UART0 TX |
 | 2 | SD-MISO |
 | 3 | UART0 RX |
-| 4 | CAN RX |
-| 5 | CAN TX |
+| 4 | UART1 TX |
+| 5 | OPS DCC SIGNAL |
 | 6-11 | NOT AVAILABLE (connected to on chip flash) |
-| 12 | FREE (restrictions apply) |
+| 12 | MTDI |
 | 13 | SD-CS |
 | 14 | SD-CLK |
 | 15 | SD-MOSI |
-| 16 | OPS DCC ENABLE |
-| 17 | OPS DCC SIGNAL |
+| 16 | UART1 RX |
+| 17 | OPS DCC ENABLE |
 | 18 | PROG DCC ENABLE |
 | 19 | PROG DCC SIGNAL |
 | 20 | NOT AVAILABLE |
@@ -58,18 +58,18 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | 22 | ONBOARD LED, CS Status LED. |
 | 23 | I2C - SDA |
 | 24 | NOT AVAILABLE |
-| 25 | Serial1 RX |
-| 26 | Serial1 TX |
-| 27 | RAILCOM ENABLE |
+| 25 | RAILCOM BRAKE |
+| 26 | RAILCOM ENABLE |
+| 27 | RAILCOM SHORT |
 | 28-31 | NOT AVAILABLE |
-| 32 | OPS BRAKE |
-| 33 | RAILCOM DATA |
-| 34 | RAILCOM SHORT |
-| 35 | RAILCOM DIRECTION |
-| 36 (SVP) | OPS CURRENT SENSE (INPUT ONLY) |
+| 32 | CAN TX |
+| 33 | OPS CURRENT SENSE |
+| 34 | PROG CURRENT SENSE |
+| 35 | CAN RX |
+| 36 (SVP) | RAILCOM DATA |
 | 37 | NOT AVAILABLE |
 | 38 | NOT AVAILABLE |
-| 39 (SVP) | PROG CURRENT SENSE (INPUT ONLY) |
+| 39 (SVP) | RAILCOM DIRECTION |
 
 ## DCC signal strength
 The on-board LMD18200 h-bridge will provide up to 3A for the OPS track output, the Command Station code will limit this to around 2.75A for safety. This should be sufficient for most scales when splitting a larger layout into smaller segments powered by boosters. The on-board L298 h-bridge provides up to 250mA for the PROG track output as well as provides the LCC ALT_L/ALT_H signals.
