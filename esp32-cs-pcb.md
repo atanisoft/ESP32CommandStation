@@ -15,7 +15,8 @@ The ESP32 Command Station works quite well with off the shelf components but the
 
 ## PCB Layout
 The PCB has been designed to maximize the copper pour as a GND plane. The PCB is available as a set of gerber files as listed below:
-* [v1.0 - June 2019](ESP32-CS-gerber.zip)
+* v1.0 - June 2019 (unreleased)
+* v1.1 - November 2019 (coming soon)
 
 Below is a rendering of the ESP32 Command Station PCB:
 [![PCB Front](ESP32-CS-PCB-front-small.png)](ESP32-CS-PCB-front.png "click for full size")
