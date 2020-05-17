@@ -175,6 +175,8 @@ The Pololu MC33926 is available in two varieties:
 1. [Pololu MC33926 Motor Driver](https://www.pololu.com/product/2503) - This is similar to the L298 Arduino Motor Shield.
 2. [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213) - This is similar to the [BTS 7960B](#bts7960b) in that it requires additional wiring.
 
+**WARNING**: The MC33926 h-bridge has a built in circuit breaker that will be triggered after around 16 microseconds of "short" and there is no way to disable this functionality. Therefore, this h-bridge is not recommended as it can interfere with auto-reversers.
+
 The [Pololu MC33926 Motor Driver](https://www.pololu.com/product/2503) uses mostly the same pins as the [L298](#l298) but will require the following wire jumpers:
 1. M1PWM to D2.
 2. M1FB to A4.

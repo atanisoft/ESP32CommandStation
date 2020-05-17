@@ -100,7 +100,9 @@ For the [Pololu MC33926 Motor Driver](https://www.pololu.com/product/2503) Shiel
 
 WARNING: Be sure to remove the VIN/VOUT jumper otherwise the ESP32 may be damaged by the track power supply.
 
-### Pololu Motor Driver Carrier connections
+**WARNING**: The MC33926 h-bridge has a built in circuit breaker that will be triggered after around 16 microseconds of "short" and there is no way to disable this functionality. Therefore, this h-bridge is not recommended as it can interfere with auto-reversers.
+
+### Pololu Motor Driver Carrier connections 
 For the [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213) you will need to make the following connections:
 
 | ESP32 pin | Pololu pin |
@@ -119,6 +121,8 @@ For the [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/121
 
 Note #1: The M1 D1 and M2 D1 pins need to be pulled LOW when the PWM pin is pulled HIGH, this can be accomplished in a number of ways with the easiest likely being an NPN transistor. Failure to connect these pins will result in the track outputs remaining OFF.
 Note #2: Similar to the BTS7960B motor driver, the [Pololu MC33926 Motor Driver Carrier](https://www.pololu.com/product/1213) requires an inverted DCC signal to be provided, the DCC Signal Split circuit can be used for this.
+
+**WARNING**: The MC33926 h-bridge has a built in circuit breaker that will be triggered after around 16 microseconds of "short" and there is no way to disable this functionality. Therefore, this h-bridge is not recommended as it can interfere with auto-reversers.
 
 [Return to Building ESP32 Command Station](./building-esp32cs.html)<br/>
 [Return to ESP32 Command Station](./index.html)
