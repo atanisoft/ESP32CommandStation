@@ -1,0 +1,89 @@
+menu "WiFi Configuration"
+    config HOSTNAME_PREFIX
+        string "Hostname prefix"
+        default "esp32cs_"
+        help
+            The LCC node id will be appended to this value, ie: esp32cs_050101013F00.
+
+    choice WIFI_MODE
+        bool "WiFi mode"
+        default WIFI_MODE_SOFTAP
+        config WIFI_MODE_STATION
+            bool "Connect to SSID"
+        config WIFI_MODE_SOFTAP
+            bool "Create SoftAP"
+        config WIFI_MODE_SOFTAP_STATION
+            bool "Connect to SSID and create SoftAP"
+    endchoice
+
+    config WIFI_SOFTAP_SSID
+        string "SoftAP SSID"
+        default "esp32cs"
+        depends on WIFI_MODE_SOFTAP
+
+    config WIFI_SOFTAP_PASSWORD
+        string "SoftAP Password"
+        default "esp32cs"
+        depends on WIFI_MODE_SOFTAP
+    
+    config WIFI_SSID
+        string "SSID"
+        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
+
+    config WIFI_PASSWORD
+        string "Password"
+        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
+
+    choice WIFI_IP_TYPE
+        bool "WiFi IP"
+        default WIFI_IP_DHCP
+        config WIFI_IP_DHCP
+            bool "DHCP"
+        config WIFI_IP_STATIC
+            bool "Static"
+    endchoice
+
+    config WIFI_STATIC_IP_ADDRESS
+        string "IP address"
+        default "10.0.0.155"
+        depends on WIFI_IP_STATIC
+
+    config WIFI_STATIC_IP_GATEWAY
+        string "Gateway IP address"
+        default "10.0.0.1"
+        depends on WIFI_IP_STATIC
+
+    config WIFI_STATIC_IP_SUBNET
+        string "Subnet mask"
+        default "255.255.255.0"
+        depends on WIFI_IP_STATIC
+
+    config WIFI_STATIC_IP_DNS
+        string "Primary DNS address"
+        default "8.8.8.8"
+        depends on WIFI_IP_STATIC
+
+    config WIFI_SOFT_AP_CHANNEL
+        int
+        default 6
+endmenu
+
+menu "Advanced Configuration Settings"
+
+    config ESP32CS_FORCE_FACTORY_RESET
+        bool "Perform factory reset on startup"
+        default n
+        help
+            Enabling this option will force clear all persistent configuration
+            settings upon startup, including all LCC configuration data. This
+            would not be recommended to be enabled for most use cases.
+
+    config ESP32CS_FORCE_FACTORY_RESET_PIN
+        int "Factory Reset pin"
+        range -1 39
+        default -1
+        help
+            When this pin is held LOW during startup all persistent
+            configuration will be cleared and defaults will be restored. Note
+            this will also clear the LCC configuration data.
+endmenu

@@ -1,30 +1,52 @@
-name: Test Build
+name: Build
 
 on: [push, pull_request]
 
 jobs:
   build:
-    name: Build on PlatformIO
+    name: Build ${{ matrix.target }}
     runs-on: ubuntu-latest
-    
+    strategy:
+      max-parallel: 2
+      matrix:
+        target: [ESP32CommandStation, ESP32CommandStation.pcb]
     steps:
-    - uses: actions/checkout@v1
+    - name: Checkout ESP32CommandStation
+      uses: actions/checkout@v1
+    - name: Checkout ESP-IDF v4
+      uses: actions/checkout@v1
+      with:
+        repository: espressif/esp-idf
+        ref: release/v4.0
+        submodules: true
+    - name: Set up Python 3.5
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.5
     - name: Install Python Wheel
       run: pip install wheel
-    - name: Install PlatformIO Core
-      run: pip install -U https://github.com/platformio/platformio/archive/develop.zip
-    - name: Install PlatformIO Espressif32 platform
-      run: python -m platformio platform install https://github.com/platformio/platform-espressif32.git#feature/stage
-    - name: Compile Base
-      run: python -m platformio run
-# comment out development branch features
-#    - name: Compile PCB
-#      run: python -m platformio run -e pcb
-#    - name: Compile PCB (OLED sh1106)
-#      run: python -m platformio run -e pcb_oled_sh1106
-#    - name: Compile PCB (OLED ssd1306)
-#      run: python -m platformio run -e pcb_oled_ssd1306
-#    - name: Compile PCB (LCD 16x2)
-#      run: python -m platformio run -e pcb_lcd_16x2
-#    - name: Compile PCB (LCD 20x4)
-#      run: python -m platformio run -e pcb_lcd_20x4
+    - name: Install ESP32 toolchain
+      run: |
+        mkdir toolchain
+        curl -k https://dl.espressif.com/dl/xtensa-esp32-elf-gcc8_2_0-esp-2019r2-linux-amd64.tar.gz | tar zxv -C toolchain
+    - name: Configure CMake
+      uses: jwlawson/actions-setup-cmake@v1.0
+      with:
+        cmake-version: '3.17'
+    - name: Configure Ninja
+      uses: seanmiddleditch/gha-setup-ninja@master
+    - name: build
+      run: bash .github/build.sh ${{ matrix.target }}
+    - name: Set up Python 2.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 2.7
+    - name: Analyze Ninja Build log
+      run: python .github/ninja-log-analyze.py -C build
+    - name: Package binaries
+      uses: actions/upload-artifact@v1
+      with:
+        name: ${{ matrix.target }}
+        path: binaries
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
