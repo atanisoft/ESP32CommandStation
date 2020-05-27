@@ -47,7 +47,10 @@ and has been adapter for use in ESP32 COMMAND STATION.
 #endif // CONFIG_GPIO_SENSORS
 #include <Turnouts.h>
 
-std::vector<std::unique_ptr<DCCPPProtocolCommand>> registeredCommands;
+using dcc::SpeedType;
+using std::vector;
+
+vector<std::unique_ptr<DCCPPProtocolCommand>> commands;
 
 // <R {CV} {CALLBACK} {CALLBACK-SUB}> command handler, this command attempts
 // to read a CV value from the PROGRAMMING track. The returned value will be
@@ -135,14 +138,14 @@ DCC_PROTOCOL_COMMAND_HANDLER(WriteCVBitOpsCommand,
 
 string convert_loco_to_dccpp_state(openlcb::TrainImpl *impl, size_t id)
 {
-  dcc::SpeedType speed(impl->get_speed());
+  SpeedType speed(impl->get_speed());
   if (speed.mph())
   {
     return StringPrintf("<T %d %d %d>", id, (int)speed.mph() + 1
-                      , speed.direction() == dcc::SpeedType::FORWARD);
+                      , speed.direction() == SpeedType::FORWARD);
   }
   return StringPrintf("<T %d 0 %d>", id
-                    , speed.direction() == dcc::SpeedType::FORWARD);
+                    , speed.direction() == SpeedType::FORWARD);
 }
 
 // <F> command handler, this command sends the current free heap space as response.
@@ -220,10 +223,10 @@ DCC_PROTOCOL_COMMAND_HANDLER(ThrottleCommandAdapter,
   LOG(INFO, "[DCC++ loco %d] Set speed to %d", loco_addr, req_speed);
   LOG(INFO, "[DCC++ loco %d] Set direction to %s", loco_addr
       , req_dir ? "FWD" : "REV");
-  auto speed = dcc::SpeedType::from_mph(req_speed);
+  auto speed = SpeedType::from_mph(req_speed);
   if (!req_dir)
   {
-    speed.set_direction(dcc::SpeedType::REVERSE);
+    speed.set_direction(SpeedType::REVERSE);
   }
   impl->set_speed(speed);
   return convert_loco_to_dccpp_state(impl, reg_num);
@@ -244,21 +247,25 @@ DCC_PROTOCOL_COMMAND_HANDLER(ThrottleExCommandAdapter,
 
   if (req_speed >= 0)
   {
-    auto speed = dcc::SpeedType::from_mph(req_speed);
-    if (req_dir == 0)
+    auto speed = SpeedType::from_mph(req_speed);
+    bool cur_dir = impl->get_speed().direction();
+    // if the requested direction is reverse (0) or the current direction is
+    // reverse and the requested direction is "do not change" (-1) set the
+    // updated speed to reverse.
+    if (req_dir == 0 || (cur_dir == SpeedType::REVERSE && req_dir == -1))
     {
-      speed.set_direction(dcc::SpeedType::REVERSE);
+      speed.set_direction(SpeedType::REVERSE);
     }
     LOG(INFO, "[DCC++ loco %d] Set speed to %d (%s)", loco_addr, abs(req_speed)
-      , req_speed > 0 ? "FWD" : "REV");
+      , impl->get_speed().direction() == SpeedType::FORWARD ? "FWD" : "REV");
     impl->set_speed(speed);
   }
   else if (req_dir >= 0)
   {
-    dcc::SpeedType speed(impl->get_speed());
+    SpeedType speed(impl->get_speed());
+    speed.set_direction(req_dir ? SpeedType::FORWARD : SpeedType::REVERSE);
     LOG(INFO, "[DCC++ loco %d] Set direction to %s", loco_addr
-      , req_dir ? "FWD" : "REV");
-    speed.set_direction(req_dir ? dcc::SpeedType::FORWARD : dcc::SpeedType::REVERSE);
+      , impl->get_speed().direction() == SpeedType::FORWARD ? "FWD" : "REV");
     impl->set_speed(speed);
   }
   return convert_loco_to_dccpp_state(impl, 0);
@@ -716,28 +723,34 @@ string DCCPPProtocolHandler::process(const string &commandString)
   parts.erase(parts.begin());
   LOG(VERBOSE, "Command: %s, argument count: %d", commandID.c_str()
     , parts.size());
-  auto handler = getCommandHandler(commandID);
-  if (handler)
-  {
-    if (parts.size() >= handler->getMinArgCount())
+  auto command = std::find_if(commands.begin(), commands.end()
+  , [commandID](const auto &cmd)
     {
-      return handler->process(parts);
+      return cmd->getID() == commandID;
+    });
+  if (command != commands.end())
+  {
+    if (parts.size() >= (*command)->getMinArgCount())
+    {
+      return (*command)->process(parts);
     }
     else
     {
       LOG_ERROR("%s requires (at least) %zu args but %zu args were provided, "
                 "reporting failure", commandID.c_str()
-              , handler->getMinArgCount(), parts.size());
-      return COMMAND_FAILED_RESPONSE;
+              , (*command)->getMinArgCount(), parts.size());
     }
   }
-  LOG_ERROR("No command handler for [%s]", commandID.c_str());
+  else
+  {
+    LOG_ERROR("No command handler for [%s]", commandID.c_str());
+  }
   return COMMAND_FAILED_RESPONSE;
 }
 
 void DCCPPProtocolHandler::registerCommand(DCCPPProtocolCommand *cmd)
 {
-  for (const auto& command : registeredCommands)
+  for (const auto& command : commands)
   {
     if(!command->getID().compare(cmd->getID()))
     {
@@ -747,22 +760,7 @@ void DCCPPProtocolHandler::registerCommand(DCCPPProtocolCommand *cmd)
     }
   }
   LOG(VERBOSE, "Registering interface command %s", cmd->getID().c_str());
-  registeredCommands.emplace_back(cmd);
-}
-
-DCCPPProtocolCommand *DCCPPProtocolHandler::getCommandHandler(const string &id)
-{
-  auto command = std::find_if(registeredCommands.begin()
-                            , registeredCommands.end()
-                            , [id](const std::unique_ptr<DCCPPProtocolCommand> &cmd)
-                              {
-                                return cmd->getID() == id;
-                              });
-  if (command != registeredCommands.end())
-  {
-    return command->get();
-  }
-  return nullptr;
+  commands.emplace_back(cmd);
 }
 
 DCCPPProtocolConsumer::DCCPPProtocolConsumer()

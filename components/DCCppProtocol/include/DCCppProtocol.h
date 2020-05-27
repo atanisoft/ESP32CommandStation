@@ -62,7 +62,6 @@ public:
   static void init();
   static std::string process(const std::string &);
   static void registerCommand(DCCPPProtocolCommand *);
-  static DCCPPProtocolCommand *getCommandHandler(const std::string &);
 };
 
 class DCCPPProtocolConsumer
