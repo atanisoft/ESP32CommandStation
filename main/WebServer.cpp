@@ -842,7 +842,11 @@ HTTP_HANDLER_IMPL(process_turnouts, request)
   }
 
   uint16_t address = request->param(JSON_ADDRESS_NODE, 0);
-  if (request->method() == HttpMethod::GET)
+  if (address < 1 || address > 2044)
+  {
+    request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
+  }
+  else if (request->method() == HttpMethod::GET)
   {
     auto turnout = turnoutMgr->get(address);
     if (turnout)
