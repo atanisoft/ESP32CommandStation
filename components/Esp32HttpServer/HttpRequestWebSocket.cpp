@@ -17,10 +17,10 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 
 #include "Httpd.h"
 
-#if defined(ESP32) || defined(ESP_IDF_VERSION_MAJOR)
+#if defined(CONFIG_IDF_TARGET)
+// ESP-IDF includes mbedTLS and optional accelerated SHA1.
 #include <mbedtls/sha1.h>
-#else
-#error unknown platform for mbedTLS
+#define HTTP_USE_MBEDTLS_SHA1 1
 #endif // ESP32 || ESP_IDF_VERSION_MAJOR
 
 namespace http
@@ -59,9 +59,9 @@ WebSocketFlow::WebSocketFlow(Httpd *server, int fd, uint32_t remote_ip
   server_->add_websocket(fd, this);
   string key_data = ws_key + WEBSOCKET_UUID;
   unsigned char key_sha1[20];
-
   LOG(CONFIG_HTTP_WS_LOG_LEVEL
     , "[WebSocket fd:%d] Connected, starting handshake", fd_);
+#ifdef HTTP_USE_MBEDTLS_SHA1
   // SHA1 encode the ws_key plus the websocket UUID, if this fails close the
   // socket immediately.
   if (!mbedtls_sha1_ret((unsigned char *)key_data.c_str(), key_data.length()
@@ -84,8 +84,11 @@ WebSocketFlow::WebSocketFlow(Httpd *server, int fd, uint32_t remote_ip
     }
   }
   LOG_ERROR("[WebSocket fd:%d] Error estabilishing connection, aborting", fd_);
-  WebSocketFlow *flow = this;
-  server_->executor()->add(new CallbackExecutable([flow](){delete flow;}));
+#else
+  LOG_ERROR("[WebSocket fd:%d] No SHA1 library available, aborting", fd_);
+#endif // HTTP_USE_MBEDTLS_SHA1
+  
+  server_->schedule_cleanup(this);
 }
 
 WebSocketFlow::~WebSocketFlow()
@@ -153,7 +156,8 @@ StateFlowBase::Action WebSocketFlow::data_received()
     , helper_.readWithTimeout_, helper_.remaining_, received);
   if (helper_.hasError_)
   {
-    LOG(INFO, "[WebSocket fd:%d] read-error, disconnecting", fd_);
+    LOG_ERROR("[WebSocket fd:%d] read-error (%d: %s), disconnecting (recv)"
+            , fd_, errno, strerror(errno));
     return yield_and_call(STATE(shutdown_connection));
   }
   buf_remain_ -= received;
@@ -187,7 +191,8 @@ StateFlowBase::Action WebSocketFlow::handshake_sent()
   handshake_.clear();
   if (helper_.hasError_)
   {
-    LOG(INFO, "[WebSocket fd:%d] read-error, disconnecting", fd_);
+    LOG_ERROR("[WebSocket fd:%d] read-error (%d: %s), disconnecting (handshake)"
+            , fd_, errno, strerror(errno));
     return yield_and_call(STATE(shutdown_connection));
   }
   handler_(this, WebSocketEvent::WS_EVENT_CONNECT, nullptr, 0);
@@ -249,6 +254,7 @@ StateFlowBase::Action WebSocketFlow::frame_header_received()
                                  , STATE(shutdown_connection));
   }
 
+  LOG_ERROR("[WebSocket fd:%d] Invalid frame received, disconnecting", fd_);
   // if we get here the frame is malformed, shutdown the connection
   return yield_and_call(STATE(shutdown_connection));
 }
@@ -348,8 +354,7 @@ StateFlowBase::Action WebSocketFlow::recv_frame_data()
 StateFlowBase::Action WebSocketFlow::shutdown_connection()
 {
   handler_(this, WebSocketEvent::WS_EVENT_DISCONNECT, nullptr, 0);
-  WebSocketFlow *flow = this;
-  server_->executor()->add(new CallbackExecutable([flow](){delete flow;}));
+  server_->schedule_cleanup(this);
   return exit();
 }
 
@@ -402,7 +407,8 @@ StateFlowBase::Action WebSocketFlow::frame_sent()
 {
   if (helper_.hasError_)
   {
-    LOG(WARNING, "[WebSocket fd:%d] write error, disconnecting", fd_);
+    LOG_ERROR("[WebSocket fd:%d] read-error (%d: %s), disconnecting (frame)"
+            , fd_, errno, strerror(errno));
     return yield_and_call(STATE(shutdown_connection));
   }
   OSMutexLock l(&textLock_);

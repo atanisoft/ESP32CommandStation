@@ -17,4 +17,4 @@ set_source_files_properties(HttpRequest.cpp PROPERTIES COMPILE_FLAGS -Wno-ignore
 set_source_files_properties(HttpRequestWebSocket.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")
 set_source_files_properties(HttpRequestFlow.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")
 set_source_files_properties(HttpResponse.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
-set_source_files_properties(HttpServer.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
+set_source_files_properties(HttpServer.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")

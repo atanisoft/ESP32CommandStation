@@ -874,6 +874,9 @@ private:
   /// Gives @ref HttpRequestFlow access to protected/private members.
   friend class HttpRequestFlow;
 
+  /// Schedules the Executable to be cleaned up in an asynchronous fashion.
+  void schedule_cleanup(Executable *flow);
+
   /// Starts the HTTP socket listener.
   void start_http_listener();
 

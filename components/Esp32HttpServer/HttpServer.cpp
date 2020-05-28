@@ -17,7 +17,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #include "Httpd.h"
 
-#if defined(ESP32) || defined(ESP_IDF_VERSION_MAJOR)
+#ifdef CONFIG_IDF_TARGET
 
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <esp_system.h>
@@ -26,7 +26,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 // can call it if needed. This is implemented inside Esp32WiFiManager.cxx.
 void mdns_unpublish(const char *service);
 
-#endif // ESP32 || ESP_IDF_VERSION_MAJOR
+#endif // CONFIG_IDF_TARGET
 
 namespace http
 {
@@ -54,7 +54,7 @@ Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name, const string service
   socket_timeout_.tv_sec = 0;
   socket_timeout_.tv_usec = MSEC_TO_USEC(config_httpd_socket_timeout_ms());
 
-#if defined(ESP32) || defined(ESP_IDF_VERSION_MAJOR)
+#ifdef CONFIG_IDF_TARGET
   // Hook into the Esp32WiFiManager to start/stop the listener automatically
   // based on the AP/Station interface status.
   Singleton<Esp32WiFiManager>::instance()->add_event_callback(
@@ -79,7 +79,7 @@ Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name, const string service
       stop_dns_listener();
     }
   });
-#endif // ESP32 || ESP_IDF_VERSION_MAJOR
+#endif // CONFIG_IDF_TARGET
 }
 
 Httpd::~Httpd()
@@ -204,6 +204,15 @@ void Httpd::captive_portal(string first_access_response
   captive_active_ = true;
 }
 
+void Httpd::schedule_cleanup(Executable *flow)
+{
+  Executable *target_flow = flow;
+  executor()->add(new CallbackExecutable([target_flow]()
+  {
+    delete target_flow;
+  }));
+}
+
 void Httpd::start_http_listener()
 {
   if (http_active_)
@@ -237,7 +246,7 @@ void Httpd::stop_http_listener()
     LOG(INFO, "[%s] Shutting down HTTP listener", name_.c_str());
     listener_.reset();
     http_active_ = false;
-#ifdef ESP32
+#ifdef CONFIG_IDF_TARGET
     if (mdns_)
     {
       mdns_unpublish(mdns_service_.c_str());
