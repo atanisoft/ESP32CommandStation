@@ -624,6 +624,9 @@ long long os_get_time_monotonic(void)
     time = system_get_rtc_time();
     time *= clockmul;
     time >>= 2;
+#elif defined(CONFIG_IDF_TARGET)
+    time = esp_timer_get_time(); // microseconds since boot
+    time *= 1000ULL;             // convert to nanoseconds
 #else
     struct timespec ts;
 #if defined (__nuttx__)
