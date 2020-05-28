@@ -83,6 +83,7 @@ string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
   if (elem != turnouts_.end())
   {
     elem->get()->set(thrown, sendDCC);
+    dirty_ = true;
     return StringPrintf("<H %d %d>"
                       , std::distance(turnouts_.begin(), elem) + 1
                       , elem->get()->isThrown());
@@ -91,8 +92,9 @@ string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
   // we didn't find it, create it and set it
   turnouts_.push_back(std::make_unique<Turnout>(turnouts_.size() + 1
                                               , address));
-  dirty_ = true;
-  return set(address, thrown, sendDCC);
+  turnouts_.back().get()->set(thrown, sendDCC);
+  return StringPrintf("<H %d %d>", turnouts_.size()
+                    , turnouts_.back().get()->isThrown());
 }
 
 string TurnoutManager::toggle(uint16_t address)
@@ -102,6 +104,7 @@ string TurnoutManager::toggle(uint16_t address)
   if (elem != turnouts_.end())
   {
     elem->get()->toggle();
+    dirty_ = true;
     return StringPrintf("<H %d %d>"
                       , std::distance(turnouts_.begin(), elem)
                       , elem->get()->isThrown());
@@ -109,8 +112,9 @@ string TurnoutManager::toggle(uint16_t address)
 
   // we didn't find it, create it and throw it
   turnouts_.push_back(std::make_unique<Turnout>(address, -1));
-  dirty_ = true;
-  return toggle(address);
+  turnouts_.back().get()->toggle();
+  return StringPrintf("<H %d %d>", turnouts_.size()
+                    , turnouts_.back().get()->isThrown());
 }
 
 string TurnoutManager::getStateAsJson(bool readable)
@@ -147,6 +151,7 @@ Turnout *TurnoutManager::createOrUpdate(const uint16_t address
   if (elem != turnouts_.end())
   {
     elem->get()->update(address, type);
+    dirty_ = true;
     return elem->get();
   }
   // we didn't find it, create it!
@@ -257,16 +262,19 @@ string TurnoutManager::get_state_as_json(bool readableStrings)
 
 void TurnoutManager::persist()
 {
-  // Check if we have any changes to persist, if not exit early to reduce
-  // unnecessary wear on the flash when running on SPIFFS.
   OSMutexLock h(&mux_);
-  if (!dirty_)
+  bool dirtyFlag = dirty_;
+  dirty_ = false;
+  // Check if we have any changes to persist, if not exit early.
+  if (!dirtyFlag || turnouts_.empty())
   {
+    LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout] No entries require persistence.");
     return;
   }
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout] Persisting %zu turnouts"
+    , turnouts_.size());
   Singleton<ConfigurationManager>::instance()->store(TURNOUTS_JSON_FILE
                                                    , get_state_as_json(false));
-  dirty_ = false;
 }
 
 void encodeDCCAccessoryAddress(uint16_t *board, int8_t *port
@@ -339,10 +347,8 @@ void Turnout::get_next_packet(unsigned code, dcc::Packet* packet)
   // always send activate as true (sets C to 1)
   packet->add_dcc_basic_accessory(addr, true);
 
-//#ifdef CONFIG_TURNOUT_LOGGING_VERBOSE
-  LOG(INFO, "[Turnout %d] Packet: %s", _address
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d] Packet: %s", _address
     , packet_to_string(*packet, true).c_str());
-//#endif
 
   // remove ourselves as turnouts are single fire sources
   packet_processor_remove_refresh_source(this);
