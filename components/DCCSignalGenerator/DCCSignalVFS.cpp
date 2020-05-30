@@ -384,8 +384,6 @@ void init_dcc_vfs(openlcb::Node *node, Service *service
   ESP_ERROR_CHECK(esp_vfs_register("/dev/track", &vfs, nullptr));
 
   DCCGpioInitializer::hw_init();
-  OPS_ENABLE_Pin::set_pulldown_on();
-  PROG_ENABLE_Pin::set_pulldown_on();
 
 #if defined(CONFIG_OPS_RAILCOM)
   railcom_hub.reset(new dcc::RailcomHubFlow(service));

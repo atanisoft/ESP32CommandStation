@@ -37,8 +37,34 @@
 
 #include "freertos_drivers/arduino/GpioWrapper.hxx"
 #include "os/Gpio.hxx"
+#include "utils/logging.h"
 #include "utils/macros.h"
 #include <driver/gpio.h>
+
+/// Helper macro to test if a pin has been configured for output.
+///
+/// This is necessary since ESP-IDF does not expose gpio_get_direction(pin).
+#define IS_GPIO_OUTPUT(pin) (GPIO_IS_VALID_OUTPUT_GPIO(pin) &&                 \
+                             (pin < 32) ? GPIO.enable & BIT(pin & 31) :        \
+                                          GPIO.enable1.data & BIT(pin & 31))
+
+/// Helper macro to retrieve the current state of an output pin.
+///
+/// This is necessary since ESP-IDF will return LOW (false) for all output pins
+/// regardless of their actual current state.
+#define GET_GPIO_LEVEL(pin) ((pin < 32) ? GPIO.out & BIT(pin & 31) :           \
+                                          GPIO.out1.data & BIT(pin & 31))
+
+/// Helper macro to reconfigure a GPIO pin as a specific mode.
+///
+/// Do not use this macro directly. Use @ref GPIO_PIN instead.
+#define CONFIGURE_GPIO(pin, mode)                                              \
+    gpio_pad_select_gpio(pin);                                                 \
+    ESP_ERROR_CHECK(gpio_reset_pin(pin));                                      \
+    ESP_ERROR_CHECK(gpio_set_direction(pin, mode));
+
+template <class Defs, bool SAFE_VALUE, bool INVERT> struct GpioOutputPin;
+template <class Defs, bool PUEN, bool PDEN> struct GpioInputPin;
 
 /// Defines a GPIO output pin. Writes to this structure will change the output
 /// level of the pin. Reads will return the pin's current level.
@@ -47,235 +73,156 @@
 /// `SAFE_VALUE'.
 ///
 /// Do not use this class directly. Use @ref GPIO_PIN instead.
-template <uint8_t PIN_NUM>
-class Esp32Gpio
+template <gpio_num_t PIN_NUM>
+class Esp32Gpio : public Gpio
 {
 public:
 #if defined(CONFIG_IDF_TARGET_ESP32)
     static_assert(PIN_NUM >= 0 && PIN_NUM <= 39, "Valid pin range is 0..39.");
     static_assert(!(PIN_NUM >= 6 && PIN_NUM <= 11)
                 , "Pin is reserved for flash usage.");
+    static_assert(PIN_NUM != 24, "Pin does not exist");
 #elif defined(CONFIG_IDF_TARGET_ESP32S2)
     static_assert(PIN_NUM >= 0 && PIN_NUM <= 46, "Valid pin range is 0..46.");
+    static_assert(!(PIN_NUM >= 22 && PIN_NUM <= 24)
+                , "Pin does not exist");
     static_assert(!(PIN_NUM >= 26 && PIN_NUM <= 32)
                 , "Pin is reserved for flash usage.");
 #endif // CONFIG_IDF_TARGET_ESP32
 
-    /// @return the pin number for this GPIO.
-    static gpio_num_t pin()
+    /// Sets the output state of the connected GPIO pin.
+    ///
+    /// @param new_state State to set the GPIO pin to.
+    void write(Value new_state) const override
     {
-        return (gpio_num_t)PIN_NUM;
+        LOG(VERBOSE, "GPIO(%d) write %s", PIN_NUM, new_state ? "HIGH" : "LOW");
+        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, new_state));
     }
 
-    /// Sets pin to output.
-    static void set_output()
+    /// Reads the current state of the connected GPIO pin.
+    /// @return @ref SET if currently high, @ref CLR if currently low.
+    Value read() const override
     {
-        HASSERT(GPIO_IS_VALID_OUTPUT_GPIO(PIN_NUM));
-        ESP_ERROR_CHECK(gpio_set_direction(pin(), GPIO_MODE_OUTPUT));
-    }
-
-    /// Sets pin to input.
-    static void set_input()
-    {
-        ESP_ERROR_CHECK(gpio_set_direction(pin(), GPIO_MODE_INPUT));
-    }
-
-    /// Turns on pullup.
-    static void set_pullup_on()
-    {
-#if defined(CONFIG_IDF_TARGET_ESP32)
-        // these pins have HW PD always.
-        HASSERT(PIN_NUM != 12);
-        HASSERT(PIN_NUM != 4);
-        HASSERT(PIN_NUM != 2);
-#elif defined(CONFIG_IDF_TARGET_ESP32S2)
-        // these pins have HW PD always.
-        HASSERT(PIN_NUM != 45);
-        HASSERT(PIN_NUM != 46);
-#endif // CONFIG_IDF_TARGET_ESP32
-        ESP_ERROR_CHECK(gpio_pullup_en(pin()));
-    }
-
-    /// Turns off pullup.
-    static void set_pullup_off()
-    {
-#if defined(CONFIG_IDF_TARGET_ESP32)
-        // these pins have HW PU always.
-        HASSERT(PIN_NUM != 0);
-        HASSERT(PIN_NUM != 15);
-        HASSERT(PIN_NUM != 5);
-#elif defined(CONFIG_IDF_TARGET_ESP32S2)
-        // these pins have HW PU always.
-        HASSERT(PIN_NUM != 0);
-#endif // CONFIG_IDF_TARGET_ESP32
-
-        ESP_ERROR_CHECK(gpio_pullup_dis(pin()));
-    }
-
-    /// Turns on pullup.
-    static void set_pulldown_on()
-    {
-#if defined(CONFIG_IDF_TARGET_ESP32)
-        // these pins have HW PU always.
-        HASSERT(PIN_NUM != 0);
-        HASSERT(PIN_NUM != 15);
-        HASSERT(PIN_NUM != 5);
-#elif defined(CONFIG_IDF_TARGET_ESP32S2)
-        // these pins have HW PU always.
-        HASSERT(PIN_NUM != 0);
-#endif // CONFIG_IDF_TARGET_ESP32
-
-        ESP_ERROR_CHECK(gpio_pulldown_en(pin()));
-    }
-
-    /// Turns off pullup.
-    static void set_pulldown_off()
-    {
-#if defined(CONFIG_IDF_TARGET_ESP32)
-        // these pins have HW PD always.
-        HASSERT(PIN_NUM != 12);
-        HASSERT(PIN_NUM != 4);
-        HASSERT(PIN_NUM != 2);
-#elif defined(CONFIG_IDF_TARGET_ESP32S2)
-        // these pins have HW PD always.
-        HASSERT(PIN_NUM != 45);
-        HASSERT(PIN_NUM != 46);
-#endif // CONFIG_IDF_TARGET_ESP32
-
-        ESP_ERROR_CHECK(gpio_pulldown_dis(pin()));
+        if (GPIO_IS_VALID_OUTPUT_GPIO(PIN_NUM))
+        {
+            return (Value)GET_GPIO_LEVEL(PIN_NUM);
+        }
+        return (Value)gpio_get_level(PIN_NUM);
     }
 
     /// Sets output to HIGH.
-    static void set_on()
+    void set() const override
     {
-        ESP_ERROR_CHECK(gpio_set_level(pin(), 1));
+        LOG(VERBOSE, "Esp32Gpio(%d) set HIGH", PIN_NUM);
+        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, 1));
     }
 
     /// Sets output to LOW.
-    static void set_off()
+    void clr() const override
     {
-        ESP_ERROR_CHECK(gpio_set_level(pin(), 0));
+        LOG(VERBOSE, "Esp32Gpio(%d) clr LOW", PIN_NUM);
+        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, 0));
     }
 
-    /// @return input pin level.
-    static bool get()
+    /// Sets the direction of the connected GPIO pin.
+    void set_direction(Direction dir) const override
     {
-        // If the pin is configured as an output we can not use the ESP-IDF API
-        // gpio_get_level(pin) since it will return LOW for any output pin. To
-        // work around this API limitation it is necessary to read directly
-        // from the memory mapped GPIO registers.
-        if (is_output())
+        if (dir == Direction::DOUTPUT)
         {
-            if (PIN_NUM < 32)
-            {
-                return GPIO.out & BIT(PIN_NUM & 31);
-            }
-            else
-            {
-                return GPIO.out1.data & BIT(PIN_NUM & 31);
-            }
-        }
-        return gpio_get_level(pin());
-    }
-
-    /// Set output pin level. @param value is the level to set to.
-    static void set(bool value)
-    {
-        if (value)
-        {
-            set_on();
+            HASSERT(GPIO_IS_VALID_OUTPUT_GPIO(PIN_NUM));
+            ESP_ERROR_CHECK(gpio_set_direction(PIN_NUM, GPIO_MODE_OUTPUT));
+            LOG(VERBOSE, "Esp32Gpio(%d) configured as OUTPUT", PIN_NUM);
         }
         else
         {
-            set_off();
+            ESP_ERROR_CHECK(gpio_set_direction(PIN_NUM, GPIO_MODE_INPUT));
+            LOG(VERBOSE, "Esp32Gpio(%d) configured as INPUT", PIN_NUM);
         }
     }
 
-    /// Toggles output pin value.
-    static void toggle()
+    /// Gets the GPIO direction.
+    /// @return @ref DINPUT or @ref DOUTPUT
+    Direction direction() const override
     {
-        set(!get());
-    }
-
-    /// @return true if pin is configured as an output pin.
-    static bool is_output()
-    {
-        // If the pin is a valid output, check if it is configured for output.
-        // Unfortunately, ESP-IDF does not provide gpio_get_direction(pin) but
-        // does provide gpio_set_direction(pin, direction). To workaround this
-        // limitation it is necessary to read directly from the memory mapped
-        // GPIO registers.
-        if (GPIO_IS_VALID_OUTPUT_GPIO(PIN_NUM))
+        if (IS_GPIO_OUTPUT(PIN_NUM))
         {
-            // pins 32 and below use the first GPIO controller
-            if (PIN_NUM < 32)
-            {
-                return GPIO.enable & BIT(PIN_NUM & 31);
-            }
-            else
-            {
-                return GPIO.enable1.data & BIT(PIN_NUM & 31);
-            }
+            return Direction::DOUTPUT;
         }
-        return false;
+        return Direction::DINPUT;
     }
-
-    /// Initializes the underlying hardware pin on the ESP32.
-    static void hw_init()
-    {
-        // sanity check that the pin number is valid
-        HASSERT(GPIO_IS_VALID_GPIO(PIN_NUM));
-
-        // configure the pad for GPIO function
-        gpio_pad_select_gpio(pin());
-
-        // reset the pin configuration to defaults
-        ESP_ERROR_CHECK(gpio_reset_pin(pin()));
-    }
-
-    /// @return an os-indepentent Gpio abstraction instance for use in
-    /// libraries.
-    static constexpr const Gpio *instance()
-    {
-        return GpioWrapper<Esp32Gpio<PIN_NUM>>::instance();
-    }
+private:
+    template <class Defs, bool SAFE_VALUE, bool INVERT> friend struct GpioOutputPin;
+    template <class Defs, bool PUEN, bool PDEN> friend struct GpioInputPin;
+    /// Static instance variable that can be used for libraries expecting a
+    /// generic Gpio pointer. This instance variable will be initialized by the
+    /// linker and (assuming the application developer initialized the hardware
+    /// pins in hw_preinit) is accessible, including virtual methods at static
+    /// constructor time.
+    static const Esp32Gpio instance_;
 };
 
+/// Defines the linker symbol for the wrapped Gpio instance.
+template <gpio_num_t PIN_NUM>
+const Esp32Gpio<PIN_NUM> Esp32Gpio<PIN_NUM>::instance_;
+
 /// Parametric GPIO output class.
-/// @param Base is the GPIO pin's definition base class, supplied by the
+/// @param Defs is the GPIO pin's definition base class, supplied by the
 /// GPIO_PIN macro.
 /// @param SAFE_VALUE is the initial value for the GPIO output pin.
 /// @param INVERT inverts the high/low state of the pin when set.
-template <class Base, bool SAFE_VALUE, bool INVERT = false>
-struct GpioOutputPin : public Base
+template <class Defs, bool SAFE_VALUE, bool INVERT = false>
+struct GpioOutputPin : public Defs
 {
 public:
+    using Defs::PIN_NUM;
+// compile time sanity check that the selected pin is valid for output.
+#if defined(CONFIG_IDF_TARGET_ESP32)
+    static_assert(PIN_NUM < 34, "Pins 34 and above can not be used as output.");
+#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+    static_assert(PIN_NUM != 46, "Pin 46 can not be used for output.");
+#endif // CONFIG_IDF_TARGET_ESP32
+
     /// Initializes the hardware pin.
     static void hw_init()
     {
-        HASSERT(GPIO_IS_VALID_OUTPUT_GPIO(Base::pin()));
-        Base::hw_init();
-        Base::set(SAFE_VALUE);
-        Base::set_output();
-        Base::set(SAFE_VALUE);
+        CONFIGURE_GPIO(PIN_NUM, GPIO_MODE_OUTPUT)
+        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, SAFE_VALUE));
     }
+
     /// Sets the hardware pin to a safe value.
     static void hw_set_to_safe()
     {
-        Base::set(SAFE_VALUE);
+        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, SAFE_VALUE));
     }
+
     /// Sets the output pinm @param value if true, output is set to HIGH, if
     /// false, output is set to LOW.
     static void set(bool value)
     {
         if (INVERT)
         {
-            Base::set(!value);
+            LOG(VERBOSE, "Esp32Gpio(%d) set INV %s", PIN_NUM
+              , value ? "HIGH" : "LOW");
+            ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, !value));
         }
         else
         {
-            Base::set(value);
+            LOG(VERBOSE, "Esp32Gpio(%d) set %s", PIN_NUM, value ? "HIGH" : "LOW");
+            ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, value));
         }
+    }
+
+    /// Reads the current state of the connected GPIO pin.
+    /// @return @ref true if currently high, @ref false if currently low.
+    static bool get()
+    {
+        return GET_GPIO_LEVEL(PIN_NUM);
+    }
+
+    /// @return static Gpio object instance that controls this output pin.
+    static constexpr const Gpio *instance()
+    {
+        return &Esp32Gpio<PIN_NUM>::instance_;
     }
 };
 
@@ -291,7 +238,7 @@ struct GpioOutputSafeLow : public GpioOutputPin<Defs, false>
 /// level. All set() commands are acted upon by inverting the value.
 ///
 /// Do not use this class directly. Use @ref GPIO_PIN instead.
-template <class Defs>
+template <uint8_t PIN_NUM, class Defs>
 struct GpioOutputSafeLowInvert : public GpioOutputPin<Defs, false, true>
 {
 };
@@ -314,34 +261,52 @@ struct GpioOutputSafeHighInvert : public GpioOutputPin<Defs, true, true>
 };
 
 /// Parametric GPIO input class.
-/// @param Base is the GPIO pin's definition base class, supplied by the
+/// @param Defs is the GPIO pin's definition base class, supplied by the
 /// GPIO_PIN macro.
 /// @param PUEN is true if the pull-up should be enabled.
 /// @param PDEN is true if the pull-down should be enabled.
-template <class Base, bool PUEN, bool PDEN> struct GpioInputPar : public Base
+template <class Defs, bool PUEN, bool PDEN> struct GpioInputPin : public Defs
 {
 public:
+    using Defs::PIN_NUM;
+
     /// Initializes the hardware pin.
     static void hw_init()
     {
-        Base::hw_init();
-        Base::set_input();
+#if defined(CONFIG_IDF_TARGET_ESP32)
+        // GPIO 2, 4 and 12 have pull-down resistors
+        // GPIO 0, 5 and 15 have pull-up resistors
+        HASSERT(PUEN && (PIN_NUM == 2 || PIN_NUM == 4 || PIN_NUM == 12));
+        HASSERT(!PUEN && (PIN_NUM == 0 || PIN_NUM == 5 || PIN_NUM == 15));
+        HASSERT(PDEN && (PIN_NUM == 0 || PIN_NUM == 5 || PIN_NUM == 15));
+        HASSERT(!PDEN && (PIN_NUM == 2 || PIN_NUM == 4 || PIN_NUM == 12));
+#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+        // GPIO 0 has a pull-up resistor
+        // GPIO 45 and 46 have pull-down resistors.
+        HASSERT(PUEN && (PIN_NUM == 45 || PIN_NUM == 46));
+        HASSERT(!PUEN && PIN_NUM == 0);
+        HASSERT(PDEN && PIN_NUM == 0);
+        HASSERT(!PDEN && (PIN_NUM == 45 || PIN_NUM == 46));
+#endif // CONFIG_IDF_TARGET_ESP32
+
+        // sanity check that the pin number is valid
+        CONFIGURE_GPIO(PIN_NUM, GPIO_MODE_INPUT)
         if (PUEN)
         {
-            Base::set_pullup_on();
+            ESP_ERROR_CHECK(gpio_pullup_en(PIN_NUM));
         }
         else
         {
-            Base::set_pullup_off();
+            ESP_ERROR_CHECK(gpio_pullup_dis(PIN_NUM));
         }
         
         if (PDEN)
         {
-            Base::set_pulldown_on();
+            ESP_ERROR_CHECK(gpio_pulldown_en(PIN_NUM));
         }
         else
         {
-            Base::set_pulldown_off();
+            ESP_ERROR_CHECK(gpio_pulldown_dis(PIN_NUM));
         }
     }
     /// Sets the hardware pin to a safe state.
@@ -349,33 +314,39 @@ public:
     {
         hw_init();
     }
+
+    /// @return static Gpio object instance that controls this output pin.
+    static constexpr const Gpio *instance()
+    {
+        return &Esp32Gpio<PIN_NUM>::instance_;
+    }
 };
 
-/// Defines a GPIO input pin  with pull-up and pull-down disabled.
+/// Defines a GPIO input pin with pull-up and pull-down disabled.
 ///
 /// Do not use this class directly. Use @ref GPIO_PIN instead.
-template <class Defs> struct GpioInputNP : public GpioInputPar<Defs, false, false>
+template <class Defs> struct GpioInputNP : public GpioInputPin<Defs, false, false>
 {
 };
 
 /// Defines a GPIO input pin with pull-up enabled.
 ///
 /// Do not use this class directly. Use @ref GPIO_PIN instead.
-template <class Defs> struct GpioInputPU : public GpioInputPar<Defs, true, false>
+template <class Defs> struct GpioInputPU : public GpioInputPin<Defs, true, false>
 {
 };
 
 /// Defines a GPIO input pin with pull-down enabled.
 ///
 /// Do not use this class directly. Use @ref GPIO_PIN instead.
-template <class Defs> struct GpioInputPD : public GpioInputPar<Defs, false, true>
+template <class Defs> struct GpioInputPD : public GpioInputPin<Defs, false, true>
 {
 };
 
 /// Defines a GPIO input pin with pull-up and pull-down enabled.
 ///
 /// Do not use this class directly. Use @ref GPIO_PIN instead.
-template <class Defs> struct GpioInputPUPD : public GpioInputPar<Defs, true, true>
+template <class Defs> struct GpioInputPUPD : public GpioInputPin<Defs, true, true>
 {
 };
 
@@ -403,6 +374,7 @@ template <class Defs> struct GpioInputPUPD : public GpioInputPar<Defs, true, tru
 ///    - 6 - 11  : connected to flash.
 ///    - 12      : pull-down resistor on most modules.
 ///    - 15      : pull-up resistor on most modules.
+///    - 24      : does not exist.
 ///    - 37, 38  : not exposed on most modules.
 ///    - 34 - 39 : these pins are INPUT only.
 /// NOTE: ESP32 covers the ESP32-WROOM-32, DOWD, D2WD, S0WD, U4WDH and the
@@ -436,6 +408,15 @@ template <class Defs> struct GpioInputPUPD : public GpioInputPar<Defs, true, tru
 ///  ...
 ///  FOO_Pin::set(true);
 #define GPIO_PIN(NAME, BaseClass, NUM)                                         \
-    typedef BaseClass<Esp32Gpio<NUM>> NAME##_Pin
+    struct NAME##Defs                                                          \
+    {                                                                          \
+        static const gpio_num_t PIN_NUM = (gpio_num_t)NUM;                     \
+    public:                                                                    \
+        static const gpio_num_t pin()                                          \
+        {                                                                      \
+            return PIN_NUM;                                                    \
+        }                                                                      \
+    };                                                                         \
+    typedef BaseClass<NAME##Defs> NAME##_Pin
 
 #endif // _DRIVERS_ESP32GPIO_HXX_
