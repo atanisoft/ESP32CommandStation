@@ -27,39 +27,35 @@ std::unique_ptr<SocketListener> listener;
 
 void init_jmri_interface()
 {
-    Singleton<Esp32WiFiManager>::instance()->add_event_callback(
-    [](system_event_t *event)
+  Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
+  [&](esp_interface_t interface, uint32_t ip)
+  {
+    if (!listener)
     {
-        if(event->event_id == SYSTEM_EVENT_STA_GOT_IP ||
-           event->event_id == SYSTEM_EVENT_AP_START)
+      LOG(INFO, "[JMRI] Starting JMRI listener");
+      listener.reset(
+        new SocketListener(CONFIG_JMRI_LISTENER_PORT,
+        [](int fd)
         {
-            if (!listener)
-            {
-                LOG(INFO, "[JMRI] Starting JMRI listener");
-                listener.reset(
-                    new SocketListener(CONFIG_JMRI_LISTENER_PORT,
-                    [](int fd)
-                    {
-                    sockaddr_in source;
-                    socklen_t source_len = sizeof(sockaddr_in);
-                    bzero(&source, sizeof(sockaddr_in));
-                    getpeername(fd, (sockaddr *)&source, &source_len);
-                    // Create new JMRI client and attach it to the Httpd
-                    // instance rather than the default executor.
-                    new JmriClientFlow(fd, ntohl(source.sin_addr.s_addr)
-                                     , Singleton<http::Httpd>::instance());
-                    }, "jmri"));
-                Singleton<Esp32WiFiManager>::instance()->mdns_publish(
-                    CONFIG_JMRI_MDNS_SERVICE_NAME, CONFIG_JMRI_LISTENER_PORT);
-            }
-        }
-        else if (event->event_id == SYSTEM_EVENT_STA_LOST_IP ||
-                 event->event_id == SYSTEM_EVENT_AP_STOP)
-        {
-            LOG(INFO, "[WiFi] Shutting down JMRI listener");
-            listener.reset(nullptr);
-            Singleton<Esp32WiFiManager>::instance()->mdns_unpublish(
-                CONFIG_JMRI_MDNS_SERVICE_NAME);
-        }
-    });
+        sockaddr_in source;
+        socklen_t source_len = sizeof(sockaddr_in);
+        bzero(&source, sizeof(sockaddr_in));
+        getpeername(fd, (sockaddr *)&source, &source_len);
+        // Create new JMRI client and attach it to the Httpd
+        // instance rather than the default executor.
+        new JmriClientFlow(fd, ntohl(source.sin_addr.s_addr)
+                            , Singleton<http::Httpd>::instance());
+        }, "jmri"));
+      Singleton<Esp32WiFiManager>::instance()->mdns_publish(
+        CONFIG_JMRI_MDNS_SERVICE_NAME, CONFIG_JMRI_LISTENER_PORT);
+    }
+  });
+  Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
+  [&](esp_interface_t interface)
+  {
+    LOG(INFO, "[WiFi] Shutting down JMRI listener");
+    listener.reset(nullptr);
+    Singleton<Esp32WiFiManager>::instance()->mdns_unpublish(
+        CONFIG_JMRI_MDNS_SERVICE_NAME);
+  });
 }

@@ -55,7 +55,7 @@ public:
         return is_waiting_;
     }
 
-    Action entry() override
+    virtual Action entry()
     {
         AtomicHolder h(this);
         is_waiting_ = true;

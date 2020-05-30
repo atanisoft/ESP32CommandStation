@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.5)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
-if (IDF_VERSION_MAJOR LESS 4 OR (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR GREATER 0))
-    message(FATAL_ERROR "ESP32CommandStation requires IDF v4.0")
+if (IDF_VERSION_MAJOR LESS 4)
+    message(FATAL_ERROR "ESP32CommandStation requires IDF v4.0 (or newer)")
 endif()
 
 set(SUPPORTED_TARGETS esp32)

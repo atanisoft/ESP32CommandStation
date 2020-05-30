@@ -35,8 +35,28 @@ StateFlowBase::Action StatusLED::init()
   bus_->SetBrightness(CONFIG_STATUS_LED_BRIGHTNESS);
   bus_->ClearTo(RGB_OFF_);
   bus_->Show();
-  Singleton<Esp32WiFiManager>::instance()->add_event_callback(
-    std::bind(&StatusLED::wifi_event, this, std::placeholders::_1));
+  Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
+  [&](esp_interface_t interface, uint32_t ip)
+  {
+    if (interface == ESP_IF_WIFI_AP)
+    {
+      setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::BLUE);
+    }
+    else if (interface == ESP_IF_WIFI_STA)
+    {
+      setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::GREEN);
+    }
+  });
+  Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
+  [&](esp_interface_t interface)
+  {
+    setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::RED);
+  });
+  Singleton<Esp32WiFiManager>::instance()->register_network_init_callback(
+  [&](esp_interface_t interface)
+  {
+    setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::GREEN_BLINK);
+  });
   return sleep_and_call(&timer_, updateInterval_, STATE(update));
 #endif
 }
@@ -96,29 +116,4 @@ void StatusLED::setStatusLED(const LED led, const COLOR color, const bool on)
 {
   colors_[led] = color;
   state_[led] = on;
-}
-
-void StatusLED::wifi_event(system_event_t *event)
-{
-  if(event->event_id == SYSTEM_EVENT_STA_GOT_IP ||
-      event->event_id == SYSTEM_EVENT_AP_START)
-  {
-    if (event->event_id == SYSTEM_EVENT_STA_GOT_IP)
-    {
-      setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::GREEN);
-    }
-    else
-    {
-      setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::BLUE);
-    }
-  } else if (event->event_id == SYSTEM_EVENT_STA_LOST_IP ||
-              event->event_id == SYSTEM_EVENT_AP_STOP)
-  {
-    setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::RED);
-  }
-  else if (event->event_id == SYSTEM_EVENT_STA_DISCONNECTED ||
-            event->event_id == SYSTEM_EVENT_STA_START)
-  {
-    setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::GREEN_BLINK);
-  }
 }

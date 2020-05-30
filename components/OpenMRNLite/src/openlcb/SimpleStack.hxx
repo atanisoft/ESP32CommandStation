@@ -419,7 +419,7 @@ public:
 protected:
     /// Helper function for start_stack et al.
     void start_iface(bool restart) override;
-
+    
 private:
     class CanPhysicalIf : public PhysicalIf
     {

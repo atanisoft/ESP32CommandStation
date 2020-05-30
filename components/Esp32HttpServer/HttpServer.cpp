@@ -54,30 +54,23 @@ Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name, const string service
   socket_timeout_.tv_sec = 0;
   socket_timeout_.tv_usec = MSEC_TO_USEC(config_httpd_socket_timeout_ms());
 
-#ifdef CONFIG_IDF_TARGET
+#ifdef ESP32
   // Hook into the Esp32WiFiManager to start/stop the listener automatically
   // based on the AP/Station interface status.
-  Singleton<Esp32WiFiManager>::instance()->add_event_callback(
-  [&](system_event_t *event)
+  Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
+  [&](esp_interface_t interface, uint32_t ip)
   {
-    if (event->event_id == SYSTEM_EVENT_STA_GOT_IP ||
-        event->event_id == SYSTEM_EVENT_AP_START)
+    if (interface == ESP_IF_WIFI_AP)
     {
-      // If it is the SoftAP interface, start the dns server
-      if (event->event_id == SYSTEM_EVENT_AP_START)
-      {
-        tcpip_adapter_ip_info_t ip_info;
-        tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info);
-        start_dns_listener(ntohl(ip_info.ip.addr));
-      }
-      start_http_listener();
+      start_dns_listener(ntohl(ip));
     }
-    else if (event->event_id == SYSTEM_EVENT_STA_LOST_IP ||
-             event->event_id == SYSTEM_EVENT_AP_STOP)
-    {
-      stop_http_listener();
-      stop_dns_listener();
-    }
+    start_http_listener();
+  });
+  Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
+  [&](esp_interface_t interface)
+  {
+    stop_http_listener();
+    stop_dns_listener();
   });
 #endif // CONFIG_IDF_TARGET
 }

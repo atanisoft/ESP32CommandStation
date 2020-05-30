@@ -390,8 +390,9 @@ template <class Defs> struct GpioInputPUPD : public GpioInputPar<Defs, true, tru
 ///
 /// @param NUM is the pin number, such as 3 (see below for usable range).
 ///
-/// The ESP32 (includes: WROVER, WROVER-B, PICO-D4) and ESP32-S2 modules have
-/// some differences in behavior with GPIO pins and usages as documented below.
+/// There are multiple variations available for the ESP32: ESP32, WROVER,
+/// WROVER-B, PICO-D4, ESP32-Solo and ESP32-S2. Each of these have slight
+/// differences in the available pins.
 ///
 /// ESP32: Valid pin range is 0..39 with the following restrictions:
 ///    - 0       : pull-up resistor on most modules.
@@ -402,9 +403,17 @@ template <class Defs> struct GpioInputPUPD : public GpioInputPar<Defs, true, tru
 ///    - 6 - 11  : connected to flash.
 ///    - 12      : pull-down resistor on most modules.
 ///    - 15      : pull-up resistor on most modules.
-///    - 16, 17  : used for PSRAM on WROVER/WROVER-B modules.
 ///    - 37, 38  : not exposed on most modules.
 ///    - 34 - 39 : these pins are INPUT only.
+/// NOTE: ESP32 covers the ESP32-WROOM-32, DOWD, D2WD, S0WD, U4WDH and the
+/// ESP32-Solo. note that the ESP32-Solo is a single core module and is not
+/// recommended for use, additionally the ESP32-S2 is it's replacement.
+///
+/// ESP32-PICO-D4: Same as ESP32 but possibly one restricted pin below:
+///    - 16      : when PSRAM is included this pin may be used by flash.
+///
+/// ESP32-WROVER & WROVER-B: Same as ESP32 but with the following restrictions:
+///    - 16, 17  : typically used for PSRAM on WROVER/WROVER-B modules.
 ///
 /// ESP32-S2: Valid pin range is 0..46 with the following restrictions:
 ///    - 0       : pull-up resistor on most modules.

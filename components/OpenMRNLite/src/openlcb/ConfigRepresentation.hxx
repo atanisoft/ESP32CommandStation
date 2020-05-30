@@ -205,10 +205,7 @@ public:
     static constexpr typename decltype(                                        \
         TYPE::config_renderer())::OptionsType NAME##_options()                 \
     {                                                                          \
-        using SelfType = TYPE;                                                 \
-        using OptionsType =                                                    \
-            typename decltype(SelfType::config_renderer())::OptionsType;       \
-        return OptionsType(__VA_ARGS__);                                       \
+        return decltype(TYPE::config_renderer())::OptionsType(__VA_ARGS__);    \
     }                                                                          \
     static void render_content_cdi(                                            \
         const openlcb::EntryMarker<LINE> &, std::string *s)                    \

@@ -44,7 +44,6 @@ public:
   void status(const std::string&, ...);
   void wifi(const std::string&, ...);
   void track_power(const std::string&, ...);
-  void wifi_event(system_event_t *);
 
   void node_pong(openlcb::NodeID id);
 private:

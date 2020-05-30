@@ -427,8 +427,6 @@ int __attribute__((weak)) os_thread_create_helper(os_thread_t *thread,
                                 priority,
                                 (StackType_t *)stack_malloc(stack_size),
                                 (StaticTask_t *) malloc(sizeof(StaticTask_t)));
-    task_new->task = *thread;
-    task_new->name = (char*)pcTaskGetTaskName(*thread);
 #elif (configSUPPORT_DYNAMIC_ALLOCATION == 1)
     xTaskCreate(os_thread_start, (const char *const)name,
                 stack_size/sizeof(portSTACK_TYPE), priv, priority, thread);
@@ -625,8 +623,17 @@ long long os_get_time_monotonic(void)
     time *= clockmul;
     time >>= 2;
 #elif defined(CONFIG_IDF_TARGET)
-    time = esp_timer_get_time(); // microseconds since boot
-    time *= 1000ULL;             // convert to nanoseconds
+    // esp_timer_get_time() returns the number of microseconds since boot. The
+    // returned value is casted to int64_t whereas the underlying API is using
+    // uint64_t. This API is also used in arduino-esp32 via micros() which
+    // truncates the value to uint32_t (unsigned long).
+    //
+    // Using esp_timer_get_time() instead of clock_gettime() in ESP-IDF is
+    // preferred due to FRC vs RTC configuration options. FRC is the default
+    // option and is available on all ESP32 modules, esp_timer_get_time() is
+    // also used by arduino-esp32 for micros() even though it is truncated to
+    // unsigned long (uint32_t).
+    time = USEC_TO_NSEC(esp_timer_get_time());
 #else
     struct timespec ts;
 #if defined (__nuttx__)

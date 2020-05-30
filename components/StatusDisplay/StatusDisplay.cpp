@@ -197,8 +197,28 @@ StatusDisplay::StatusDisplay(openlcb::SimpleStackBase *stack, Service *service)
   clear();
   info("ESP32-CS: v%s", CONFIG_ESP32CS_SW_VERSION);
   wifi("IP:Pending");
-  Singleton<Esp32WiFiManager>::instance()->add_event_callback(
-    std::bind(&StatusDisplay::wifi_event, this, std::placeholders::_1));
+  Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
+  [&](esp_interface_t interface, uint32_t ip)
+  {
+    if (interface == ESP_IF_WIFI_STA)
+    {
+#if CONFIG_DISPLAY_COLUMN_COUNT > 16 || CONFIG_DISPLAY_TYPE_OLED
+      wifi("IP: %s", ipv4_to_string(ip).c_str());
+#else
+      wifi(ipv4_to_string(ip).c_str());
+#endif
+    }
+    else if (interface == ESP_IF_WIFI_AP)
+    {
+      wifi("SSID: %s"
+         , Singleton<esp32cs::LCCWiFiManager>::instance()->get_ssid().c_str());
+    }
+  });
+  Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
+  [&](esp_interface_t interface)
+  {
+    wifi("Disconnected");
+  });
   start_flow(STATE(init));
 #endif
 }
@@ -268,31 +288,6 @@ void StatusDisplay::track_power(const std::string &format, ...)
   lines_[2] = buf;
   lineChanged_[2] = true;
 #endif
-}
-
-void StatusDisplay::wifi_event(system_event_t *event)
-{
-  if(event->event_id == SYSTEM_EVENT_STA_GOT_IP ||
-       event->event_id == SYSTEM_EVENT_AP_START)
-  {
-    if (event->event_id == SYSTEM_EVENT_STA_GOT_IP)
-    {
-#if CONFIG_DISPLAY_COLUMN_COUNT > 16 || CONFIG_DISPLAY_TYPE_OLED
-      wifi("IP: " IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
-#else
-      wifi(IPSTR, IP2STR(&event->event_info.got_ip.ip_info.ip));
-#endif
-    }
-    else
-    {
-      wifi("SSID: %s"
-         , Singleton<esp32cs::LCCWiFiManager>::instance()->get_ssid().c_str());
-    }
-  } else if (event->event_id == SYSTEM_EVENT_STA_LOST_IP ||
-              event->event_id == SYSTEM_EVENT_AP_STOP)
-  {
-    wifi("Disconnected");
-  }
 }
 
 // NOTE: this code uses ets_printf() instead of LOG(VERBOSE, ...) due to the

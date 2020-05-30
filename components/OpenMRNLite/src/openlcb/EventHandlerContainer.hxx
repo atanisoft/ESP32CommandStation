@@ -40,6 +40,7 @@
 #include <algorithm>
 #include <vector>
 #include <forward_list>
+#include <stdint.h>
 #include <endian.h>
 
 #ifndef LOGLEVEL
