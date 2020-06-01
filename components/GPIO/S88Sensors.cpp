@@ -240,6 +240,7 @@ bool S88BusManager::removeBus(const uint8_t id)
 
 string S88BusManager::get_state_as_json()
 {
+  AtomicHolder l(this);
   string state = "[";
   for (const auto& sensorBus : buses_)
   {
@@ -307,7 +308,7 @@ string S88SensorBus::toJson(bool includeState)
   , JSON_S88_SENSOR_BASE_NODE, _sensorIDBase, JSON_COUNT_NODE, _sensors.size());
   if (includeState)
   {
-    serialized += StringPrintf("\"%s\":\"%s\"", JSON_STATE_NODE, getStateString().c_str());
+    serialized += StringPrintf(",\"%s\":\"%s\"", JSON_STATE_NODE, getStateString().c_str());
   }
   serialized += "}";
   return serialized;

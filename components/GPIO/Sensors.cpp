@@ -98,11 +98,17 @@ void SensorManager::sensorTask(void *param)
 
 string SensorManager::getStateAsJson()
 {
-  string status;
+  OSMutexLock l(&_lock);
+  string status = "[";
   for (const auto& sensor : sensors)
   {
+    if (status.length() > 1)
+    {
+      status += ",";
+    }
     status += sensor->toJson(true);
   }
+  status += "]"
   return status;
 }
 
