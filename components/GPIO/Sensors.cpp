@@ -108,7 +108,7 @@ string SensorManager::getStateAsJson()
     }
     status += sensor->toJson(true);
   }
-  status += "]"
+  status += "]";
   return status;
 }
 
