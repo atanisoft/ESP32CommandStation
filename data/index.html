@@ -385,10 +385,6 @@
           <input type="text" id="cs-cdi-ops-shutdown">
           <label for="cs-cdi-ops-shutdown-clear">Shutdown Cleared (hex):</label>
           <input type="text" id="cs-cdi-ops-shutdown-clear">
-          <label for="cs-cdi-ops-thermal">Thermal Shutdown (hex):</label>
-          <input type="text" id="cs-cdi-ops-thermal">
-          <label for="cs-cdi-ops-thermal-clear">Thermal Shutdown Cleared (hex):</label>
-          <input type="text" id="cs-cdi-ops-thermal-clear">
          </div>
         </div>
         <div id="cs-cdi-hbridge-prog">
@@ -1118,8 +1114,6 @@ function csConfigUpdate(data) {
  $('#cs-cdi-ops-short-clear').val(pad_hex(data.hbridges[0].short_clear, 16));
  $('#cs-cdi-ops-shutdown').val(pad_hex(data.hbridges[0].shutdown, 16));
  $('#cs-cdi-ops-shutdown-clear').val(pad_hex(data.hbridges[0].shutdown_clear, 16));
- $('#cs-cdi-ops-thermal').val(pad_hex(data.hbridges[0].thermal, 16));
- $('#cs-cdi-ops-thermal-clear').val(pad_hex(data.hbridges[0].thermal_clear, 16));
  $('#cs-cdi-prog-short').val(pad_hex(data.hbridges[1].short, 16));
  $('#cs-cdi-prog-short-clear').val(pad_hex(data.hbridges[1].short_clear, 16));
  $('#cs-cdi-prog-shutdown').val(pad_hex(data.hbridges[1].shutdown, 16));
@@ -1203,7 +1197,7 @@ function setupConfig() {
   } else if (tablist[section] == "Uplink") {
    url = String.format("/config?uplink-mode={0}&uplink-service={1}&uplink-manual={2}&uplink-manual-port={3}&uplink-reconnect={4}", $('#cs-lcc-uplink-mode').val(), $('#cs-lcc-uplink-auto-service').val(), $('#cs-lcc-uplink-manual-host').val(), $('#cs-lcc-uplink-manual-port').val(), $('#cs-lcc-uplink-reconnect').val());
   } else if (tablist[section] == "OPS") {
-   url = String.format("/config?ops-short={0}&ops-short-clear={1}&ops-shutdown={2}&ops-shutdown-clear={3}&ops-thermal={4}&ops-thermal-clear={5}", $('#cs-cdi-ops-short').val(), $('#cs-cdi-ops-short-clear').val(), $('#cs-cdi-ops-shutdown').val(), $('#cs-cdi-ops-shutdown-clear').val(), $('#cs-cdi-ops-thermal').val(), $('#cs-cdi-ops-thermal-clear').val());
+   url = String.format("/config?ops-short={0}&ops-short-clear={1}&ops-shutdown={2}&ops-shutdown-clear={3}", $('#cs-cdi-ops-short').val(), $('#cs-cdi-ops-short-clear').val(), $('#cs-cdi-ops-shutdown').val(), $('#cs-cdi-ops-shutdown-clear').val());
   } else if (tablist[section] == "PROG") {
    url = String.format("/config?prog-short={0}&prog-short-clear={1}&prog-shutdown={2}&prog-shutdown-clear={3}", $('#cs-cdi-prog-short').val(), $('#cs-cdi-prog-short-clear').val(), $('#cs-cdi-prog-shutdown').val(), $('#cs-cdi-prog-shutdown-clear').val());
   } else {

@@ -198,8 +198,7 @@ public:
 
   void reconfigure_hbridge(uint8_t hbridge_index
                          , string short_on, string short_off
-                         , string shutdown_on, string shutdown_off
-                         , string thermal_on = "", string thermal_off = "")
+                         , string shutdown_on, string shutdown_off)
   {
     bool upd = false;
     auto hbridge = cfg_.seg().hbridge().entry(hbridge_index);
@@ -211,14 +210,6 @@ public:
                       , string_to_uint64(shutdown_on), upd);
     CDI_COMPARE_AND_SET(hbridge.event_shutdown_cleared, fd_
                       , string_to_uint64(shutdown_off), upd);
-    // only OPS has the thermal pin
-    if (hbridge_index == esp32cs::OPS_CDI_TRACK_OUTPUT_IDX)
-    {
-      CDI_COMPARE_AND_SET(hbridge.event_thermal_shutdown, fd_
-                        , string_to_uint64(thermal_on), upd);
-      CDI_COMPARE_AND_SET(hbridge.event_thermal_shutdown_cleared, fd_
-                        , string_to_uint64(thermal_off), upd);
-    }
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
@@ -269,9 +260,7 @@ public:
                        "\"short\":\"%s\","
                        "\"short_clear\":\"%s\","
                        "\"shutdown\":\"%s\","
-                       "\"shutdown_clear\":\"%s\","
-                       "\"thermal\":\"%s\","
-                       "\"thermal_clear\":\"%s\""
+                       "\"shutdown_clear\":\"%s\""
                      "},"
                      "{"
                        "\"short\":\"%s\","
@@ -290,8 +279,6 @@ public:
                  , uint64_to_string_hex(ops.event_short_cleared().read(fd_)).c_str()
                  , uint64_to_string_hex(ops.event_shutdown().read(fd_)).c_str()
                  , uint64_to_string_hex(ops.event_shutdown_cleared().read(fd_)).c_str()
-                 , uint64_to_string_hex(ops.event_thermal_shutdown().read(fd_)).c_str()
-                 , uint64_to_string_hex(ops.event_thermal_shutdown_cleared().read(fd_)).c_str()
                  , uint64_to_string_hex(prog.event_short().read(fd_)).c_str()
                  , uint64_to_string_hex(prog.event_short_cleared().read(fd_)).c_str()
                  , uint64_to_string_hex(prog.event_shutdown().read(fd_)).c_str()
@@ -616,17 +603,13 @@ HTTP_HANDLER_IMPL(process_config, request)
   if (request->has_param("ops-short") &&
       request->has_param("ops-short-clear") &&
       request->has_param("ops-shutdown") &&
-      request->has_param("ops-shutdown-clear") &&
-      request->has_param("ops-thermal") &&
-      request->has_param("ops-thermal-clear"))
+      request->has_param("ops-shutdown-clear"))
   {
     configListener->reconfigure_hbridge(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX
                                       , request->param("ops-short")
                                       , request->param("ops-short-clear")
                                       , request->param("ops-shutdown")
-                                      , request->param("ops-shutdown-clear")
-                                      , request->param("ops-thermal")
-                                      , request->param("ops-thermal-clear"));
+                                      , request->param("ops-shutdown-clear"));
   }
   if (request->has_param("prog-short") &&
       request->has_param("prog-short-clear") &&

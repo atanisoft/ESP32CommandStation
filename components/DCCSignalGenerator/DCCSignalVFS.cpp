@@ -18,7 +18,6 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include "RMTTrackDevice.h"
 #include "EStopHandler.h"
 #include "Esp32RailComDriver.h"
-#include "HBridgeThermalMonitor.h"
 #include "TrackPowerBitInterface.h"
 
 #include <dcc/ProgrammingTrackBackend.hxx>
@@ -51,14 +50,6 @@ GPIO_PIN(OPS_SIGNAL, GpioOutputSafeLow, CONFIG_OPS_SIGNAL_PIN);
 
 /// OPS Track h-bridge enable pin.
 GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_ENABLE_PIN);
-
-#ifdef CONFIG_OPS_THERMAL_PIN
-/// OPS Track h-bridge thermal alert pin, active LOW.
-GPIO_PIN(OPS_THERMAL, GpioInputPU, CONFIG_OPS_THERMAL_PIN);
-#else
-/// OPS Track h-bridge thermal alert pin, not connected to physical pin.
-typedef DummyPinWithReadHigh OPS_THERMAL_Pin;
-#endif // CONFIG_OPS_THERMAL_PIN
 
 /// RailCom driver instance for the PROG track, unused.
 NoRailcomDriver progRailComDriver;
@@ -145,14 +136,13 @@ NoRailcomDriver opsRailComDriver;
 #endif // CONFIG_OPS_RAILCOM
 /// Initializer for all GPIO pins.
 typedef GpioInitializer<
-  OPS_SIGNAL_Pin, OPS_ENABLE_Pin, OPS_THERMAL_Pin
+  OPS_SIGNAL_Pin, OPS_ENABLE_Pin
 , PROG_SIGNAL_Pin, PROG_ENABLE_Pin
 > DCCGpioInitializer;
 
 static std::unique_ptr<openlcb::RefreshLoop> dcc_poller;
 static std::unique_ptr<RMTTrackDevice> track[RMT_CHANNEL_MAX];
 static std::unique_ptr<HBridgeShortDetector> track_mon[RMT_CHANNEL_MAX];
-static std::unique_ptr<HBridgeThermalMonitor> ops_thermal_mon;
 static std::unique_ptr<openlcb::BitEventConsumer> power_event;
 static std::unique_ptr<EStopHandler> estop_handler;
 static std::unique_ptr<ProgrammingTrackBackend> prog_track_backend;
@@ -393,9 +383,6 @@ void init_dcc_vfs(openlcb::Node *node, Service *service
 #endif
 #endif // CONFIG_OPS_RAILCOM
 
-  ops_thermal_mon.reset(
-    new HBridgeThermalMonitor(node, ops_cfg, OPS_THERMAL_Pin::instance()));
-
   track_mon[OPS_RMT_CHANNEL].reset(
     new HBridgeShortDetector(node, (adc1_channel_t)CONFIG_OPS_ADC
                            , OPS_ENABLE_Pin::instance()
@@ -438,8 +425,7 @@ void init_dcc_vfs(openlcb::Node *node, Service *service
 
   // Configure h-bridge polling
   dcc_poller.reset(new openlcb::RefreshLoop(node,
-    { ops_thermal_mon->polling()
-    , track_mon[OPS_RMT_CHANNEL].get()
+    { track_mon[OPS_RMT_CHANNEL].get()
     , track_mon[PROG_RMT_CHANNEL].get()
   }));
 

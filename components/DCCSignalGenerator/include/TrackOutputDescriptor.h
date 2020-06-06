@@ -49,24 +49,6 @@ namespace esp32cs
                   Name("H-Bridge Shutdown Cleared"),
                   Description("This event will be produced when the track "
                               "output power has returned to safe levels."));
-  CDI_GROUP_ENTRY(event_thermal_shutdown,
-                  openlcb::EventConfigEntry,
-                  Name("H-Bridge Thermal Shutdown"),
-                  Description("This event will be produced when the H-Bridge "
-                              "raises a thermal warning alert."));
-  CDI_GROUP_ENTRY(event_thermal_shutdown_cleared,
-                  openlcb::EventConfigEntry,
-                  Name("H-Bridge Thermal Shutdown Cleared"),
-                  Description("This event will be produced when the H-Bridge "
-                              "clears the thermal warning alert."));
-  CDI_GROUP_ENTRY(thermal_debounce,
-                  openlcb::Uint8ConfigEntry,
-                  Name("H-Bridge Thermal Shutdown Debounce"),
-                  Default(2),
-                  Description("Amount of time to allow for stabilization of "
-                              "the H-Bridge Thermal pin before production of "
-                              "an event. Each period is approximately 30 msec")
-  );
   CDI_GROUP_END();
 
   static constexpr uint8_t OPS_CDI_TRACK_OUTPUT_IDX = 0;

@@ -115,17 +115,6 @@ menu "DCC Signal"
             default 6 if OPS_ADC_CHANNEL_6
             default 7 if OPS_ADC_CHANNEL_7
 
-        config OPS_THERMAL_PIN
-            int "LMD18200 Thermal Alert pin"
-            range 0 39
-            depends on OPS_HBRIDGE_LMD18200
-            help
-                The LMD18200 has a thermal alert pin that will be HIGH if
-                the IC is too HOT for normal operation. When the command
-                station detects this condition it will shutdown the track
-                output and re-enable it once the thermal alert has been
-                cleared.
-
         config OPS_RAILCOM
             bool "Enable RailCom detector"
             default n

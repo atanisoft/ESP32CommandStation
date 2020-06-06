@@ -307,11 +307,7 @@ string ConfigurationManager::getCSConfig()
         {JSON_CDI_HBRIDGE_SHUTDOWN_EVENT_NODE,
           uint64_to_string_hex(ops.event_shutdown().read(configFd_))},
         {JSON_CDI_HBRIDGE_SHUTDOWN_CLEAR_EVENT_NODE,
-          uint64_to_string_hex(ops.event_shutdown_cleared().read(configFd_))},
-        {JSON_CDI_HBRIDGE_THERMAL_EVENT_NODE,
-          uint64_to_string_hex(ops.event_thermal_shutdown().read(configFd_))},
-        {JSON_CDI_HBRIDGE_THERMAL_CLEAR_EVENT_NODE,
-          uint64_to_string_hex(ops.event_thermal_shutdown_cleared().read(configFd_))},
+          uint64_to_string_hex(ops.event_shutdown_cleared().read(configFd_))}
       }
     },
     {CONFIG_PROG_TRACK_NAME,
@@ -355,9 +351,6 @@ bool is_restricted_pin(int8_t pin)
 #endif // ! CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
     CONFIG_OPS_ENABLE_PIN
   , CONFIG_OPS_SIGNAL_PIN
-#if defined(CONFIG_OPS_THERMAL_PIN)
-  , CONFIG_OPS_THERMAL_PIN
-#endif
   , CONFIG_PROG_ENABLE_PIN
   , CONFIG_PROG_SIGNAL_PIN
 

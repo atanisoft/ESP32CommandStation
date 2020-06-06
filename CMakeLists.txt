@@ -241,12 +241,6 @@ if (CONFIG_OPS_DCC_PREAMBLE_BITS GREATER 20)
     message(FATAL_ERROR "OPS track preamble bits is too high, a maximum of 20 bits is supported.")
 endif()
 
-if (CONFIG_OPS_HBRIDGE_LMD18200)
-    if (CONFIG_OPS_THERMAL_PIN GREATER_EQUAL 6 AND CONFIG_OPS_THERMAL_PIN LESS_EQUAL 11)
-        message(FATAL_ERROR "OPS H-Bridge thermal pin can not be set to pin 6-11 (used by onboard flash).")
-    endif()
-endif()
-
 if (CONFIG_OPS_RAILCOM)
     if(CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_OPS_RAILCOM_ENABLE_PIN)
         message(FATAL_ERROR "OPS RailCom enable pin and OPS H-Bridge enable pin must be unique.")
