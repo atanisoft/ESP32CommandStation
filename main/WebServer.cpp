@@ -374,20 +374,28 @@ void init_webserver(const esp32cs::Esp32ConfigDef &cfg)
                  , partition->label, esp_timer_get_time());
     return new JsonResponse(version);
   });
-  httpd->uri("/fs", HttpMethod::GET, [&](HttpRequest *req)
+  httpd->uri("/fs", HttpMethod::GET,
+  [&](HttpRequest *request) -> AbstractHttpResponse *
   {
-    string path = req->param("path");
-    string data = read_file_to_string(path);
-    string mimetype;
-    if (path.find(".xml") != string::npos)
+    string path = request->param("path");
+    struct stat statbuf;
+    // verify that the requested path exists
+    if (!stat(path.c_str(), &statbuf))
     {
-      mimetype = MIME_TYPE_TEXT_XML;
+      string data = read_file_to_string(path);
+      string mimetype = http::MIME_TYPE_TEXT_PLAIN;
+      if (path.find(".xml") != string::npos)
+      {
+        mimetype = MIME_TYPE_TEXT_XML;
+      }
+      else if (path.find(".json") != string::npos)
+      {
+        mimetype = http::MIME_TYPE_APPLICATION_JSON;
+      }
+      return new StringResponse(data, mimetype);
     }
-    else if (path.find(".json") != string::npos)
-    {
-      mimetype = http::MIME_TYPE_APPLICATION_JSON;
-    }
-    return new StringResponse(data, mimetype);
+    request->set_status(HttpStatusCode::STATUS_NOT_FOUND);
+    return nullptr;
   });
   httpd->uri("/power", HttpMethod::GET | HttpMethod::PUT, process_power);
   httpd->uri("/config", HttpMethod::GET | HttpMethod::POST, process_config);
