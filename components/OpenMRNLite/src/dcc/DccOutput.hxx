@@ -194,7 +194,7 @@ public:
 
     /// 1 if we are in a railcom cutout currently. Set and cleared by the
     /// driver before calling the start/stop railcom cutout functions.
-    static std::atomic_uint8_t isRailcomCutoutActive_;
+    static uint8_t isRailcomCutoutActive_;
 
     /// Called by the driver to decide whether to make this channel participate
     /// in the railcom cutout.
@@ -238,7 +238,7 @@ std::atomic_uint8_t DccOutputHw<N>::outputDisableReasons_ {
 template <int N>
 std::atomic_uint8_t DccOutputHw<N>::isRailcomCutoutEnabled_ {
     (uint8_t)DccOutput::RailcomCutout::LONG_CUTOUT};
-template <int N> std::atomic_uint8_t DccOutputHw<N>::isRailcomCutoutActive_ {0};
+template <int N> uint8_t DccOutputHw<N>::isRailcomCutoutActive_ {0};
 
 /// Interface that the actual outputs have to implement in their
 /// hardware-specific classes.

@@ -38,6 +38,7 @@
 
 #include <functional>
 
+#include "dcc/DccOutput.hxx"
 #include "dcc/Packet.hxx"
 #include "dcc/PacketSource.hxx"
 #include "dcc/UpdateLoop.hxx"
@@ -232,6 +233,10 @@ public:
     }
 
 private:
+    /// How many packets we should send to the track in order to assume that
+    /// the packet queue has been completely flushed.
+    static constexpr unsigned QUEUE_FLUSH_PACKET_COUNT = 8;
+    
     Action enter_service_mode()
     {
         // 1. switch short circuit detector to service mode
@@ -241,7 +246,6 @@ private:
         // 3. switch the power outputs to the programming track. That's
         // dependant on the hardware revision.
         enableProgramTrackMode_();
-        /// @todo: do we need to flush the packet queue here?
         if (!packet_processor_add_refresh_source(
                 this, dcc::UpdateLoopBase::PROGRAMMING_PRIORITY))
         {
@@ -249,17 +253,63 @@ private:
             packet_processor_remove_refresh_source(this);
             return return_with_error(openlcb::Defs::ERROR_OUT_OF_ORDER);
         }
-        // enable_dcc();
+        // Flushes the packet queue with reset packets.
+        request()->packetToSend_.set_dcc_reset_all_decoders();
+        request()->packetToSend_.packet_header.send_long_preamble = 1;
+        if (!request()->repeatCount_)
+        {
+            request()->repeatCount_ = QUEUE_FLUSH_PACKET_COUNT;
+        }
+        isWaitingForPackets_ = 1;
+        return wait_and_call(STATE(reset_flush_done));
+
+    }
+
+    /// Called during service mode enter when we managed to flush all packets
+    /// from the queue.
+    Action reset_flush_done() {
+        auto* pgm = get_dcc_output(DccOutput::PGM);
+        if (pgm)
+        {
+            // Enables power to the program track now that we have only reset
+            // packets in the queue.
+            pgm->clear_disable_output_for_reason(
+                DccOutput::DisableReason::INITIALIZATION_PENDING);
+        }
         return return_ok();
     }
 
     Action exit_service_mode()
     {
-        packet_processor_remove_refresh_source(this);
-        /// @todo: maybe we need to flush the packet queue here as well,
-        /// otherwise we might be sending out service mode reset packets to the
-        /// mainline.
+        // Algorithm for exiting service mode:
+        // 1. disable the output
+        // 2. flush the DCC send queue with idle packets
+        // 3. call the hardware to switch over to mainline mode
+        // 4. reenable normal packet source by removing override source.
+        auto* pgm = get_dcc_output(DccOutput::PGM);
+        if (pgm)
+        {
+            // Symmetric to {\link reset_flush_done }.
+            pgm->disable_output_for_reason(
+                DccOutput::DisableReason::INITIALIZATION_PENDING);
+        }
+
+        request()->packetToSend_.set_dcc_idle();
+        if (!request()->repeatCount_)
+        {
+            request()->repeatCount_ = QUEUE_FLUSH_PACKET_COUNT;
+        }
+        isWaitingForPackets_ = 1;
+        return wait_and_call(STATE(exit_flush_done));
+    }
+
+    /// Called during service mode exit when we managed to flush all packets
+    /// from the queue.
+    Action exit_flush_done()
+    {
         disableProgramTrackMode_();
+        packet_processor_remove_refresh_source(this);
+
         return return_ok();
     }
 

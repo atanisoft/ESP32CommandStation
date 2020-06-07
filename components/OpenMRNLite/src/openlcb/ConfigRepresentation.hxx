@@ -205,7 +205,10 @@ public:
     static constexpr typename decltype(                                        \
         TYPE::config_renderer())::OptionsType NAME##_options()                 \
     {                                                                          \
-        return decltype(TYPE::config_renderer())::OptionsType(__VA_ARGS__);    \
+        using SelfType = TYPE;                                                 \
+        using OptionsType =                                                    \
+            typename decltype(SelfType::config_renderer())::OptionsType;       \
+        return OptionsType(__VA_ARGS__);                                       \
     }                                                                          \
     static void render_content_cdi(                                            \
         const openlcb::EntryMarker<LINE> &, std::string *s)                    \
@@ -297,6 +300,17 @@ public:
 #define CDI_READ_TRIMMED(PATH, fd)                                             \
     PATH().read_or_write_trimmed(                                              \
         fd, PATH##_options().minvalue(), PATH##_options().maxvalue())
+
+/// Requests a readout of a numeric variable with verifying range. If the value
+/// currently present in the config file is outside the defined
+/// minimum/maximum, then sets the value to the default value in the config
+/// file (overwriting). Returns the current value after trimming.
+///
+/// Usage:
+///   uint16_t my_value = CDI_READ_TRIM_DEFAULT(cfg.seg().foo_bar, fd);
+#define CDI_READ_TRIM_DEFAULT(PATH, fd)                                        \
+    PATH().read_or_write_default(fd, PATH##_options().minvalue(),              \
+        PATH##_options().maxvalue(), PATH##_options().defaultvalue())
 
 /// Defines a repeated group of a given type and a given number of repeats.
 ///
