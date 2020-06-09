@@ -9,4 +9,4 @@ docs/html
 docs/esp32cs.tag
 docs/warnings
 data/*.gz
-pcb/ESP32-CS.*-bak
+pcb/*.*-bak
