@@ -684,7 +684,7 @@ HTTP_HANDLER_IMPL(process_prog, request)
           }
           else
           {
-            LOG(WARNING, "Failed to read address MSB/LSB");
+            LOG(WARNING, "[WebSrv] Failed to read address MSB/LSB");
             request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
           }
         }
@@ -703,7 +703,7 @@ HTTP_HANDLER_IMPL(process_prog, request)
             }
             else
             {
-              LOG(WARNING, "Unable to read address MSB/LSB");
+              LOG(WARNING, "[WebSrv] Unable to read address MSB/LSB");
               request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
             }
           }
@@ -718,7 +718,7 @@ HTTP_HANDLER_IMPL(process_prog, request)
             }
             else
             {
-              LOG(WARNING, "Unable to read short address CV");
+              LOG(WARNING, "[WebSrv] Unable to read short address CV");
               request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
             }
           }
@@ -741,7 +741,7 @@ HTTP_HANDLER_IMPL(process_prog, request)
       }
       else
       {
-        LOG(WARNING, "Failed to read decoder configuration");
+        LOG(WARNING, "[WebSrv] Failed to read decoder configuration");
         request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
       }
     }
@@ -975,11 +975,40 @@ HTTP_HANDLER_IMPL(process_loco, request)
         }
         if (request->has_param(JSON_IDLE_ON_STARTUP_NODE))
         {
-          traindb->set_train_auto_idle(address, request->param(JSON_IDLE_ON_STARTUP_NODE, false));
+          traindb->set_train_auto_idle(address
+                                     , request->param(JSON_IDLE_ON_STARTUP_NODE
+                                                    , false));
         }
         if (request->has_param(JSON_DEFAULT_ON_THROTTLE_NODE))
         {
-          traindb->set_train_show_on_limited_throttle(address, request->param(JSON_DEFAULT_ON_THROTTLE_NODE, false));
+          traindb->set_train_show_on_limited_throttle(
+            address, request->param(JSON_DEFAULT_ON_THROTTLE_NODE, false));
+        }
+        // search for and remap functions if present
+        for (uint8_t fn = 0; fn <= 28; fn++)
+        {
+          string fArg = StringPrintf("f%d", fn);
+          if (request->has_param(fArg.c_str()))
+          {
+            commandstation::Symbols label =
+            static_cast<commandstation::Symbols>(
+              request->param(fArg, commandstation::Symbols::FN_UNKNOWN));
+            traindb->set_train_function_label(address, fn, label);
+          }
+        }
+        if (request->has_param(JSON_MODE_NODE))
+        {
+          int8_t mode = request->param(JSON_MODE_NODE, -1);
+          if (mode < 0)
+          {
+            LOG_ERROR("[WebSrv] Invalid parameters for setting mode:\n%s"
+                    , request->to_string().c_str());
+            request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
+            return nullptr;
+          }
+          commandstation::DccMode drive_mode =
+            static_cast<commandstation::DccMode>(mode);
+          traindb->set_train_drive_mode(address, drive_mode);
         }
         return new JsonResponse(traindb->get_entry_as_json(address));
       }
@@ -1051,7 +1080,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
           loco->set_speed(upd_speed);
         }
         
-        for (uint8_t funcID = 0; funcID <=28 ; funcID++)
+        for (uint8_t funcID = 0; funcID <= 28; funcID++)
         {
           string fArg = StringPrintf("f%d", funcID);
           if (request->has_param(fArg.c_str()))

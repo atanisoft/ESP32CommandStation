@@ -30,14 +30,14 @@ namespace commandstation
 // JSON serialization mappings for the commandstation::DccMode enum
 NLOHMANN_JSON_SERIALIZE_ENUM(DccMode,
 {
-  { DCCMODE_DEFAULT,     "DCC" },
+  { DCCMODE_DEFAULT,     "DCC (default)" },
   { DCCMODE_OLCBUSER,    "DCC-OlcbUser" },
   { MARKLIN_DEFAULT,     "Marklin" },
   { MARKLIN_OLD,         "Marklin (v1)" },
   { MARKLIN_NEW,         "Marklin (v2, f0-f4)" },
   { MARKLIN_TWOADDR,     "Marklin (v2, f0-f8)" },
   { MFX,                 "Marklin (MFX)" },
-  { DCC_DEFAULT,         "DCC"},
+  { DCC_DEFAULT,         "DCC (auto speed step)"},
   { DCC_14,              "DCC (14 speed step)"},
   { DCC_28,              "DCC (28 speed step)"},
   { DCC_128,             "DCC (128 speed step)"},
@@ -125,7 +125,7 @@ Esp32TrainDbEntry::Esp32TrainDbEntry(Esp32PersistentTrainData data
 string Esp32TrainDbEntry::identifier()
 {
   dcc::TrainAddressType addrType =
-    dcc_mode_to_address_type(data_.mode, data_.address);
+    dcc_mode_to_address_type((DccMode)data_.mode, data_.address);
   if (addrType == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
       addrType == dcc::TrainAddressType::DCC_LONG_ADDRESS)
   {
@@ -164,7 +164,7 @@ openlcb::NodeID Esp32TrainDbEntry::get_traction_node()
   else
   {
     return openlcb::TractionDefs::train_node_id_from_legacy(
-        dcc_mode_to_address_type(data_.mode, data_.address), data_.address);
+        dcc_mode_to_address_type((DccMode)data_.mode, data_.address), data_.address);
   }
 }
 
@@ -194,7 +194,7 @@ void Esp32TrainDbEntry::recalcuate_max_fn()
   // recalculate the maxFn_ based on the first occurrence of FN_NONEXISTANT
   // and if not found default to the size of the functions labels vector.
   auto e = std::find_if(data_.functions.begin(), data_.functions.end()
-                      , [](const Symbols &e)
+                      , [](const uint8_t &e)
   {
     return e == FN_NONEXISTANT;
   });
@@ -228,7 +228,13 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
   {
     auto roster =
       Singleton<ConfigurationManager>::instance()->load(TRAIN_DB_JSON_FILE);
-    json stored_trains = json::parse(roster);
+    json stored_trains = json::parse(roster, nullptr, false);
+    if (stored_trains.is_discarded())
+    {
+      LOG_ERROR("[TrainDB] database is corrupt, no trains loaded!");
+      Singleton<ConfigurationManager>::instance()->remove(TRAIN_DB_JSON_FILE);
+      return;
+    }
     for (auto &entry : stored_trains)
     {
       auto data = entry.get<Esp32PersistentTrainData>();
@@ -503,30 +509,88 @@ void Esp32TrainDatabase::set_train_show_on_limited_throttle(unsigned address
   }
 }
 
+void Esp32TrainDatabase::set_train_function_label(unsigned address, uint8_t fn_id, Symbols label)
+{
+  OSMutexLock l(&knownTrainsLock_);
+  LOG(VERBOSE, "[TrainDB] Searching for train with address %u", address);
+  auto entry = FIND_TRAIN(address);
+  if (entry != knownTrains_.end())
+  {
+    (*entry)->set_function_label(fn_id, label);
+  }
+  else
+  {
+    LOG_ERROR("[TrainDB] train %u not found, unable to set function label!"
+            , address);
+  }
+}
+
+void Esp32TrainDatabase::set_train_drive_mode(unsigned address, commandstation::DccMode mode)
+{
+  OSMutexLock l(&knownTrainsLock_);
+  LOG(VERBOSE, "[TrainDB] Searching for train with address %u", address);
+  auto entry = FIND_TRAIN(address);
+  if (entry != knownTrains_.end())
+  {
+    (*entry)->set_legacy_drive_mode(mode);
+  }
+  else
+  {
+    LOG_ERROR("[TrainDB] train %u not found, unable to set drive mode!"
+            , address);
+  }
+}
+
 string Esp32TrainDatabase::get_all_entries_as_json()
 {
   OSMutexLock l(&knownTrainsLock_);
-  // If we don't have any trains in our db return an empty set to the caller.
-  if (knownTrains_.empty())
-  {
-    return "[]";
-  }
-  // convert our db into a json set and return it to the caller.
-  json j;
+  string res = "[";
   for (auto entry : knownTrains_)
   {
-    j.push_back(entry->get_data());
+    if (res.length() > 1)
+    {
+      res += ",";
+    }
+    res += get_entry_as_json_locked(entry->get_legacy_address());
   }
-  return j.dump();
+  res += "]";
+  return res;
 }
 
 string Esp32TrainDatabase::get_entry_as_json(unsigned address)
 {
   OSMutexLock l(&knownTrainsLock_);
+  return get_entry_as_json_locked(address);
+}
+
+string Esp32TrainDatabase::get_entry_as_json_locked(unsigned address)
+{
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
   {
-    json j = (*entry)->get_data();
+    auto train = (*entry);
+    json j =
+    {
+      { "name", train->get_train_name() },
+      { "address", train->get_legacy_address() },
+      { "idleOnStartup", train->is_auto_idle() },
+      { "defaultOnThrottles", train->is_show_on_limited_throttles() },
+      { "mode",
+        {
+          { "name", static_cast<DccMode>(train->get_legacy_drive_mode()) },
+          { "type", train->get_legacy_drive_mode() }
+        }
+      }
+    };
+    for (uint8_t idx = 0; idx < DCC_MAX_FN; idx++)
+    {
+      j["functions"].push_back(
+      {
+        { "id", idx },
+        { "name", static_cast<Symbols>(train->get_function_label(idx)) },
+        { "type", train->get_function_label(idx) }
+      });
+    }
     return j.dump();
   }
   return "{}";

@@ -45,16 +45,14 @@ namespace esp32cs
 {
   using namespace commandstation;
 
-  constexpr uint8_t DCC_MAX_LOCO_FUNCTIONS = 28;
-
   struct Esp32PersistentTrainData
   {
     uint16_t address;
     std::string name;
     bool automatic_idle;
     bool show_on_limited_throttles;
-    DccMode mode;
-    std::vector<Symbols> functions;
+    uint8_t mode;
+    std::vector<uint8_t> functions;
     Esp32PersistentTrainData()
     {
     }
@@ -72,7 +70,7 @@ namespace esp32cs
         this->functions.push_back(Symbols::LIGHT);
         this->functions.push_back(Symbols::BELL);
         this->functions.push_back(Symbols::HORN);
-        while (this->functions.size() < DCC_MAX_LOCO_FUNCTIONS)
+        while (this->functions.size() < DCC_MAX_FN)
         {
           this->functions.push_back(Symbols::FN_UNKNOWN);
         }
@@ -127,7 +125,7 @@ namespace esp32cs
 
     DccMode get_legacy_drive_mode() override
     {
-      return data_.mode;
+      return (DccMode)data_.mode;
     }
 
     void set_legacy_drive_mode(DccMode mode)
@@ -193,6 +191,11 @@ namespace esp32cs
       return data_.automatic_idle;
     }
 
+    bool is_show_on_limited_throttles()
+    {
+      return data_.show_on_limited_throttles;
+    }
+
   private:
     void recalcuate_max_fn();
     Esp32PersistentTrainData data_;
@@ -245,6 +248,8 @@ namespace esp32cs
     void set_train_name(unsigned address, std::string name);
     void set_train_auto_idle(unsigned address, bool idle);
     void set_train_show_on_limited_throttle(unsigned address, bool show);
+    void set_train_function_label(unsigned address, uint8_t fn_id, Symbols label);
+    void set_train_drive_mode(unsigned address, DccMode mode);
 
     std::string get_all_entries_as_json();
     std::string get_entry_as_json(unsigned address);
@@ -262,6 +267,7 @@ namespace esp32cs
     void persist();
 
   private:
+    std::string get_entry_as_json_locked(unsigned address);
     openlcb::SimpleStackBase *stack_;
     bool entryDeleted_{false};
     OSMutex knownTrainsLock_;
