@@ -20,6 +20,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include "Esp32RailComDriver.h"
 #include "TrackPowerBitInterface.h"
 
+#include <dcc/DccOutput.hxx>
 #include <dcc/ProgrammingTrackBackend.hxx>
 #include <dcc/RailCom.hxx>
 #include <dcc/RailcomHub.hxx>
@@ -60,7 +61,7 @@ GPIO_PIN(PROG_SIGNAL, GpioOutputSafeLow, CONFIG_PROG_SIGNAL_PIN);
 /// PROG Track h-bridge enable pin.
 GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_ENABLE_PIN);
 
-#if defined(CONFIG_OPS_RAILCOM)
+#if CONFIG_OPS_RAILCOM
 /// OPS Track h-bridge brake pin, active HIGH.
 GPIO_PIN(OPS_HBRIDGE_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_RAILCOM_BRAKE_PIN);
 
@@ -73,13 +74,13 @@ GPIO_PIN(OPS_RAILCOM_DATA, GpioInputPU, CONFIG_OPS_RAILCOM_UART_RX_PIN);
 /// RailCom hardware definition
 struct RailComHW
 {
-#if defined(CONFIG_OPS_RAILCOM_UART1)
+#if CONFIG_OPS_RAILCOM_UART1
   static constexpr uart_port_t UART = UART_NUM_1;
   static constexpr uart_dev_t *UART_BASE = &UART1;
   static constexpr periph_module_t UART_PERIPH = PERIPH_UART1_MODULE;
   static constexpr int UART_ISR_SOURCE = ETS_UART1_INTR_SOURCE;
   static constexpr uint32_t UART_MATRIX_IDX = U1RXD_IN_IDX;
-#elif defined(CONFIG_OPS_RAILCOM_UART2)
+#elif CONFIG_OPS_RAILCOM_UART2
   static constexpr uart_port_t UART = UART_NUM_2;
   static constexpr uart_dev_t *UART_BASE = &UART2;
   static constexpr periph_module_t UART_PERIPH = PERIPH_UART2_MODULE;
@@ -146,7 +147,7 @@ static std::unique_ptr<HBridgeShortDetector> track_mon[RMT_CHANNEL_MAX];
 static std::unique_ptr<openlcb::BitEventConsumer> power_event;
 static std::unique_ptr<EStopHandler> estop_handler;
 static std::unique_ptr<ProgrammingTrackBackend> prog_track_backend;
-#if defined(CONFIG_OPS_RAILCOM)
+#if CONFIG_OPS_RAILCOM
 static std::unique_ptr<dcc::RailcomHubFlow> railcom_hub;
 static std::unique_ptr<dcc::RailcomPrintfFlow> railcom_dumper;
 #endif // CONFIG_OPS_RAILCOM
@@ -474,3 +475,10 @@ void TrackPowerBit::set_state(bool new_value)
 }
 
 } // namespace esp32cs
+
+// This needs to be declared in the global namespace
+// TODO
+DccOutput *get_dcc_output(DccOutput::Type type)
+{
+  return nullptr;
+}
