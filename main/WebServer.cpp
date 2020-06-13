@@ -29,7 +29,6 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <esp_ota_ops.h>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <Httpd.h>
-#include <json.hpp>
 #include <JsonConstants.h>
 #include <LCCStackManager.h>
 #include <LCCWiFiManager.h>
@@ -882,22 +881,25 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
   {
     return "{}";
   }
-  nlohmann::json j =
-  {
-    { JSON_ADDRESS_NODE, t->legacy_address() },
-    { JSON_SPEED_NODE, (int)t->get_speed().mph() },
-    { JSON_DIRECTION_NODE
-    , t->get_speed().direction() == dcc::SpeedType::REVERSE ? JSON_VALUE_REVERSE
-                                                            : JSON_VALUE_FORWARD},
-  };
+  string res =
+    StringPrintf("{\"%s\":%d,\"%s\":%d,\"%s\":\"%s\",\"%s\":["
+               , JSON_ADDRESS_NODE, t->legacy_address()
+               , JSON_SPEED_NODE, (int)t->get_speed().mph()
+               , JSON_DIRECTION_NODE
+               , t->get_speed().direction() == dcc::SpeedType::REVERSE ? JSON_VALUE_REVERSE
+                                                                       : JSON_VALUE_FORWARD
+               , JSON_FUNCTIONS_NODE);
+
   for (uint8_t funcID = 0; funcID < DCC_MAX_FN; funcID++)
   {
-    j[JSON_FUNCTIONS_NODE].push_back({
-      { JSON_ID_NODE, funcID },
-      { JSON_STATE_NODE, t->get_fn(funcID) }
-    });
+    if (funcID)
+    {
+      res += ",";
+    }
+    res += StringPrintf("{\"%s\":%d,\"%s\":%d}", JSON_ID_NODE, funcID, JSON_STATE_NODE, t->get_fn(funcID));
   }
-  return j.dump();
+  res += "]}";
+  return res;
 }
 
 #define GET_LOCO_VIA_EXECUTOR(NAME, address)                                          \
@@ -971,7 +973,15 @@ HTTP_HANDLER_IMPL(process_loco, request)
         traindb->create_if_not_found(address, std::to_string(address));
         if (request->has_param(JSON_NAME_NODE))
         {
-          traindb->set_train_name(address, request->param(JSON_NAME_NODE));
+          auto name = request->param(JSON_NAME_NODE);
+          if (name.empty() || name.length() > 16)
+          {
+            LOG_ERROR("[WebSrv] Received locomotive name that is too long, "
+                      "returning error.\n%s", request->to_string().c_str());
+            request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
+            return nullptr;
+          }
+          traindb->set_train_name(address, name);
         }
         if (request->has_param(JSON_IDLE_ON_STARTUP_NODE))
         {
