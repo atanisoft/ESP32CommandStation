@@ -6,7 +6,7 @@ layout: default
 The ESP32 Command Station code is built on top of the ESP-IDF framework.
 
 ## Setting up ESP-IDF build environment
-ESP-IDF is a required component and unfortunately there are only a few options for setting up the build environment.
+ESP-IDF is a required component and unfortunately there are only a few options for setting up the build environment. For all options it is required to have Python3 and the Git client installed and available in the path.
 
 ### VSCode "Espressif IDF" extension
 This is a very easy way to install all components and configure them for building. There are a few bugs in the plugin still but overall it will work.
@@ -27,6 +27,7 @@ from the ESP32 Command Station directory.
 If you are using the VSCode extension click on the gear ( :gear: ) icon in the bottom status line to use the graphical menuconfig tool (warning, this tool may be unstable!)
 
 ### Configuration
+
 | Component | Description |
 | --------- | ----------- |
 | [LCC Configuration](#layout-command-control-configuration) | Layout Command Control, an NMRA standard, that allows compatible devices to interact on a dedicated bus seperate from the DCC bus. |
