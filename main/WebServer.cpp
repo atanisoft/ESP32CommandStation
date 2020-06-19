@@ -1142,8 +1142,7 @@ HTTP_HANDLER_IMPL(process_outputs, request)
   }
   else if (request->method() == HttpMethod::POST)
   {
-    // TODO: add constant for the -1
-    int8_t pin = request->param(JSON_PIN_NODE, -1);
+    int8_t pin = request->param(JSON_PIN_NODE, GPIO_NUM_NC);
     bool inverted = request->param(JSON_INVERTED_NODE, false);
     bool forceState = request->param(JSON_FORCE_STATE_NODE, false);
     bool defaultState = request->param(JSON_DEFAULT_STATE_NODE, false);
