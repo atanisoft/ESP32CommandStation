@@ -14,9 +14,10 @@ These are must have features/bug fixes for v1.5.0:
     -   [x] Basic integration is functional (loco request works for dynamic locos)
     -   [x] Persisted locos that are not active can not be requested from UWT-100.
 -   [x] LCC: Add fallback option for Esp32WiFiManager to not reboot the node when SSID connect fails and SoftAP is active.
--   [ ] Misc: Scrub code for TODO comments or unimplemented methods.
+-   [x] Misc: Scrub code for TODO comments or unimplemented methods.
 -   [x] Roster: Implement delete loco.
 -   [x] Roster: Implement auto-idle loco.
+-   [x] Roster: Roster Entries should contain function id mappings.
 -   [x] S88: Convert to use openlcb::Polling model rather than tasks.
 -   [x] Turnouts: Switch fully to DCC address only support, for DCC++ compatibility decode the data and convert.
 -   [x] Web: Entering loco name as "loco #3" results in "loco 33" being registered.
@@ -98,7 +99,6 @@ These entries are items being tracked for a future release, these are not listed
 -   [ ] Nextion: Replace Routes page with a Setup page which will include route creation.
 -   [ ] OTA: OTA support via JMRI / LCC using OpenMRN Bootloader.
 -   [ ] OTA: Return to normal mode on Nextion when OTA fails.
--   [ ] Roster: Roster Entries should contain function id mappings.
 -   [ ] Roster: Expose db entries via R/W CDI.
 -   [ ] S88: Add S88 sensor data to InfoScreen status line, 16 sensor output rotation.
 -   [ ] Sensors: Convert to use openlcb::Polling model rather than tasks.

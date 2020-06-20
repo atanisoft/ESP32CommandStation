@@ -46,8 +46,11 @@ namespace openlcb
 //
 void BroadcastTime::clear_timezone()
 {
+// disable the reset of the timezone as it is global on the esp32.
+#ifndef ESP32
         setenv("TZ", "GMT0", 1);
         tzset();
+#endif
 }
 
 } // namespace openlcb

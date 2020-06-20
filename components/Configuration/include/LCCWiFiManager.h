@@ -18,6 +18,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include <esp_wifi.h>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <memory>
+#include <openlcb/BroadcastTimeServer.hxx>
 #include <utils/Singleton.hxx>
 
 #include "CSConfigDescriptor.h"
@@ -55,6 +56,9 @@ public:
   {
     return ssid_;
   }
+#if CONFIG_FASTCLOCK_REALTIME
+  void real_time_clock_sync(time_t seconds);
+#endif // CONFIG_FASTCLOCK_REALTIME
 private:
   openlcb::SimpleStackBase *stack_;
   const esp32cs::Esp32ConfigDef cfg_;
@@ -64,6 +68,7 @@ private:
   wifi_mode_t mode_{WIFI_MODE_STA};
   std::unique_ptr<tcpip_adapter_ip_info_t> stationIP_{nullptr};
   ip_addr_t stationDNS_{ip_addr_any};
+  std::unique_ptr<openlcb::BroadcastTimeServer> realTimeClock_;
 };
 
 } // namespace esp32cs

@@ -16,9 +16,9 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 **********************************************************************/
 
 #include "ConfigurationManager.h"
-#include "JsonConstants.h"
 #include "LCCStackManager.h"
 
+#include <algorithm>
 #include <dirent.h>
 #include <driver/sdmmc_defs.h>
 #include <driver/sdmmc_host.h>
@@ -26,18 +26,12 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <driver/sdspi_host.h>
 #include <esp_spiffs.h>
 #include <esp_vfs_fat.h>
-#include <Httpd.h>
-#include <json.hpp>
-#include <openlcb/MemoryConfig.hxx>
+#include <freertos_drivers/esp32/Esp32Gpio.hxx>
 #include <sdmmc_cmd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <utils/AutoSyncFileFlow.hxx>
 #include <utils/FileUtils.hxx>
 
-using nlohmann::json;
-
-static constexpr const char ESP32_CS_CONFIG_JSON[] = "esp32cs-config.json";
 static constexpr const char FACTORY_RESET_MARKER_FILE[] = "resetcfg.txt";
 
 #if defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET_PIN) && CONFIG_ESP32CS_FORCE_FACTORY_RESET_PIN >= 0
@@ -48,11 +42,8 @@ GPIO_PIN(FACTORY_RESET, GpioInputPU, CONFIG_ESP32CS_FORCE_FACTORY_RESET_PIN);
 typedef DummyPinWithReadHigh FACTORY_RESET_Pin;
 #endif // CONFIG_ESP32CS_FORCE_FACTORY_RESET_PIN
 
-// holder of the parsed configuration.
-json csConfig;
-
 // Helper which converts a string to a uint64 value.
-uint64_t string_to_uint64(string value)
+uint64_t string_to_uint64(std::string value)
 {
   // remove period characters if present
   value.erase(std::remove(value.begin(), value.end(), '.'), value.end());
@@ -60,7 +51,7 @@ uint64_t string_to_uint64(string value)
   return std::stoull(value, nullptr, 16);
 }
 
-void recursiveWalkTree(const string &path, bool remove=false)
+void recursiveWalkTree(const string &path, bool remove = false)
 {
   DIR *dir = opendir(path.c_str());
   if (dir)
@@ -102,20 +93,24 @@ void recursiveWalkTree(const string &path, bool remove=false)
   }
 }
 
+static constexpr uint64_t ONE_MB = 1048576ULL;
 ConfigurationManager::ConfigurationManager(const esp32cs::Esp32ConfigDef &cfg)
   : cfg_(cfg)
 {
-#if defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET)
-  bool factory_reset_config{true};
+#if CONFIG_ESP32CS_FORCE_FACTORY_RESET
+  bool factory_reset_config = true;
 #else
-  bool factory_reset_config{false};
+  bool factory_reset_config = false;
 #endif
+
+  FACTORY_RESET_Pin::hw_init();
 
   if (FACTORY_RESET_Pin::instance()->is_clr())
   {
     factory_reset_config = true;
   }
 
+  // Use SPI mode instead of SDMMC due to TTGO-T1 failing to mount the SD card.
   sdmmc_host_t sd_host = SDSPI_HOST_DEFAULT();
   sdspi_slot_config_t sd_slot = SDSPI_SLOT_CONFIG_DEFAULT();
   esp_vfs_fat_mount_config_t sd_cfg =
@@ -128,19 +123,19 @@ ConfigurationManager::ConfigurationManager(const esp32cs::Esp32ConfigDef &cfg)
                                         , &sd_cfg, &sd_);
   if (err == ESP_OK)
   {
-    LOG(INFO, "[Config] SD card (%s %.2f MB) mounted successfully."
-      , sd_->cid.name
-      , (float)(((uint64_t)sd_->csd.capacity) * sd_->csd.sector_size) / 1048576);
-    FATFS *fsinfo;
-    DWORD clusters;
-    if (f_getfree("0:", &clusters, &fsinfo) == FR_OK)
+    float capacity = ((uint64_t)sd_->csd.capacity) * sd_->csd.sector_size;
+    LOG(INFO, "[Config] SD card '%s' mounted, max capacity %.2f MB"
+      , sd_->cid.name, (float)(capacity / ONE_MB));
+
+    FATFS *fs;
+    DWORD c;
+    if (f_getfree("0:", &c, &fs) == FR_OK)
     {
-      LOG(INFO, "[Config] SD usage: %.2f/%.2f MB",
-          (float)(((uint64_t)fsinfo->csize *
-                  (fsinfo->n_fatent - 2 - fsinfo->free_clst)) *
-                  fsinfo->ssize) / 1048576L,
-          (float)(((uint64_t)fsinfo->csize * (fsinfo->n_fatent - 2)) *
-                  fsinfo->ssize) / 1048576L);
+      float used_space =
+        ((uint64_t)fs->csize * (fs->n_fatent - 2 - fs->free_clst)) * fs->ssize;
+      float max_space = ((uint64_t)fs->csize * (fs->n_fatent - 2)) * fs->ssize;
+      LOG(INFO, "[Config] SD FAT usage: %.2f/%.2f MB",
+          (float)(used_space / ONE_MB), (float)(max_space / ONE_MB));
     }
     LOG(INFO, "[Config] SD will be used for persistent storage.");
   }
@@ -264,69 +259,6 @@ string ConfigurationManager::getFilePath(const string &name)
   return StringPrintf("%s/%s", CS_CONFIG_DIR, name.c_str());
 }
 
-string ConfigurationManager::getCSConfig()
-{
-  nlohmann::json clone = csConfig;
-  openlcb::TcpClientConfig<openlcb::TcpClientDefaultParams> uplink =
-    cfg_.seg().wifi().uplink();
-  openmrn_arduino::HubConfiguration hub = cfg_.seg().wifi().hub();
-  esp32cs::TrackOutputConfig ops = cfg_.seg().hbridge().entry(0);
-  esp32cs::TrackOutputConfig prog = cfg_.seg().hbridge().entry(1);
-
-  // insert non-persistent CDI elements that we can modify from web
-  clone[JSON_CDI_NODE][JSON_CDI_UPLINK_NODE] =
-  {
-    {JSON_CDI_UPLINK_RECONNECT_NODE,
-      CDI_READ_TRIMMED(uplink.reconnect, configFd_)},
-    {JSON_CDI_UPLINK_MODE_NODE,
-      CDI_READ_TRIMMED(uplink.search_mode, configFd_)},
-    {JSON_CDI_UPLINK_AUTO_HOST_NODE,
-      uplink.auto_address().host_name().read(configFd_)},
-    {JSON_CDI_UPLINK_AUTO_SERVICE_NODE,
-      uplink.auto_address().service_name().read(configFd_)},
-    {JSON_CDI_UPLINK_MANUAL_HOST_NODE,
-      uplink.manual_address().ip_address().read(configFd_)},
-    {JSON_CDI_UPLINK_MANUAL_PORT_NODE,
-      CDI_READ_TRIMMED(uplink.manual_address().port, configFd_)},
-  };
-  clone[JSON_CDI_NODE][JSON_CDI_HUB_NODE] =
-  {
-    {JSON_CDI_HUB_ENABLE_NODE, CDI_READ_TRIMMED(hub.enable, configFd_)},
-    {JSON_CDI_HUB_PORT_NODE, CDI_READ_TRIMMED(hub.port, configFd_)},
-    {JSON_CDI_HUB_SERVICE_NODE, hub.service_name().read(configFd_)},
-  };
-  clone[JSON_CDI_NODE][JSON_HBRIDGES_NODE] =
-  {
-    {CONFIG_OPS_TRACK_NAME,
-      {
-        {JSON_DESCRIPTION_NODE, ops.description().read(configFd_)},
-        {JSON_CDI_HBRIDGE_SHORT_EVENT_NODE,
-          uint64_to_string_hex(ops.event_short().read(configFd_))},
-        {JSON_CDI_HBRIDGE_SHORT_CLEAR_EVENT_NODE,
-          uint64_to_string_hex(ops.event_short_cleared().read(configFd_))},
-        {JSON_CDI_HBRIDGE_SHUTDOWN_EVENT_NODE,
-          uint64_to_string_hex(ops.event_shutdown().read(configFd_))},
-        {JSON_CDI_HBRIDGE_SHUTDOWN_CLEAR_EVENT_NODE,
-          uint64_to_string_hex(ops.event_shutdown_cleared().read(configFd_))}
-      }
-    },
-    {CONFIG_PROG_TRACK_NAME,
-      {
-        {JSON_DESCRIPTION_NODE, prog.description().read(configFd_)},
-        {JSON_CDI_HBRIDGE_SHORT_EVENT_NODE,
-          uint64_to_string_hex(prog.event_short().read(configFd_))},
-        {JSON_CDI_HBRIDGE_SHORT_CLEAR_EVENT_NODE,
-          uint64_to_string_hex(prog.event_short_cleared().read(configFd_))},
-        {JSON_CDI_HBRIDGE_SHUTDOWN_EVENT_NODE,
-          uint64_to_string_hex(prog.event_shutdown().read(configFd_))},
-        {JSON_CDI_HBRIDGE_SHUTDOWN_CLEAR_EVENT_NODE,
-          uint64_to_string_hex(prog.event_shutdown_cleared().read(configFd_))},
-      }
-    },
-  };
-  return clone.dump();
-}
-
 void ConfigurationManager::force_factory_reset()
 {
   LOG(INFO, "[Config] Enabling forced factory_reset.");
@@ -334,77 +266,3 @@ void ConfigurationManager::force_factory_reset()
   store(FACTORY_RESET_MARKER_FILE, marker);
   Singleton<esp32cs::LCCStackManager>::instance()->reboot_node();
 }
-
-#if defined(CONFIG_GPIO_OUTPUTS) || defined(CONFIG_GPIO_SENSORS)
-bool is_restricted_pin(int8_t pin)
-{
-  vector<uint8_t> restrictedPins
-  {
-#if !defined(CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS)
-    0,                        // Bootstrap / Firmware Flash Download
-    1,                        // UART0 TX
-    2,                        // Bootstrap / Firmware Flash Download
-    3,                        // UART0 RX
-    5,                        // Bootstrap
-    6, 7, 8, 9, 10, 11,       // on-chip flash pins
-    12, 15,                   // Bootstrap / SD pins
-#endif // ! CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
-    CONFIG_OPS_ENABLE_PIN
-  , CONFIG_OPS_SIGNAL_PIN
-  , CONFIG_PROG_ENABLE_PIN
-  , CONFIG_PROG_SIGNAL_PIN
-
-#if defined(CONFIG_OPS_RAILCOM)
-#if defined(CONFIG_OPS_HBRIDGE_LMD18200)
-  , CONFIG_OPS_RAILCOM_BRAKE_PIN
-#endif
-  , CONFIG_OPS_RAILCOM_ENABLE_PIN
-  , CONFIG_OPS_RAILCOM_UART_RX_PIN
-#endif // CONFIG_OPS_RAILCOM
-
-#if defined(CONFIG_LCC_CAN_ENABLED)
-  , CONFIG_LCC_CAN_RX_PIN
-  , CONFIG_LCC_CAN_TX_PIN
-#endif
-
-#if defined(CONFIG_HC12)
-  , CONFIG_HC12_RX_PIN
-  , CONFIG_HC12_TX_PIN
-#endif
-
-#if defined(CONFIG_NEXTION)
-  , CONFIG_NEXTION_RX_PIN
-  , CONFIG_NEXTION_TX_PIN
-#endif
-
-#if defined(CONFIG_DISPLAY_TYPE_OLED) || defined(CONFIG_DISPLAY_TYPE_LCD)
-  , CONFIG_DISPLAY_SCL
-  , CONFIG_DISPLAY_SDA
-#if defined(CONFIG_DISPLAY_OLED_RESET_PIN) && CONFIG_DISPLAY_OLED_RESET_PIN != -1
-  , CONFIG_DISPLAY_OLED_RESET_PIN
-#endif
-#endif
-
-#if defined(CONFIG_LOCONET)
-  , CONFIG_LOCONET_RX_PIN
-  , CONFIG_LOCONET_TX_PIN
-#endif
-
-#if defined(CONFIG_GPIO_S88)
-  , CONFIG_GPIO_S88_CLOCK_PIN
-  , CONFIG_GPIO_S88_LOAD_PIN
-#if defined(CONFIG_GPIO_S88_RESET_PIN) && CONFIG_GPIO_S88_RESET_PIN != -1
-  , CONFIG_GPIO_S88_RESET_PIN
-#endif
-#endif
-
-#if defined(CONFIG_STATUS_LED)
-  , CONFIG_STATUS_LED_DATA_PIN
-#endif
-  };
-
-  return std::find(restrictedPins.begin()
-                 , restrictedPins.end()
-                 , pin) != restrictedPins.end();
-}
-#endif // CONFIG_GPIO_OUTPUTS || CONFIG_GPIO_SENSORS

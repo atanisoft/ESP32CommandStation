@@ -25,6 +25,7 @@ COPYRIGHT (c) 2018-2020 Mike Dunston
 #include <JsonConstants.h>
 #include <utils/StringPrintf.hxx>
 
+#include "GPIOValidation.h"
 #include "RemoteSensors.h"
 
 /**********************************************************************

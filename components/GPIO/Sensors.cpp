@@ -24,8 +24,8 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <driver/gpio.h>
 #include <json.hpp>
 #include <JsonConstants.h>
-#include <StatusDisplay.h>
 
+#include "GPIOValidation.h"
 #include "Sensors.h"
 #include "RemoteSensors.h"
 
@@ -45,7 +45,6 @@ void SensorManager::init()
   if(root.contains(JSON_COUNT_NODE))
   {
     uint16_t sensorCount = root[JSON_COUNT_NODE].get<uint16_t>();
-    Singleton<StatusDisplay>::instance()->status("Found %02d Sensors", sensorCount);
     for(auto sensor : root[JSON_SENSORS_NODE])
     {
       string data = sensor.dump();

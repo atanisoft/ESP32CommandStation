@@ -16,15 +16,18 @@ COPYRIGHT (c) 2020 Mike Dunston
 **********************************************************************/
 
 #include "LCCWiFiManager.h"
+#include "LCCStackManager.h"
 #include "JsonConstants.h"
 
 #include "sdkconfig.h"
 
 #include <algorithm>
 #include <ConfigurationManager.h>
+#include <esp_sntp.h>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <HttpStringUtils.h>
 #include <openlcb/SimpleStack.hxx>
+#include <utime.h>
 
 namespace esp32cs
 {
@@ -65,6 +68,41 @@ static constexpr const char WIFI_SOFTAP_CFG[] = "wifi-ap";
 #ifndef CONFIG_WIFI_PASSWORD
 #define CONFIG_WIFI_PASSWORD "esp32cs"
 #endif
+
+#if CONFIG_SNTP
+
+static bool sntp_callback_called_previously = false;
+static void sntp_received(struct timeval *tv)
+{
+  // if this is the first time we have been called, check if the modification
+  // timestamp on the LCC_CDI_XML is older than 2020-01-01 and if so reset the
+  // modification/access timestamp to current.
+  if (!sntp_callback_called_previously)
+  {
+    struct stat statbuf;
+    stat(LCC_CDI_XML, &statbuf);
+    time_t mod = statbuf.st_mtime;
+    struct tm timeinfo;
+    localtime_r(&mod, &timeinfo);
+    // check if the timestamp on LCC_CDI_XML is prior to 2020 and if so, force
+    // the access/modified timestamps to the current time.
+    if (timeinfo.tm_year < (2020 - 1900))
+    {
+      LOG(INFO, "[SNTP] Updating timestamps on CDI XML files");
+      utime(LCC_CDI_XML, NULL);
+      utime("/cfg/LCC/train.xml", NULL);
+      utime("/cfg/LCC/tmptrain.xml", NULL);
+    }
+    sntp_callback_called_previously = true;
+  }
+  time_t new_time = tv->tv_sec;
+  LOG(INFO, "[SNTP] Received time update, new localtime: %s", ctime(&new_time));
+
+#if CONFIG_FASTCLOCK_REALTIME
+  Singleton<LCCWiFiManager>::instance()->real_time_clock_sync(new_time);
+#endif // CONFIG_FASTCLOCK_REALTIME
+}
+#endif // CONFIG_SNTP
 
 LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
                              , const esp32cs::Esp32ConfigDef &cfg)
@@ -171,6 +209,25 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
     wifi_->wait_for_ssid_connect(false);
   }
 
+#if CONFIG_FASTCLOCK_REALTIME
+  LOG(INFO, "[FastClock] Creating Real-Time fast clock instance with ID %s"
+    , uint64_to_string_hex(CONFIG_FASTCLOCK_REALTIME_ID).c_str());
+  realTimeClock_.reset(
+    new openlcb::BroadcastTimeServer(stack_->node()
+                                  , UINT64_C(CONFIG_FASTCLOCK_REALTIME_ID)));
+  realTimeClock_->set_rate_quarters(4);
+#endif // CONFIG_FASTCLOCK_REALTIME
+
+#if CONFIG_SNTP
+  if (mode_ == WIFI_MODE_APSTA || mode_ == WIFI_MODE_STA)
+  {
+    LOG(INFO, "[SNTP] Polling %s for time updates", CONFIG_SNTP_SERVER);
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, CONFIG_SNTP_SERVER);
+    sntp_set_time_sync_notification_cb(sntp_received);
+    sntp_init();
+  }
+#endif // CONFIG_SNTP
 }
 
 void LCCWiFiManager::shutdown()
@@ -276,26 +333,9 @@ string LCCWiFiManager::wifi_scan_json(bool ignore_duplicates)
       result += ",";
     }
     LOG(VERBOSE, "auth:%d,rssi:%d,ssid:%s", entry.authmode, entry.rssi, entry.ssid);
-    result += StringPrintf("{\"auth\":%d,\"rssi\":%d,\"ssid\":\"",
-                           entry.authmode, entry.rssi);
-    // TODO: remove this in favor of proper url encoding of non-ascii characters
-    for (uint8_t idx = 0; idx < 33; idx++)
-    {
-      if (entry.ssid[idx] >= 0x20 && entry.ssid[idx] <= 0x7F)
-      {
-        result += entry.ssid[idx];
-      }
-      else if (entry.ssid[idx])
-      {
-        result += StringPrintf("%%%02x", entry.ssid[idx]);
-      }
-      else
-      {
-        // end of ssid
-        break;
-      }
-    }
-    result += "\"}";
+    result += StringPrintf("{\"auth\":%d,\"rssi\":%d,\"ssid\":\"%s\"}",
+                           entry.authmode, entry.rssi,
+                           http::url_encode((char *)entry.ssid).c_str());
   }
   result += "]";
   wifi_->clear_ssid_scan_results();
@@ -329,5 +369,26 @@ string LCCWiFiManager::get_config_json()
   config += "}";
   return config;
 }
+
+#if CONFIG_FASTCLOCK_REALTIME
+void LCCWiFiManager::real_time_clock_sync(time_t sync_time)
+{
+  LOG(INFO, "[FastClock] Time sync: %s", ctime(&sync_time));
+  struct tm timeinfo;
+  localtime_r(&sync_time, &timeinfo);
+  realTimeClock_->set_time(timeinfo.tm_hour, timeinfo.tm_min);
+  realTimeClock_->set_date(timeinfo.tm_mon + 1, timeinfo.tm_mday);
+  realTimeClock_->set_year(timeinfo.tm_year + 1900);
+  if (!realTimeClock_->is_running())
+  {
+    realTimeClock_->start();
+    LOG(INFO, "[FastClock] Starting real-time clock");
+  }
+  else
+  {
+    LOG(INFO, "[FastClock] real-time clock synced");
+  }
+}
+#endif // CONFIG_FASTCLOCK_REALTIME
 
 } // namespace esp32cs

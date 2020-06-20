@@ -1,3 +1,74 @@
+config TIMEZONE
+    string "Timezone"
+    default "UTC0"
+    help
+        This is the timezone that the ESP32 Command Station is running in. This
+        will influence the timestamps of peristent configuration files and the
+        real-time fast clock. The value must follow POSIX notation.
+        A few common values:
+        * PST8PDT,M3.2.0,M11.1.0 -- UTC-8 with automatic DST adjustment
+        * MST7MDT,M3.2.0,M11.1.0 -- UTC-7 with automatic DST adjustment
+        * CST6CDT,M3.2.0,M11.1.0 -- UTC-6 with automatic DST adjustment
+        * EST5EDT,M3.2.0,M11.1.0 -- UTC-5 with automatic DST adjustment
+        A complete list can be seen here in the second column:
+        https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
+
+menu "SNTP Configuration"
+    config SNTP
+        bool "Enable SNTP synchronization"
+        default n
+        help
+            By enabling this option the ESP32 will attempt to synchronize the
+            system time with an external SNTP server once per hour.
+
+    config SNTP_SERVER
+        string "SNTP Server"
+        default "pool.ntp.org"
+        depends on SNTP
+endmenu
+
+menu "Fast Clock"
+    config FASTCLOCK_DEFAULT
+        bool "Enable FastClock"
+        default n
+        help
+            Enabling this option will cause the ESP32 Command Station to
+            advertise itself as an LCC Fast Clock.
+
+    config FASTCLOCK_DEFAULT_ID
+        hex "FastClock Clock ID"
+        default 0x010100000100
+        depends on FASTCLOCK_DEFAULT
+        help
+            This is the clock ID that will be created and advertised.
+            The default Fast Clock uses ID 0x010100000100.
+
+    config FASTCLOCK_RATE
+        hex "FastClock rate quarters"
+        default 4
+        range -512 511
+        depends on FASTCLOCK_DEFAULT
+        help
+            This is the clock ID that will be created and advertised.
+            The default Fast Clock uses ID 0x010100000100.
+
+    config FASTCLOCK_REALTIME
+        bool "Enable real-time FastClock"
+        default n
+        select SNTP
+        help
+            Enabling this option will cause the ESP32 Command Station to
+            advertise itself as an LCC real-time Fast Clock.
+
+    config FASTCLOCK_REALTIME_ID
+        hex "Real-time Clock ID"
+        default 0x010100000101
+        depends on FASTCLOCK_REALTIME
+        help
+            This is the clock ID that will be created and advertised.
+            Real-Time clock defaults to 0x010100000101.
+endmenu
+
 menu "WiFi Configuration"
     config HOSTNAME_PREFIX
         string "Hostname prefix"

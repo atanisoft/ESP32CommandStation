@@ -226,6 +226,12 @@ extern "C" void app_main()
     }
   }
 
+#if defined(CONFIG_TIMEZONE)
+  LOG(INFO, "[TimeZone] %s", CONFIG_TIMEZONE);
+  setenv("TZ", CONFIG_TIMEZONE, 1);
+  tzset();
+#endif // CONFIG_TIMEZONE
+
   // Configure ADC1 up front to use 12 bit (0-4095) as we use it for all
   // monitored h-bridges.
   LOG(INFO, "[ADC] Configure 12-bit ADC resolution");

@@ -49,7 +49,6 @@ public:
   void remove(const std::string &);
   std::string load(const std::string &);
   void store(const char *, const std::string &);
-  std::string getCSConfig();
   void force_factory_reset();
 private:
   std::string getFilePath(const std::string &);
@@ -58,11 +57,6 @@ private:
   int configFd_{-1};
   sdmmc_card_t *sd_{nullptr};
 };
-
-// Returns true if the provided pin is one of the ESP32 pins that has usage
-// restrictions. This will always return false if the configuration flag
-// ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS is enabled.
-bool is_restricted_pin(int8_t);
 
 uint64_t string_to_uint64(std::string value);
 

@@ -21,10 +21,10 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 
 #include <ConfigurationManager.h>
 #include <DCCppProtocol.h>
-#include <StatusDisplay.h>
 #include <JsonConstants.h>
 #include <driver/gpio.h>
 
+#include "GPIOValidation.h"
 #include "Outputs.h"
 
 std::vector<std::unique_ptr<Output>> outputs;
@@ -39,8 +39,6 @@ void OutputManager::init()
   if(root.contains(JSON_COUNT_NODE))
   {
     uint16_t outputCount = root[JSON_COUNT_NODE].get<uint16_t>();
-    Singleton<StatusDisplay>::instance()->status("Found %02d Outputs"
-                                               , outputCount);
     for(auto output : root[JSON_OUTPUTS_NODE])
     {
       string data = output.dump();

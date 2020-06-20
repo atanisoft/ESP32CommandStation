@@ -50,9 +50,9 @@ S88 Sensors are reported in the same manner as generic Sensors:
 #include <json.hpp>
 #include <JsonConstants.h>
 #include <os/OS.hxx>
-#include <StatusDisplay.h>
 #include <utils/GpioInitializer.hxx>
 
+#include "GPIOValidation.h"
 #include "S88Sensors.h"
 
 /////////////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,5 @@
 set(COMPONENT_SRCS
+    "GPIOValidation.cpp"
     "Outputs.cpp"
     "Sensors.cpp"
     "RemoteSensors.cpp"
@@ -6,6 +7,8 @@ set(COMPONENT_SRCS
 )
 
 set(COMPONENT_ADD_INCLUDEDIRS "include" )
+
+set(COMPONENT_PRIV_INCLUDEDIRS "private_include" )
 
 set(COMPONENT_REQUIRES
     "Configuration"
