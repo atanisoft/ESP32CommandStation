@@ -38,7 +38,6 @@ void OutputManager::init()
   nlohmann::json root = nlohmann::json::parse(Singleton<ConfigurationManager>::instance()->load(OUTPUTS_JSON_FILE));
   if(root.contains(JSON_COUNT_NODE))
   {
-    uint16_t outputCount = root[JSON_COUNT_NODE].get<uint16_t>();
     for(auto output : root[JSON_OUTPUTS_NODE])
     {
       string data = output.dump();
