@@ -24,6 +24,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <driver/gpio.h>
 #include <json.hpp>
 #include <JsonConstants.h>
+#include <utils/StringPrintf.hxx>
 
 #include "GPIOValidation.h"
 #include "Sensors.h"
@@ -45,7 +46,6 @@ void SensorManager::init()
     Singleton<FileSystemManager>::instance()->load(SENSORS_JSON_FILE));
   if(root.contains(JSON_COUNT_NODE))
   {
-    uint16_t sensorCount = root[JSON_COUNT_NODE].get<uint16_t>();
     for(auto sensor : root[JSON_SENSORS_NODE])
     {
       string data = sensor.dump();
