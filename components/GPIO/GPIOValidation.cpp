@@ -16,6 +16,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 **********************************************************************/
 
 #include "sdkconfig.h"
+#include <stdint.h>
 
 #if defined(CONFIG_GPIO_OUTPUTS) || defined(CONFIG_GPIO_SENSORS)
 bool is_restricted_pin(int8_t pin)
