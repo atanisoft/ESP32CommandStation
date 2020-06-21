@@ -16,73 +16,89 @@ COPYRIGHT (c) 2020 Mike Dunston
 **********************************************************************/
 
 #include "sdkconfig.h"
+#include <algorithm>
+#include <driver/gpio.h>
 #include <stdint.h>
+#include <utils/logging.h>
+#include <vector>
 
-#if defined(CONFIG_GPIO_OUTPUTS) || defined(CONFIG_GPIO_SENSORS)
-bool is_restricted_pin(int8_t pin)
+#if CONFIG_GPIO_OUTPUTS || CONFIG_GPIO_SENSORS
+bool is_restricted_pin(gpio_num_t pin)
 {
-  vector<uint8_t> restrictedPins
+  // early exit for pins that are outside the supported range
+  if (!GPIO_IS_VALID_GPIO(pin))
   {
-#if !defined(CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS)
-    0,                        // Bootstrap / Firmware Flash Download
-    1,                        // UART0 TX
-    2,                        // Bootstrap / Firmware Flash Download
-    3,                        // UART0 RX
-    5,                        // Bootstrap
-    6, 7, 8, 9, 10, 11,       // on-chip flash pins
-    12, 15,                   // Bootstrap / SD pins
+    LOG(WARNING
+      , "[GPIO] Rejecting attempt to use pin %d as it is not valid", pin);
+    return true;
+  }
+  // list of restricted pins and pins that are currently in use by various
+  // hardware options. This will not take into account sensors, outputs, etc.
+  std::vector<gpio_num_t> restrictedPins
+  {
+#ifndef CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
+    GPIO_NUM_0,                           // Bootstrap / Firmware Download
+    GPIO_NUM_1,                           // UART0 TX
+    GPIO_NUM_2,                           // Bootstrap / Firmware Download
+    GPIO_NUM_3,                           // UART0 RX
+    GPIO_NUM_5,                           // Bootstrap
+    GPIO_NUM_6, GPIO_NUM_7, GPIO_NUM_8,
+    GPIO_NUM_9, GPIO_NUM_10, GPIO_NUM_11, // on-chip flash pins
+    GPIO_NUM_12, GPIO_NUM_15,             // Bootstrap / SD pins
 #endif // ! CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
-    CONFIG_OPS_ENABLE_PIN
-  , CONFIG_OPS_SIGNAL_PIN
-  , CONFIG_PROG_ENABLE_PIN
-  , CONFIG_PROG_SIGNAL_PIN
+    (gpio_num_t)CONFIG_OPS_ENABLE_PIN
+  , (gpio_num_t)CONFIG_OPS_SIGNAL_PIN
+  , (gpio_num_t)CONFIG_PROG_ENABLE_PIN
+  , (gpio_num_t)CONFIG_PROG_SIGNAL_PIN
 
-#if defined(CONFIG_OPS_RAILCOM)
-#if defined(CONFIG_OPS_HBRIDGE_LMD18200)
-  , CONFIG_OPS_RAILCOM_BRAKE_PIN
+#if CONFIG_OPS_RAILCOM
+#if CONFIG_OPS_RAILCOM_BRAKE_PIN
+  , (gpio_num_t)CONFIG_OPS_RAILCOM_BRAKE_PIN
 #endif
-  , CONFIG_OPS_RAILCOM_ENABLE_PIN
-  , CONFIG_OPS_RAILCOM_UART_RX_PIN
+  , (gpio_num_t)CONFIG_OPS_RAILCOM_ENABLE_PIN
+  , (gpio_num_t)CONFIG_OPS_RAILCOM_UART_RX_PIN
 #endif // CONFIG_OPS_RAILCOM
 
-#if defined(CONFIG_LCC_CAN_ENABLED)
-  , CONFIG_LCC_CAN_RX_PIN
-  , CONFIG_LCC_CAN_TX_PIN
+#if CONFIG_LCC_CAN_ENABLED
+  , (gpio_num_t)CONFIG_LCC_CAN_RX_PIN
+  , (gpio_num_t)CONFIG_LCC_CAN_TX_PIN
 #endif
 
-#if defined(CONFIG_HC12)
-  , CONFIG_HC12_RX_PIN
-  , CONFIG_HC12_TX_PIN
+#if CONFIG_HC12
+  , (gpio_num_t)CONFIG_HC12_RX_PIN
+  , (gpio_num_t)CONFIG_HC12_TX_PIN
 #endif
 
-#if defined(CONFIG_NEXTION)
-  , CONFIG_NEXTION_RX_PIN
-  , CONFIG_NEXTION_TX_PIN
+#if CONFIG_NEXTION
+  , (gpio_num_t)CONFIG_NEXTION_RX_PIN
+  , (gpio_num_t)CONFIG_NEXTION_TX_PIN
 #endif
 
-#if defined(CONFIG_DISPLAY_TYPE_OLED) || defined(CONFIG_DISPLAY_TYPE_LCD)
-  , CONFIG_DISPLAY_SCL
-  , CONFIG_DISPLAY_SDA
-#if defined(CONFIG_DISPLAY_OLED_RESET_PIN) && CONFIG_DISPLAY_OLED_RESET_PIN != -1
-  , CONFIG_DISPLAY_OLED_RESET_PIN
-#endif
-#endif
-
-#if defined(CONFIG_LOCONET)
-  , CONFIG_LOCONET_RX_PIN
-  , CONFIG_LOCONET_TX_PIN
-#endif
-
-#if defined(CONFIG_GPIO_S88)
-  , CONFIG_GPIO_S88_CLOCK_PIN
-  , CONFIG_GPIO_S88_LOAD_PIN
-#if defined(CONFIG_GPIO_S88_RESET_PIN) && CONFIG_GPIO_S88_RESET_PIN != -1
-  , CONFIG_GPIO_S88_RESET_PIN
+#if CONFIG_DISPLAY_TYPE_OLED || CONFIG_DISPLAY_TYPE_LCD
+  , (gpio_num_t)CONFIG_DISPLAY_SCL
+  , (gpio_num_t)CONFIG_DISPLAY_SDA
+#if CONFIG_DISPLAY_OLED_RESET_PIN && \
+    CONFIG_DISPLAY_OLED_RESET_PIN != GPIO_NUM_NC
+  , (gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN
 #endif
 #endif
 
-#if defined(CONFIG_STATUS_LED)
-  , CONFIG_STATUS_LED_DATA_PIN
+#if CONFIG_LOCONET
+  , (gpio_num_t)CONFIG_LOCONET_RX_PIN
+  , (gpio_num_t)CONFIG_LOCONET_TX_PIN
+#endif
+
+#if CONFIG_GPIO_S88
+  , (gpio_num_t)CONFIG_GPIO_S88_CLOCK_PIN
+  , (gpio_num_t)CONFIG_GPIO_S88_LOAD_PIN
+#if CONFIG_GPIO_S88_RESET_PIN && \
+    CONFIG_GPIO_S88_RESET_PIN != GPIO_NUM_NC
+  , (gpio_num_t)CONFIG_GPIO_S88_RESET_PIN
+#endif
+#endif
+
+#if CONFIG_STATUS_LED
+  , (gpio_num_t)CONFIG_STATUS_LED_DATA_PIN
 #endif
   };
 

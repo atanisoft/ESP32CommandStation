@@ -16,8 +16,9 @@ COPYRIGHT (c) 2020 Mike Dunston
 **********************************************************************/
 
 #include <stdint.h>
+#include <driver/gpio.h>
 
 // Returns true if the provided pin is one of the ESP32 pins that has usage
 // restrictions. This will always return false if the configuration flag
 // ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS is enabled.
-bool is_restricted_pin(int8_t);
+bool is_restricted_pin(gpio_num_t pin);
