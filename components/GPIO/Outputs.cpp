@@ -19,7 +19,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 
 #if defined(CONFIG_GPIO_OUTPUTS)
 
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <DCCppProtocol.h>
 #include <JsonConstants.h>
 #include <driver/gpio.h>
@@ -35,7 +35,8 @@ static constexpr const char * OUTPUTS_JSON_FILE = "outputs.json";
 void OutputManager::init()
 {
   LOG(INFO, "[Output] Initializing outputs");
-  nlohmann::json root = nlohmann::json::parse(Singleton<ConfigurationManager>::instance()->load(OUTPUTS_JSON_FILE));
+  nlohmann::json root = nlohmann::json::parse(
+    Singleton<FileSystemManager>::instance()->load(OUTPUTS_JSON_FILE));
   if(root.contains(JSON_COUNT_NODE))
   {
     for(auto output : root[JSON_OUTPUTS_NODE])
@@ -62,7 +63,8 @@ uint16_t OutputManager::store()
     outputStoredCount++;
   }
   root[JSON_COUNT_NODE] = outputStoredCount;
-  Singleton<ConfigurationManager>::instance()->store(OUTPUTS_JSON_FILE, root.dump());
+  Singleton<FileSystemManager>::instance()->store(OUTPUTS_JSON_FILE
+                                                , root.dump());
   return outputStoredCount;
 }
 

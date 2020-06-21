@@ -1,5 +1,5 @@
 set(COMPONENT_SRCS
-    "ConfigurationManager.cpp"
+    "FileSystemManager.cpp"
     "LCCStackManager.cpp"
     "LCCWiFiManager.cpp"
 )
@@ -17,6 +17,6 @@ set(COMPONENT_REQUIRES
 
 register_component()
 
-set_source_files_properties(ConfigurationManager.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")
+set_source_files_properties(FileSystemManager.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")
 set_source_files_properties(LCCStackManager.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")
 set_source_files_properties(LCCWiFiManager.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")

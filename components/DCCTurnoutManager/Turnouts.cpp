@@ -17,11 +17,12 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 
 #include "Turnouts.h"
 
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <dcc/DccDebug.hxx>
 #include <dcc/UpdateLoop.hxx>
 #include <JsonConstants.h>
 #include <json.hpp>
+#include <utils/StringPrintf.hxx>
 
 using nlohmann::json;
 
@@ -46,7 +47,7 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
   OSMutexLock h(&mux_);
   LOG(INFO, "[Turnout] Initializing DCC Turnout database");
   json root = json::parse(
-    Singleton<ConfigurationManager>::instance()->load(TURNOUTS_JSON_FILE));
+    Singleton<FileSystemManager>::instance()->load(TURNOUTS_JSON_FILE));
   for (auto turnout : root)
   {
     turnouts_.push_back(
@@ -273,7 +274,7 @@ void TurnoutManager::persist()
   }
   LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout] Persisting %zu turnouts"
     , turnouts_.size());
-  Singleton<ConfigurationManager>::instance()->store(TURNOUTS_JSON_FILE
+  Singleton<FileSystemManager>::instance()->store(TURNOUTS_JSON_FILE
                                                    , get_state_as_json(false));
 }
 

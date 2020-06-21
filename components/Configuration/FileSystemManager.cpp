@@ -15,7 +15,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "ConfigurationManager.h"
+#include "FileSystemManager.h"
 #include "LCCStackManager.h"
 
 #include <algorithm>
@@ -51,8 +51,12 @@ uint64_t string_to_uint64(std::string value)
   return std::stoull(value, nullptr, 16);
 }
 
-void recursiveWalkTree(const string &path, bool remove = false)
+void recursiveWalkTree(const string &path, bool remove = false, bool first = true)
 {
+  if (first && !remove)
+  {
+    LOG(INFO, "[FS] Dumping content of filesystem: %s", path.c_str());
+  }
   DIR *dir = opendir(path.c_str());
   if (dir)
   {
@@ -66,19 +70,21 @@ void recursiveWalkTree(const string &path, bool remove = false)
         stat(fullPath.c_str(), &statbuf);
         if (remove)
         {
-          LOG(VERBOSE, "[Config] Deleting %s (%lu bytes)", fullPath.c_str()
+          LOG(VERBOSE, "[FS] Deleting %s (%lu bytes)", fullPath.c_str()
             , statbuf.st_size);
           ERRNOCHECK(fullPath.c_str(), unlink(fullPath.c_str()));
         }
         else
         {
-          LOG(INFO, "[Config] %s (%lu bytes) mtime: %s", fullPath.c_str()
-            , statbuf.st_size, ctime(&statbuf.st_mtime));
+          // NOTE: not using LOG(INFO, ...) here due to ctime injecting a
+          // newline at the end of the string.
+          printf("[FS] %s (%lu bytes) mtime: %s", fullPath.c_str()
+               , statbuf.st_size, ctime(&statbuf.st_mtime));
         }
       }
       else if (ent->d_type == DT_DIR)
       {
-        recursiveWalkTree(fullPath, remove);
+        recursiveWalkTree(fullPath, remove, false);
       }
     }
     closedir(dir);
@@ -89,13 +95,12 @@ void recursiveWalkTree(const string &path, bool remove = false)
   }
   else
   {
-    LOG_ERROR("[Config] Failed to open directory: %s", path.c_str());
+    LOG_ERROR("[FS] Failed to open directory: %s", path.c_str());
   }
 }
 
 static constexpr uint64_t ONE_MB = 1048576ULL;
-ConfigurationManager::ConfigurationManager(const esp32cs::Esp32ConfigDef &cfg)
-  : cfg_(cfg)
+FileSystemManager::FileSystemManager()
 {
 #if CONFIG_ESP32CS_FORCE_FACTORY_RESET
   bool factory_reset_config = true;
@@ -119,12 +124,12 @@ ConfigurationManager::ConfigurationManager(const esp32cs::Esp32ConfigDef &cfg)
     .max_files = 10,
     .allocation_unit_size = 0
   };
-  esp_err_t err = esp_vfs_fat_sdmmc_mount(CFG_MOUNT, &sd_host, &sd_slot
+  esp_err_t err = esp_vfs_fat_sdmmc_mount(VFS_MOUNT, &sd_host, &sd_slot
                                         , &sd_cfg, &sd_);
   if (err == ESP_OK)
   {
     float capacity = ((uint64_t)sd_->csd.capacity) * sd_->csd.sector_size;
-    LOG(INFO, "[Config] SD card '%s' mounted, max capacity %.2f MB"
+    LOG(INFO, "[FS] SD card '%s' mounted, max capacity %.2f MB"
       , sd_->cid.name, (float)(capacity / ONE_MB));
 
     FATFS *fs;
@@ -134,20 +139,20 @@ ConfigurationManager::ConfigurationManager(const esp32cs::Esp32ConfigDef &cfg)
       float used_space =
         ((uint64_t)fs->csize * (fs->n_fatent - 2 - fs->free_clst)) * fs->ssize;
       float max_space = ((uint64_t)fs->csize * (fs->n_fatent - 2)) * fs->ssize;
-      LOG(INFO, "[Config] SD FAT usage: %.2f/%.2f MB",
+      LOG(INFO, "[FS] SD FAT usage: %.2f/%.2f MB",
           (float)(used_space / ONE_MB), (float)(max_space / ONE_MB));
     }
-    LOG(INFO, "[Config] SD will be used for persistent storage.");
+    LOG(INFO, "[FS] SD will be used for persistent storage.");
   }
   else
   {
     // unmount the SD VFS since it failed to successfully mount. We will
     // remount SPIFFS in it's place instead.
     esp_vfs_fat_sdmmc_unmount();
-    LOG(INFO, "[Config] SD Card not present or mounting failed, using SPIFFS");
+    LOG(INFO, "[FS] SD Card not present or mounting failed, using SPIFFS");
     esp_vfs_spiffs_conf_t conf =
     {
-      .base_path = CFG_MOUNT,
+      .base_path = VFS_MOUNT,
       .partition_label = NULL,
       .max_files = 10,
       .format_if_mount_failed = true
@@ -158,14 +163,14 @@ ConfigurationManager::ConfigurationManager(const esp32cs::Esp32ConfigDef &cfg)
     size_t total = 0, used = 0;
     if (esp_spiffs_info(NULL, &total, &used) == ESP_OK)
     {
-      LOG(INFO, "[Config] SPIFFS usage: %.2f/%.2f KiB", (float)(used / 1024.0f)
+      LOG(INFO, "[FS] SPIFFS usage: %.2f/%.2f KiB", (float)(used / 1024.0f)
         , (float)(total / 1024.0f));
     }
     else
     {
-      LOG_ERROR("[Config] Unable to retrieve SPIFFS utilization statistics.");
+      LOG_ERROR("[FS] Unable to retrieve SPIFFS utilization statistics.");
     }
-    LOG(INFO, "[Config] SPIFFS will be used for persistent storage.");
+    LOG(INFO, "[FS] SPIFFS will be used for persistent storage.");
   }
 
   if (exists(FACTORY_RESET_MARKER_FILE))
@@ -179,89 +184,88 @@ ConfigurationManager::ConfigurationManager(const esp32cs::Esp32ConfigDef &cfg)
     LOG(WARNING, "!!!! WARNING WARNING WARNING WARNING WARNING !!!!");
     LOG(WARNING, "!!!! WARNING WARNING WARNING WARNING WARNING !!!!");
     LOG(WARNING,
-        "[Config] The factory reset flag has been set to true, all persistent "
+        "[FS] The factory reset flag has been set to true, all persistent "
         "data will be cleared.");
     uint8_t countdown = 10;
     while (--countdown)
     {
-      LOG(WARNING, "[Config] Factory reset will be initiated in %d seconds..."
+      LOG(WARNING, "[FS] Factory reset will be initiated in %d seconds..."
         , countdown);
       usleep(SEC_TO_USEC(1));
     }
-    LOG(WARNING, "[Config] Factory reset starting!");
+    LOG(WARNING, "[FS] Factory reset starting!");
   }
 
-  LOG(VERBOSE, "[Config] Persistent storage contents:");
-  recursiveWalkTree(CFG_MOUNT, factory_reset_config);
+  recursiveWalkTree(VFS_MOUNT, factory_reset_config);
   // Pre-create ESP32 CS configuration directory.
   mkdir(CS_CONFIG_DIR, ACCESSPERMS);
   // Pre-create LCC configuration directory.
   mkdir(LCC_CFG_DIR, ACCESSPERMS);
 }
 
-void ConfigurationManager::shutdown()
+void FileSystemManager::shutdown()
 {
   // Unmount the SPIFFS partition
   if (esp_spiffs_mounted(NULL))
   {
-    LOG(INFO, "[Config] Unmounting SPIFFS...");
+    LOG(INFO, "[FS] Unmounting SPIFFS...");
     ESP_ERROR_CHECK(esp_vfs_spiffs_unregister(NULL));
   }
 
   // Unmount the SD card if it was mounted
   if (sd_)
   {
-    LOG(INFO, "[Config] Unmounting SD...");
+    LOG(INFO, "[FS] Unmounting SD...");
     ESP_ERROR_CHECK(esp_vfs_fat_sdmmc_unmount());
   }
 }
 
-bool ConfigurationManager::exists(const string &name)
+bool FileSystemManager::exists(const string &name)
 {
   struct stat statbuf;
   string configFilePath = getFilePath(name);
-  LOG(VERBOSE, "[Config] Checking for %s", configFilePath.c_str());
+  LOG(VERBOSE, "[FS] Checking for %s", configFilePath.c_str());
   // this code is not using access(path, F_OK) as that is not available for
   // SPIFFS VFS. stat(path, buf) does work though.
   return !stat(configFilePath.c_str(), &statbuf);
 }
 
-void ConfigurationManager::remove(const string &name)
+void FileSystemManager::remove(const string &name)
 {
   string configFilePath = getFilePath(name);
-  LOG(VERBOSE, "[Config] Removing %s", configFilePath.c_str());
+  LOG(VERBOSE, "[FS] Removing %s", configFilePath.c_str());
   unlink(configFilePath.c_str());
 }
 
-string ConfigurationManager::load(const string &name)
+string FileSystemManager::load(const string &name)
 {
   string configFilePath = getFilePath(name);
   if (!exists(name))
   {
-    LOG_ERROR("[Config] %s does not exist, returning blank json object"
+    LOG_ERROR("[FS] %s does not exist, returning blank json object"
             , configFilePath.c_str());
     return "{}";
   }
-  LOG(VERBOSE, "[Config] Loading %s", configFilePath.c_str());
+  LOG(VERBOSE, "[FS] Loading %s", configFilePath.c_str());
   return read_file_to_string(configFilePath);
 }
 
-void ConfigurationManager::store(const char *name, const string &content)
+void FileSystemManager::store(const char *name, const string &content)
 {
   string configFilePath = getFilePath(name);
-  LOG(VERBOSE, "[Config] Storing %s, %d bytes", configFilePath.c_str()
+  LOG(VERBOSE, "[FS] Storing %s, %d bytes", configFilePath.c_str()
     , content.length());
   write_string_to_file(configFilePath, content);
 }
 
-string ConfigurationManager::getFilePath(const string &name)
+string FileSystemManager::getFilePath(const string &name)
 {
   return StringPrintf("%s/%s", CS_CONFIG_DIR, name.c_str());
 }
 
-void ConfigurationManager::force_factory_reset()
+void FileSystemManager::force_factory_reset()
 {
-  LOG(INFO, "[Config] Enabling forced factory_reset.");
+  LOG(INFO, "[FS] Enabling forced factory_reset.");
   string marker = "force factory reset";
   store(FACTORY_RESET_MARKER_FILE, marker);
   Singleton<esp32cs::LCCStackManager>::instance()->reboot_node();

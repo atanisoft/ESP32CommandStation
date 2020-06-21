@@ -21,24 +21,20 @@ COPYRIGHT (c) 2018-2020 Mike Dunston
 #include <driver/sdmmc_types.h>
 #include <utils/Singleton.hxx>
 
-#include "CSConfigDescriptor.h"
-
-static constexpr char CFG_MOUNT[] = "/cfg";
+static constexpr char VFS_MOUNT[] = "/cfg";
 static constexpr char CS_CONFIG_DIR[] = "/cfg/ESP32CS";
 static constexpr char LCC_CFG_DIR[] = "/cfg/LCC";
 static constexpr char LCC_CDI_XML[] = "/cfg/LCC/cdi.xml";
 static constexpr char LCC_CONFIG_FILE[] = "/cfg/LCC/config";
 
-namespace openlcb
-{
-  class SimpleStackBase;
-}
-
-// Class definition for the Configuration Management system in ESP32 Command Station
-class ConfigurationManager : public Singleton<ConfigurationManager>
+/// This class manages the FileSystem used for persistent configuration data.
+///
+/// The persistent filesystem will be mounted under @ref VFS_MOUNT, this is
+/// used by all modules (including OpenMRNLite).
+class FileSystemManager : public Singleton<FileSystemManager>
 {
 public:
-  ConfigurationManager(const esp32cs::Esp32ConfigDef &);
+  FileSystemManager();
   void shutdown();
   bool is_sd()
   {
@@ -52,8 +48,6 @@ public:
   void force_factory_reset();
 private:
   std::string getFilePath(const std::string &);
-
-  const esp32cs::Esp32ConfigDef cfg_;
   int configFd_{-1};
   sdmmc_card_t *sd_{nullptr};
 };

@@ -19,7 +19,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include "ESP32TrainDatabase.h"
 
 #include <AllTrainNodes.hxx>
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <DCCppProtocol.h>
 #include <DCCProgrammer.h>
 #include <dcc/Loco.hxx>
@@ -550,7 +550,7 @@ HTTP_HANDLER_IMPL(process_config, request)
   if (request->has_param("reset"))
   {
     // this will wipe all persistent config
-    Singleton<ConfigurationManager>::instance()->force_factory_reset();
+    Singleton<FileSystemManager>::instance()->force_factory_reset();
     needReboot = true;
   }
   else if (request->has_param("scan"))

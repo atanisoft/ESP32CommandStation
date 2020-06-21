@@ -15,7 +15,7 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <DCCSignalVFS.h>
 #include <ESP32TrainDatabase.h>
 #include <FreeRTOSTaskMonitor.h>
@@ -50,7 +50,7 @@ void *node_reboot(void *arg)
   Singleton<esp32cs::LCCStackManager>::instance()->shutdown();
   
   // shutdown and cleanup the configuration manager
-  Singleton<ConfigurationManager>::instance()->shutdown();
+  Singleton<FileSystemManager>::instance()->shutdown();
 
   LOG(INFO, "Restarting ESP32 Command Station");
   // restart the node

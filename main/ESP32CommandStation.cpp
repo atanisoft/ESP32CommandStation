@@ -21,7 +21,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include "OTAMonitor.h"
 
 #include <AllTrainNodes.hxx>
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <dcc/ProgrammingTrackBackend.hxx>
 #include <dcc/RailcomHub.hxx>
 #include <dcc/SimpleUpdateLoop.hxx>
@@ -237,11 +237,10 @@ extern "C" void app_main()
   LOG(INFO, "[ADC] Configure 12-bit ADC resolution");
   adc1_config_width(ADC_WIDTH_BIT_12);
 
-  // Initialize the Configuration Manager. This will mount SPIFFS and SD
-  // (if configured) and then load the CS configuration (if present) or
-  // prepare the default configuration. This will also include the LCC
-  // Factory reset (if required).
-  ConfigurationManager config(cfg);
+  // Initialize the FileSystemManager, this manages the underlying persistent
+  // filesystem. This may also trigger a factory reset if the reset pin is
+  // shorted to GND or the marker file is present.
+  FileSystemManager fs;
 
   esp32cs::LCCStackManager stackManager(cfg);
 
@@ -338,7 +337,7 @@ extern "C" void app_main()
   // Starts the OpenMRN stack, this needs to be done *AFTER* all other LCC
   // dependent components as it will initiate configuration load and factory
   // reset calls.
-  stackManager.start(config.is_sd());
+  stackManager.start(fs.is_sd());
 
   // Initialize the DCC++ protocol adapter
   DCCPPProtocolHandler::init();

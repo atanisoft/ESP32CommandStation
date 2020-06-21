@@ -42,7 +42,7 @@ S88 Sensors are reported in the same manner as generic Sensors:
 #include "sdkconfig.h"
 
 #if defined(CONFIG_GPIO_S88)
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <DCCppProtocol.h>
 #include <driver/gpio.h>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
@@ -101,7 +101,7 @@ S88BusManager::S88BusManager(openlcb::Node *node) : poller_(node, {this})
 
   LOG(INFO, "[S88] Initializing SensorBus list");
   nlohmann::json root = nlohmann::json::parse(
-    Singleton<ConfigurationManager>::instance()->load(S88_SENSORS_JSON_FILE));
+    Singleton<FileSystemManager>::instance()->load(S88_SENSORS_JSON_FILE));
   for (auto bus : root[JSON_SENSORS_NODE])
   {
     buses_.push_back(
@@ -140,7 +140,8 @@ uint16_t S88BusManager::store()
     count += bus->getSensorCount();
   }
   content += "]";
-  Singleton<ConfigurationManager>::instance()->store(S88_SENSORS_JSON_FILE, content);
+  Singleton<FileSystemManager>::instance()->store(S88_SENSORS_JSON_FILE
+                                                , content);
   return count;
 }
 

@@ -19,7 +19,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 
 #if defined(CONFIG_GPIO_SENSORS)
 
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <DCCppProtocol.h>
 #include <driver/gpio.h>
 #include <json.hpp>
@@ -41,7 +41,8 @@ static constexpr const char * SENSORS_JSON_FILE = "sensors.json";
 void SensorManager::init()
 {
   LOG(INFO, "[Sensors] Initializing sensors");
-  nlohmann::json root = nlohmann::json::parse(Singleton<ConfigurationManager>::instance()->load(SENSORS_JSON_FILE));
+  nlohmann::json root = nlohmann::json::parse(
+    Singleton<FileSystemManager>::instance()->load(SENSORS_JSON_FILE));
   if(root.contains(JSON_COUNT_NODE))
   {
     uint16_t sensorCount = root[JSON_COUNT_NODE].get<uint16_t>();
@@ -73,7 +74,8 @@ uint16_t SensorManager::store()
     }
   }
   root[JSON_COUNT_NODE] = sensorStoredCount;
-  Singleton<ConfigurationManager>::instance()->store(SENSORS_JSON_FILE, root.dump());
+  Singleton<FileSystemManager>::instance()->store(SENSORS_JSON_FILE
+                                                , root.dump());
   return sensorStoredCount;
 }
 

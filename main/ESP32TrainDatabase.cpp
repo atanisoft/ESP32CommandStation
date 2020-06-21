@@ -19,7 +19,7 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 
 #include <AllTrainNodes.hxx>
 #include <CDIHelper.h>
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <json.hpp>
 #include <JsonConstants.h>
 #include <TrainDbCdi.hxx>
@@ -224,15 +224,15 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
                      , std::bind(&Esp32TrainDatabase::persist, this));
 
   LOG(INFO, "[TrainDB] Initializing...");
-  if (Singleton<ConfigurationManager>::instance()->exists(TRAIN_DB_JSON_FILE))
+  if (Singleton<FileSystemManager>::instance()->exists(TRAIN_DB_JSON_FILE))
   {
     auto roster =
-      Singleton<ConfigurationManager>::instance()->load(TRAIN_DB_JSON_FILE);
+      Singleton<FileSystemManager>::instance()->load(TRAIN_DB_JSON_FILE);
     json stored_trains = json::parse(roster, nullptr, false);
     if (stored_trains.is_discarded())
     {
       LOG_ERROR("[TrainDB] database is corrupt, no trains loaded!");
-      Singleton<ConfigurationManager>::instance()->remove(TRAIN_DB_JSON_FILE);
+      Singleton<FileSystemManager>::instance()->remove(TRAIN_DB_JSON_FILE);
       return;
     }
     for (auto &entry : stored_trains)
@@ -619,8 +619,8 @@ void Esp32TrainDatabase::persist()
       }
       entry->reset_dirty();
     }
-    Singleton<ConfigurationManager>::instance()->store(TRAIN_DB_JSON_FILE
-                                                     , j.dump());
+    Singleton<FileSystemManager>::instance()->store(TRAIN_DB_JSON_FILE
+                                                  , j.dump());
     LOG(INFO, "[TrainDB] Persisted %zu entries.", count);
     entryDeleted_ = false;
   }

@@ -22,7 +22,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include "sdkconfig.h"
 
 #include <algorithm>
-#include <ConfigurationManager.h>
+#include <FileSystemManager.h>
 #include <esp_sntp.h>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <HttpStringUtils.h>
@@ -108,8 +108,8 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
                              , const esp32cs::Esp32ConfigDef &cfg)
                              : stack_(stack), cfg_(cfg)
 {
-  auto cfg_mgr = Singleton<ConfigurationManager>::instance();
-  if (!cfg_mgr->exists(WIFI_SOFTAP_CFG) && !cfg_mgr->exists(WIFI_STATION_CFG))
+  auto fs = Singleton<FileSystemManager>::instance();
+  if (!fs->exists(WIFI_SOFTAP_CFG) && !fs->exists(WIFI_STATION_CFG))
   {
 #if defined(CONFIG_WIFI_MODE_SOFTAP)
     reconfigure_mode(JSON_VALUE_WIFI_MODE_SOFTAP_ONLY, false);
@@ -129,22 +129,22 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
   }
 
   LOG(INFO, "[WiFi] Loading configuration");
-  if (cfg_mgr->exists(WIFI_SOFTAP_CFG) && !cfg_mgr->exists(WIFI_STATION_CFG))
+  if (fs->exists(WIFI_SOFTAP_CFG) && !fs->exists(WIFI_STATION_CFG))
   {
     mode_ =  WIFI_MODE_AP;
-    string station_cfg = cfg_mgr->load(WIFI_SOFTAP_CFG);
+    string station_cfg = fs->load(WIFI_SOFTAP_CFG);
     std::pair<string, string> cfg = http::break_string(station_cfg, "\n");
     ssid_ = cfg.first;
     password_ = cfg.second;
     LOG(INFO, "[WiFi] SoftAP only (ssid: %s)", ssid_.c_str());
   }
-  else if (cfg_mgr->exists(WIFI_SOFTAP_CFG) &&
-           cfg_mgr->exists(WIFI_STATION_CFG))
+  else if (fs->exists(WIFI_SOFTAP_CFG) &&
+           fs->exists(WIFI_STATION_CFG))
   {
     LOG(INFO, "[WiFi] SoftAP and Station");
     mode_ =  WIFI_MODE_APSTA;
   }
-  else if (cfg_mgr->exists(WIFI_STATION_CFG))
+  else if (fs->exists(WIFI_STATION_CFG))
   {
     LOG(INFO, "[WiFi] Station only");
     mode_ =  WIFI_MODE_STA;
@@ -160,14 +160,14 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
   }
   if (mode_ != WIFI_MODE_AP)
   {
-    string station_cfg = cfg_mgr->load(WIFI_STATION_CFG);
+    string station_cfg = fs->load(WIFI_STATION_CFG);
     std::pair<string, string> cfg = http::break_string(station_cfg, "\n");
     ssid_ = cfg.first;
     password_ = cfg.second;
-    if (cfg_mgr->exists(WIFI_STATION_IP_CFG))
+    if (fs->exists(WIFI_STATION_IP_CFG))
     {
       std::vector<string> ip_parts;
-      string ip_cfg = cfg_mgr->load(WIFI_STATION_IP_CFG);
+      string ip_cfg = fs->load(WIFI_STATION_IP_CFG);
       http::tokenize(ip_cfg, ip_parts, "\n");
       stationIP_.reset(new tcpip_adapter_ip_info_t());
       stationIP_->ip.addr = ipaddr_addr(ip_parts[0].c_str());
@@ -176,17 +176,17 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
       LOG(INFO, "[WiFi] Static IP:" IPSTR ", gateway:" IPSTR ",netmask:" IPSTR,
         IP2STR(&stationIP_->ip), IP2STR(&stationIP_->gw), IP2STR(&stationIP_->netmask));
     }
-    if (cfg_mgr->exists(WIFI_STATION_DNS_CFG))
+    if (fs->exists(WIFI_STATION_DNS_CFG))
     {
-      string dns = cfg_mgr->load(WIFI_STATION_DNS_CFG);
+      string dns = fs->load(WIFI_STATION_DNS_CFG);
       stationDNS_.u_addr.ip4.addr = ipaddr_addr(dns.c_str());
       LOG(INFO, "[WiFi] DNS configured: " IPSTR
         , IP2STR(&stationDNS_.u_addr.ip4));
     }
   }
-  else if (cfg_mgr->exists(WIFI_SOFTAP_CFG))
+  else if (fs->exists(WIFI_SOFTAP_CFG))
   {
-    string station_cfg = cfg_mgr->load(WIFI_SOFTAP_CFG);
+    string station_cfg = fs->load(WIFI_SOFTAP_CFG);
     std::pair<string, string> cfg = http::break_string(station_cfg, "\n");
     ssid_ = cfg.first;
     password_ = cfg.second;
@@ -237,23 +237,23 @@ void LCCWiFiManager::shutdown()
 
 void LCCWiFiManager::reconfigure_mode(string mode, bool restart)
 {
-  auto cfg_mgr = Singleton<ConfigurationManager>::instance();
+  auto fs = Singleton<FileSystemManager>::instance();
   if (!mode.compare(JSON_VALUE_WIFI_MODE_SOFTAP_ONLY))
   {
-    cfg_mgr->remove(WIFI_STATION_CFG);
+    fs->remove(WIFI_STATION_CFG);
     string soft_ap_cfg = StringPrintf("%s\n%s", CONFIG_WIFI_SOFTAP_SSID
                                     , CONFIG_WIFI_SOFTAP_PASSWORD);
-    cfg_mgr->store(WIFI_SOFTAP_CFG, soft_ap_cfg);
+    fs->store(WIFI_SOFTAP_CFG, soft_ap_cfg);
   }
   else if (!mode.compare(JSON_VALUE_WIFI_MODE_SOFTAP_STATION))
   {
     string soft_ap_cfg = StringPrintf("%s\n%s", CONFIG_WIFI_SOFTAP_SSID
                                     , CONFIG_WIFI_SOFTAP_PASSWORD);
-    cfg_mgr->store(WIFI_SOFTAP_CFG, soft_ap_cfg);
+    fs->store(WIFI_SOFTAP_CFG, soft_ap_cfg);
   }
   else
   {
-    cfg_mgr->remove(WIFI_SOFTAP_CFG);
+    fs->remove(WIFI_SOFTAP_CFG);
   }
   if (restart)
   {
@@ -272,27 +272,27 @@ void LCCWiFiManager::reconfigure_station(string ssid, string password
   LOG(VERBOSE, "[WiFi] reconfigure_station(%s,%s,%s,%s,%s,%s,%d)", ssid.c_str()
     , password.c_str(), ip.c_str(), gateway.c_str(), subnet.c_str()
     , dns.c_str(), restart);
-  auto cfg_mgr = Singleton<ConfigurationManager>::instance();
+  auto fs = Singleton<FileSystemManager>::instance();
   string station_cfg = StringPrintf("%s\n%s", ssid.c_str(), password.c_str());
-  cfg_mgr->store(WIFI_STATION_CFG, station_cfg);
+  fs->store(WIFI_STATION_CFG, station_cfg);
 
   if (!ip.empty() && !gateway.empty() && !subnet.empty())
   {
     string ip_cfg = StringPrintf("%s\n%s\n%s\n", ip.c_str()
                                 , gateway.c_str(), subnet.c_str());
-    cfg_mgr->store(WIFI_STATION_IP_CFG, ip_cfg);
+    fs->store(WIFI_STATION_IP_CFG, ip_cfg);
   }
   else
   {
-    cfg_mgr->remove(WIFI_STATION_IP_CFG);
+    fs->remove(WIFI_STATION_IP_CFG);
   }
   if (!dns.empty())
   {
-    cfg_mgr->store(WIFI_STATION_DNS_CFG, dns);
+    fs->store(WIFI_STATION_DNS_CFG, dns);
   }
   else
   {
-    cfg_mgr->remove(WIFI_STATION_DNS_CFG);
+    fs->remove(WIFI_STATION_DNS_CFG);
   }
 
   if (restart)
@@ -344,7 +344,7 @@ string LCCWiFiManager::wifi_scan_json(bool ignore_duplicates)
 
 string LCCWiFiManager::get_config_json()
 {
-  auto cfg_mgr = Singleton<ConfigurationManager>::instance();
+  auto fs = Singleton<FileSystemManager>::instance();
   string config = StringPrintf("\"wifi\":{"
                                 "\"mode\":\"%s\""
                               , mode_ == WIFI_MODE_AP ? "softap"
@@ -353,9 +353,9 @@ string LCCWiFiManager::get_config_json()
   {
     config += StringPrintf(",\"station\":{\"ssid\":\"%s\",\"password\":\"%s\""
                          , ssid_.c_str(), password_.c_str());
-    if (cfg_mgr->exists(WIFI_STATION_DNS_CFG))
+    if (fs->exists(WIFI_STATION_DNS_CFG))
     {
-      config += ",\"dns\":\"" + cfg_mgr->load(WIFI_STATION_DNS_CFG) + "\"";
+      config += ",\"dns\":\"" + fs->load(WIFI_STATION_DNS_CFG) + "\"";
     }
     if (stationIP_.get() != nullptr)
     {
