@@ -200,24 +200,25 @@ void writeOpsCVByte(const uint16_t locoAddress, const uint16_t cv
                   , const uint8_t cvValue)
 {
   auto track = Singleton<esp32cs::DuplexedTrackIf>::instance();
-  auto b = get_buffer_deleter(track->alloc());
-  if (b)
+  dcc::PacketFlowInterface::message_type *pkt = nullptr;
+  mainBufferPool->alloc(&pkt);
+  if (pkt)
   {
     LOG(INFO, "[OPS] Updating CV %d to %d for loco %d", cv, cvValue
       , locoAddress);
 
-    b->data()->start_dcc_packet();
+    pkt->data()->start_dcc_packet();
     if(locoAddress > 127)
     {
-      b->data()->add_dcc_address(dcc::DccLongAddress(locoAddress));
+      pkt->data()->add_dcc_address(dcc::DccLongAddress(locoAddress));
     }
     else
     {
-      b->data()->add_dcc_address(dcc::DccShortAddress(locoAddress));
+      pkt->data()->add_dcc_address(dcc::DccShortAddress(locoAddress));
     }
-    b->data()->add_dcc_pom_write1(cv, cvValue);
-    b->data()->packet_header.rept_count = 3;
-    track->send(b.get());
+    pkt->data()->add_dcc_pom_write1(cv - 1, cvValue);
+    pkt->data()->packet_header.rept_count = 3;
+    track->send(pkt);
   }
   else
   {
@@ -229,25 +230,26 @@ void writeOpsCVBit(const uint16_t locoAddress, const uint16_t cv
                  , const uint8_t bit, const bool value)
 {
   auto track = Singleton<esp32cs::DuplexedTrackIf>::instance();
-  auto b = get_buffer_deleter(track->alloc());
-  if (b)
+  dcc::PacketFlowInterface::message_type *pkt = nullptr;
+  mainBufferPool->alloc(&pkt);
+  if (pkt)
   {
     LOG(INFO, "[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value
       , locoAddress);
-    b->data()->start_dcc_packet();
+    pkt->data()->start_dcc_packet();
     if(locoAddress > 127)
     {
-      b->data()->add_dcc_address(dcc::DccLongAddress(locoAddress));
+      pkt->data()->add_dcc_address(dcc::DccLongAddress(locoAddress));
     }
     else
     {
-      b->data()->add_dcc_address(dcc::DccShortAddress(locoAddress));
+      pkt->data()->add_dcc_address(dcc::DccShortAddress(locoAddress));
     }
     // TODO add_dcc_pom_write_bit(cv, bit, value)
-    b->data()->add_dcc_prog_command(0xe8, cv - 1
-                                  , (uint8_t)(0xF0 + bit + value * 8));
-    b->data()->packet_header.rept_count = 3;
-    track->send(b.get());
+    pkt->data()->add_dcc_prog_command(0xe8, cv - 1
+                                    , (uint8_t)(0xF0 + bit + value * 8));
+    pkt->data()->packet_header.rept_count = 3;
+    track->send(pkt);
   }
   else
   {
