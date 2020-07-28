@@ -1,12 +1,13 @@
 menu "LCC Configuration"
     config LCC_NODE_ID
         hex "Node ID"
-        default 0x050101013F00
+        default 0x05020103F000
         help 
             This is the LCC node identifier for the ESP32 Command Station.
             It is recommended, but not required, to request your own ID
             range via:
             https://registry.openlcb.org/requestuniqueidrange
+            The default node ID is part of a reserved range of ID values.
 
     config LCC_CAN_ENABLED
         bool "CAN interface"
