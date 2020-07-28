@@ -381,8 +381,8 @@ StateFlowBase::Action WebSocketFlow::send_frame_header()
     data_size_ = textToSend_.length();
     data_[0] = WEBSOCKET_FINAL_FRAME | OP_TEXT;
     data_[1] = WEBSOCKET_FRAME_LEN_UINT16;
-    data_[2] = data_size_ & 0xFF;
-    data_[3] = (data_size_ >> 8) & 0xFF;
+    data_[2] = (data_size_ >> 8) & 0xFF;
+    data_[3] = data_size_ & 0xFF;
     memcpy(data_+ 4, textToSend_.data(), textToSend_.length());
     send_size = data_size_ + 4;
   }
@@ -392,8 +392,8 @@ StateFlowBase::Action WebSocketFlow::send_frame_header()
     data_size_ = max_frame_size_ - 4;
     data_[0] = OP_CONTINUATION;
     data_[1] = WEBSOCKET_FRAME_LEN_UINT16;
-    data_[2] = data_size_ & 0xFF;
-    data_[3] = (data_size_ >> 8) & 0xFF;
+    data_[2] = (data_size_ >> 8) & 0xFF;
+    data_[3] = data_size_ & 0xFF;
     memcpy(data_+ 4, textToSend_.data(), data_size_);
     send_size = data_size_ + 4;
   }
