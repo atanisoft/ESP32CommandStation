@@ -192,15 +192,16 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
     password_ = cfg.second;
   }
 
-  // TODO: Switch to SimpleStackBase * instead of casting to SimpleCanStack *
-  // once Esp32WiFiManager supports this.
   LOG(INFO, "[WiFi] Starting WiFiManager");
   wifi_.reset(
     new Esp32WiFiManager(ssid_.c_str(), password_.c_str()
-                       , (openlcb::SimpleCanStack *)stack_
-                       , cfg_.seg().wifi(), CONFIG_HOSTNAME_PREFIX, mode_
-                       , stationIP_.get(), stationDNS_
+                       , stack_, cfg_.seg().wifi(), CONFIG_HOSTNAME_PREFIX
+                       , mode_, stationIP_.get(), stationDNS_
                        , CONFIG_WIFI_SOFT_AP_CHANNEL));
+
+#if CONFIG_WIFI_DEBUG_OUTPUT
+  wifi_->enable_verbose_logging();
+#endif // CONFIG_WIFI_DEBUG_OUTPUT
 
   // When operating as both SoftAP and Station mode it is not necessary to wait
   // for the station to be UP during CS startup.

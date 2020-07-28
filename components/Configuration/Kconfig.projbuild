@@ -137,6 +137,10 @@ menu "WiFi Configuration"
     config WIFI_SOFT_AP_CHANNEL
         int
         default 6
+
+    config WIFI_DEBUG_OUTPUT
+        bool "Enable ESP-IDF WiFi debug diagnostic output"
+        default n
 endmenu
 
 menu "Advanced Configuration Settings"
