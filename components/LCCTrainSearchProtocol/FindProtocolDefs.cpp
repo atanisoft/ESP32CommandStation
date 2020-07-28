@@ -55,6 +55,18 @@ namespace {
 /// @returns true for a character that is a digit.
 bool is_number(char c) { return ('0' <= c) && (c <= '9'); }
 
+/// @returns true if the user has any digits as a query.
+bool has_query(openlcb::EventId event) {
+  for (int shift = FindProtocolDefs::TRAIN_FIND_MASK - 4;
+       shift >= FindProtocolDefs::TRAIN_FIND_MASK_LOW; shift -= 4) {
+    uint8_t nibble = (event >> shift) & 0xf;
+    if ((0 <= nibble) && (nibble <= 9)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /// @returns the same bitmask as match_query_to_node.
 uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
   int count_matches = 0;
@@ -75,7 +87,7 @@ uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
   // If we are here, we have exhausted (and matched) all digits that were sent
   // by the query.
   if (count_matches == 0) {
-    // Query had no digits. That's weird and should be incompliant.
+    // Query had no digits. This is handled elsewhere.
     return 0;
   }
   // Look for more digits in the name.
@@ -91,6 +103,19 @@ uint8_t attempt_match(const string name, unsigned pos, openlcb::EventId event) {
 }
 
 }  // namespace
+
+// static
+bool FindProtocolDefs::match_event_to_drive_mode(openlcb::EventId event,
+                                                 DccMode mode) {
+  DccMode req_mode = (DccMode)(event & DCCMODE_PROTOCOL_MASK);
+  if (req_mode == DCCMODE_DEFAULT) {
+    return true;
+  }
+  if (mode == DCCMODE_DEFAULT) {
+    return true;
+  }
+  return dcc_mode_to_protocol(mode) == dcc_mode_to_protocol(req_mode);
+}
 
 // static
 unsigned FindProtocolDefs::query_to_address(openlcb::EventId event,
@@ -164,10 +189,17 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
   unsigned legacy_address = train->get_legacy_address();
   DccMode mode;
   unsigned supplied_address = query_to_address(event, &mode);
+  bool req_has_query = has_query(event);
   bool has_address_prefix_match = false;
+  auto actual_drive_mode = train->get_legacy_drive_mode();
   auto desired_address_type = dcc_mode_to_address_type(mode, supplied_address);
-  auto actual_address_type = dcc_mode_to_address_type(train->get_legacy_drive_mode(),
-                                              legacy_address);
+  auto actual_address_type =
+      dcc_mode_to_address_type(actual_drive_mode, legacy_address);
+  if (!match_event_to_drive_mode(event, actual_drive_mode)) {
+    // The request specified a restriction on the locomotive mode and this
+    // restriction does not match the current loco.
+    return 0;
+  }
   if (supplied_address == legacy_address) {
     if (actual_address_type == dcc::TrainAddressType::UNSUPPORTED ||
         desired_address_type == dcc::TrainAddressType::UNSPECIFIED ||
@@ -192,7 +224,7 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
       address_prefix /= 10;
     }
   }
-  if ((mode != DCCMODE_DEFAULT) && (event & EXACT) && (event & ALLOCATE)) {
+  if ((mode != DCCMODE_DEFAULT) && (event & EXACT) && (event & ALLOCATE) && (event & ADDRESS_ONLY)) {
     // Request specified a drive mode and allocation. We check the drive mode
     // to match.
     if (desired_address_type != actual_address_type) {
@@ -202,6 +234,10 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
   if (event & ADDRESS_ONLY) {
     if (((event & EXACT) != 0) || (!has_address_prefix_match)) return 0;
     return MATCH_ANY | ADDRESS_ONLY;
+  }
+  if (!req_has_query) {
+    if ((event & EXACT) != 0) return 0;
+    return MATCH_ANY;
   }
   // Match against the train name string.
   uint8_t first_name_match = 0xFF;
@@ -302,7 +338,8 @@ openlcb::EventId FindProtocolDefs::input_to_allocate(const string& input) {
     return 0;
   }
   auto event = input_to_event(input);
-  event |= (FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT);
+  event |= (FindProtocolDefs::ALLOCATE | FindProtocolDefs::EXACT |
+            FindProtocolDefs::ADDRESS_ONLY);
   return event;
 }
 

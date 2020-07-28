@@ -90,6 +90,15 @@ struct FindProtocolDefs {
     return (event >> TRAIN_FIND_MASK) == (TRAIN_FIND_BASE >> TRAIN_FIND_MASK);
   }
 
+  /// Compares an incoming search query's drive mode bits to an actual drive
+  /// mode of a locomotive. Decides whether they match using tri-state logic,
+  /// i.e. taking into account "no restriction" queries.
+  /// @param event the incoming query
+  /// @param mode the drive mode of a locomotive
+  /// @return true if this locomotive matches the restrictions in the query
+  /// (true if there were no restrictions in the query).
+  static bool match_event_to_drive_mode(openlcb::EventId event, DccMode mode);
+
   /** Compares an incoming search query to a given train node. Returns 0 for a
       no-match. Returns a bitfield of match types for a match. valid bits are
       MATCH_ANY (always set), ADDRESS_ONLY (set when the match occurred in the

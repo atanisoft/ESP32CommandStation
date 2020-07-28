@@ -182,6 +182,14 @@ enum DccMode {
   DCCMODE_PROTOCOL_MASK = 0b11111,
 };
 
+/// Converts a DccMode bit mask and a legacy address into a TrainAddressType
+/// enum.
+/// @param mode the legacy drive mode (e.g. from a TrainDb entry or from a search query)
+/// @param address is the legacy address.
+/// @return an enum value which together with the address uniquely represents
+/// an addressable entity on the track. May return UNSPECIFIED if DccMode ==
+/// DCCMODE_DEFAULT (usually a query did not specify any restriction) or
+/// UNSUPPORTED if we did not recognize the code in the DccMode bitfield.
 inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
                                                       uint32_t address) {
   if (mode == DCCMODE_DEFAULT) {
@@ -196,8 +204,29 @@ inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
     }
     return dcc::TrainAddressType::DCC_SHORT_ADDRESS;
   }
-  LOG(INFO, "Unsupported drive mode %d (0x%02x)", mode, mode);
+  LOG_ERROR("Unsupported drive mode %d (0x%02x)", mode, mode);
   return dcc::TrainAddressType::UNSUPPORTED;
+}
+
+/// Converts a DccMode bit mask down to a protocol enumeration, i.e. DCC,
+/// Marklin or OpenLCB.
+/// @param mode the detailed mode bit field.
+/// @return a stripped down mode bit field which does not specify any details
+/// about the protocol variant.
+inline DccMode dcc_mode_to_protocol(DccMode mode) {
+  if (mode == DCCMODE_DEFAULT ||
+      mode == DCCMODE_OLCBUSER) {
+    return mode;
+  }
+  if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY) {
+    return MARKLIN_ANY;
+  }
+  if ((mode & DCC_ANY_MASK) == DCC_ANY) {
+    return DCC_ANY;
+  }
+  LOG_ERROR("Unknown DCC Mode %d", (int)mode);
+  // We return the value unchanged.
+  return mode;
 }
 
 } // namespace commandstation
