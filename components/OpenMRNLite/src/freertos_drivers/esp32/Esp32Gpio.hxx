@@ -48,21 +48,6 @@
                              (pin < 32) ? GPIO.enable & BIT(pin & 31) :        \
                                           GPIO.enable1.data & BIT(pin & 31))
 
-/// Helper macro to retrieve the current state of an output pin.
-///
-/// This is necessary since ESP-IDF will return LOW (false) for all output pins
-/// regardless of their actual current state.
-#define GET_GPIO_LEVEL(pin) ((pin < 32) ? GPIO.out & BIT(pin & 31) :           \
-                                          GPIO.out1.data & BIT(pin & 31))
-
-/// Helper macro to reconfigure a GPIO pin as a specific mode.
-///
-/// Do not use this macro directly. Use @ref GPIO_PIN instead.
-#define CONFIGURE_GPIO(pin, mode)                                              \
-    gpio_pad_select_gpio(pin);                                                 \
-    ESP_ERROR_CHECK(gpio_reset_pin(pin));                                      \
-    ESP_ERROR_CHECK(gpio_set_direction(pin, mode));
-
 template <class Defs, bool SAFE_VALUE, bool INVERT> struct GpioOutputPin;
 template <class Defs, bool PUEN, bool PDEN> struct GpioInputPin;
 
@@ -95,7 +80,8 @@ public:
     /// @param new_state State to set the GPIO pin to.
     void write(Value new_state) const override
     {
-        LOG(VERBOSE, "GPIO(%d) write %s", PIN_NUM, new_state ? "HIGH" : "LOW");
+        LOG(VERBOSE, "Esp32Gpio(%d) write %s", PIN_NUM,
+            new_state == Value::SET ? "SET" : "CLR");
         ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, new_state));
     }
 
@@ -103,25 +89,19 @@ public:
     /// @return @ref SET if currently high, @ref CLR if currently low.
     Value read() const override
     {
-        if (GPIO_IS_VALID_OUTPUT_GPIO(PIN_NUM))
-        {
-            return (Value)GET_GPIO_LEVEL(PIN_NUM);
-        }
         return (Value)gpio_get_level(PIN_NUM);
     }
 
     /// Sets output to HIGH.
     void set() const override
     {
-        LOG(VERBOSE, "Esp32Gpio(%d) set HIGH", PIN_NUM);
-        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, 1));
+        write(Value::SET);
     }
 
     /// Sets output to LOW.
     void clr() const override
     {
-        LOG(VERBOSE, "Esp32Gpio(%d) clr LOW", PIN_NUM);
-        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, 0));
+        write(Value::CLR);
     }
 
     /// Sets the direction of the connected GPIO pin.
@@ -130,7 +110,10 @@ public:
         if (dir == Direction::DOUTPUT)
         {
             HASSERT(GPIO_IS_VALID_OUTPUT_GPIO(PIN_NUM));
-            ESP_ERROR_CHECK(gpio_set_direction(PIN_NUM, GPIO_MODE_OUTPUT));
+            // using GPIO_MODE_INPUT_OUTPUT instead of GPIO_MODE_OUTPUT so that
+            // we can read the IO state
+            ESP_ERROR_CHECK(
+                gpio_set_direction(PIN_NUM, GPIO_MODE_INPUT_OUTPUT));
             LOG(VERBOSE, "Esp32Gpio(%d) configured as OUTPUT", PIN_NUM);
         }
         else
@@ -185,7 +168,12 @@ public:
     /// Initializes the hardware pin.
     static void hw_init()
     {
-        CONFIGURE_GPIO(PIN_NUM, GPIO_MODE_OUTPUT)
+        gpio_pad_select_gpio(PIN_NUM);
+        ESP_ERROR_CHECK(gpio_reset_pin(PIN_NUM));
+        // using GPIO_MODE_INPUT_OUTPUT instead of GPIO_MODE_OUTPUT so that
+        // we can read the IO state
+        ESP_ERROR_CHECK(
+            gpio_set_direction(PIN_NUM, GPIO_MODE_INPUT_OUTPUT));
         ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, SAFE_VALUE));
     }
 
@@ -195,28 +183,31 @@ public:
         ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, SAFE_VALUE));
     }
 
-    /// Sets the output pinm @param value if true, output is set to HIGH, if
+    /// Sets the output pin @param value if true, output is set to HIGH, if
     /// false, output is set to LOW.
     static void set(bool value)
     {
         if (INVERT)
         {
-            LOG(VERBOSE, "Esp32Gpio(%d) set INV %s", PIN_NUM
-              , value ? "HIGH" : "LOW");
             ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, !value));
         }
         else
         {
-            LOG(VERBOSE, "Esp32Gpio(%d) set %s", PIN_NUM, value ? "HIGH" : "LOW");
             ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, value));
         }
+    }
+
+    /// Toggles the state of the pin to the opposite of what it is currently.
+    static void toggle()
+    {
+        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, !get()));
     }
 
     /// Reads the current state of the connected GPIO pin.
     /// @return @ref true if currently high, @ref false if currently low.
     static bool get()
     {
-        return GET_GPIO_LEVEL(PIN_NUM);
+        return gpio_get_level(PIN_NUM);
     }
 
     /// @return static Gpio object instance that controls this output pin.
@@ -238,7 +229,7 @@ struct GpioOutputSafeLow : public GpioOutputPin<Defs, false>
 /// level. All set() commands are acted upon by inverting the value.
 ///
 /// Do not use this class directly. Use @ref GPIO_PIN instead.
-template <uint8_t PIN_NUM, class Defs>
+template <class Defs>
 struct GpioOutputSafeLowInvert : public GpioOutputPin<Defs, false, true>
 {
 };
@@ -293,8 +284,9 @@ public:
     /// Initializes the hardware pin.
     static void hw_init()
     {
-        // sanity check that the pin number is valid
-        CONFIGURE_GPIO(PIN_NUM, GPIO_MODE_INPUT)
+        gpio_pad_select_gpio(PIN_NUM);
+        ESP_ERROR_CHECK(gpio_reset_pin(PIN_NUM));
+        ESP_ERROR_CHECK(gpio_set_direction(PIN_NUM, GPIO_MODE_INPUT));
         if (PUEN)
         {
             ESP_ERROR_CHECK(gpio_pullup_en(PIN_NUM));
@@ -382,8 +374,7 @@ template <class Defs> struct GpioInputPUPD : public GpioInputPin<Defs, true, tru
 ///    - 37, 38  : not exposed on most modules.
 ///    - 34 - 39 : these pins are INPUT only.
 /// NOTE: ESP32 covers the ESP32-WROOM-32, DOWD, D2WD, S0WD, U4WDH and the
-/// ESP32-Solo. note that the ESP32-Solo is a single core module and is not
-/// recommended for use, additionally the ESP32-S2 is it's replacement.
+/// ESP32-Solo.
 ///
 /// ESP32-PICO-D4: Same as ESP32 but possibly one restricted pin below:
 ///    - 16      : when PSRAM is included this pin may be used by flash.
@@ -393,11 +384,16 @@ template <class Defs> struct GpioInputPUPD : public GpioInputPin<Defs, true, tru
 ///
 /// ESP32-S2: Valid pin range is 0..46 with the following restrictions:
 ///    - 0       : pull-up resistor on most modules.
+///    - 19      : USB OTG D- 
+///    - 20      : USB OTG D+
 ///    - 22 - 25 : does not exist.
 ///    - 26 - 32 : connected to flash (GPIO 26 is used by PSRAM on S2-WROVER).
 ///    - 43, 44  : UART0, serial console.
 ///    - 45      : pull-down resistor on most modules.
 ///    - 46      : pull-down resistor on most modules, also INPUT only.
+///
+/// The built in pull-up/pull-down resistor for all ESP32 variants is typically
+/// around 45 kiloohm.
 ///
 /// Data sheet references:
 /// ESP32: https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf
