@@ -494,11 +494,11 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
     }
     else if (arguments.size() == 3)
     {
-      // board can be 0-511 and port 0-3, however board 0 is problematic
+      // board can be 0-511 and port 0-3
       int16_t board = std::stoi(arguments[1]);
       int8_t port = std::stoi(arguments[2]);
       // validate input parameters and reject values that are out of range
-      if (board <= 0 || board > 511 || port < 0 || port > 3)
+      if (board < 0 || board > 511 || port < 0 || port > 3)
       {
         LOG_ERROR("[DCC++ T] Rejecting invalid board(%d), port(%d)", board
                 , port);
@@ -506,7 +506,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
       }
       // create/update turnout
       uint16_t addr = decodeDCCAccessoryAddress(board, port);
-      if (addr == 0 || addr > 2044)
+      if (addr == 0 || addr > 2048)
       {
         LOG_ERROR("[DCC++ T] Address %d is out of range, rejecting", addr);
         return COMMAND_FAILED_RESPONSE;

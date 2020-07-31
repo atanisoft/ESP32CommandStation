@@ -312,18 +312,13 @@ void encodeDCCAccessoryAddress(uint16_t *board, int8_t *port
                              , uint16_t address)
 {
   // DCC address starts at 1, board address is 0-511 and index is 0-3.
-  *board = ((address - 1) / 4) + 1;
+  *board = ((address - 1) / 4);
   *port = (address - 1) % 4;
 }
 
 uint16_t decodeDCCAccessoryAddress(uint16_t board, int8_t port)
 {
-  if (board == 0)
-  {
-    return 0;
-  }
-  uint32_t addr = ((board - 1) << 2);
-  addr += port + 1;
+  uint32_t addr = (board << 2) + (port + 1);
   return (uint16_t)(addr & 0xFFFF);
 }
 
