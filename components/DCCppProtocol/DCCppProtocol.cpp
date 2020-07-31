@@ -472,7 +472,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
   else
   {
     // index starts at one, reduce the index parameter by one.
-    uint16_t index = std::stoi(arguments[0]) - 1;
+    uint16_t index = std::stoi(arguments[0]);
     if (arguments.size() == 1)
     {
       auto turnout = turnoutManager->getByID(index);
