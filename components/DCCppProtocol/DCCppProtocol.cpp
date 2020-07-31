@@ -471,11 +471,12 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
   }
   else
   {
-    // index starts at one, reduce the index parameter by one.
-    uint16_t index = std::stoi(arguments[0]);
+    // user provided turnout id
+    uint16_t id = std::stoi(arguments[0]);
     if (arguments.size() == 1)
     {
-      auto turnout = turnoutManager->getByID(index);
+      // If the turnout exists delete it.
+      auto turnout = turnoutManager->getByID(id);
       if (turnout && turnoutManager->remove(turnout->getAddress()))
       {
         // delete turnout
@@ -484,8 +485,9 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
     }
     else if (arguments.size() == 2)
     {
-      // throw turnout
-      auto turnout = turnoutManager->getByID(index);
+      // If the turnout exists set it to whichever direction the user provided
+      // 0 = closed/normal/unthrown, 1 = thrown.
+      auto turnout = turnoutManager->getByID(id);
       if (turnout)
       {
         turnout->set(std::stoi(arguments[1]));
@@ -494,25 +496,30 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
     }
     else if (arguments.size() == 3)
     {
-      // board can be 0-511 and port 0-3
+      // User is trying to create/update a turnout, convert the provided board
+      // address and port into a DCC address.
       int16_t board = std::stoi(arguments[1]);
       int8_t port = std::stoi(arguments[2]);
-      // validate input parameters and reject values that are out of range
+      // Validate that the board address and port are within the supported
+      // range.
       if (board < 0 || board > 511 || port < 0 || port > 3)
       {
         LOG_ERROR("[DCC++ T] Rejecting invalid board(%d), port(%d)", board
                 , port);
         return COMMAND_FAILED_RESPONSE;
       }
-      // create/update turnout
+      // Convert the board address and port into a DCC address
       uint16_t addr = decodeDCCAccessoryAddress(board, port);
+      // Validate that the DCC address is within the supported address range.
       if (addr == 0 || addr > 2048)
       {
-        LOG_ERROR("[DCC++ T] Address %d is out of range, rejecting", addr);
+        LOG_ERROR("[DCC++ T] Address %d is out of range (1-2048), rejecting"
+                , addr);
         return COMMAND_FAILED_RESPONSE;
       }
-      LOG(VERBOSE, "[DCC++ T] decoded %d:%d to %d", board, port, addr);
-      turnoutManager->createOrUpdate(addr, TurnoutType::NO_CHANGE, index);
+      LOG(VERBOSE, "[DCC++ T] decoded %d:%d to DCC %d (USER)", board, port, addr);
+      // Create or update the turnout with the validated inputs.
+      turnoutManager->createOrUpdate(addr, TurnoutType::NO_CHANGE, id);
       return COMMAND_SUCCESSFUL_RESPONSE;
     }
   }

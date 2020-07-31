@@ -75,7 +75,7 @@ void TurnoutManager::clear()
   dirty_ = true;
 }
 
-#define FIND_TURNOUT(address) \
+#define FIND_TURNOUT(address)                             \
   std::find_if(turnouts_.begin(), turnouts_.end(),        \
     [address](std::unique_ptr<Turnout> & turnout) -> bool \
     {                                                     \
@@ -83,11 +83,11 @@ void TurnoutManager::clear()
     }                                                     \
   )
 
-#define FIND_TURNOUT_BY_ID(id) \
+#define FIND_TURNOUT_BY_ID(id)                            \
   std::find_if(turnouts_.begin(), turnouts_.end(),        \
-    [id](std::unique_ptr<Turnout> & turnout) -> bool \
+    [id](std::unique_ptr<Turnout> & turnout) -> bool      \
     {                                                     \
-      return (turnout->getID() == id);          \
+      return (turnout->getID() == id);                    \
     }                                                     \
   )
 
@@ -99,16 +99,14 @@ string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
   {
     elem->get()->set(thrown, sendDCC);
     dirty_ = true;
-    return StringPrintf("<H %d %d>"
-                      , std::distance(turnouts_.begin(), elem) + 1
+    return StringPrintf("<H %d %d>", elem->get()->getID()
                       , elem->get()->isThrown());
   }
 
   // we didn't find it, create it and set it
-  turnouts_.push_back(std::make_unique<Turnout>(turnouts_.size() + 1
-                                              , address));
+  turnouts_.push_back(std::make_unique<Turnout>(address, address));
   turnouts_.back().get()->set(thrown, sendDCC);
-  return StringPrintf("<H %d %d>", turnouts_.size()
+  return StringPrintf("<H %d %d>", turnouts_.back().get()->getID()
                     , turnouts_.back().get()->isThrown());
 }
 
@@ -120,15 +118,14 @@ string TurnoutManager::toggle(uint16_t address)
   {
     elem->get()->toggle();
     dirty_ = true;
-    return StringPrintf("<H %d %d>"
-                      , std::distance(turnouts_.begin(), elem)
+    return StringPrintf("<H %d %d>", elem->get()->getID()
                       , elem->get()->isThrown());
   }
 
   // we didn't find it, create it and throw it
-  turnouts_.push_back(std::make_unique<Turnout>(address, -1));
+  turnouts_.push_back(std::make_unique<Turnout>(address, address));
   turnouts_.back().get()->toggle();
-  return StringPrintf("<H %d %d>", turnouts_.size()
+  return StringPrintf("<H %d %d>", turnouts_.back().get()->getID()
                     , turnouts_.back().get()->isThrown());
 }
 
@@ -226,7 +223,7 @@ Turnout *TurnoutManager::get(const uint16_t address)
   {
     return elem->get();
   }
-  LOG(WARNING, "[Turnout %d] not found", address);
+  LOG(WARNING, "[Turnout] Address %d not found", address);
   return nullptr;
 }
 
@@ -311,13 +308,16 @@ void TurnoutManager::persist()
 void encodeDCCAccessoryAddress(uint16_t *board, int8_t *port
                              , uint16_t address)
 {
-  // DCC address starts at 1, board address is 0-511 and index is 0-3.
+  // NOTE: This will convert from a USER visible DCC address to the on-the-wire
+  // DCC board:port address format.
   *board = ((address - 1) / 4);
   *port = (address - 1) % 4;
 }
 
 uint16_t decodeDCCAccessoryAddress(uint16_t board, int8_t port)
 {
+  // NOTE: this decodes the board:port into the USER visible DCC address and
+  // not the DCC on-the-wire address.
   uint32_t addr = (board << 2) + (port + 1);
   return (uint16_t)(addr & 0xFFFF);
 }
@@ -326,8 +326,8 @@ Turnout::Turnout(uint16_t address, int16_t id, bool thrown, TurnoutType type)
                : _address(address), _id(id > 0 ? id : address), _thrown(thrown)
                , _type(type)
 {
-  LOG(INFO, "[Turnout %d] Registered as type %s and initial state of %s"
-    , _address, TURNOUT_TYPE_STRINGS[_type]
+  LOG(INFO, "[Turnout %d (%d)] Registered as type %s and initial state of %s"
+    , _id, _address, TURNOUT_TYPE_STRINGS[_type]
     , _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
 }
 
@@ -340,8 +340,8 @@ void Turnout::update(uint16_t address, TurnoutType type, int16_t id)
   }
   _id = (id != -1) ? id : address;
   
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d] Updated type %s", _address
-    , TURNOUT_TYPE_STRINGS[_type]);
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Updated type %s", _id
+    , _address, TURNOUT_TYPE_STRINGS[_type]);
 }
 
 string Turnout::toJson(bool readableStrings)
@@ -369,18 +369,20 @@ void Turnout::set(bool thrown, bool sendDCCPacket)
   {
     packet_processor_add_refresh_source(this);
   }
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d] Set to %s", _address
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Set to %s", _id, _address
     , _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
 }
 
 void Turnout::get_next_packet(unsigned code, dcc::Packet* packet)
 {
   // shift address by one to account for the output pair state bit (thrown).
-  uint16_t addr = ((_address << 1) | _thrown);
+  // decrement the address prior to shift to bring it into the 0-2047 range.
+  uint16_t addr = (((_address - 1) << 1) | _thrown);
+
   // always send activate as true (sets C to 1)
   packet->add_dcc_basic_accessory(addr, true);
 
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d] Packet: %s", _address
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Packet: %s", _id, _address
     , packet_to_string(*packet, true).c_str());
 
   // remove ourselves as turnouts are single fire sources
