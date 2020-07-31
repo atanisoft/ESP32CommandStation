@@ -35,7 +35,8 @@ static constexpr const char *TURNOUT_TYPE_STRINGS[] =
   "LEFT",
   "RIGHT",
   "WYE",
-  "MULTI"
+  "MULTI",
+  "UNKNOWN"
 };
 
 TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
@@ -50,10 +51,15 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
     Singleton<FileSystemManager>::instance()->load(TURNOUTS_JSON_FILE));
   for (auto turnout : root)
   {
-    turnouts_.push_back(
-      std::make_unique<Turnout>(turnout[JSON_ADDRESS_NODE].get<int>()
-                              , turnout[JSON_STATE_NODE].get<int>()
-                              , (TurnoutType)turnout[JSON_TYPE_NODE].get<int>()));
+    uint16_t address = turnout[JSON_ADDRESS_NODE].get<int>();
+    uint16_t id = address;
+    if (turnout.contains(JSON_STATE_NODE))
+    {
+      id = turnout[JSON_ID_NODE].get<int>();
+    }
+    bool state = turnout[JSON_STATE_NODE].get<int>();
+    TurnoutType type = (TurnoutType)turnout[JSON_TYPE_NODE].get<int>();
+    turnouts_.push_back(std::make_unique<Turnout>(address, id, state, type));
   }
   LOG(INFO, "[Turnout] Loaded %d DCC turnout(s)", turnouts_.size());
 }
@@ -74,6 +80,14 @@ void TurnoutManager::clear()
     [address](std::unique_ptr<Turnout> & turnout) -> bool \
     {                                                     \
       return (turnout->getAddress() == address);          \
+    }                                                     \
+  )
+
+#define FIND_TURNOUT_BY_ID(id) \
+  std::find_if(turnouts_.begin(), turnouts_.end(),        \
+    [id](std::unique_ptr<Turnout> & turnout) -> bool \
+    {                                                     \
+      return (turnout->getID() == id);          \
     }                                                     \
   )
 
@@ -132,31 +146,47 @@ string TurnoutManager::get_state_for_dccpp()
     return COMMAND_FAILED_RESPONSE;
   }
   string status;
-  uint16_t index = 0;
   for (auto& turnout : turnouts_)
   {
     uint16_t board;
     int8_t port;
     encodeDCCAccessoryAddress(&board, &port, turnout->getAddress());
-    status += StringPrintf("<H %d %d %d %d>", index++, board, port
+    status += StringPrintf("<H %d %d %d %d>", turnout->getID(), board, port
                          , turnout->isThrown());
   }
   return status;
 }
 
 Turnout *TurnoutManager::createOrUpdate(const uint16_t address
-                                      , const TurnoutType type)
+                                      , const TurnoutType type
+                                      , const int16_t id)
 {
   OSMutexLock h(&mux_);
-  auto const &elem = FIND_TURNOUT(address);
-  if (elem != turnouts_.end())
+  if (id != -1)
   {
-    elem->get()->update(address, type);
-    dirty_ = true;
-    return elem->get();
+    auto const &elem = FIND_TURNOUT_BY_ID(id);
+    if (elem != turnouts_.end())
+    {
+      elem->get()->update(address, type, id);
+      dirty_ = true;
+      return elem->get();
+    }
+  }
+  else
+  {
+    auto const &elem = FIND_TURNOUT(address);
+    if (elem != turnouts_.end())
+    {
+      elem->get()->update(address, type);
+      dirty_ = true;
+      return elem->get();
+    }
   }
   // we didn't find it, create it!
-  turnouts_.push_back(std::make_unique<Turnout>(address, false, type));
+  turnouts_.push_back(
+    std::make_unique<Turnout>(address, id, false
+                            , type != TurnoutType::NO_CHANGE ? type
+                                                             : TurnoutType::LEFT));
   dirty_ = true;
   return turnouts_.back().get();
 }
@@ -176,15 +206,15 @@ bool TurnoutManager::remove(const uint16_t address)
   return false;
 }
 
-Turnout *TurnoutManager::getByIndex(const uint16_t index)
+Turnout *TurnoutManager::getByID(const uint16_t id)
 {
   OSMutexLock h(&mux_);
-  if (index < turnouts_.size())
+  auto const &elem = FIND_TURNOUT_BY_ID(id);
+  if (elem != turnouts_.end())
   {
-    return turnouts_[index].get();
+    return elem->get();
   }
-  LOG(WARNING, "[Turnout] index %d not found (max: %d)", index
-    , turnouts_.size());
+  LOG(WARNING, "[Turnout] ID %d not found", id);
   return nullptr;
 }
 
@@ -297,26 +327,33 @@ uint16_t decodeDCCAccessoryAddress(uint16_t board, int8_t port)
   return (uint16_t)(addr & 0xFFFF);
 }
 
-Turnout::Turnout(uint16_t address, bool thrown, TurnoutType type)
-               : _address(address), _thrown(thrown), _type(type)
+Turnout::Turnout(uint16_t address, int16_t id, bool thrown, TurnoutType type)
+               : _address(address), _id(id > 0 ? id : address), _thrown(thrown)
+               , _type(type)
 {
   LOG(INFO, "[Turnout %d] Registered as type %s and initial state of %s"
     , _address, TURNOUT_TYPE_STRINGS[_type]
     , _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
 }
 
-void Turnout::update(uint16_t address, TurnoutType type)
+void Turnout::update(uint16_t address, TurnoutType type, int16_t id)
 {
   _address = address;
-  _type = type;
+  if (type != TurnoutType::NO_CHANGE)
+  {
+    _type = type;
+  }
+  _id = (id != -1) ? id : address;
+  
   LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d] Updated type %s", _address
     , TURNOUT_TYPE_STRINGS[_type]);
 }
 
 string Turnout::toJson(bool readableStrings)
 {
-  string serialized = StringPrintf("{\"%s\":%d,\"%s\":%d,\"%s\":"
-  , JSON_ADDRESS_NODE, _address, JSON_TYPE_NODE, _type, JSON_STATE_NODE);
+  string serialized = StringPrintf("{\"%s\":%d,\"%s\":%d,\"%s\":%d,\"%s\":"
+  , JSON_ADDRESS_NODE, _address, JSON_ID_NODE, _id, JSON_TYPE_NODE, _type
+  , JSON_STATE_NODE);
   if (readableStrings)
   {
     serialized += StringPrintf("\"%s\"", _thrown ? JSON_VALUE_THROWN

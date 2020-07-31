@@ -475,7 +475,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
     uint16_t index = std::stoi(arguments[0]) - 1;
     if (arguments.size() == 1)
     {
-      auto turnout = turnoutManager->getByIndex(index);
+      auto turnout = turnoutManager->getByID(index);
       if (turnout && turnoutManager->remove(turnout->getAddress()))
       {
         // delete turnout
@@ -485,7 +485,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
     else if (arguments.size() == 2)
     {
       // throw turnout
-      auto turnout = turnoutManager->getByIndex(index);
+      auto turnout = turnoutManager->getByID(index);
       if (turnout)
       {
         turnout->set(std::stoi(arguments[1]));
@@ -512,7 +512,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
         return COMMAND_FAILED_RESPONSE;
       }
       LOG(VERBOSE, "[DCC++ T] decoded %d:%d to %d", board, port, addr);
-      turnoutManager->createOrUpdate(addr);
+      turnoutManager->createOrUpdate(addr, TurnoutType::NO_CHANGE, index);
       return COMMAND_SUCCESSFUL_RESPONSE;
     }
   }
