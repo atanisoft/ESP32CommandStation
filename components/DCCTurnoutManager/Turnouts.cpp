@@ -53,7 +53,7 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
   {
     uint16_t address = turnout[JSON_ADDRESS_NODE].get<int>();
     uint16_t id = address;
-    if (turnout.contains(JSON_STATE_NODE))
+    if (turnout.contains(JSON_ID_NODE))
     {
       id = turnout[JSON_ID_NODE].get<int>();
     }
