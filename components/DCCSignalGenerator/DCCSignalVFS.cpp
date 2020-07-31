@@ -135,6 +135,7 @@ Esp32RailComDriver<RailComHW> opsRailComDriver;
 NoRailcomDriver opsRailComDriver;
 
 #endif // CONFIG_OPS_RAILCOM
+
 /// Initializer for all GPIO pins.
 typedef GpioInitializer<
   OPS_SIGNAL_Pin, OPS_ENABLE_Pin
@@ -172,7 +173,7 @@ void initiate_estop()
 /// Returns true if the OPS track output is enabled
 bool is_ops_track_output_enabled()
 {
-  return OPS_ENABLE_Pin::instance()->is_set();
+  return OPS_ENABLE_Pin::get();
 }
 
 /// Enables the OPS track output
@@ -181,7 +182,7 @@ void enable_ops_track_output()
   if (!is_ops_track_output_enabled())
   {
     LOG(INFO, "[Track] Enabling track output: %s", CONFIG_OPS_TRACK_NAME);
-    OPS_ENABLE_Pin::instance()->set();
+    OPS_ENABLE_Pin::set(true);
 #if CONFIG_STATUS_LED
     Singleton<StatusLED>::instance()->setStatusLED(
           StatusLED::LED::OPS_TRACK, StatusLED::COLOR::GREEN);
@@ -193,25 +194,22 @@ void enable_ops_track_output()
 /// Enables the OPS track output
 void disable_ops_track_output()
 {
-  if (is_ops_track_output_enabled())
-  {
-    LOG(INFO, "[Track] Disabling track output: %s", CONFIG_OPS_TRACK_NAME);
-    OPS_ENABLE_Pin::instance()->clr();
+  LOG(INFO, "[Track] Disabling track output: %s (if enabled)", CONFIG_OPS_TRACK_NAME);
+  OPS_ENABLE_Pin::set(false);
 #if CONFIG_STATUS_LED
-    Singleton<StatusLED>::instance()->setStatusLED(
-          StatusLED::LED::OPS_TRACK, StatusLED::COLOR::OFF);
+  Singleton<StatusLED>::instance()->setStatusLED(
+        StatusLED::LED::OPS_TRACK, StatusLED::COLOR::OFF);
 #endif // CONFIG_STATUS_LED
-    update_status_display();
-  }
+  update_status_display();
 }
 
 /// Enables the PROG track output
 static void enable_prog_track_output()
 {
-  if (PROG_ENABLE_Pin::instance()->is_clr())
+  if (!PROG_ENABLE_Pin::get())
   {
     LOG(INFO, "[Track] Enabling track output: %s", CONFIG_PROG_TRACK_NAME);
-    PROG_ENABLE_Pin::instance()->set();
+    PROG_ENABLE_Pin::set(true);
     track_mon[PROG_RMT_CHANNEL]->enable_prog_response(true);
 #if CONFIG_STATUS_LED
     Singleton<StatusLED>::instance()->setStatusLED(
@@ -224,17 +222,14 @@ static void enable_prog_track_output()
 /// Disables the PROG track outputs
 static void disable_prog_track_output()
 {
-  if (PROG_ENABLE_Pin::instance()->is_set())
-  {
-    LOG(INFO, "[Track] Disabling track output: %s", CONFIG_PROG_TRACK_NAME);
-    PROG_ENABLE_Pin::instance()->clr();
-    track_mon[PROG_RMT_CHANNEL]->enable_prog_response(false);
+  LOG(INFO, "[Track] Disabling track output: %s (if enabled)", CONFIG_PROG_TRACK_NAME);
+  PROG_ENABLE_Pin::set(false);
+  track_mon[PROG_RMT_CHANNEL]->enable_prog_response(false);
 #if CONFIG_STATUS_LED
-    Singleton<StatusLED>::instance()->setStatusLED(
-          StatusLED::LED::PROG_TRACK, StatusLED::COLOR::OFF);
+  Singleton<StatusLED>::instance()->setStatusLED(
+        StatusLED::LED::PROG_TRACK, StatusLED::COLOR::OFF);
 #endif // CONFIG_STATUS_LED
-    update_status_display();
-  }
+  update_status_display();
 }
 
 /// Disables all track outputs
@@ -474,11 +469,35 @@ void TrackPowerBit::set_state(bool new_value)
   }
 }
 
+/*
+struct DccHardware
+{
+  typedef DummyPin PROG_RAILCOM_ENABLE_Pin;
+
+  using OPSDccOutput = DccOutputHwReal<DccOutput::Type::TRACK, OPS_ENABLE_Pin
+                                     , OPS_RAILCOM_ENABLE_Pin, 0, 0, 0>;
+  using PROGDccOutput = DccOutputHwReal<DccOutput::Type::PGM, PROG_ENABLE_Pin
+                                      , PROG_RAILCOM_ENABLE_Pin, 0, 0, 0>;
+  using LCCDccOutput = DccOutputHwDummy<DccOutput::Type::LCC>;
+};
+*/
+
 } // namespace esp32cs
 
 // This needs to be declared in the global namespace
 // TODO
 DccOutput *get_dcc_output(DccOutput::Type type)
 {
+  /*
+  switch (type)
+  {
+    case DccOutput::Type::TRACK:
+      return DccOutputImpl<esp32cs::DccHardware::OPSDccOutput>::instance();
+    case DccOutput::Type::PGM:
+      return DccOutputImpl<esp32cs::DccHardware::PROGDccOutput>::instance();
+    case DccOutput::Type::LCC:
+      return DccOutputImpl<esp32cs::DccHardware::LCCDccOutput>::instance();
+  }
+  */
   return nullptr;
 }
