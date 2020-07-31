@@ -572,9 +572,9 @@ HTTP_HANDLER_IMPL(process_config, request)
   {
     needReboot = true;
   }
-  if (request->has_param("lcc-can") &&
-      stackManager->reconfigure_can(request->param("lcc-can", false)))
+  if (request->has_param("lcc-can"))
   {
+    stackManager->reconfigure_can(request->param("lcc-can", false));
     needReboot = true;
   }
   if (request->has_param("lcc-hub"))

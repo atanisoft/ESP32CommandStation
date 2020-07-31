@@ -175,6 +175,9 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
     LOG(VERBOSE, "[LCC] node config file(%s) is expected size %lu bytes"
       , LCC_CONFIG_FILE, statbuf.st_size);
   }
+
+  // if the factory reset marker is present or we need to reset due to config
+  // file size changes take care of it now.
   if (fs->exists(LCC_RESET_MARKER_FILE) || lcc_factory_reset)
   {
     fs->remove(LCC_RESET_MARKER_FILE);
@@ -188,21 +191,14 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
         LOG(WARNING, "[LCC] Forcing regeneration of %s", LCC_CDI_XML);
         ERRNOCHECK(LCC_CDI_XML, unlink(LCC_CDI_XML));
     }
-    fs->remove(LCC_NODE_ID_FILE);
-    fs->remove(LCC_CAN_MARKER_FILE);
   }
 
-  if (!fs->exists(LCC_NODE_ID_FILE))
+  // if there is a node-id override load it
+  if (fs->exists(LCC_NODE_ID_FILE))
   {
-    LOG(INFO, "[LCC] Initializing configuration data...");
-    set_node_id(uint64_to_string_hex(UINT64_C(CONFIG_LCC_NODE_ID)), false);
-#if defined(CONFIG_LCC_CAN_ENABLED)
-    reconfigure_can(true, false);
-#endif // CONFIG_LCC_CAN_ENABLED
+    string node_id_str = fs->load(LCC_NODE_ID_FILE);
+    nodeID_ = string_to_uint64(node_id_str);
   }
-  LOG(INFO, "[LCC] Loading configuration");
-  string node_id_str = fs->load(LCC_NODE_ID_FILE);
-  nodeID_ = string_to_uint64(node_id_str);
 
   LOG(INFO, "[LCC] Initializing Stack (node-id: %s)"
     , uint64_to_string_hex(nodeID_).c_str());
@@ -211,7 +207,10 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
 #else
   stack_ = new openlcb::SimpleCanStack(nodeID_);
 #if defined(CONFIG_LCC_CAN_ENABLED)
-  if (fs->exists(LCC_CAN_MARKER_FILE))
+  // If the user has not explicitly disabled the CAN interface create it and
+  // start a background task to send/receive packets.
+  // TODO: move to new TWAI driver once stable since it does not require a task
+  if (!fs->exists(LCC_CAN_MARKER_FILE))
   {
     LOG(INFO, "[LCC] Enabling CAN interface (rx: %d, tx: %d)"
       , CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
@@ -323,7 +322,7 @@ void LCCStackManager::shutdown()
   }
 }
 
-bool LCCStackManager::set_node_id(string node_id, bool restart)
+bool LCCStackManager::set_node_id(string node_id)
 {
   uint64_t new_node_id = string_to_uint64(node_id);
   if (new_node_id != nodeID_)
@@ -332,38 +331,29 @@ bool LCCStackManager::set_node_id(string node_id, bool restart)
     auto fs = Singleton<FileSystemManager>::instance();
     string node_id_str = uint64_to_string_hex(new_node_id);
     fs->store(LCC_NODE_ID_FILE, node_id_str);
-    if (restart)
-    {
-      factory_reset();
-      reboot_node();
-      return true;
-    }
+    factory_reset();
+    reboot_node();
+    return true;
   }
   return false;
 }
 
-bool LCCStackManager::reconfigure_can(bool enable, bool restart)
+void LCCStackManager::reconfigure_can(bool enable)
 {
 #if defined(CONFIG_LCC_CAN_ENABLED)
   auto fs = Singleton<FileSystemManager>::instance();
-  if (fs->exists(LCC_CAN_MARKER_FILE) && !enable)
-  {
-    LOG(INFO, "[LCC] Disabling CAN interface, reinitialization required.");
-    fs->remove(LCC_CAN_MARKER_FILE);
-  }
-  else if (!fs->exists(LCC_CAN_MARKER_FILE) && enable)
+  if (enable)
   {
     LOG(INFO, "[LCC] Enabling CAN interface, reinitialization required.");
-    string can_str = "true";
+    fs->remove(LCC_CAN_MARKER_FILE);
+  }
+  else
+  {
+    LOG(INFO, "[LCC] Disabling CAN interface, reinitialization required.");
+    string can_str = "disabled";
     fs->store(LCC_CAN_MARKER_FILE, can_str);
   }
-  if (restart)
-  {
-    reboot_node();
-    return true;
-  }
 #endif // CONFIG_LCC_CAN_ENABLED
-  return false;
 }
 
 void LCCStackManager::factory_reset()

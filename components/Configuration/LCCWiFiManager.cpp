@@ -109,87 +109,87 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
                              : stack_(stack), cfg_(cfg)
 {
   auto fs = Singleton<FileSystemManager>::instance();
-  if (!fs->exists(WIFI_SOFTAP_CFG) && !fs->exists(WIFI_STATION_CFG))
-  {
+
+  // initialize default values based on compiled configuration
 #if defined(CONFIG_WIFI_MODE_SOFTAP)
-    reconfigure_mode(JSON_VALUE_WIFI_MODE_SOFTAP_ONLY, false);
+  mode_ = WIFI_MODE_AP;
+  ssid_ = CONFIG_WIFI_SOFTAP_SSID;
+  password_ = CONFIG_WIFI_SOFTAP_PASSWORD;
 #elif defined(CONFIG_WIFI_MODE_SOFTAP_STATION)
-    reconfigure_mode(JSON_VALUE_WIFI_MODE_SOFTAP_STATION, false);
+  mode_ = WIFI_MODE_APSTA;
 #else
-    reconfigure_mode(JSON_VALUE_WIFI_MODE_STATION_ONLY, false);
+  mode_ = WIFI_MODE_STA;
 #endif
 #if defined(CONFIG_WIFI_MODE_SOFTAP_STATION) || \
     defined(CONFIG_WIFI_MODE_STATION)
-    reconfigure_station(CONFIG_WIFI_SSID, CONFIG_WIFI_PASSWORD
-                      , CONFIG_WIFI_STATIC_IP_ADDRESS
-                      , CONFIG_WIFI_STATIC_IP_GATEWAY
-                      , CONFIG_WIFI_STATIC_IP_SUBNET
-                      , CONFIG_WIFI_STATIC_IP_DNS, false);
+  ssid_ = CONFIG_WIFI_SSID;
+  password_ = CONFIG_WIFI_PASSWORD;
+  string ip = CONFIG_WIFI_STATIC_IP_ADDRESS;
+  string gateway = CONFIG_WIFI_STATIC_IP_GATEWAY;
+  string netmask = CONFIG_WIFI_STATIC_IP_SUBNET;
+  string dns = CONFIG_WIFI_STATIC_IP_DNS;
 #endif // CONFIG_WIFI_MODE_SOFTAP_STATION || CONFIG_WIFI_MODE_STATION
-  }
 
-  LOG(INFO, "[WiFi] Loading configuration");
-  if (fs->exists(WIFI_SOFTAP_CFG) && !fs->exists(WIFI_STATION_CFG))
+  // If the SoftAP marker exists configure for SoftAP mode
+  if (fs->exists(WIFI_SOFTAP_CFG))
   {
-    mode_ =  WIFI_MODE_AP;
+    mode_ = WIFI_MODE_AP;
     string station_cfg = fs->load(WIFI_SOFTAP_CFG);
     std::pair<string, string> cfg = http::break_string(station_cfg, "\n");
     ssid_ = cfg.first;
     password_ = cfg.second;
-    LOG(INFO, "[WiFi] SoftAP only (ssid: %s)", ssid_.c_str());
   }
-  else if (fs->exists(WIFI_SOFTAP_CFG) &&
-           fs->exists(WIFI_STATION_CFG))
+  
+  // If the station marker file exists load it to configure for Station mode.
+  if (fs->exists(WIFI_STATION_CFG))
   {
-    LOG(INFO, "[WiFi] SoftAP and Station");
-    mode_ =  WIFI_MODE_APSTA;
-  }
-  else if (fs->exists(WIFI_STATION_CFG))
-  {
-    LOG(INFO, "[WiFi] Station only");
     mode_ =  WIFI_MODE_STA;
-  }
-  else
-  {
-    LOG(INFO
-      , "[WiFi] Unable to locate SoftAP or Station configuration, enabling "
-        "SoftAP: %s", CONFIG_WIFI_SOFTAP_SSID);
-    mode_ =  WIFI_MODE_AP;
-    ssid_ = CONFIG_WIFI_SOFTAP_SSID;
-    password_ = CONFIG_WIFI_SOFTAP_PASSWORD;
-  }
-  if (mode_ != WIFI_MODE_AP)
-  {
+    // since the Station config file exists load and parse the Station config
+    // overrides.
     string station_cfg = fs->load(WIFI_STATION_CFG);
     std::pair<string, string> cfg = http::break_string(station_cfg, "\n");
     ssid_ = cfg.first;
     password_ = cfg.second;
+    // if the softap marker is present reconfigure for SoftAP and Station mode.
+    if (fs->exists(WIFI_SOFTAP_CFG))
+    {
+      mode_ =  WIFI_MODE_APSTA;
+    }
+  }
+
+  // If not running in SoftAP only mode load any dns and ip configuration
+  // overrides.
+  if (mode_ != WIFI_MODE_AP)
+  {
+    if (fs->exists(WIFI_STATION_DNS_CFG))
+    {
+      dns = fs->load(WIFI_STATION_DNS_CFG);
+    }
+
     if (fs->exists(WIFI_STATION_IP_CFG))
     {
       std::vector<string> ip_parts;
       string ip_cfg = fs->load(WIFI_STATION_IP_CFG);
       http::tokenize(ip_cfg, ip_parts, "\n");
-      stationIP_.reset(new tcpip_adapter_ip_info_t());
-      stationIP_->ip.addr = ipaddr_addr(ip_parts[0].c_str());
-      stationIP_->gw.addr = ipaddr_addr(ip_parts[1].c_str());
-      stationIP_->netmask.addr = ipaddr_addr(ip_parts[2].c_str());
-      LOG(INFO, "[WiFi] Static IP:" IPSTR ", gateway:" IPSTR ",netmask:" IPSTR,
-        IP2STR(&stationIP_->ip), IP2STR(&stationIP_->gw), IP2STR(&stationIP_->netmask));
+      ip = ip_parts[0];
+      gateway = ip_parts[1];
+      netmask = ip_parts[2];
     }
-    if (fs->exists(WIFI_STATION_DNS_CFG))
+
+    // if we have a static ip configuration convert it to the required format.
+    if (!ip.empty() && !gateway.empty() && !netmask.empty())
     {
-      string dns = fs->load(WIFI_STATION_DNS_CFG);
-      stationDNS_.u_addr.ip4.addr = ipaddr_addr(dns.c_str());
-      LOG(INFO, "[WiFi] DNS configured: " IPSTR
-        , IP2STR(&stationDNS_.u_addr.ip4));
+      stationIP_.reset(new tcpip_adapter_ip_info_t());
+      stationIP_->ip.addr = ipaddr_addr(ip.c_str());
+      stationIP_->gw.addr = ipaddr_addr(gateway.c_str());
+      stationIP_->netmask.addr = ipaddr_addr(netmask.c_str());
     }
-  }
-  else if (fs->exists(WIFI_SOFTAP_CFG))
-  {
-    string station_cfg = fs->load(WIFI_SOFTAP_CFG);
-    std::pair<string, string> cfg = http::break_string(station_cfg, "\n");
-    ssid_ = cfg.first;
-    password_ = cfg.second;
+
+    // if we have a dns override convert it
+    if (!dns.empty())
+    {
+      stationDNS_.u_addr.ip4.addr = ipaddr_addr(dns.c_str());
+    }
   }
 
   LOG(INFO, "[WiFi] Starting WiFiManager");

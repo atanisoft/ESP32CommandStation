@@ -49,15 +49,15 @@ public:
   openlcb::MemoryConfigHandler *memory_config_handler();
   void start(bool is_sd);
   void shutdown();
-  bool set_node_id(std::string, bool restart = true);
-  bool reconfigure_can(bool enable, bool restart = true);
+  bool set_node_id(std::string);
+  void reconfigure_can(bool enable);
   void factory_reset();
   std::string get_config_json();
   void reboot_node();
 private:
   const Esp32ConfigDef cfg_;
   int fd_;
-  uint64_t nodeID_{0};
+  uint64_t nodeID_{UINT64_C(CONFIG_LCC_NODE_ID)};
   openlcb::SimpleStackBase *stack_;
   openmrn_arduino::Esp32HardwareCan *can_;
   AutoSyncFileFlow *configAutoSync_;
