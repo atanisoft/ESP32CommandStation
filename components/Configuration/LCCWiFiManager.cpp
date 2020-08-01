@@ -109,6 +109,10 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
                              : stack_(stack), cfg_(cfg)
 {
   auto fs = Singleton<FileSystemManager>::instance();
+  string ip = CONFIG_WIFI_STATIC_IP_ADDRESS;
+  string gateway = CONFIG_WIFI_STATIC_IP_GATEWAY;
+  string netmask = CONFIG_WIFI_STATIC_IP_SUBNET;
+  string dns = CONFIG_WIFI_STATIC_IP_DNS;
 
   // initialize default values based on compiled configuration
 #if defined(CONFIG_WIFI_MODE_SOFTAP)
@@ -124,10 +128,6 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
     defined(CONFIG_WIFI_MODE_STATION)
   ssid_ = CONFIG_WIFI_SSID;
   password_ = CONFIG_WIFI_PASSWORD;
-  string ip = CONFIG_WIFI_STATIC_IP_ADDRESS;
-  string gateway = CONFIG_WIFI_STATIC_IP_GATEWAY;
-  string netmask = CONFIG_WIFI_STATIC_IP_SUBNET;
-  string dns = CONFIG_WIFI_STATIC_IP_DNS;
 #endif // CONFIG_WIFI_MODE_SOFTAP_STATION || CONFIG_WIFI_MODE_STATION
 
   // If the SoftAP marker exists configure for SoftAP mode
