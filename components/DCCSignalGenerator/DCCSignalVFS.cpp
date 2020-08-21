@@ -52,6 +52,14 @@ GPIO_PIN(OPS_SIGNAL, GpioOutputSafeLow, CONFIG_OPS_SIGNAL_PIN);
 /// OPS Track h-bridge enable pin.
 GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_ENABLE_PIN);
 
+#if defined(CONFIG_OPS_BRAKE_PIN)
+/// OPS Track h-bridge brake pin, active HIGH.
+GPIO_PIN(OPS_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_BRAKE_PIN);
+#else
+/// OPS Track h-bridge brakde pin, not connected to actual hardware.
+typedef DummyPin OPS_BRAKE_Pin;
+#endif
+
 /// RailCom driver instance for the PROG track, unused.
 NoRailcomDriver progRailComDriver;
 
@@ -61,9 +69,35 @@ GPIO_PIN(PROG_SIGNAL, GpioOutputSafeLow, CONFIG_PROG_SIGNAL_PIN);
 /// PROG Track h-bridge enable pin.
 GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_ENABLE_PIN);
 
+// Sanity check that the preamble bits are within the supported range.
+#ifndef CONFIG_OPS_DCC_PREAMBLE_BITS
+#warning CONFIG_OPS_DCC_PREAMBLE_BITS is not defined and has been set to 11.
+#define CONFIG_OPS_DCC_PREAMBLE_BITS 11
+#elif CONFIG_OPS_DCC_PREAMBLE_BITS < 11
+#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low and has been reset to 11.
+#undef CONFIG_OPS_DCC_PREAMBLE_BITS
+#define CONFIG_OPS_DCC_PREAMBLE_BITS 11
+#elif CONFIG_OPS_DCC_PREAMBLE_BITS > 20
+#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too high and has been reset to 20.
+#undef CONFIG_OPS_DCC_PREAMBLE_BITS
+#define CONFIG_OPS_DCC_PREAMBLE_BITS 20
+#endif
+
+// Sanity check that the preamble bits are within range.
+#ifndef CONFIG_PROG_DCC_PREAMBLE_BITS
+#define CONFIG_PROG_DCC_PREAMBLE_BITS 22
+#elif CONFIG_PROG_DCC_PREAMBLE_BITS < 22 || CONFIG_PROG_DCC_PREAMBLE_BITS > 75
+#undef CONFIG_PROG_DCC_PREAMBLE_BITS
+#define CONFIG_PROG_DCC_PREAMBLE_BITS 22
+#endif
+
 #if CONFIG_OPS_RAILCOM
-/// OPS Track h-bridge brake pin, active HIGH.
-GPIO_PIN(OPS_HBRIDGE_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_RAILCOM_BRAKE_PIN);
+
+#if CONFIG_OPS_DCC_PREAMBLE_BITS < 16
+#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low for RailCom support and has been reset to 16.
+#undef CONFIG_OPS_DCC_PREAMBLE_BITS
+#define CONFIG_OPS_DCC_PREAMBLE_BITS 16
+#endif
 
 /// RailCom detector enable pin, active HIGH.
 GPIO_PIN(OPS_RAILCOM_ENABLE, GpioOutputSafeLow, CONFIG_OPS_RAILCOM_ENABLE_PIN);
@@ -91,7 +125,7 @@ struct RailComHW
 #endif
 
   using DATA = OPS_RAILCOM_DATA_Pin;
-  using HB_BRAKE = OPS_HBRIDGE_BRAKE_Pin;
+  using HB_BRAKE = OPS_BRAKE_Pin;
   using HB_ENABLE = OPS_ENABLE_Pin;
   using RC_ENABLE = OPS_RAILCOM_ENABLE_Pin;
 

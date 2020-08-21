@@ -229,16 +229,36 @@ if (CONFIG_OPS_SIGNAL_PIN GREATER_EQUAL 6 AND CONFIG_OPS_SIGNAL_PIN LESS_EQUAL 1
     message(FATAL_ERROR "OPS H-Bridge signal pin can not be set to pin 6-11 (used by onboard flash).")
 endif()
 
-if (CONFIG_OPS_DCC_PREAMBLE_BITS LESS 11 AND NOT CONFIG_OPS_RAILCOM)
-    message(FATAL_ERROR "OPS track preamble bits is too low, at least 11 bits are required.")
+if (CONFIG_OPS_ENABLE_PIN EQUAL 0 OR CONFIG_OPS_ENABLE_PIN EQUAL 5 OR CONFIG_OPS_ENABLE_PIN EQUAL 15)
+    message(FATAL_ERROR "OPS H-Bridge enable pin should not use GPIO 0, 5, 15. These pins typically have a pull-up resistor on them.")
 endif()
 
-if (CONFIG_OPS_DCC_PREAMBLE_BITS LESS 16 AND CONFIG_OPS_RAILCOM)
-    message(FATAL_ERROR "OPS track preamble bits is too low, at least 16 bits are required when RailCom is enabled.")
+if (CONFIG_OPS_ENABLE_PIN EQUAL 1 OR CONFIG_OPS_ENABLE_PIN EQUAL 3)
+    message(FATAL_ERROR "OPS H-Bridge enable pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
 endif()
 
-if (CONFIG_OPS_DCC_PREAMBLE_BITS GREATER 20)
-    message(FATAL_ERROR "OPS track preamble bits is too high, a maximum of 20 bits is supported.")
+if (CONFIG_OPS_SIGNAL_PIN EQUAL 1 OR CONFIG_OPS_SIGNAL_PIN EQUAL 3)
+    message(FATAL_ERROR "OPS H-Bridge signal pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
+endif()
+
+if (CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_OPS_BRAKE_PIN)
+    message(FATAL_ERROR "OPS H-Bridge brake pin and OPS H-Bridge enable pin must be unique.")
+endif()
+
+if (CONFIG_OPS_BRAKE_PIN EQUAL 1 OR CONFIG_OPS_ENABLE_PIN EQUAL 3)
+    message(FATAL_ERROR "OPS H-Bridge brake pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
+endif()
+
+if (CONFIG_OPS_BRAKE_PIN EQUAL 3)
+    message(FATAL_ERROR "OPS H-Bridge brake pin should not use GPIO 3 as this pin is reserved for UART0.")
+endif()
+
+if (CONFIG_OPS_BRAKE_PIN GREATER_EQUAL 6 AND CONFIG_OPS_BRAKE_PIN LESS_EQUAL 11)
+    message(FATAL_ERROR "OPS H-Bridge brake pin can not be set to pin 6-11 (used by onboard flash).")
+endif()
+
+if (CONFIG_OPS_SIGNAL_PIN EQUAL CONFIG_OPS_BRAKE_PIN)
+    message(FATAL_ERROR "OPS H-Bridge brake pin and OPS H-Bridge signal pin must be unique.")
 endif()
 
 if (CONFIG_OPS_RAILCOM)
@@ -254,46 +274,12 @@ if (CONFIG_OPS_RAILCOM)
         message(FATAL_ERROR "OPS RailCom enable pin can not be set to pin 6-11 (used by onboard flash).")
     endif()
 
-    if (NOT CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS)
-        if (CONFIG_OPS_RAILCOM_ENABLE_PIN LESS 4 OR CONFIG_OPS_RAILCOM_ENABLE_PIN EQUAL 5 OR CONFIG_OPS_RAILCOM_ENABLE_PIN EQUAL 12 OR CONFIG_OPS_RAILCOM_ENABLE_PIN EQUAL 15)
-            message(FATAL_ERROR "OPS RailCom enable pin should not use GPIO 0-3, 5, 12, 15. These are reserved pins.")
-        endif()
+    if (CONFIG_OPS_RAILCOM_ENABLE_PIN EQUAL 1 OR CONFIG_OPS_RAILCOM_ENABLE_PIN EQUAL 3)
+        message(FATAL_ERROR "OPS RailCom enable pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
     endif()
 
-    if (CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_OPS_RAILCOM_BRAKE_PIN)
-        message(FATAL_ERROR "OPS RailCom brake pin and OPS H-Bridge enable pin must be unique.")
-    endif()
-
-    if (CONFIG_OPS_RAILCOM_BRAKE_PIN GREATER_EQUAL 6 AND CONFIG_OPS_RAILCOM_BRAKE_PIN LESS_EQUAL 11)
-        message(FATAL_ERROR "OPS RailCom brake pin can not be set to pin 6-11 (used by onboard flash).")
-    endif()
-
-    if (NOT CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS)
-        if (CONFIG_OPS_RAILCOM_BRAKE_PIN LESS 4 OR CONFIG_OPS_RAILCOM_BRAKE_PIN EQUAL 5 OR CONFIG_OPS_RAILCOM_BRAKE_PIN EQUAL 12 OR CONFIG_OPS_RAILCOM_BRAKE_PIN EQUAL 15)
-            message(FATAL_ERROR "OPS RailCom brake pin should not use GPIO 0-3, 5, 12, 15. These are reserved pins.")
-        endif()
-    endif()
-
-    if (CONFIG_OPS_SIGNAL_PIN EQUAL CONFIG_OPS_RAILCOM_BRAKE_PIN)
-        message(FATAL_ERROR "OPS RailCom brake pin and OPS H-Bridge signal pin must be unique.")
-    endif()
-
-    if (CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_OPS_RAILCOM_SHORT_PIN)
-        message(FATAL_ERROR "OPS RailCom short pin and OPS H-Bridge enable pin must be unique.")
-    endif()
-
-    if (CONFIG_OPS_RAILCOM_SHORT_PIN GREATER_EQUAL 6 AND CONFIG_OPS_RAILCOM_SHORT_PIN LESS_EQUAL 11)
-        message(FATAL_ERROR "OPS RailCom short pin can not be set to pin 6-11 (used by onboard flash).")
-    endif()
-    
-    if (NOT CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS)
-        if (CONFIG_OPS_RAILCOM_SHORT_PIN LESS 4 OR CONFIG_OPS_RAILCOM_SHORT_PIN EQUAL 5 OR CONFIG_OPS_RAILCOM_SHORT_PIN EQUAL 12 OR CONFIG_OPS_RAILCOM_SHORT_PIN EQUAL 15)
-            message(FATAL_ERROR "OPS RailCom short pin should not use GPIO 0-3, 5, 12, 15. These are reserved pins.")
-        endif()
-    endif()
-
-    if (CONFIG_OPS_SIGNAL_PIN EQUAL CONFIG_OPS_RAILCOM_SHORT_PIN)
-        message(FATAL_ERROR "OPS RailCom short pin and OPS H-Bridge signal pin must be unique.")
+    if (CONFIG_OPS_RAILCOM_ENABLE_PIN EQUAL 0 OR CONFIG_OPS_RAILCOM_ENABLE_PIN EQUAL 5 OR CONFIG_OPS_RAILCOM_ENABLE_PIN EQUAL 15)
+        message(FATAL_ERROR "OPS RailCom enable pin should not use GPIO 0, 5 or 15 as these pins typically have a pull-up resistor on them.")
     endif()
 
     if (CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_OPS_RAILCOM_UART_RX_PIN)
@@ -304,10 +290,8 @@ if (CONFIG_OPS_RAILCOM)
         message(FATAL_ERROR "OPS RailCom RX pin can not be set to pin 6-11 (used by onboard flash).")
     endif()
 
-    if (NOT CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS)
-        if (CONFIG_OPS_RAILCOM_UART_RX_PIN LESS 4 OR CONFIG_OPS_RAILCOM_UART_RX_PIN EQUAL 5 OR CONFIG_OPS_RAILCOM_UART_RX_PIN EQUAL 12 OR CONFIG_OPS_RAILCOM_UART_RX_PIN EQUAL 15)
-            message(FATAL_ERROR "OPS RailCom RX pin should not use GPIO 0-3, 5, 12, 15. These are reserved pins.")
-        endif()
+    if (CONFIG_OPS_RAILCOM_UART_RX_PIN EQUAL 1 OR CONFIG_OPS_RAILCOM_UART_RX_PIN EQUAL 3)
+        message(FATAL_ERROR "OPS RailCom RX pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
     endif()
 
     if (CONFIG_OPS_SIGNAL_PIN EQUAL CONFIG_OPS_RAILCOM_UART_RX_PIN)
@@ -331,14 +315,16 @@ if (CONFIG_PROG_SIGNAL_PIN GREATER_EQUAL 6 AND CONFIG_PROG_SIGNAL_PIN LESS_EQUAL
     message(FATAL_ERROR "PROG H-Bridge signal pin can not be set to pin 6-11 (used by onboard flash).")
 endif()
 
-if (NOT CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS)
-    if (CONFIG_PROG_ENABLE_PIN LESS 4 OR CONFIG_PROG_ENABLE_PIN EQUAL 5 OR CONFIG_PROG_ENABLE_PIN EQUAL 12 OR CONFIG_PROG_ENABLE_PIN EQUAL 15)
-        message(FATAL_ERROR "PROG H-Bridge enable pin should not use GPIO 0-3, 5, 12, 15. These are reserved pins.")
-    endif()
+if (CONFIG_PROG_ENABLE_PIN EQUAL 0 OR CONFIG_PROG_ENABLE_PIN EQUAL 5 OR CONFIG_PROG_ENABLE_PIN EQUAL 15)
+    message(FATAL_ERROR "PROG H-Bridge enable pin should not use GPIO 0, 5, 15. These pins typically have a pull-up resistor on them.")
+endif()
 
-    if (CONFIG_PROG_SIGNAL_PIN LESS 4 OR CONFIG_PROG_SIGNAL_PIN EQUAL 5 OR CONFIG_PROG_SIGNAL_PIN EQUAL 12 OR CONFIG_PROG_SIGNAL_PIN EQUAL 15)
-        message(FATAL_ERROR "PROG H-Bridge signal pin should not use GPIO 0-3, 5, 12, 15. These are reserved pins.")
-    endif()
+if (CONFIG_PROG_ENABLE_PIN EQUAL 1 OR CONFIG_PROG_ENABLE_PIN EQUAL 3)
+    message(FATAL_ERROR "PROG H-Bridge enable pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
+endif()
+
+if (CONFIG_PROG_SIGNAL_PIN EQUAL 1 OR CONFIG_PROG_SIGNAL_PIN EQUAL 3)
+    message(FATAL_ERROR "PROG H-Bridge signal pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
 endif()
 
 if (CONFIG_PROG_DCC_PREAMBLE_BITS LESS 22)
