@@ -64,8 +64,21 @@ class Esp32Gpio : public Gpio
 public:
 #if defined(CONFIG_IDF_TARGET_ESP32)
     static_assert(PIN_NUM >= 0 && PIN_NUM <= 39, "Valid pin range is 0..39.");
+    static_assert(PIN_NUM != 37, "Pin is connected to GPIO 36 via capacitor.");
+    static_assert(PIN_NUM != 38, "Pin is connected to GPIO 39 via capacitor.");
+#ifndef ESP32_PICO
     static_assert(!(PIN_NUM >= 6 && PIN_NUM <= 11)
                 , "Pin is reserved for flash usage.");
+#if defined(BOARD_HAS_PSRAM)
+    static_assert(PIN_NUM != 16 && PIN_NUM != 17
+                , "Pin is reserved for PSRAM usage.");
+#endif
+#else
+    static_assert(!(PIN_NUM >= 6 && PIN_NUM <= 8)
+                , "Pin is reserved for flash usage.");
+    static_assert(PIN_NUM != 11 && PIN_NUM != 16 && PIN_NUM != 17
+                , "Pin is reserved for flash usage.");
+#endif
     static_assert(PIN_NUM != 24, "Pin does not exist");
 #elif defined(CONFIG_IDF_TARGET_ESP32S2)
     static_assert(PIN_NUM >= 0 && PIN_NUM <= 46, "Valid pin range is 0..46.");
@@ -362,46 +375,67 @@ template <class Defs> struct GpioInputPUPD : public GpioInputPin<Defs, true, tru
 /// differences in the available pins.
 ///
 /// ESP32: Valid pin range is 0..39 with the following restrictions:
-///    - 0       : pull-up resistor on most modules.
-///    - 2       : pull-down resistor on most modules.
+///    - 0       : Pull-up resistor on most modules.
+///    - 2       : Pull-down resistor on most modules.
 ///    - 1, 3    : UART0, serial console.
-///    - 4       : pull-down resistor on most modules.
-///    - 5       : pull-up resistor on most modules.
-///    - 6 - 11  : connected to flash.
-///    - 12      : pull-down resistor on most modules.
-///    - 15      : pull-up resistor on most modules.
-///    - 24      : does not exist.
-///    - 37, 38  : not exposed on most modules.
-///    - 34 - 39 : these pins are INPUT only.
+///    - 4       : Pull-down resistor on most modules.
+///    - 5       : Pull-up resistor on most modules.
+///    - 6 - 11  : Used for on-board flash. If you have the PICO-D4 see the
+///                section below.
+///    - 12      : Pull-down resistor on most modules.
+///    - 15      : Pull-up resistor on most modules.
+///    - 24      : Does not exist.
+///    - 37, 38  : Not exposed on most modules and will have a capacitor
+///                connected to 36 and 39 under the metal shielding of the
+///                module. The capacitor is typically 270pF.
+///    - 34 - 39 : These pins are INPUT only.
 /// NOTE: ESP32 covers the ESP32-WROOM-32, DOWD, D2WD, S0WD, U4WDH and the
 /// ESP32-Solo.
 ///
-/// ESP32-PICO-D4: Same as ESP32 but possibly one restricted pin below:
-///    - 16      : when PSRAM is included this pin may be used by flash.
+/// ESP32-PICO-D4: Nearly the same as ESP32 but with the following differences:
+///    - 9, 10   : Available for use, other modules use these for the on-board
+///                flash.
+///    - 16, 17  : Used for flash and/or PSRAM.
 ///
-/// ESP32-WROVER & WROVER-B: Same as ESP32 but with the following restrictions:
-///    - 16, 17  : typically used for PSRAM on WROVER/WROVER-B modules.
+/// ESP32-WROVER and WROVER-B: Nearly the same as ESP32 but with the following
+/// differences:
+///    - 16, 17  : Reserved for PSRAM on WROVER/WROVER-B modules.
 ///
 /// ESP32-S2: Valid pin range is 0..46 with the following restrictions:
-///    - 0       : pull-up resistor on most modules.
+///    - 0       : Pull-up resistor on most modules.
 ///    - 19      : USB OTG D- 
 ///    - 20      : USB OTG D+
-///    - 22 - 25 : does not exist.
-///    - 26 - 32 : connected to flash (GPIO 26 is used by PSRAM on S2-WROVER).
+///    - 22 - 25 : Does not exist.
+///    - 26 - 32 : Used for on-board flash and/or PSRAM (WROVER only).
 ///    - 43, 44  : UART0, serial console.
-///    - 45      : pull-down resistor on most modules.
-///    - 46      : pull-down resistor on most modules, also INPUT only.
+///    - 45      : Pull-down resistor on most modules.
+///    - 46      : Pull-down resistor on most modules, also INPUT only.
 ///
-/// The built in pull-up/pull-down resistor for all ESP32 variants is typically
-/// around 45 kiloohm.
+/// Pins marked as having a pull-up or pull-down resistor are typically 10kOhm.
 ///
-/// Data sheet references:
+/// The built in pull-up/pull-down resistor for all ESP32 variants are
+/// typically 45kOhm.
+///
+/// SoC datasheet references:
 /// ESP32: https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf
 /// ESP32-WROVER: https://www.espressif.com/sites/default/files/documentation/esp32-wrover_datasheet_en.pdf
 /// ESP32-WROVER-B: https://www.espressif.com/sites/default/files/documentation/esp32-wrover-b_datasheet_en.pdf
 /// ESP32-PICO-D4: https://www.espressif.com/sites/default/files/documentation/esp32-pico-d4_datasheet_en.pdf
 /// ESP32-S2: https://www.espressif.com/sites/default/files/documentation/esp32-s2_datasheet_en.pdf
 /// ESP32-S2-WROVER: https://www.espressif.com/sites/default/files/documentation/esp32-s2-wrover_esp32-s2-wrover-i_datasheet_en.pdf
+///
+/// Module schematic references:
+/// DevKitC v4: https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf
+/// DevKitC v2: https://dl.espressif.com/dl/schematics/ESP32-Core-Board-V2_sch.pdf
+/// WROVER KIT v4.1: https://dl.espressif.com/dl/schematics/ESP-WROVER-KIT_V4_1.pdf
+/// WROVER KIT v3: https://dl.espressif.com/dl/schematics/ESP-WROVER-KIT_SCH-3.pdf
+/// WROVER KIT v2: https://dl.espressif.com/dl/schematics/ESP-WROVER-KIT_SCH-2.pdf
+/// WROVER KIT v1: https://dl.espressif.com/dl/schematics/ESP32-DevKitJ-v1_sch.pdf
+/// PICO KIT v4.1: https://dl.espressif.com/dl/schematics/esp32-pico-kit-v4.1_schematic.pdf
+/// PICO KIT v3: https://dl.espressif.com/dl/schematics/esp32-pico-kit-v3_schematic.pdf
+///
+/// NOTE: The WROVER KIT v1 is also known as DevKitJ and is RED colored PCB
+/// that supports both WROVER and WROOM-32 modules.
 ///
 /// Example:
 ///  GPIO_PIN(FOO, GpioOutputSafeLow, 3);
