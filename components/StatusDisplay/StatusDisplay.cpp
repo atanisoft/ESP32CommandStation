@@ -364,7 +364,7 @@ StateFlowBase::Action StatusDisplay::init()
   // scan a handful of known I2C address ranges for LCD or OLED devices
   esp_err_t ret;
 #if CONFIG_DISPLAY_TYPE_OLED
-  for(uint8_t addr = 0x3C; addr <= 0x3C; addr++)
+  for(uint8_t addr = 0x3C; addr <= 0x3D; addr++)
   {
     LOG(VERBOSE, "[StatusDisplay] Searching for OLED on address 0x%02x...", addr);
     I2C_READ_REG(addr, 0, regZero_, 1, ret);
