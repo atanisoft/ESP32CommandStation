@@ -90,18 +90,25 @@ public:
   {
     // Enable the BRAKE pin on the h-bridge to force it into coast mode
     HW::HB_BRAKE::set(true);
+ 
+    // Inject a small delay to ensure the brake pin and enable pin are transitioned
+    // concurrently. This can lead to issues in the LMD18200
+    ets_delay_us(1);
 
     // cache the current state of the pin so we can restore it after the
     // cutout.
     enabled_= HW::HB_ENABLE::get();
     HW::HB_ENABLE::set(false);
-
-    //ets_delay_us(0);
   }
 
   void enable_output()
   {
     HW::HB_ENABLE::set(enabled_);
+
+    // Inject a small delay to ensure the brake pin and enable pin are transitioned
+    // concurrently. This can lead to issues in the LMD18200
+    ets_delay_us(1);
+
     HW::HB_BRAKE::set(false);
   }
 
