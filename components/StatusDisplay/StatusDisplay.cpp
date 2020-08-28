@@ -474,7 +474,8 @@ StateFlowBase::Action StatusDisplay::initOLED()
   // Test the register zero data with power/state masked to identify the
   // connected chipset since SSD1306 and SH1106 require slightly different
   // initialization parameters.
-  if (((regZero_ & 0x0F) == 0x03) || ((regZero_ & 0x0F) == 0x06))
+  if (((regZero_ & 0x0F) == 0x03) || ((regZero_ & 0x0F) == 0x06) ||
+      ((regZero_ & 0x0F) == 0x07))
   {
     LOG(INFO, "[StatusDisplay] OLED driver IC: SSD1306");
     i2c_master_write_byte(cmd, OLED_CLOCK_DIVIDER, true);
