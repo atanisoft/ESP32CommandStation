@@ -360,7 +360,7 @@ std::string LCCStackManager::get_config_json()
   auto fs = Singleton<FileSystemManager>::instance();
   return StringPrintf("\"lcc\":{\"id\":\"%s\", \"can\":%s}"
                     , uint64_to_string_hex(nodeID_).c_str()
-                    , fs->exists(LCC_CAN_MARKER_FILE) ? "true" : "false");
+                    , !fs->exists(LCC_CAN_MARKER_FILE) ? "true" : "false");
 }
 
 void LCCStackManager::reboot_node()
