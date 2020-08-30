@@ -108,6 +108,7 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
                              , const esp32cs::Esp32ConfigDef &cfg)
                              : stack_(stack), cfg_(cfg)
 {
+#ifndef CONFIG_WIFI_MODE_DISABLED
   auto fs = Singleton<FileSystemManager>::instance();
   string ip = CONFIG_WIFI_STATIC_IP_ADDRESS;
   string gateway = CONFIG_WIFI_STATIC_IP_GATEWAY;
@@ -229,6 +230,8 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
     sntp_init();
   }
 #endif // CONFIG_SNTP
+
+#endif // ! CONFIG_WIFI_MODE_DISABLED
 }
 
 void LCCWiFiManager::shutdown()

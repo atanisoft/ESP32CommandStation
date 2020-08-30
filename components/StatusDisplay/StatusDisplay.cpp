@@ -196,6 +196,7 @@ StatusDisplay::StatusDisplay(openlcb::SimpleStackBase *stack, Service *service)
                                   , std::placeholders::_1));
   clear();
   info("ESP32-CS: v%s", CONFIG_ESP32CS_SW_VERSION);
+#if !defined(CONFIG_WIFI_MODE_DISABLED)
   wifi("IP:Pending");
   Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
   [&](esp_interface_t interface, uint32_t ip)
@@ -219,6 +220,7 @@ StatusDisplay::StatusDisplay(openlcb::SimpleStackBase *stack, Service *service)
   {
     wifi("Disconnected");
   });
+#endif // CONFIG_WIFI_MODE_DISABLED
   start_flow(STATE(init));
 #endif
 }
@@ -261,7 +263,7 @@ void StatusDisplay::status(const std::string &format, ...)
 
 void StatusDisplay::wifi(const std::string &format, ...)
 {
-#if !CONFIG_DISPLAY_TYPE_NONE
+#if !CONFIG_DISPLAY_TYPE_NONE && !CONFIG_WIFI_MODE_DISABLED
   char buf[256] = {0};
   va_list args;
   va_start(args, format);

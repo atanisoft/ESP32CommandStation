@@ -245,10 +245,13 @@ extern "C" void app_main()
   esp32cs::LCCStackManager stackManager(cfg);
 
   esp32cs::LCCWiFiManager wifiManager(stackManager.stack(), cfg);
-  
+
+#if !defined(CONFIG_WIFI_MODE_DISABLED)
   // Initialize the Http server and mDNS instance
   MDNS mDNS;
   http::Httpd httpd(&mDNS);
+  init_webserver(cfg);
+#endif
 
   // Initialize the status display module (dependency of WiFi)
   StatusDisplay statusDisplay(stackManager.stack()
@@ -259,8 +262,6 @@ extern "C" void app_main()
   LOG(INFO, "[Config] Enabling Nextion module");
   nextionInterfaceInit(stackManager.service());
 #endif // CONFIG_NEXTION
-
-  init_webserver(cfg);
 
 #if CONFIG_JMRI
   init_jmri_interface();

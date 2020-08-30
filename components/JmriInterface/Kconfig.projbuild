@@ -1,6 +1,7 @@
 config JMRI
     bool "Enable Legacy JMRI DCC++ Interface"
     default y
+    depends on !WIFI_MODE_DISABLED
 
 menu "Legacy JMRI DCC++ Interface"
     depends on JMRI

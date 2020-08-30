@@ -43,9 +43,12 @@ void *node_reboot(void *arg)
 #endif
   Singleton<TurnoutManager>::instance()->stop();
   Singleton<esp32cs::Esp32TrainDatabase>::instance()->stop();
-  // sleep for 1 sec to give time for restart broadcast (if needed)
-  usleep(1000);
-  Singleton<http::Httpd>::instance()->executor()->shutdown();
+  if (Singleton<http::Httpd>::exists())
+  {
+    // sleep for 1 sec to give time for restart broadcast (if needed)
+    usleep(1000);
+    Singleton<http::Httpd>::instance()->executor()->shutdown();
+  }
   Singleton<esp32cs::LCCWiFiManager>::instance()->shutdown();
   Singleton<esp32cs::LCCStackManager>::instance()->shutdown();
   
@@ -86,14 +89,18 @@ unsigned long IRAM_ATTR millis()
 void IRAM_ATTR delayMicroseconds(uint32_t us)
 {
   uint32_t m = micros();
-  if(us){
+  if (us)
+  {
     uint32_t e = (m + us);
-    if(m > e){ //overflow
-      while(micros() > e){
+    if (m > e)
+    { //overflow
+      while (micros() > e)
+      {
         asm volatile ("nop");
       }
     }
-    while(micros() < e){
+    while (micros() < e)
+    {
       asm volatile ("nop");
     }
   }

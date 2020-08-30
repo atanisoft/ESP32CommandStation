@@ -1,3 +1,83 @@
+
+
+menu "WiFi Configuration"
+    config HOSTNAME_PREFIX
+        string "Hostname prefix"
+        default "esp32cs_"
+        help
+            The LCC node id will be appended to this value, ie: esp32cs_050101013F00.
+
+    choice WIFI_MODE
+        bool "WiFi mode"
+        default WIFI_MODE_SOFTAP
+        config WIFI_MODE_STATION
+            bool "Connect to SSID"
+        config WIFI_MODE_SOFTAP
+            bool "Create SoftAP"
+        config WIFI_MODE_SOFTAP_STATION
+            bool "Connect to SSID and create SoftAP"
+        config WIFI_MODE_DISABLED
+            bool "Disabled"
+    endchoice
+
+    config WIFI_SOFTAP_SSID
+        string "SoftAP SSID"
+        default "esp32cs"
+        depends on WIFI_MODE_SOFTAP
+
+    config WIFI_SOFTAP_PASSWORD
+        string "SoftAP Password"
+        default "esp32cs"
+        depends on WIFI_MODE_SOFTAP
+    
+    config WIFI_SSID
+        string "SSID"
+        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
+
+    config WIFI_PASSWORD
+        string "Password"
+        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
+
+    choice WIFI_IP_TYPE
+        bool "WiFi IP"
+        default WIFI_IP_DHCP
+        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
+        config WIFI_IP_DHCP
+            bool "DHCP"
+        config WIFI_IP_STATIC
+            bool "Static"
+    endchoice
+
+    config WIFI_STATIC_IP_ADDRESS
+        string "IP address"
+        default "10.0.0.155"
+        depends on WIFI_IP_STATIC
+
+    config WIFI_STATIC_IP_GATEWAY
+        string "Gateway IP address"
+        default "10.0.0.1"
+        depends on WIFI_IP_STATIC
+
+    config WIFI_STATIC_IP_SUBNET
+        string "Subnet mask"
+        default "255.255.255.0"
+        depends on WIFI_IP_STATIC
+
+    config WIFI_STATIC_IP_DNS
+        string "Primary DNS address"
+        default "8.8.8.8"
+        depends on WIFI_IP_STATIC
+
+    config WIFI_SOFT_AP_CHANNEL
+        int
+        default 6
+
+    config WIFI_DEBUG_OUTPUT
+        bool "Enable ESP-IDF WiFi debug diagnostic output"
+        default n
+        depends on !WIFI_MODE_DISABLED
+endmenu
+
 config TIMEZONE
     string "Timezone"
     default "UTC0"
@@ -17,6 +97,7 @@ menu "SNTP Configuration"
     config SNTP
         bool "Enable SNTP synchronization"
         default n
+        depends on !WIFI_MODE_DISABLED
         help
             By enabling this option the ESP32 will attempt to synchronize the
             system time with an external SNTP server once per hour.
@@ -55,6 +136,7 @@ menu "Fast Clock"
     config FASTCLOCK_REALTIME
         bool "Enable real-time FastClock"
         default n
+        depends on !WIFI_MODE_DISABLED
         select SNTP
         help
             Enabling this option will cause the ESP32 Command Station to
@@ -67,80 +149,6 @@ menu "Fast Clock"
         help
             This is the clock ID that will be created and advertised.
             Real-Time clock defaults to 0x010100000101.
-endmenu
-
-menu "WiFi Configuration"
-    config HOSTNAME_PREFIX
-        string "Hostname prefix"
-        default "esp32cs_"
-        help
-            The LCC node id will be appended to this value, ie: esp32cs_050101013F00.
-
-    choice WIFI_MODE
-        bool "WiFi mode"
-        default WIFI_MODE_SOFTAP
-        config WIFI_MODE_STATION
-            bool "Connect to SSID"
-        config WIFI_MODE_SOFTAP
-            bool "Create SoftAP"
-        config WIFI_MODE_SOFTAP_STATION
-            bool "Connect to SSID and create SoftAP"
-    endchoice
-
-    config WIFI_SOFTAP_SSID
-        string "SoftAP SSID"
-        default "esp32cs"
-        depends on WIFI_MODE_SOFTAP
-
-    config WIFI_SOFTAP_PASSWORD
-        string "SoftAP Password"
-        default "esp32cs"
-        depends on WIFI_MODE_SOFTAP
-    
-    config WIFI_SSID
-        string "SSID"
-        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
-
-    config WIFI_PASSWORD
-        string "Password"
-        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
-
-    choice WIFI_IP_TYPE
-        bool "WiFi IP"
-        default WIFI_IP_DHCP
-        config WIFI_IP_DHCP
-            bool "DHCP"
-        config WIFI_IP_STATIC
-            bool "Static"
-    endchoice
-
-    config WIFI_STATIC_IP_ADDRESS
-        string "IP address"
-        default "10.0.0.155"
-        depends on WIFI_IP_STATIC
-
-    config WIFI_STATIC_IP_GATEWAY
-        string "Gateway IP address"
-        default "10.0.0.1"
-        depends on WIFI_IP_STATIC
-
-    config WIFI_STATIC_IP_SUBNET
-        string "Subnet mask"
-        default "255.255.255.0"
-        depends on WIFI_IP_STATIC
-
-    config WIFI_STATIC_IP_DNS
-        string "Primary DNS address"
-        default "8.8.8.8"
-        depends on WIFI_IP_STATIC
-
-    config WIFI_SOFT_AP_CHANNEL
-        int
-        default 6
-
-    config WIFI_DEBUG_OUTPUT
-        bool "Enable ESP-IDF WiFi debug diagnostic output"
-        default n
 endmenu
 
 menu "Advanced Configuration Settings"
