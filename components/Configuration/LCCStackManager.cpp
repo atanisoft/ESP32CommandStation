@@ -18,9 +18,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include "LCCStackManager.h"
 #include "CDIHelper.h"
 #include "FileSystemManager.h"
-#if defined(CONFIG_LCC_CAN_ENABLED)
 #include <freertos_drivers/esp32/Esp32HardwareCanAdapter.hxx>
-#endif // CONFIG_LCC_CAN_ENABLED
 #include <openlcb/SimpleStack.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 
@@ -30,8 +28,6 @@ namespace esp32cs
 static constexpr const char LCC_NODE_ID_FILE[] = "lcc-node";
 static constexpr const char LCC_RESET_MARKER_FILE[] = "lcc-rst";
 static constexpr const char LCC_CAN_MARKER_FILE[] = "lcc-can";
-
-#if defined(CONFIG_LCC_CAN_ENABLED)
 
 /// Bridge class that connects a native CAN controller to the OpenMRN core
 /// stack, sending and receiving CAN frames directly. The CAN controller must
@@ -145,7 +141,6 @@ static void* can_bridge_task(void *param)
   can_running = false;
   return nullptr;
 }
-#endif // CONFIG_LCC_CAN_ENABLED
 
 LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
 {
@@ -206,11 +201,12 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
   stack_ = new openlcb::SimpleTcpStack(nodeID_);
 #else
   stack_ = new openlcb::SimpleCanStack(nodeID_);
-#if defined(CONFIG_LCC_CAN_ENABLED)
   // If the user has not explicitly disabled the CAN interface create it and
   // start a background task to send/receive packets.
   // TODO: move to new TWAI driver once stable since it does not require a task
-  if (!fs->exists(LCC_CAN_MARKER_FILE))
+  if (!fs->exists(LCC_CAN_MARKER_FILE) &&
+      CONFIG_LCC_CAN_RX_PIN != -1 &&
+      CONFIG_LCC_CAN_TX_PIN != -1)
   {
     LOG(INFO, "[LCC] Enabling CAN interface (rx: %d, tx: %d)"
       , CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
@@ -223,7 +219,6 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
                     , ((openlcb::SimpleCanStack *)stack_)->can_hub()));
     os_thread_create(nullptr,  "CAN-BRIDGE", -1, 2048, can_bridge_task, nullptr);
   }
-#endif // CONFIG_LCC_CAN_ENABLED
 #endif // CONFIG_LCC_TCP_STACK
 }
 
@@ -287,7 +282,6 @@ void LCCStackManager::start(bool is_sd)
 
 void LCCStackManager::shutdown()
 {
-#if defined(CONFIG_LCC_CAN_ENABLED)
   if (canBridge.get() != nullptr)
   {
     can_run = false;
@@ -297,7 +291,6 @@ void LCCStackManager::shutdown()
       vTaskDelay(pdMS_TO_TICKS(1));
     }
   }
-#endif // CONFIG_LCC_CAN_ENABLED
 
   // Shutdown the auto-sync handler if it is running before unmounting the FS.
   if (configAutoSync_ != nullptr)
@@ -340,7 +333,6 @@ bool LCCStackManager::set_node_id(string node_id)
 
 void LCCStackManager::reconfigure_can(bool enable)
 {
-#if defined(CONFIG_LCC_CAN_ENABLED)
   auto fs = Singleton<FileSystemManager>::instance();
   if (enable)
   {
@@ -353,7 +345,6 @@ void LCCStackManager::reconfigure_can(bool enable)
     string can_str = "disabled";
     fs->store(LCC_CAN_MARKER_FILE, can_str);
   }
-#endif // CONFIG_LCC_CAN_ENABLED
 }
 
 void LCCStackManager::factory_reset()

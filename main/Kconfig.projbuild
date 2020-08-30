@@ -9,26 +9,23 @@ menu "LCC Configuration"
             https://registry.openlcb.org/requestuniqueidrange
             The default node ID is part of a reserved range of ID values.
 
-    config LCC_CAN_ENABLED
-        bool "CAN interface"
-        default n
-        help
-            Enabling this option will require an externally connected
-            SN6565HVD23x or MCP2551 IC.
-
     config LCC_CAN_RX_PIN
         int "CAN RX Pin"
-        range 0 39
-        depends on LCC_CAN_ENABLED
+        range -1 39
+        default -1
         help
             This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 R (RX) pin.
+            NOTE: Setting this to a value other than -1 will require an externally
+            connected CAN transceiver IC.
 
     config LCC_CAN_TX_PIN
         int "CAN TX Pin"
-        range 0 33
-        depends on LCC_CAN_ENABLED
+        range -1 33
+        default -1
         help
             This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 D (TX) pin.
+            NOTE: Setting this to a value other than -1 will require an externally
+            connected CAN transceiver IC.
 
     config LCC_PRINT_ALL_PACKETS
         bool "Print all packets"

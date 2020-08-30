@@ -59,7 +59,7 @@ bool is_restricted_pin(gpio_num_t pin)
   , (gpio_num_t)CONFIG_OPS_RAILCOM_UART_RX_PIN
 #endif // CONFIG_OPS_RAILCOM
 
-#if CONFIG_LCC_CAN_ENABLED
+#if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
   , (gpio_num_t)CONFIG_LCC_CAN_RX_PIN
   , (gpio_num_t)CONFIG_LCC_CAN_TX_PIN
 #endif

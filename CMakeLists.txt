@@ -142,7 +142,7 @@ if (CONFIG_LCC_NODE_ID EQUAL "")
     message(FATAL_ERROR "LCC Node ID must be defined")
 endif()
 
-if (CONFIG_LCC_CAN_ENABLED)
+if (CONFIG_LCC_CAN_RX_PIN GREATER_EQUAL 0 AND CONFIG_LCC_CAN_TX_PIN GREATER_EQUAL 0)
     if (CONFIG_LCC_CAN_RX_PIN EQUAL CONFIG_LCC_CAN_TX_PIN)
         message(FATAL_ERROR "LCC CAN RX and LCC CAN TX pin must be unique.")
     endif()
