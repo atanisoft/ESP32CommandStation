@@ -180,7 +180,7 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
     // if we have a static ip configuration convert it to the required format.
     if (!ip.empty() && !gateway.empty() && !netmask.empty())
     {
-      stationIP_.reset(new tcpip_adapter_ip_info_t());
+      stationIP_.reset(new openmrn_arduino::ESP32_ADAPTER_IP_INFO_TYPE());
       stationIP_->ip.addr = ipaddr_addr(ip.c_str());
       stationIP_->gw.addr = ipaddr_addr(gateway.c_str());
       stationIP_->netmask.addr = ipaddr_addr(netmask.c_str());

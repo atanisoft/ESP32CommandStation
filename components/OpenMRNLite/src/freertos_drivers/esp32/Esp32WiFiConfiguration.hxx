@@ -120,10 +120,13 @@ CDI_GROUP_ENTRY(sleep, openlcb::Uint8ConfigEntry,
     Name(Esp32WiFiConfigurationParams::WIFI_POWER_SAVE_NAME),
     Description(Esp32WiFiConfigurationParams::WIFI_POWER_SAVE_DESC), Min(0),
     Max(1), Default(0), MapValues(Esp32WiFiConfigurationParams::BOOLEAN_MAP));
+// On the ESP32 S2 we do not expose the hub option.
+#if defined(CONFIG_IDF_TARGET_ESP32)
 /// CDI Configuration to enable this node to be a hub.
 CDI_GROUP_ENTRY(hub, HubConfiguration,
     Name(Esp32WiFiConfigurationParams::HUB_NAME),
     Description(Esp32WiFiConfigurationParams::HUB_DESC));
+#endif // CONFIG_IDF_TARGET_ESP32
 /// CDI Configuration for this node's connection to an uplink hub.
 CDI_GROUP_ENTRY(uplink,
     openlcb::TcpClientConfig<openlcb::TcpClientDefaultParams>,

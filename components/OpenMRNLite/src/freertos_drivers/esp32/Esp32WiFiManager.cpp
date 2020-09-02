@@ -419,11 +419,13 @@ void Esp32WiFiManager::factory_reset(int fd)
     // General WiFi configuration settings.
     CDI_FACTORY_RESET(cfg_.sleep);
 
+#if defined(CONFIG_IDF_TARGET_ESP32)
     // Hub specific configuration settings.
     CDI_FACTORY_RESET(cfg_.hub().enable);
     CDI_FACTORY_RESET(cfg_.hub().port);
     cfg_.hub().service_name().write(
         fd, TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN_TCP);
+#endif // CONFIG_IDF_TARGET_ESP32
 
     // Node link configuration settings.
     CDI_FACTORY_RESET(cfg_.uplink().search_mode);
@@ -463,7 +465,8 @@ void Esp32WiFiManager::process_idf_event(void *arg, esp_event_base_t event_base
     {
         wifi->on_station_connected();
     }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    else if (event_base == WIFI_EVENT &&
+             event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
         wifi->on_station_disconnected(
             static_cast<wifi_event_sta_disconnected_t *>(event_data)->reason);
@@ -476,12 +479,14 @@ void Esp32WiFiManager::process_idf_event(void *arg, esp_event_base_t event_base
     {
         wifi->on_softap_stop();
     }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED)
+    else if (event_base == WIFI_EVENT &&
+             event_id == WIFI_EVENT_AP_STACONNECTED)
     {
         wifi->on_softap_station_connected(
             *(static_cast<wifi_event_ap_staconnected_t *>(event_data)));
     }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED)
+    else if (event_base == WIFI_EVENT &&
+             event_id == WIFI_EVENT_AP_STADISCONNECTED)
     {
         wifi->on_softap_station_disconnected(
             *(static_cast<wifi_event_ap_stadisconnected_t *>(event_data)));
@@ -493,8 +498,8 @@ void Esp32WiFiManager::process_idf_event(void *arg, esp_event_base_t event_base
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
-        wifi->on_station_ip_assigned(
-            htonl(static_cast<esp_netif_ip_info_t *>(event_data)->ip.addr));
+        ip_event_got_ip_t *data = static_cast<ip_event_got_ip_t *>(event_data);
+        wifi->on_station_ip_assigned(htonl(data->ip_info.ip.addr));
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_LOST_IP)
     {
@@ -883,12 +888,13 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
                 // connected to an always-on power supply (ie: not a battery).
                 ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
             }
-
+#if defined(CONFIG_IDF_TARGET_ESP32)
             if (CDI_READ_TRIMMED(wifi->cfg_.hub().enable, wifi->configFd_))
             {
                 // Since hub mode is enabled start the hub creation process.
                 wifi->start_hub();
             }
+#endif // CONFIG_IDF_TARGET_ESP32
             // Start the uplink connection process in the background.
             wifi->start_uplink();
             wifi->configReloadRequested_ = false;
@@ -912,17 +918,20 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
 // Shuts down the hub listener (if enabled and running) for this node.
 void Esp32WiFiManager::stop_hub()
 {
+#if defined(CONFIG_IDF_TARGET_ESP32)
     if (hub_)
     {
         mdns_unpublish(hubServiceName_);
         LOG(INFO, "[Hub] Shutting down TCP/IP listener");
         hub_.reset(nullptr);
     }
+#endif // CONFIG_IDF_TARGET_ESP32
 }
 
 // Creates a hub listener for this node after loading configuration details.
 void Esp32WiFiManager::start_hub()
 {
+#if defined(CONFIG_IDF_TARGET_ESP32)
     hubServiceName_ = cfg_.hub().service_name().read(configFd_);
     uint16_t hub_port = CDI_READ_TRIMMED(cfg_.hub().port, configFd_);
 
@@ -939,6 +948,7 @@ void Esp32WiFiManager::start_hub()
         usleep(HUB_STARTUP_DELAY_USEC);
     }
     mdns_publish(hubServiceName_, hub_port);
+#endif // CONFIG_IDF_TARGET_ESP32
 }
 
 // Disconnects and shuts down the uplink connector socket if running.
@@ -1082,6 +1092,12 @@ void Esp32WiFiManager::mdns_publish(string service, const uint16_t port)
             // Send it back onto the scheduler to be retried
             Singleton<Esp32WiFiManager>::instance()->mdns_publish(service
                                                                 , port);
+        }
+        else if (res != ESP_OK)
+        {
+            LOG_ERROR("[mDNS] Failed to advertise %s.%s:%d due to: %s (%d)"
+                    , service_name.c_str(), protocol_name.c_str(), port
+                    , esp_err_to_name(res), res);
         }
         else
         {

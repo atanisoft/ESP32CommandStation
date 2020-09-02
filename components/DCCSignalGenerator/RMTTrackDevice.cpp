@@ -224,6 +224,7 @@ RMTTrackDevice::RMTTrackDevice(const char *name
 #endif // CONFIG_DCC_RMT_USE_REF_CLOCK
   );
   rmt_config_t config =
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4,1,0)
   {
     .rmt_mode = RMT_MODE_TX,
     .channel = channel_,
@@ -239,10 +240,36 @@ RMTTrackDevice::RMTTrackDevice(const char *name
         .carrier_level = rmt_carrier_level_t::RMT_CARRIER_LEVEL_LOW,
         .carrier_en = false,
         .idle_level = rmt_idle_level_t::RMT_IDLE_LEVEL_LOW,
+      }
+    }
+  };
+#else
+  {
+    .rmt_mode = RMT_MODE_TX,
+    .channel = channel_,
+    .gpio_num = pin,
+    .clk_div = CONFIG_DCC_RMT_CLOCK_DIVIDER,
+    .mem_block_num = memoryBlocks,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+    .flags = 0,
+#endif
+    {
+      .tx_config =
+      {
+        .carrier_freq_hz = 0,
+        .carrier_level = rmt_carrier_level_t::RMT_CARRIER_LEVEL_LOW,
+        .idle_level = rmt_idle_level_t::RMT_IDLE_LEVEL_LOW,
+        .carrier_duty_percent = 0,
+#if SOC_RMT_SUPPORT_TX_LOOP_COUNT
+        .loop_count = 0,
+#endif
+        .carrier_en = false,
+        .loop_en = false,
         .idle_output_en = false
       }
     }
   };
+#endif // IDF v4.0
   ESP_ERROR_CHECK(rmt_config(&config));
   ESP_ERROR_CHECK(rmt_driver_install(channel_, 0, RMT_ISR_FLAGS));
 

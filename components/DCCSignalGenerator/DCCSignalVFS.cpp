@@ -25,6 +25,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include <dcc/RailCom.hxx>
 #include <dcc/RailcomHub.hxx>
 #include <dcc/RailcomPortDebug.hxx>
+#include <driver/periph_ctrl.h>
 #include <driver/rmt.h>
 #include <driver/timer.h>
 #include <esp_vfs.h>

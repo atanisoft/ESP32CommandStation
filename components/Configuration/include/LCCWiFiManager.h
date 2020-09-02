@@ -66,7 +66,7 @@ private:
   std::string ssid_{""};
   std::string password_{""};
   wifi_mode_t mode_{WIFI_MODE_STA};
-  std::unique_ptr<tcpip_adapter_ip_info_t> stationIP_{nullptr};
+  std::unique_ptr<openmrn_arduino::ESP32_ADAPTER_IP_INFO_TYPE> stationIP_{nullptr};
   ip_addr_t stationDNS_{ip_addr_any};
   std::unique_ptr<openlcb::BroadcastTimeServer> realTimeClock_;
 };

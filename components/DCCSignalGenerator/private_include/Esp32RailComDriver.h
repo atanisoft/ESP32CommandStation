@@ -65,6 +65,9 @@ public:
     HW::UART_BASE->clk_div.div_frag = (baud_clock & 0xf);
     HW::UART_BASE->idle_conf.tx_idle_num = 0;
     HW::UART_BASE->rs485_conf.dl1_en = 0;
+    HW::UART_BASE->int_en.val = 0;
+    HW::UART_BASE->int_en.rxfifo_full = 1;
+    HW::UART_BASE->int_en.rxfifo_tout = 1;
 
     ESP_ERROR_CHECK(
       esp_intr_alloc(HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED
@@ -310,6 +313,7 @@ static void esp32_railcom_uart_isr(void *param)
   else
   {
     ets_printf("unexpected UART status %04x\n", HW::UART_BASE->int_st.val);
+    HW::UART_BASE->int_clr.val = HW::UART_BASE->int_st.val;
   }
 }
 
