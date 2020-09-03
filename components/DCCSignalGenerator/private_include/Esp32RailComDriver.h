@@ -54,6 +54,7 @@ public:
 
     HW::hw_init();
     LOG(INFO, "[RailCom] Initializing detector using UART %d", HW::UART);
+    // TODO: with IDF v4.1+ switch to UART HAL instead of direct access.
     uint32_t baud_clock = (((esp_clk_apb_freq()) << 4) / 250000L);
     HW::UART_BASE->conf1.rx_flow_en = 0;
     HW::UART_BASE->conf0.tx_flow_en = 0;
@@ -61,13 +62,14 @@ public:
     HW::UART_BASE->conf0.parity = 0;
     HW::UART_BASE->conf0.bit_num = 3;
     HW::UART_BASE->conf0.stop_bit_num = 1;
+    HW::UART_BASE->conf1.rx_tout_en = 1;
     HW::UART_BASE->clk_div.div_int = (baud_clock >> 4);
     HW::UART_BASE->clk_div.div_frag = (baud_clock & 0xf);
     HW::UART_BASE->idle_conf.tx_idle_num = 0;
     HW::UART_BASE->rs485_conf.dl1_en = 0;
-    HW::UART_BASE->int_en.val = 0;
-    HW::UART_BASE->int_en.rxfifo_full = 1;
-    HW::UART_BASE->int_en.rxfifo_tout = 1;
+    // disable TX interrupts since we won't be transmitting
+    HW::UART_BASE->int_ena.val &=
+      ~(UART_TXFIFO_EMPTY_INT_ENA | UART_TX_DONE_INT_ENA);
 
     ESP_ERROR_CHECK(
       esp_intr_alloc(HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED
@@ -308,6 +310,13 @@ static void esp32_railcom_uart_isr(void *param)
 
     // clear interrupt status
     HW::UART_BASE->int_clr.val = (UART_RXFIFO_FULL_INT_CLR
+                                | UART_RXFIFO_TOUT_INT_CLR);
+  }
+  else if (HW::UART_BASE->int_st.txfifo_empty
+        || HW::UART_BASE->int_st.tx_done)
+  {
+    // clear interrupt status
+    HW::UART_BASE->int_clr.val = (UART_TXFIFO_EMPTY_INT_CLR
                                 | UART_RXFIFO_TOUT_INT_CLR);
   }
   else
