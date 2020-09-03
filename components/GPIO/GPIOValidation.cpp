@@ -46,15 +46,15 @@ bool is_restricted_pin(gpio_num_t pin)
     GPIO_NUM_9, GPIO_NUM_10, GPIO_NUM_11, // on-chip flash pins
     GPIO_NUM_12, GPIO_NUM_15,             // Bootstrap / SD pins
 #endif // ! CONFIG_ALLOW_USAGE_OF_RESTRICTED_GPIO_PINS
-    (gpio_num_t)CONFIG_OPS_ENABLE_PIN
-  , (gpio_num_t)CONFIG_OPS_SIGNAL_PIN
-  , (gpio_num_t)CONFIG_PROG_ENABLE_PIN
-  , (gpio_num_t)CONFIG_PROG_SIGNAL_PIN
+    (gpio_num_t)CONFIG_OPS_HBRIDGE_ENABLE_PIN
+  , (gpio_num_t)CONFIG_OPS_HBRIDGE_SIGNAL_PIN
+#if CONFIG_OPS_HBRIDGE_BRAKE_PIN
+  , (gpio_num_t)CONFIG_OPS_HBRIDGE_BRAKE_PIN
+#endif
+  , (gpio_num_t)CONFIG_PROG_HBRIDGE_ENABLE_PIN
+  , (gpio_num_t)CONFIG_PROG_HBRIDGE_SIGNAL_PIN
 
 #if CONFIG_OPS_RAILCOM
-#if CONFIG_OPS_RAILCOM_BRAKE_PIN
-  , (gpio_num_t)CONFIG_OPS_RAILCOM_BRAKE_PIN
-#endif
   , (gpio_num_t)CONFIG_OPS_RAILCOM_ENABLE_PIN
   , (gpio_num_t)CONFIG_OPS_RAILCOM_UART_RX_PIN
 #endif // CONFIG_OPS_RAILCOM

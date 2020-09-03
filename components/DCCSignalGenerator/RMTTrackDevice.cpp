@@ -240,6 +240,7 @@ RMTTrackDevice::RMTTrackDevice(const char *name
         .carrier_level = rmt_carrier_level_t::RMT_CARRIER_LEVEL_LOW,
         .carrier_en = false,
         .idle_level = rmt_idle_level_t::RMT_IDLE_LEVEL_LOW,
+        .idle_output_en = false
       }
     }
   };
