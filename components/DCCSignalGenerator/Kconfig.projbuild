@@ -63,7 +63,7 @@ menu "DCC Signal"
             default 5000 if OPS_HBRIDGE_BTS7960B_5A
             default 10000 if OPS_HBRIDGE_BTS7960B_10A
 
-        config OPS_ENABLE_PIN
+        config OPS_HBRIDGE_ENABLE_PIN
             int "H-Bridge enable/pwm pin"
             default 25
             range 2 33
@@ -73,7 +73,7 @@ menu "DCC Signal"
                 pin should typically be connected to the PWM input of the
                 H-Bridge IC.
 
-        config OPS_SIGNAL_PIN
+        config OPS_HBRIDGE_SIGNAL_PIN
             int "H-Bridge signal/direction pin"
             default 19
             range 0 33
@@ -83,7 +83,7 @@ menu "DCC Signal"
                 typically be connected to the direction pin on the H-Bridge
                 IC.
 
-        config OPS_BRAKE_PIN
+        config OPS_HBRIDGE_BRAKE_PIN
             int "H-Bridge brake pin"
             default 0
             range 0 33
@@ -92,7 +92,7 @@ menu "DCC Signal"
                 This pin should be connected to the H-Bridge BRAKE pin
                 input and is used to put the H-Bridge into a "coast" mode.
         
-        choice OPS_CURRENT_SENSE_PIN
+        choice OPS_HBRIDGE_CURRENT_SENSE_PIN
             bool "H-Bridge current sense pin"
             help
                 This is used for short circuit detection.
@@ -254,7 +254,7 @@ menu "DCC Signal"
             default 5000 if PROG_HBRIDGE_BTS7960B_5A
             default 10000 if PROG_HBRIDGE_BTS7960B_10A
 
-        config PROG_ENABLE_PIN
+        config PROG_HBRIDGE_ENABLE_PIN
             int "H-Bridge enable pin"
             default 23
             range 2 33
@@ -264,7 +264,7 @@ menu "DCC Signal"
                 pin should typically be connected to the PWM input of the
                 H-Bridge IC.
 
-        config PROG_SIGNAL_PIN
+        config PROG_HBRIDGE_SIGNAL_PIN
             int "H-Bridge signal pin"
             default 18
             range 0 33
@@ -274,7 +274,7 @@ menu "DCC Signal"
                 typically be connected to the direction pin on the H-Bridge
                 IC.
 
-        choice PROG_CURRENT_SENSE_PIN
+        choice PROG_HBRIDGE_CURRENT_SENSE_PIN
         bool "H-Bridge current sense pin"
             default PROG_ADC_CHANNEL_3
             help

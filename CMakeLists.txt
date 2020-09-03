@@ -217,56 +217,56 @@ endif()
 # OPS H-Bridge validations
 ###############################################################################
 
-if (NOT CONFIG_OPS_ENABLE_PIN OR NOT CONFIG_OPS_SIGNAL_PIN OR NOT CONFIG_OPS_DCC_PREAMBLE_BITS OR CONFIG_OPS_ADC STREQUAL "")
+if (NOT CONFIG_OPS_HBRIDGE_ENABLE_PIN OR NOT CONFIG_OPS_HBRIDGE_SIGNAL_PIN OR NOT CONFIG_OPS_DCC_PREAMBLE_BITS OR CONFIG_OPS_ADC STREQUAL "")
     message(FATAL_ERROR "One (or more) OPS H-Bridge required parameters is not defined.")
 endif()
 
-if (CONFIG_OPS_ENABLE_PIN GREATER_EQUAL 6 AND CONFIG_OPS_ENABLE_PIN LESS_EQUAL 11)
+if (CONFIG_OPS_HBRIDGE_ENABLE_PIN GREATER_EQUAL 6 AND CONFIG_OPS_HBRIDGE_ENABLE_PIN LESS_EQUAL 11)
     message(FATAL_ERROR "OPS H-Bridge enable pin can not be set to pin 6-11 (used by onboard flash).")
 endif()
 
-if (CONFIG_OPS_SIGNAL_PIN GREATER_EQUAL 6 AND CONFIG_OPS_SIGNAL_PIN LESS_EQUAL 11)
+if (CONFIG_OPS_HBRIDGE_SIGNAL_PIN GREATER_EQUAL 6 AND CONFIG_OPS_HBRIDGE_SIGNAL_PIN LESS_EQUAL 11)
     message(FATAL_ERROR "OPS H-Bridge signal pin can not be set to pin 6-11 (used by onboard flash).")
 endif()
 
-if (CONFIG_OPS_ENABLE_PIN EQUAL 0 OR CONFIG_OPS_ENABLE_PIN EQUAL 5 OR CONFIG_OPS_ENABLE_PIN EQUAL 15)
+if (CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL 0 OR CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL 5 OR CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL 15)
     message(FATAL_ERROR "OPS H-Bridge enable pin should not use GPIO 0, 5, 15. These pins typically have a pull-up resistor on them.")
 endif()
 
-if (CONFIG_OPS_ENABLE_PIN EQUAL 1 OR CONFIG_OPS_ENABLE_PIN EQUAL 3)
+if (CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL 1 OR CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL 3)
     message(FATAL_ERROR "OPS H-Bridge enable pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
 endif()
 
-if (CONFIG_OPS_SIGNAL_PIN EQUAL 1 OR CONFIG_OPS_SIGNAL_PIN EQUAL 3)
+if (CONFIG_OPS_HBRIDGE_SIGNAL_PIN EQUAL 1 OR CONFIG_OPS_HBRIDGE_SIGNAL_PIN EQUAL 3)
     message(FATAL_ERROR "OPS H-Bridge signal pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
 endif()
 
-if (CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_OPS_BRAKE_PIN)
+if (CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL CONFIG_HBRIDGE_OPS_BRAKE_PIN)
     message(FATAL_ERROR "OPS H-Bridge brake pin and OPS H-Bridge enable pin must be unique.")
 endif()
 
-if (CONFIG_OPS_BRAKE_PIN EQUAL 1 OR CONFIG_OPS_ENABLE_PIN EQUAL 3)
+if (CONFIG_OPS_HBRIDGE_BRAKE_PIN EQUAL 1 OR CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL 3)
     message(FATAL_ERROR "OPS H-Bridge brake pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
 endif()
 
-if (CONFIG_OPS_BRAKE_PIN EQUAL 3)
+if (CONFIG_OPS_HBRIDGE_BRAKE_PIN EQUAL 3)
     message(FATAL_ERROR "OPS H-Bridge brake pin should not use GPIO 3 as this pin is reserved for UART0.")
 endif()
 
-if (CONFIG_OPS_BRAKE_PIN GREATER_EQUAL 6 AND CONFIG_OPS_BRAKE_PIN LESS_EQUAL 11)
+if (CONFIG_OPS_HBRIDGE_BRAKE_PIN GREATER_EQUAL 6 AND CONFIG_OPS_HBRIDGE_BRAKE_PIN LESS_EQUAL 11)
     message(FATAL_ERROR "OPS H-Bridge brake pin can not be set to pin 6-11 (used by onboard flash).")
 endif()
 
-if (CONFIG_OPS_SIGNAL_PIN EQUAL CONFIG_OPS_BRAKE_PIN)
+if (CONFIG_OPS_HBRIDGE_SIGNAL_PIN EQUAL CONFIG_OPS_HBRIDGE_BRAKE_PIN)
     message(FATAL_ERROR "OPS H-Bridge brake pin and OPS H-Bridge signal pin must be unique.")
 endif()
 
 if (CONFIG_OPS_RAILCOM)
-    if(CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_OPS_RAILCOM_ENABLE_PIN)
+    if(CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL CONFIG_OPS_RAILCOM_ENABLE_PIN)
         message(FATAL_ERROR "OPS RailCom enable pin and OPS H-Bridge enable pin must be unique.")
     endif()
 
-    if (CONFIG_OPS_SIGNAL_PIN EQUAL CONFIG_OPS_RAILCOM_ENABLE_PIN)
+    if (CONFIG_OPS_HBRIDGE_SIGNAL_PIN EQUAL CONFIG_OPS_RAILCOM_ENABLE_PIN)
         message(FATAL_ERROR "OPS RailCom enable pin and OPS H-Bridge signal pin must be unique.")
     endif()
 
@@ -282,7 +282,7 @@ if (CONFIG_OPS_RAILCOM)
         message(FATAL_ERROR "OPS RailCom enable pin should not use GPIO 0, 5 or 15 as these pins typically have a pull-up resistor on them.")
     endif()
 
-    if (CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_OPS_RAILCOM_UART_RX_PIN)
+    if (CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL CONFIG_OPS_RAILCOM_UART_RX_PIN)
         message(FATAL_ERROR "OPS RailCom UART RX pin and OPS H-Bridge enable pin must be unique.")
     endif()
 
@@ -294,7 +294,7 @@ if (CONFIG_OPS_RAILCOM)
         message(FATAL_ERROR "OPS RailCom RX pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
     endif()
 
-    if (CONFIG_OPS_SIGNAL_PIN EQUAL CONFIG_OPS_RAILCOM_UART_RX_PIN)
+    if (CONFIG_OPS_HBRIDGE_SIGNAL_PIN EQUAL CONFIG_OPS_RAILCOM_UART_RX_PIN)
         message(FATAL_ERROR "OPS RailCom UART RX pin and OPS H-Bridge signal pin must be unique.")
     endif()
 endif()
@@ -303,27 +303,27 @@ endif()
 # PROG H-Bridge validations
 ###############################################################################
 
-if (NOT CONFIG_PROG_ENABLE_PIN OR NOT CONFIG_PROG_SIGNAL_PIN OR NOT CONFIG_PROG_DCC_PREAMBLE_BITS OR CONFIG_PROG_ADC STREQUAL "")
+if (NOT CONFIG_PROG_HBRIDGE_ENABLE_PIN OR NOT CONFIG_PROG_HBRIDGE_SIGNAL_PIN OR NOT CONFIG_PROG_DCC_PREAMBLE_BITS OR CONFIG_PROG_ADC STREQUAL "")
     message(FATAL_ERROR "One (or more) PROG H-Bridge required parameters is not defined.")
 endif()
 
-if (CONFIG_PROG_ENABLE_PIN GREATER_EQUAL 6 AND CONFIG_PROG_ENABLE_PIN LESS_EQUAL 11)
+if (CONFIG_PROG_HBRIDGE_ENABLE_PIN GREATER_EQUAL 6 AND CONFIG_PROG_HBRIDGE_ENABLE_PIN LESS_EQUAL 11)
     message(FATAL_ERROR "PROG H-Bridge enable pin can not be set to pin 6-11 (used by onboard flash).")
 endif()
 
-if (CONFIG_PROG_SIGNAL_PIN GREATER_EQUAL 6 AND CONFIG_PROG_SIGNAL_PIN LESS_EQUAL 11)
+if (CONFIG_PROG_SIGNAL_PIN GREATER_EQUAL 6 AND CONFIG_PROG_HBRIDGE_SIGNAL_PIN LESS_EQUAL 11)
     message(FATAL_ERROR "PROG H-Bridge signal pin can not be set to pin 6-11 (used by onboard flash).")
 endif()
 
-if (CONFIG_PROG_ENABLE_PIN EQUAL 0 OR CONFIG_PROG_ENABLE_PIN EQUAL 5 OR CONFIG_PROG_ENABLE_PIN EQUAL 15)
+if (CONFIG_PROG_HBRIDGE_ENABLE_PIN EQUAL 0 OR CONFIG_PROG_HBRIDGE_ENABLE_PIN EQUAL 5 OR CONFIG_PROG_HBRIDGE_ENABLE_PIN EQUAL 15)
     message(FATAL_ERROR "PROG H-Bridge enable pin should not use GPIO 0, 5, 15. These pins typically have a pull-up resistor on them.")
 endif()
 
-if (CONFIG_PROG_ENABLE_PIN EQUAL 1 OR CONFIG_PROG_ENABLE_PIN EQUAL 3)
+if (CONFIG_PROG_HBRIDGE_ENABLE_PIN EQUAL 1 OR CONFIG_PROG_HBRIDGE_ENABLE_PIN EQUAL 3)
     message(FATAL_ERROR "PROG H-Bridge enable pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
 endif()
 
-if (CONFIG_PROG_SIGNAL_PIN EQUAL 1 OR CONFIG_PROG_SIGNAL_PIN EQUAL 3)
+if (CONFIG_PROG_HBRIDGE_SIGNAL_PIN EQUAL 1 OR CONFIG_PROG_HBRIDGE_SIGNAL_PIN EQUAL 3)
     message(FATAL_ERROR "PROG H-Bridge signal pin should not use GPIO 1 or 3 as these pins are reserved for UART0.")
 endif()
 
@@ -335,28 +335,28 @@ if (CONFIG_PROG_DCC_PREAMBLE_BITS GREATER 75)
     message(FATAL_ERROR "PROG track preamble bits is too high, a maximum of 75 bits is supported.")
 endif()
 
-if (CONFIG_OPS_ENABLE_PIN EQUAL CONFIG_PROG_ENABLE_PIN)
+if (CONFIG_OPS_HBRIDGE_ENABLE_PIN EQUAL CONFIG_PROG_HBRIDGE_ENABLE_PIN)
     message(FATAL_ERROR "OPS and PROG H-Bridge enable pin must be unique.")
 endif()
 
-if (CONFIG_OPS_SIGNAL_PIN EQUAL CONFIG_PROG_SIGNAL_PIN)
+if (CONFIG_OPS_HBRIDGE_SIGNAL_PIN EQUAL CONFIG_PROG_HBRIDGE_SIGNAL_PIN)
     message(FATAL_ERROR "OPS and PROG H-Bridge signal pin must be unique.")
 endif()
 
 if (CONFIG_STATUS_LED)
-    if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_OPS_ENABLE_PIN)
+    if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_OPS_HBRIDGE_ENABLE_PIN)
         message(FATAL_ERROR "Status LED data pin and OPS H-Bridge enable pin must be unique.")
     endif()
 
-    if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_PROG_ENABLE_PIN)
+    if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_PROG_HBRIDGE_ENABLE_PIN)
         message(FATAL_ERROR "Status LED data pin and PROG H-Bridge enable pin must be unique.")
     endif()
 
-    if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_OPS_SIGNAL_PIN)
+    if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_OPS_HBRIDGE_SIGNAL_PIN)
         message(FATAL_ERROR "Status LED data pin and OPS H-Bridge signal pin must be unique.")
     endif()
 
-    if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_PROG_SIGNAL_PIN)
+    if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_PROG_HBRIDGE_SIGNAL_PIN)
         message(FATAL_ERROR "Status LED data pin and PROG H-Bridge signal pin must be unique.")
     endif()
 

@@ -48,14 +48,14 @@ static constexpr rmt_channel_t OPS_RMT_CHANNEL = RMT_CHANNEL_0;
 static constexpr rmt_channel_t PROG_RMT_CHANNEL = RMT_CHANNEL_3;
 
 /// OPS Track signal pin.
-GPIO_PIN(OPS_SIGNAL, GpioOutputSafeLow, CONFIG_OPS_SIGNAL_PIN);
+GPIO_PIN(OPS_SIGNAL, GpioOutputSafeLow, CONFIG_OPS_HBRIDGE_SIGNAL_PIN);
 
 /// OPS Track h-bridge enable pin.
-GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_ENABLE_PIN);
+GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_HBRIDGE_ENABLE_PIN);
 
 #if defined(CONFIG_OPS_BRAKE_PIN)
 /// OPS Track h-bridge brake pin, active HIGH.
-GPIO_PIN(OPS_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_BRAKE_PIN);
+GPIO_PIN(OPS_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_HBRIDGE_BRAKE_PIN);
 #else
 /// OPS Track h-bridge brakde pin, not connected to actual hardware.
 typedef DummyPin OPS_BRAKE_Pin;
@@ -65,10 +65,10 @@ typedef DummyPin OPS_BRAKE_Pin;
 NoRailcomDriver progRailComDriver;
 
 /// PROG Track signal pin.
-GPIO_PIN(PROG_SIGNAL, GpioOutputSafeLow, CONFIG_PROG_SIGNAL_PIN);
+GPIO_PIN(PROG_SIGNAL, GpioOutputSafeLow, CONFIG_PROG_HBRIDGE_SIGNAL_PIN);
 
 /// PROG Track h-bridge enable pin.
-GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_ENABLE_PIN);
+GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_HBRIDGE_ENABLE_PIN);
 
 // Sanity check that the preamble bits are within the supported range.
 #ifndef CONFIG_OPS_DCC_PREAMBLE_BITS
