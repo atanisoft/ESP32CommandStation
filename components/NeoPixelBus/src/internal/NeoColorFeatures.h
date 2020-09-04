@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------
-NeoPixelFeatures provides feature classes to describe color order and
+NeoColorFeatures provides feature classes to describe color order and
 color depth for NeoPixelBus template class
 
 Written by Michael C. Miller.
@@ -28,6 +28,11 @@ License along with NeoPixel.  If not, see
 
 #include <stdint.h>
 
+#ifndef pgm_read_byte
+#define pgm_read_byte(addr)   (*(const unsigned char *)(addr))
+#endif
+#include <stdint.h>
+
 class Neo3Elements
 {
 public:
@@ -47,9 +52,10 @@ public:
         uint8_t* pEnd = pPixelDest + (count * PixelSize);
         while (pPixelDest < pEnd)
         {
-            *pPixelDest++ = pPixelSrc[0];
-            *pPixelDest++ = pPixelSrc[1];
-            *pPixelDest++ = pPixelSrc[2];
+            for (uint8_t iElement = 0; iElement < PixelSize; iElement++)
+            {
+                *pPixelDest++ = pPixelSrc[iElement];
+            }
         }
     }
 
@@ -59,18 +65,25 @@ public:
         while (pPixelDest < pEnd)
         {
             *pPixelDest++ = *pPixelSrc++;
-            *pPixelDest++ = *pPixelSrc++;
-            *pPixelDest++ = *pPixelSrc++;
         }
     }
+
+    static void movePixelsInc_P(uint8_t* pPixelDest, PGM_VOID_P pPixelSrc, uint16_t count)
+    {
+        uint8_t* pEnd = pPixelDest + (count * PixelSize);
+        const uint8_t* pSrc = (const uint8_t*)pPixelSrc;
+        while (pPixelDest < pEnd)
+        {
+            *pPixelDest++ = pgm_read_byte(pSrc++);
+        }
+    }
+
     static void movePixelsDec(uint8_t* pPixelDest, const uint8_t* pPixelSrc, uint16_t count)
     {
         uint8_t* pDestBack = pPixelDest + (count * PixelSize);
         const uint8_t* pSrcBack = pPixelSrc + (count * PixelSize);
         while (pDestBack > pPixelDest)
         {
-            *--pDestBack = *--pSrcBack;
-            *--pDestBack = *--pSrcBack;
             *--pDestBack = *--pSrcBack;
         }
     }
@@ -115,6 +128,17 @@ public:
         }
     }
 
+    static void movePixelsInc_P(uint8_t* pPixelDest, PGM_VOID_P pPixelSrc, uint16_t count)
+    {
+        uint32_t* pDest = (uint32_t*)pPixelDest;
+        const uint32_t* pSrc = (const uint32_t*)pPixelSrc;
+        uint32_t* pEnd = pDest + count;
+        while (pDest < pEnd)
+        {
+            *pDest++ = pgm_read_dword(pSrc++); 
+        }
+    }
+
     static void movePixelsDec(uint8_t* pPixelDest, const uint8_t* pPixelSrc, uint16_t count)
     {
         uint32_t* pDest = (uint32_t*)pPixelDest;
@@ -130,7 +154,50 @@ public:
     typedef RgbwColor ColorObject;
 };
 
-class NeoGrbFeature : public Neo3Elements
+ 
+class Neo3ElementsNoSettings : public Neo3Elements
+{
+public:
+    typedef NeoNoSettings SettingsObject;
+    static const size_t SettingsSize = 0;
+
+    static void applySettings(uint8_t*, const SettingsObject&)
+    {
+    }
+
+    static uint8_t* pixels(uint8_t* pData)
+    {
+        return pData;
+    }
+
+    static const uint8_t* pixels(const uint8_t* pData)
+    {
+        return pData;
+    }
+};
+
+class Neo4ElementsNoSettings : public Neo4Elements
+{
+public:
+    typedef NeoNoSettings SettingsObject;
+    static const size_t SettingsSize = 0;
+
+    static void applySettings(uint8_t*, const SettingsObject&)
+    {
+    }
+
+    static uint8_t* pixels(uint8_t* pData)
+    {
+        return pData;
+    }
+
+    static const uint8_t* pixels(const uint8_t* pData)
+    {
+        return pData;
+    }
+};
+
+class NeoGrbFeature : public Neo3ElementsNoSettings
 {
 public:
     static void applyPixelColor(uint8_t* pPixels, uint16_t indexPixel, ColorObject color)
@@ -142,10 +209,10 @@ public:
         *p = color.B;
     }
 
-    static ColorObject retrievePixelColor(uint8_t* pPixels, uint16_t indexPixel)
+    static ColorObject retrievePixelColor(const uint8_t* pPixels, uint16_t indexPixel)
     {
         ColorObject color;
-        uint8_t* p = getPixelAddress(pPixels, indexPixel);
+        const uint8_t* p = getPixelAddress(pPixels, indexPixel);
 
         color.G = *p++;
         color.R = *p++;
@@ -153,9 +220,22 @@ public:
 
         return color;
     }
+    
+    static ColorObject retrievePixelColor_P(PGM_VOID_P pPixels, uint16_t indexPixel)
+    {
+        ColorObject color;
+        const uint8_t* p = getPixelAddress((const uint8_t*)pPixels, indexPixel);
+
+        color.G = pgm_read_byte(p++);
+        color.R = pgm_read_byte(p++);
+        color.B = pgm_read_byte(p);
+
+        return color;
+    }
+    
 };
 
-class NeoGrbwFeature : public Neo4Elements
+class NeoGrbwFeature : public Neo4ElementsNoSettings
 {
 public:
     static void applyPixelColor(uint8_t* pPixels, uint16_t indexPixel, ColorObject color)
@@ -168,10 +248,10 @@ public:
         *p = color.W;
     }
 
-    static ColorObject retrievePixelColor(uint8_t* pPixels, uint16_t indexPixel)
+    static ColorObject retrievePixelColor(const uint8_t* pPixels, uint16_t indexPixel)
     {
         ColorObject color;
-        uint8_t* p = getPixelAddress(pPixels, indexPixel);
+        const uint8_t* p = getPixelAddress(pPixels, indexPixel);
 
         color.G = *p++;
         color.R = *p++;
@@ -181,9 +261,23 @@ public:
 
         return color;
     }
+    
+    static ColorObject retrievePixelColor_P(PGM_VOID_P pPixels, uint16_t indexPixel)
+    {
+        ColorObject color;
+        const uint8_t* p = getPixelAddress((const uint8_t*)pPixels, indexPixel);
+
+        color.G = pgm_read_byte(p++);
+        color.R = pgm_read_byte(p++);
+        color.B = pgm_read_byte(p++);
+        color.W = pgm_read_byte(p);
+
+        return color;
+    }
+    
 };
 
-class NeoRgbwFeature : public Neo4Elements
+class NeoRgbwFeature : public Neo4ElementsNoSettings
 {
 public:
     static void applyPixelColor(uint8_t* pPixels, uint16_t indexPixel, ColorObject color)
@@ -196,10 +290,10 @@ public:
         *p = color.W;
     }
 
-    static ColorObject retrievePixelColor(uint8_t* pPixels, uint16_t indexPixel)
+    static ColorObject retrievePixelColor(const uint8_t* pPixels, uint16_t indexPixel)
     {
         ColorObject color;
-        uint8_t* p = getPixelAddress(pPixels, indexPixel);
+        const uint8_t* p = getPixelAddress(pPixels, indexPixel);
 
         color.R = *p++;
         color.G = *p++;
@@ -208,9 +302,23 @@ public:
 
         return color;
     }
+    
+    static ColorObject retrievePixelColor_P(PGM_VOID_P pPixels, uint16_t indexPixel)
+    {
+        ColorObject color;
+        const uint8_t* p = getPixelAddress((const uint8_t*)pPixels, indexPixel);
+
+        color.R = pgm_read_byte(p++);
+        color.G = pgm_read_byte(p++);
+        color.B = pgm_read_byte(p++);
+        color.W = pgm_read_byte(p);
+
+        return color;
+    }
+    
 };
 
-class NeoRgbFeature : public Neo3Elements
+class NeoRgbFeature : public Neo3ElementsNoSettings
 {
 public:
     static void applyPixelColor(uint8_t* pPixels, uint16_t indexPixel, ColorObject color)
@@ -222,10 +330,10 @@ public:
         *p = color.B;
     }
 
-    static ColorObject retrievePixelColor(uint8_t* pPixels, uint16_t indexPixel)
+    static ColorObject retrievePixelColor(const uint8_t* pPixels, uint16_t indexPixel)
     {
         ColorObject color;
-        uint8_t* p = getPixelAddress(pPixels, indexPixel);
+        const uint8_t* p = getPixelAddress(pPixels, indexPixel);
 
         color.R = *p++;
         color.G = *p++;
@@ -233,9 +341,22 @@ public:
 
         return color;
     }
+    
+    static ColorObject retrievePixelColor_P(PGM_VOID_P pPixels, uint16_t indexPixel)
+    {
+        ColorObject color;
+        const uint8_t* p = getPixelAddress((const uint8_t*)pPixels, indexPixel);
+
+        color.R = pgm_read_byte(p++);
+        color.G = pgm_read_byte(p++);
+        color.B = pgm_read_byte(p);
+
+        return color;
+    }
+    
 };
 
-class NeoBrgFeature : public Neo3Elements
+class NeoBrgFeature : public Neo3ElementsNoSettings
 {
 public:
     static void applyPixelColor(uint8_t* pPixels, uint16_t indexPixel, ColorObject color)
@@ -247,10 +368,10 @@ public:
         *p = color.G;
     }
 
-    static ColorObject retrievePixelColor(uint8_t* pPixels, uint16_t indexPixel)
+    static ColorObject retrievePixelColor(const uint8_t* pPixels, uint16_t indexPixel)
     {
         ColorObject color;
-        uint8_t* p = getPixelAddress(pPixels, indexPixel);
+        const uint8_t* p = getPixelAddress(pPixels, indexPixel);
 
         color.B = *p++;
         color.R = *p++;
@@ -258,9 +379,22 @@ public:
 
         return color;
     }
+    
+    static ColorObject retrievePixelColor_P(PGM_VOID_P pPixels, uint16_t indexPixel)
+    {
+        ColorObject color;
+        const uint8_t* p = getPixelAddress((const uint8_t*)pPixels, indexPixel);
+
+        color.B = pgm_read_byte(p++);
+        color.R = pgm_read_byte(p++);
+        color.G = pgm_read_byte(p);
+
+        return color;
+    }
+    
 };
 
-class NeoRbgFeature : public Neo3Elements
+class NeoRbgFeature : public Neo3ElementsNoSettings
 {
 public:
     static void applyPixelColor(uint8_t* pPixels, uint16_t indexPixel, ColorObject color)
@@ -272,10 +406,10 @@ public:
         *p = color.G;
     }
 
-    static ColorObject retrievePixelColor(uint8_t* pPixels, uint16_t indexPixel)
+    static ColorObject retrievePixelColor(const uint8_t* pPixels, uint16_t indexPixel)
     {
         ColorObject color;
-        uint8_t* p = getPixelAddress(pPixels, indexPixel);
+        const uint8_t* p = getPixelAddress(pPixels, indexPixel);
 
         color.R = *p++;
         color.B = *p++;
@@ -283,4 +417,18 @@ public:
 
         return color;
     }
+
+    
+    static ColorObject retrievePixelColor_P(PGM_VOID_P pPixels, uint16_t indexPixel)
+    {
+        ColorObject color;
+        const uint8_t* p = getPixelAddress((const uint8_t*)pPixels, indexPixel);
+
+        color.R = pgm_read_byte(p++);
+        color.B = pgm_read_byte(p++);
+        color.G = pgm_read_byte(p);
+
+        return color;
+    }
+    
 };

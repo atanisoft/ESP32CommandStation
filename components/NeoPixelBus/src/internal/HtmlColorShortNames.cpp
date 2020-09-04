@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------
-NeoPixel library
+HtmlShortColorNames provides a template class for access to the short name table
 
 Written by Michael C. Miller.
 
@@ -23,26 +23,37 @@ You should have received a copy of the GNU Lesser General Public
 License along with NeoPixel.  If not, see
 <http://www.gnu.org/licenses/>.
 -------------------------------------------------------------------------*/
-#pragma once
 
-// This is used to allow a template classes that share common buffer concept to
-// be able to pass that common information to functions 
-// The template classes just need to expose a conversion operator to this type
-template <typename T_COLOR_FEATURE> struct NeoBufferContext
-{
-    NeoBufferContext(uint8_t* pixels, 
-        size_t sizePixels) :
-        Pixels(pixels),
-        SizePixels(sizePixels)
-    {
-    }
+#include "HtmlColor.h"
+#include "HtmlColorNameStrings.h"
 
-    uint16_t PixelCount() const
-    {
-        return SizePixels / T_COLOR_FEATURE::PixelSize;
-    };
-
-    uint8_t* Pixels;
-    const size_t SizePixels;
-    
+static const HtmlColorPair c_ShortColorNames[] PROGMEM = {
+    { c_HtmlNameAqua, 0xffff },
+    { c_HtmlNameBlack, 0x0 },
+    { c_HtmlNameBlue, 0xff },
+    { c_HtmlNameFuchsia, 0xff00ff },
+    { c_HtmlNameGray, 0x808080 },
+    { c_HtmlNameGreen, 0x8000 },
+    { c_HtmlNameLime, 0xff00 },
+    { c_HtmlNameMaroon, 0x800000 },
+    { c_HtmlNameNavy, 0x80 },
+    { c_HtmlNameOlive, 0x808000 },
+    { c_HtmlNameOrange, 0xffa500 },
+    { c_HtmlNamePurple, 0x800080 },
+    { c_HtmlNameRed, 0xff0000 },
+    { c_HtmlNameSilver, 0xc0c0c0 },
+    { c_HtmlNameTeal, 0x8080 },
+    { c_HtmlNameWhite, 0xffffff },
+    { c_HtmlNameYellow, 0xffff00 },
 };
+
+
+const HtmlColorPair* HtmlShortColorNames::Pair(uint8_t index)
+{
+    return &c_ShortColorNames[index];
+}
+
+uint8_t HtmlShortColorNames::Count()
+{
+    return countof(c_ShortColorNames);
+}

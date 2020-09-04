@@ -1,7 +1,7 @@
 /*-------------------------------------------------------------------------
-NeoPixel library
+This file contains the HtmlColor implementation
 
-Written by Michael C. Miller.
+Written by Unai Uribarri
 
 I invest time and resources providing this open source code,
 please support me by dontating (see https://github.com/Makuna/NeoPixelBus)
@@ -23,26 +23,36 @@ You should have received a copy of the GNU Lesser General Public
 License along with NeoPixel.  If not, see
 <http://www.gnu.org/licenses/>.
 -------------------------------------------------------------------------*/
-#pragma once
+#include "HtmlColor.h"
 
-// This is used to allow a template classes that share common buffer concept to
-// be able to pass that common information to functions 
-// The template classes just need to expose a conversion operator to this type
-template <typename T_COLOR_FEATURE> struct NeoBufferContext
+static inline char hexdigit(uint8_t v)
 {
-    NeoBufferContext(uint8_t* pixels, 
-        size_t sizePixels) :
-        Pixels(pixels),
-        SizePixels(sizePixels)
+    return v + (v < 10 ? '0' : 'a' - 10);
+}
+
+
+size_t HtmlColor::ToNumericalString(char* buf, size_t bufSize) const
+{
+    size_t bufLen = bufSize - 1;
+
+    if (bufLen-- > 0)
     {
+        if (bufLen > 0)
+        {
+            buf[0] = '#';
+        }
+
+        uint32_t color = Color;
+        for (uint8_t indexDigit = 6; indexDigit > 0; indexDigit--)
+        {
+            if (bufLen > indexDigit)
+            {
+                buf[indexDigit] = hexdigit(color & 0x0000000f);
+            }
+            color >>= 4;
+        }
+
+        buf[(bufLen < 7 ? bufLen : 7)] = 0;
     }
-
-    uint16_t PixelCount() const
-    {
-        return SizePixels / T_COLOR_FEATURE::PixelSize;
-    };
-
-    uint8_t* Pixels;
-    const size_t SizePixels;
-    
-};
+    return 7;
+}

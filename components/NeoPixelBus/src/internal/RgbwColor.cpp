@@ -28,6 +28,19 @@ License along with NeoPixel.  If not, see
 #include "HslColor.h"
 #include "HsbColor.h"
 #include "RgbwColor.h"
+#include "HtmlColor.h"
+
+RgbwColor::RgbwColor(const HtmlColor& color)
+{
+    uint32_t temp = color.Color;
+    B = (temp & 0xff);
+    temp = temp >> 8;
+    G = (temp & 0xff);
+    temp = temp >> 8;
+    R = (temp & 0xff);
+    temp = temp >> 8;
+    W = (temp & 0xff);
+};
 
 RgbwColor::RgbwColor(const HslColor& color)
 {
@@ -52,6 +65,18 @@ uint8_t RgbwColor::CalculateBrightness() const
     {
         return colorB;
     }
+}
+
+RgbwColor RgbwColor::Dim(uint8_t ratio) const
+{
+    // specifically avoids float math
+    return RgbwColor(_elementDim(R, ratio), _elementDim(G, ratio), _elementDim(B, ratio), _elementDim(W, ratio));
+}
+
+RgbwColor RgbwColor::Brighten(uint8_t ratio) const
+{
+    // specifically avoids float math
+    return RgbwColor(_elementBrighten(R, ratio), _elementBrighten(G, ratio), _elementBrighten(B, ratio), _elementBrighten(W, ratio));
 }
 
 void RgbwColor::Darken(uint8_t delta)

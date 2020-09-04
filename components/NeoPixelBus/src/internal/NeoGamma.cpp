@@ -24,10 +24,11 @@ License along with NeoPixel.  If not, see
 <http://www.gnu.org/licenses/>.
 -------------------------------------------------------------------------*/
 
-#include "RgbColor.h"
-#include "RgbwColor.h"
-#include "NeoEase.h"
-#include "NeoGamma.h"
+#ifdef ARDUINO
+#include <Arduino.h>
+#endif
+#include <stdint.h>
+#include "NeoPixelBus.h"
 
 const uint8_t NeoGammaTableMethod::_table[] = {
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,

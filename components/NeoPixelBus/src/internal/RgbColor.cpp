@@ -27,6 +27,7 @@ License along with NeoPixel.  If not, see
 #include "RgbColor.h"
 #include "HslColor.h"
 #include "HsbColor.h"
+#include "HtmlColor.h"
 
 static float _CalcColor(float p, float q, float t)
 {
@@ -46,6 +47,17 @@ static float _CalcColor(float p, float q, float t)
 
     return p;
 }
+
+RgbColor::RgbColor(const HtmlColor& color)
+{
+    uint32_t temp = color.Color;
+
+    B = (temp & 0xff);
+    temp = temp >> 8;
+    G = (temp & 0xff);
+    temp = temp >> 8;
+    R = (temp & 0xff);
+};
 
 RgbColor::RgbColor(const HslColor& color)
 {
@@ -149,6 +161,18 @@ RgbColor::RgbColor(const HsbColor& color)
 uint8_t RgbColor::CalculateBrightness() const
 {
 	return (uint8_t)(((uint16_t)R + (uint16_t)G + (uint16_t)B) / 3);
+}
+
+RgbColor RgbColor::Dim(uint8_t ratio) const
+{
+    // specifically avoids float math
+    return RgbColor(_elementDim(R, ratio), _elementDim(G, ratio), _elementDim(B, ratio));
+}
+
+RgbColor RgbColor::Brighten(uint8_t ratio) const
+{
+    // specifically avoids float math
+    return RgbColor(_elementBrighten(R, ratio), _elementBrighten(G, ratio), _elementBrighten(B, ratio));
 }
 
 void RgbColor::Darken(uint8_t delta)

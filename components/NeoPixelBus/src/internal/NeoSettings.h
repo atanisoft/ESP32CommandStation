@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------
-NeoPixel library
+NeoSettings provides settings classes to describe settings
 
 Written by Michael C. Miller.
 
@@ -25,24 +25,38 @@ License along with NeoPixel.  If not, see
 -------------------------------------------------------------------------*/
 #pragma once
 
-// This is used to allow a template classes that share common buffer concept to
-// be able to pass that common information to functions 
-// The template classes just need to expose a conversion operator to this type
-template <typename T_COLOR_FEATURE> struct NeoBufferContext
+class NeoNoSettings
 {
-    NeoBufferContext(uint8_t* pixels, 
-        size_t sizePixels) :
-        Pixels(pixels),
-        SizePixels(sizePixels)
+};
+
+class NeoRgbCurrentSettings
+{
+public:
+    NeoRgbCurrentSettings(uint16_t red, uint16_t green, uint16_t blue) :
+        RedTenthMilliAmpere(red),
+        GreenTenthMilliAmpere(green),
+        BlueTenthMilliAmpere(blue)
     {
     }
 
-    uint16_t PixelCount() const
-    {
-        return SizePixels / T_COLOR_FEATURE::PixelSize;
-    };
+    uint16_t RedTenthMilliAmpere;   // in 1/10th ma
+    uint16_t GreenTenthMilliAmpere; // in 1/10th ma
+    uint16_t BlueTenthMilliAmpere;  // in 1/10th ma
+};
 
-    uint8_t* Pixels;
-    const size_t SizePixels;
-    
+class NeoRgbwCurrentSettings
+{
+public:
+    NeoRgbwCurrentSettings(uint16_t red, uint16_t green, uint16_t blue, uint16_t white) :
+        RedTenthMilliAmpere(red),
+        GreenTenthMilliAmpere(green),
+        BlueTenthMilliAmpere(blue),
+        WhiteCurrent(white)
+    {
+    }
+
+    uint16_t RedTenthMilliAmpere;   // in 1/10th ma
+    uint16_t GreenTenthMilliAmpere; // in 1/10th ma
+    uint16_t BlueTenthMilliAmpere;  // in 1/10th ma
+    uint16_t WhiteCurrent; // in 1/10th ma
 };

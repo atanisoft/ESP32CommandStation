@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-
 /*-------------------------------------------------------------------------
 Mosiac provides a mapping feature of a 2d cordinate to linear 1d cordinate
 It is used to map tiles of matricies of NeoPixels to a index on the NeoPixelBus

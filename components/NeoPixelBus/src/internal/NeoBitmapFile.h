@@ -25,8 +25,6 @@ License along with NeoPixel.  If not, see
 -------------------------------------------------------------------------*/
 #pragma once
 
-#include <stdint.h>
-
 const uint16_t c_BitmapFileId = 0x4d42; // "BM"
 
 #pragma pack(push, 2)

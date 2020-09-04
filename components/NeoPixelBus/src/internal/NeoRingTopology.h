@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-
 /*-------------------------------------------------------------------------
 NeoRingTopology provides a mapping feature of a 2d polar cordinate to a 
 linear 1d cordinate.

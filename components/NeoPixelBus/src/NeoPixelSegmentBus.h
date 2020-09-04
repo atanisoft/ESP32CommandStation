@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
-NeoGamma class is used to correct RGB colors for human eye gamma levels equally
-across all color channels
+NeoPixelBus library wrapper template class that provides enhanced methods
+for writing to segment based strips
 
 Written by Michael C. Miller.
 
@@ -24,51 +24,44 @@ You should have received a copy of the GNU Lesser General Public
 License along with NeoPixel.  If not, see
 <http://www.gnu.org/licenses/>.
 -------------------------------------------------------------------------*/
+
 #pragma once
 
-// NeoGammaEquationMethod uses no memory but is slower than NeoGammaTableMethod
-class NeoGammaEquationMethod
+#include "NeoPixelBus.h"
+
+template<typename T_COLOR_FEATURE, typename T_METHOD> class NeoPixelSegmentBus : 
+    public NeoPixelBus<T_COLOR_FEATURE, T_METHOD>
 {
 public:
-    static uint8_t Correct(uint8_t value)
+    NeoPixelSegmentBus(uint16_t countPixels, uint8_t pin) :
+        NeoPixelBus<T_COLOR_FEATURE, T_METHOD>(countPixels, pin)
     {
-        return static_cast<uint8_t>(255.0f * NeoEase::Gamma(value / 255.0f) + 0.5f);
+    }
+
+    NeoPixelSegmentBus(uint16_t countPixels) :
+        NeoPixelBus<T_COLOR_FEATURE, T_METHOD>(countPixels)
+    {
+    }
+
+    void SetString(uint16_t indexDigit, 
+        const char* str, 
+        uint8_t brightness, 
+        uint8_t defaultBrightness = 0)
+    {
+        T_COLOR_FEATURE::ColorObject::SetString(*this,
+            indexDigit,
+            str,
+            brightness,
+            defaultBrightness);
+    }
+
+    void SetString(uint16_t indexDigit, 
+        const String& str, 
+        uint8_t brightness, 
+        uint8_t defaultBrightness = 0)
+    {
+        SetString(indexDigit, str.c_str(), brightness, defaultBrightness);
     }
 };
-
-// NeoGammaTableMethod uses 256 bytes of memory, but is significantly faster
-class NeoGammaTableMethod
-{
-public:
-    static uint8_t Correct(uint8_t value)
-    {
-        return _table[value];
-    }
-
-private:
-    static const uint8_t _table[256];
-};
-
-
-// use one of the method classes above as a converter for this template class
-template<typename T_METHOD> class NeoGamma
-{
-public:
-    RgbColor Correct(const RgbColor& original)
-    {
-        return RgbColor(T_METHOD::Correct(original.R),
-            T_METHOD::Correct(original.G),
-            T_METHOD::Correct(original.B));
-    }
-
-    RgbwColor Correct(const RgbwColor& original)
-    {
-        return RgbwColor(T_METHOD::Correct(original.R),
-            T_METHOD::Correct(original.G),
-            T_METHOD::Correct(original.B),
-            T_METHOD::Correct(original.W) );
-    }
-};
-
 
 
