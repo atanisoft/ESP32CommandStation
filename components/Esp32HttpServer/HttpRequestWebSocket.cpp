@@ -58,6 +58,10 @@ WebSocketFlow::WebSocketFlow(Httpd *server, int fd, uint32_t remote_ip
 {
   server_->add_websocket(fd, this);
   string key_data = ws_key + WEBSOCKET_UUID;
+
+  // replace spaces with + which might have been removed by url_decode
+  std::replace(key_data.begin(), key_data.end(), ' ', '+');
+
   unsigned char key_sha1[20];
   LOG(CONFIG_HTTP_WS_LOG_LEVEL
     , "[WebSocket fd:%d] Connected, starting handshake", fd_);
