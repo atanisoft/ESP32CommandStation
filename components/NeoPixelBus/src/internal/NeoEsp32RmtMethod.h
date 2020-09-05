@@ -379,24 +379,34 @@ public:
 template<typename T_SPEED, typename T_CHANNEL> class NeoEsp32RmtMethodBase
 {
 public:
-    NeoEsp32RmtMethodBase(uint8_t pin, uint16_t pixelCount, size_t elementSize, size_t settingsSize)  :
-        _sizeData(pixelCount * elementSize + settingsSize),
-        _pin(pin)
+    NeoEsp32RmtMethodBase(uint8_t pin, uint16_t pixelCount, size_t elementSize, size_t settingsSize) :
+        _sizeData((pixelCount * elementSize) + settingsSize),
+        _pin(static_cast<gpio_num_t>(pin)),
+        _channel(T_CHANNEL::RmtChannelNumber)
     {
         _dataEditing = static_cast<uint8_t*>(malloc(_sizeData));
-        memset(_dataEditing, 0x00, _sizeData);
+        if (_dataEditing == NULL)
+        {
+            abort();
+        }
+        bzero(_dataEditing, _sizeData);
 
         _dataSending = static_cast<uint8_t*>(malloc(_sizeData));
-        // no need to initialize it, it gets overwritten on every send
+        if (_dataSending == NULL)
+        {
+            abort();
+        }
+        bzero(_dataSending, _sizeData);
     }
 
     ~NeoEsp32RmtMethodBase()
     {
         // wait until the last send finishes before destructing everything
         // arbitrary time out of 10 seconds
-        ESP_ERROR_CHECK_WITHOUT_ABORT(rmt_wait_tx_done(T_CHANNEL::RmtChannelNumber, 10000 / portTICK_PERIOD_MS));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(
+            rmt_wait_tx_done(_channel, MAX_WAIT_FOR_TX_COMPLETE));
 
-        ESP_ERROR_CHECK(rmt_driver_uninstall(T_CHANNEL::RmtChannelNumber));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(rmt_driver_uninstall(_channel));
 
         free(_dataEditing);
         free(_dataSending);
@@ -405,7 +415,7 @@ public:
 
     bool IsReadyToUpdate() const
     {
-        return (ESP_OK == rmt_wait_tx_done(T_CHANNEL::RmtChannelNumber, 0));
+        return (ESP_OK == rmt_wait_tx_done(_channel, 0));
     }
 
     void Initialize()
@@ -413,8 +423,8 @@ public:
         rmt_config_t config;
 
         config.rmt_mode = RMT_MODE_TX;
-        config.channel = T_CHANNEL::RmtChannelNumber;
-        config.gpio_num = static_cast<gpio_num_t>(_pin);
+        config.channel = _channel;
+        config.gpio_num = _pin;
         config.mem_block_num = 1;
         config.tx_config.loop_en = false;
         
@@ -427,20 +437,17 @@ public:
         config.clk_div = T_SPEED::RmtClockDivider;
 
         ESP_ERROR_CHECK(rmt_config(&config));
-        ESP_ERROR_CHECK(rmt_driver_install(T_CHANNEL::RmtChannelNumber, 0, ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LEVEL1));
-        ESP_ERROR_CHECK(rmt_translator_init(T_CHANNEL::RmtChannelNumber, T_SPEED::Translate));
+        ESP_ERROR_CHECK(rmt_driver_install(_channel, 0, RMT_ISR_FLAGS));
+        ESP_ERROR_CHECK(rmt_translator_init(_channel, T_SPEED::Translate));
     }
 
     void Update(bool maintainBufferConsistency)
     {
-        // wait for not actively sending data
-        // this will time out at 10 seconds, an arbitrarily long period of time
-        // and do nothing if this happens
-        if (ESP_OK == ESP_ERROR_CHECK_WITHOUT_ABORT(rmt_wait_tx_done(T_CHANNEL::RmtChannelNumber, 10000 / portTICK_PERIOD_MS)))
+        // wait for not actively sending data to complete, if this times out
+        // do not attempt to send the next set of updated pixel data.
+        if (ESP_OK == ESP_ERROR_CHECK_WITHOUT_ABORT(
+                rmt_wait_tx_done(_channel, MAX_WAIT_FOR_TX_COMPLETE)))
         {
-            // now start the RMT transmit with the editing buffer before we swap
-            ESP_ERROR_CHECK_WITHOUT_ABORT(rmt_write_sample(T_CHANNEL::RmtChannelNumber, _dataEditing, _sizeData, false));
-
             if (maintainBufferConsistency)
             {
                 // copy editing to sending,
@@ -451,6 +458,10 @@ public:
 
             // swap so the user can modify without affecting the async operation
             std::swap(_dataSending, _dataEditing);
+
+            // now start the RMT transmit with the editing buffer before we swap
+            ESP_ERROR_CHECK_WITHOUT_ABORT(
+                rmt_write_sample(_channel, _dataSending, _sizeData, false));
         }
     }
 
@@ -465,8 +476,17 @@ public:
     }
 
 private:
-    const size_t  _sizeData;      // Size of '_data*' buffers 
-    const uint8_t _pin;            // output pin number
+    const size_t        _sizeData;   // Size of '_data*' buffers 
+    const gpio_num_t    _pin;        // output pin number
+    const rmt_channel_t _channel;    // RMT channel
+
+    // Flags to use for the RMT ISR, ISR in IRAM and the ISR is in C code.
+    static constexpr int RMT_ISR_FLAGS = ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LOWMED;
+
+    // Maximum wait time for TX complete prior to attempting to send the next batch
+    // of pixel data.
+    static constexpr TickType_t MAX_WAIT_FOR_TX_COMPLETE = pdMS_TO_TICKS(10000);
+
 
     // Holds data stream which include LED color values and other settings as needed
     uint8_t*  _dataEditing;   // exposed for get and set
