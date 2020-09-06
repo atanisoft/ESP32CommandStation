@@ -17,6 +17,8 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 
 #include "sdkconfig.h"
 
+#if CONFIG_JMRI
+
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <Httpd.h>
 #include <memory>
@@ -59,3 +61,5 @@ void init_jmri_interface()
         CONFIG_JMRI_MDNS_SERVICE_NAME);
   });
 }
+
+#endif // CONFIG_JMRI
