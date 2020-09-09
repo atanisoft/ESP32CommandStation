@@ -19,7 +19,6 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 #include "sdkconfig.h"
 
 #include <dcc/DccDebug.hxx>
-#include <soc/gpio_struct.h>
 
 
 namespace esp32cs
@@ -137,6 +136,15 @@ static constexpr rmt_item32_t MARKLIN_RMT_PREAMBLE_BIT =
   , 0                                    // of the square wave.
   , MARKLIN_PREAMBLE_BIT_PULSE_LOW_USEC  // number of microseconds for BOTTOM
   , 0                                    // half of the square wave.
+}}};
+
+///////////////////////////////////////////////////////////////////////////////
+// The ESP32 RMT peripheral will continue transmitting bits until it reaches a
+// special marker bit which is all zeros.
+///////////////////////////////////////////////////////////////////////////////
+static constexpr rmt_item32_t RMT_END_OF_PACKET_BIT = 
+{{{
+    0,0,0,0
 }}};
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -376,19 +384,27 @@ void RMTTrackDevice::rmt_transmit_complete()
   encode_next_packet();
   railcomDriver_->start_cutout();
 
-  // send the packet to the RMT, note not using memcpy for the packet as this
-  // directly accesses hardware registers.
-  RMT.apb_conf.fifo_mask = RMT_DATA_MODE_MEM;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+  // NOTE: This is not using rmt_write_items as it is not safe within an ISR
+  // context which this callback is invoked from.
+  // NOTE: rmt_fill_tx_items will truncate the packet length to 64 bits in
+  // IDF v4.1, this has been fixed in IDF v4.2.
+  rmt_fill_tx_items(channel_, packet_, pktLength_, 0);
+
+  // start the transmit using the rmt_tx_start method which is ISR safe as of
+  // IDF v4.1.
+  rmt_tx_start(channel_, true);
+#else
+  // send the packet to the RMT.
   for(uint32_t index = 0; index < pktLength_; index++)
   {
     RMTMEM.chan[channel_].data32[index].val = packet_[index].val;
   }
-  // RMT marker for "end of data"
-  RMTMEM.chan[channel_].data32[pktLength_].val = 0;
-  // start transmit
+  // reset the TX memory read offset and trigger TX start.
   RMT.conf_ch[channel_].conf1.mem_rd_rst = 1;
   RMT.conf_ch[channel_].conf1.mem_owner = RMT_MEM_OWNER_TX;
   RMT.conf_ch[channel_].conf1.tx_start = 1;
+#endif // IDF 4.2+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -467,6 +483,9 @@ void RMTTrackDevice::encode_next_packet()
   // add an extra ONE bit to the end to prevent mangling of the last bit by
   // the RMT
   packet_[pktLength_++].val = DCC_RMT_ONE_BIT.val;
+  // Add marker to the end of the DCC packet data to allow the RMT to know it
+  // can stop transmitting at this point.
+  packet_[pktLength_++].val = RMT_END_OF_PACKET_BIT.val;
   // record the repeat count
   pktRepeatCount_ = packet.packet_header.rept_count;
 

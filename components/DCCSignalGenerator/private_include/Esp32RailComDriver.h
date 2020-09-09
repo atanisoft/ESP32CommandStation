@@ -25,6 +25,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include <esp32/rom/gpio.h>
 #include <freertos_drivers/arduino/RailcomDriver.hxx>
 #include <os/Gpio.hxx>
+#include <soc/dport_reg.h>
 #include <soc/gpio_periph.h>
 #include <soc/timer_periph.h>
 #include <soc/uart_periph.h>
@@ -38,7 +39,15 @@ template <class HW>
 static void esp32_railcom_timer_tick(void *param);
 
 template <class HW>
-static void esp32_railcom_uart_isr(void *arg);
+static void esp32_railcom_uart_isr(void *param);
+
+static portMUX_TYPE esp32_uart_mux = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE esp32_timer_mux = portMUX_INITIALIZER_UNLOCKED;
+
+static constexpr uint32_t ESP32_UART_CLEAR_ALL_INTERRUPTS = 0xFFFFFFFF;
+static constexpr uint32_t ESP32_UART_DISABLE_ALL_INTERRUPTS = 0x00000000;
+static constexpr uint32_t ESP32_UART_RX_INTERRUPT_BITS =
+  UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA;
 
 template <class HW>
 class Esp32RailComDriver : public RailcomDriver
@@ -54,29 +63,34 @@ public:
 
     HW::hw_init();
     LOG(INFO, "[RailCom] Initializing detector using UART %d", HW::UART);
-    // TODO: with IDF v4.1+ switch to UART HAL instead of direct access.
+    portENTER_CRITICAL_SAFE(&esp32_uart_mux);
+    // enable the UART clock and disable the reset bit
+    DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, HW::UART_CLOCK_EN_BIT);
+    DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, HW::UART_RESET_BIT);
+
+    // TODO: switch to UART HAL in IDF v4.2+
     uint32_t baud_clock = (((esp_clk_apb_freq()) << 4) / 250000L);
-    HW::UART_BASE->conf1.rx_flow_en = 0;
-    HW::UART_BASE->conf0.tx_flow_en = 0;
-    HW::UART_BASE->conf0.val = 0;
-    HW::UART_BASE->conf0.parity = 0;
-    HW::UART_BASE->conf0.bit_num = 3;
-    HW::UART_BASE->conf0.stop_bit_num = 1;
-    HW::UART_BASE->conf1.rx_tout_en = 1;
     HW::UART_BASE->clk_div.div_int = (baud_clock >> 4);
     HW::UART_BASE->clk_div.div_frag = (baud_clock & 0xf);
-    HW::UART_BASE->idle_conf.tx_idle_num = 0;
-    HW::UART_BASE->rs485_conf.dl1_en = 0;
-    // disable TX interrupts since we won't be transmitting
-    HW::UART_BASE->int_ena.val &=
-      ~(UART_TXFIFO_EMPTY_INT_ENA | UART_TX_DONE_INT_ENA);
+    HW::UART_BASE->conf0.val = 0x800001c;       // configure for 8N1 mode
+    HW::UART_BASE->conf1.val = 0;
+    HW::UART_BASE->conf1.rx_tout_thrhd = 2;     // two bit times
+    HW::UART_BASE->conf1.rxfifo_full_thrhd = 6; // max length of channel 2 data
+    HW::UART_BASE->conf1.rx_tout_en = 1;        // rx timeout
+    HW::UART_BASE->idle_conf.val = 0;           // tx configuration (unused)
+    HW::UART_BASE->rs485_conf.val = 0;          // RS485 configuration (unused)
+    HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
+    HW::UART_BASE->int_ena.val = ESP32_UART_DISABLE_ALL_INTERRUPTS;
 
+    portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
     ESP_ERROR_CHECK(
       esp_intr_alloc(HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED
                    , esp32_railcom_uart_isr<HW>, this, nullptr));
 
     LOG(INFO, "[RailCom] Configuring hardware timer (%d:%d)...", HW::TIMER_GRP
       , HW::TIMER_IDX);
+
+    // TODO: switch to TIMER HAL in IDF v4.2+
     periph_module_enable(HW::TIMER_PERIPH);
     configure_timer(false, 80, false, true, HW::RAILCOM_TRIGGER_DELAY_USEC, true);
     ESP_ERROR_CHECK(
@@ -97,7 +111,7 @@ public:
     HW::HB_BRAKE::set(true);
  
     // Inject a small delay to ensure the brake pin and enable pin are transitioned
-    // concurrently. This can lead to issues in the LMD18200
+    // concurrently. This can lead to issues with the LMD18200
     ets_delay_us(1);
 
     // cache the current state of the pin so we can restore it after the
@@ -111,7 +125,7 @@ public:
     HW::HB_ENABLE::set(enabled_);
 
     // Inject a small delay to ensure the brake pin and enable pin are transitioned
-    // concurrently. This can lead to issues in the LMD18200
+    // concurrently. This can lead to issues with the LMD18200
     ets_delay_us(1);
 
     HW::HB_BRAKE::set(false);
@@ -123,23 +137,23 @@ public:
 
     ets_delay_us(HW::RAILCOM_TRIGGER_DELAY_USEC);
 
+    portENTER_CRITICAL_SAFE(&esp32_uart_mux);
     // flush the uart queue of any pending data
-    reset_uart_fifo();
+    rx_to_buf(nullptr, 0);
     
-    // enable the UART RX interrupts
-    SET_PERI_REG_MASK(
-      UART_INT_CLR_REG(HW::UART)
-                     , (UART_RXFIFO_FULL_INT_CLR | UART_RXFIFO_TOUT_INT_CLR));
-    SET_PERI_REG_MASK(
-      UART_INT_ENA_REG(HW::UART)
-                     , (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA));
+    // clear all pending interrupts and enable default RX interrupts.
+    SET_PERI_REG_MASK(UART_INT_CLR_REG(HW::UART), ESP32_UART_RX_INTERRUPT_BITS);
+    SET_PERI_REG_MASK(UART_INT_ENA_REG(HW::UART), ESP32_UART_RX_INTERRUPT_BITS);
+    portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
 
     // enable the RailCom detector
     HW::RC_ENABLE::set(true);
 
+    portENTER_CRITICAL_SAFE(&esp32_timer_mux);
     // set our phase and start the timer
     railcomPhase_ = RailComPhase::CUTOUT_PHASE1;
     start_timer(HW::RAILCOM_MAX_READ_DELAY_CH_1);
+    portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
   }
 
   void middle_cutout() override
@@ -149,10 +163,11 @@ public:
 
   void end_cutout() override
   {
+    portENTER_CRITICAL_SAFE(&esp32_uart_mux);
     // disable the UART RX interrupts
-    CLEAR_PERI_REG_MASK(
-      UART_INT_ENA_REG(HW::UART)
-                     , (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA));
+    HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
+    HW::UART_BASE->int_ena.val = ESP32_UART_DISABLE_ALL_INTERRUPTS;
+    portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
 
     // disable the RailCom detector
     HW::RC_ENABLE::set(false);
@@ -178,6 +193,7 @@ public:
 
   void timer_tick()
   {
+    portENTER_CRITICAL_SAFE(&esp32_timer_mux);
     // clear the interrupt status register for our timer
     HW::TIMER_BASE->int_clr_timers.val = BIT(HW::TIMER_IDX);
 
@@ -194,6 +210,7 @@ public:
       railcomPhase_ = RailComPhase::PRE_CUTOUT;
       enable_output();
     }
+    portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
   }
 
   typedef enum : uint8_t
@@ -213,10 +230,30 @@ public:
     return railComFeedback_;
   }
 
+  size_t rx_to_buf(uint8_t *buf, size_t max_len)
+  {
+    size_t rx_bytes = 0;
+    // NOTE: Due to a hardware issue when flushing the RX FIFO it is necessary
+    // to read the FIFO until the RX count is zero *AND* read/write addresses
+    // in the RX buffer are the same.
+    while(HW::UART_BASE->status.rxfifo_cnt ||
+          (HW::UART_BASE->mem_rx_status.wr_addr !=
+           HW::UART_BASE->mem_rx_status.rd_addr))
+    {
+      uint8_t ch = HW::UART_BASE->fifo.rw_byte;
+      if (rx_bytes < max_len)
+      {
+        buf[rx_bytes++] = ch;
+      }
+    }
+    return rx_bytes;
+  }
+
 private:
 
   void configure_timer(bool reload, uint16_t divider, bool enable, bool count_up, uint64_t alarm, bool alarm_en)
   {
+    portENTER_CRITICAL_SAFE(&esp32_timer_mux);
     // make sure the ISR is disabled and that the status is cleared before
     // reconfiguring the timer.
     HW::TIMER_BASE->int_ena.val &= (~BIT(HW::TIMER_IDX));
@@ -232,6 +269,7 @@ private:
 
     // enable the ISR now that the timer has been configured
     HW::TIMER_BASE->int_ena.val |= BIT(HW::TIMER_IDX);
+    portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
   }
 
   void start_timer(uint32_t usec, bool enable_alarm = true, bool enable_timer = true)
@@ -253,16 +291,6 @@ private:
     HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.enable = enable_timer;
   }
 
-  void reset_uart_fifo()
-  {
-    while(HW::UART_BASE->status.rxfifo_cnt != 0
-      || (HW::UART_BASE->mem_rx_status.wr_addr !=
-          HW::UART_BASE->mem_rx_status.rd_addr))
-    {
-      (void)HW::UART_BASE->fifo.rw_byte;
-    }
-  }
-
   uintptr_t railcomFeedbackKey_{0}; 
   dcc::RailcomHubFlow *railComHubFlow_;
   Buffer<dcc::RailcomHubData> *railComFeedback_{nullptr};
@@ -281,49 +309,33 @@ static void esp32_railcom_timer_tick(void *param)
 template <class HW>
 static void esp32_railcom_uart_isr(void *param)
 {
+  portENTER_CRITICAL_SAFE(&esp32_uart_mux);
   Esp32RailComDriver<HW> *driver =
     reinterpret_cast<Esp32RailComDriver<HW> *>(param);
   Buffer<dcc::RailcomHubData> *fb = driver->buf();
+  uint8_t rx_buf[6] = {0};
 
-  if (HW::UART_BASE->int_st.rxfifo_full  // RX fifo is full
-   || HW::UART_BASE->int_st.rxfifo_tout) // RX data available
+  if (driver->railcom_phase() ==
+      Esp32RailComDriver<HW>::RailComPhase::CUTOUT_PHASE1)
   {
-    uint8_t rx_fifo_len = HW::UART_BASE->status.rxfifo_cnt;
-    if (driver->railcom_phase() ==
-        Esp32RailComDriver<HW>::RailComPhase::CUTOUT_PHASE1)
+    size_t rx_bytes = driver->rx_to_buf(rx_buf, 2);
+    for (size_t idx = 0; idx < rx_bytes; idx++)
     {
-      // this will flush the uart and process only the first two bytes
-      for (uint8_t idx = 0; idx < rx_fifo_len; idx++)
-      {
-        fb->data()->add_ch1_data(HW::UART_BASE->fifo.rw_byte);
-      }
+      fb->data()->add_ch1_data(rx_buf[idx]);
     }
-    else if (driver->railcom_phase() ==
-             Esp32RailComDriver<HW>::RailComPhase::CUTOUT_PHASE2)
+  }
+  else if (driver->railcom_phase() ==
+            Esp32RailComDriver<HW>::RailComPhase::CUTOUT_PHASE2)
+  {
+    size_t rx_bytes = driver->rx_to_buf(rx_buf, 6);
+    for (size_t idx = 0; idx < rx_bytes; idx++)
     {
-      // this will flush the uart and process only the first six bytes
-      for (uint8_t idx = 0; idx < rx_fifo_len; idx++)
-      {
-        fb->data()->add_ch2_data(HW::UART_BASE->fifo.rw_byte);
-      }
+      fb->data()->add_ch2_data(rx_buf[idx]);
     }
-
-    // clear interrupt status
-    HW::UART_BASE->int_clr.val = (UART_RXFIFO_FULL_INT_CLR
-                                | UART_RXFIFO_TOUT_INT_CLR);
   }
-  else if (HW::UART_BASE->int_st.txfifo_empty
-        || HW::UART_BASE->int_st.tx_done)
-  {
-    // clear interrupt status
-    HW::UART_BASE->int_clr.val = (UART_TXFIFO_EMPTY_INT_CLR
-                                | UART_RXFIFO_TOUT_INT_CLR);
-  }
-  else
-  {
-    ets_printf("unexpected UART status %04x\n", HW::UART_BASE->int_st.val);
-    HW::UART_BASE->int_clr.val = HW::UART_BASE->int_st.val;
-  }
+  // clear interrupt status
+  HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
+  portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
 }
 
 } // namespace esp32cs

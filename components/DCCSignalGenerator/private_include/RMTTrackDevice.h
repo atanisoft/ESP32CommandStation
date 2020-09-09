@@ -19,10 +19,6 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 #define _RMT_TRACK_DEVICE_H_
 
 #include <driver/rmt.h>
-#include <driver/uart.h>
-#include <soc/uart_reg.h>
-#include <soc/uart_struct.h>
-#include <esp_vfs.h>
 
 #include <dcc/Packet.hxx>
 #include <dcc/PacketFlowInterface.hxx>

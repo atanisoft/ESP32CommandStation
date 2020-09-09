@@ -28,6 +28,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include <driver/periph_ctrl.h>
 #include <driver/rmt.h>
 #include <driver/timer.h>
+#include <driver/uart.h>
 #include <esp_vfs.h>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
@@ -115,12 +116,16 @@ struct RailComHW
   static constexpr periph_module_t UART_PERIPH = PERIPH_UART1_MODULE;
   static constexpr int UART_ISR_SOURCE = ETS_UART1_INTR_SOURCE;
   static constexpr uint32_t UART_MATRIX_IDX = U1RXD_IN_IDX;
+  static constexpr uint32_t UART_CLOCK_EN_BIT = DPORT_UART1_CLK_EN;
+  static constexpr uint32_t UART_RESET_BIT = DPORT_UART1_RST;
 #elif CONFIG_OPS_RAILCOM_UART2
   static constexpr uart_port_t UART = UART_NUM_2;
   static constexpr uart_dev_t *UART_BASE = &UART2;
   static constexpr periph_module_t UART_PERIPH = PERIPH_UART2_MODULE;
   static constexpr int UART_ISR_SOURCE = ETS_UART2_INTR_SOURCE;
   static constexpr uint32_t UART_MATRIX_IDX = U2RXD_IN_IDX;
+  static constexpr uint32_t UART_CLOCK_EN_BIT = DPORT_UART2_CLK_EN;
+  static constexpr uint32_t UART_RESET_BIT = DPORT_UART2_RST;
 #else
   #error Unsupported UART selected for OPS RailCom!
 #endif
