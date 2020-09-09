@@ -146,9 +146,11 @@ FileSystemManager::FileSystemManager()
   }
   else
   {
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4,2,0)
     // unmount the SD VFS since it failed to successfully mount. We will
     // remount SPIFFS in it's place instead.
     esp_vfs_fat_sdmmc_unmount();
+#endif
     LOG(INFO, "[FS] SD Card not present or mounting failed, using SPIFFS");
     esp_vfs_spiffs_conf_t conf =
     {
