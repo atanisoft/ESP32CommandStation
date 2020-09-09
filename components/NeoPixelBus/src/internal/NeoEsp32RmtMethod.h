@@ -384,19 +384,8 @@ public:
         _pin(static_cast<gpio_num_t>(pin)),
         _channel(T_CHANNEL::RmtChannelNumber)
     {
-        _dataEditing = static_cast<uint8_t*>(malloc(_sizeData));
-        if (_dataEditing == NULL)
-        {
-            abort();
-        }
-        bzero(_dataEditing, _sizeData);
-
-        _dataSending = static_cast<uint8_t*>(malloc(_sizeData));
-        if (_dataSending == NULL)
-        {
-            abort();
-        }
-        bzero(_dataSending, _sizeData);
+        _dataEditing = static_cast<uint8_t*>(calloc(1, _sizeData));
+        _encoded = static_cast<rmt_item32_t *>(calloc(_sizeData * 8, sizeof(rmt_item32_t)));
     }
 
     ~NeoEsp32RmtMethodBase()
@@ -409,9 +398,8 @@ public:
         ESP_ERROR_CHECK_WITHOUT_ABORT(rmt_driver_uninstall(_channel));
 
         free(_dataEditing);
-        free(_dataSending);
+        free(_encoded);
     }
-
 
     bool IsReadyToUpdate() const
     {
@@ -425,7 +413,7 @@ public:
         config.rmt_mode = RMT_MODE_TX;
         config.channel = _channel;
         config.gpio_num = _pin;
-        config.mem_block_num = 1;
+        config.mem_block_num = 2;
         config.tx_config.loop_en = false;
         
         config.tx_config.idle_output_en = true;
@@ -437,8 +425,7 @@ public:
         config.clk_div = T_SPEED::RmtClockDivider;
 
         ESP_ERROR_CHECK(rmt_config(&config));
-        ESP_ERROR_CHECK(rmt_driver_install(_channel, 0, RMT_ISR_FLAGS));
-        ESP_ERROR_CHECK(rmt_translator_init(_channel, T_SPEED::Translate));
+        ESP_ERROR_CHECK(rmt_driver_install(_channel, 0, 0));
     }
 
     void Update(bool maintainBufferConsistency)
@@ -448,20 +435,10 @@ public:
         if (ESP_OK == ESP_ERROR_CHECK_WITHOUT_ABORT(
                 rmt_wait_tx_done(_channel, MAX_WAIT_FOR_TX_COMPLETE)))
         {
-            if (maintainBufferConsistency)
-            {
-                // copy editing to sending,
-                // this maintains the contract that "colors present before will
-                // be the same after", otherwise GetPixelColor will be inconsistent
-                memcpy(_dataSending, _dataEditing, _sizeData);
-            }
-
-            // swap so the user can modify without affecting the async operation
-            std::swap(_dataSending, _dataEditing);
-
-            // now start the RMT transmit with the editing buffer before we swap
-            ESP_ERROR_CHECK_WITHOUT_ABORT(
-                rmt_write_sample(_channel, _dataSending, _sizeData, false));
+            size_t translated = 0;
+            size_t items = 0;
+            T_SPEED::Translate(_dataEditing, _encoded, _sizeData, _sizeData * 8, &translated, &items);
+            rmt_write_items(_channel, _encoded, items, false);
         }
     }
 
@@ -480,17 +457,13 @@ private:
     const gpio_num_t    _pin;        // output pin number
     const rmt_channel_t _channel;    // RMT channel
 
-    // Flags to use for the RMT ISR, ISR in IRAM and the ISR is in C code.
-    static constexpr int RMT_ISR_FLAGS = ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LOWMED;
-
     // Maximum wait time for TX complete prior to attempting to send the next batch
     // of pixel data.
     static constexpr TickType_t MAX_WAIT_FOR_TX_COMPLETE = pdMS_TO_TICKS(10000);
 
-
     // Holds data stream which include LED color values and other settings as needed
     uint8_t*  _dataEditing;   // exposed for get and set
-    uint8_t*  _dataSending;   // used for async send using RMT
+    rmt_item32_t *_encoded;   // pre-encoded pixel data
 };
 
 // normal
