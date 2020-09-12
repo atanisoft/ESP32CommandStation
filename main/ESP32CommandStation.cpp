@@ -45,6 +45,9 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <StatusDisplay.h>
 #include <StatusLED.h>
 #include <Turnouts.h>
+#if CONFIG_THERMALMONITOR
+#include <ThermalMonitorFlow.hxx>
+#endif // CONFIG_THERMALMONITOR
 
 #if CONFIG_GPIO_SENSORS
 #include <Sensors.h>
@@ -245,6 +248,13 @@ extern "C" void app_main()
   esp32cs::LCCStackManager stackManager(cfg);
 
   esp32cs::LCCWiFiManager wifiManager(stackManager.stack(), cfg);
+
+#if CONFIG_THERMALMONITOR
+  esp32cs::ThermalMonitorFlow thermal_monitor(stackManager.service()
+                                            , stackManager.node()
+                                            , cfg.seg().thermal()
+                                            , (adc1_channel_t)CONFIG_THERMALMONITOR_ADC);
+#endif // CONFIG_THERMALMONITOR
 
 #if !defined(CONFIG_WIFI_MODE_DISABLED)
   // Initialize the Http server and mDNS instance

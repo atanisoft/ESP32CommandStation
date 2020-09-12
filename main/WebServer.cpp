@@ -218,7 +218,7 @@ public:
                         , uint16_t manual_port
                         , bool reconnect)
   {
-    auto wifi = cfg_.seg().wifi();
+    auto wifi = cfg_.seg().wifi_lcc();
     bool upd = false;
     CDI_COMPARE_AND_SET(wifi.uplink().search_mode, fd_, mode, upd);
     CDI_COMPARE_AND_SET(wifi.uplink().auto_address().service_name, fd_
@@ -235,13 +235,13 @@ public:
   void reconfigure_lcc_hub(bool enabled)
   {
     bool upd = false;
-    CDI_COMPARE_AND_SET(cfg_.seg().wifi().hub().enable, fd_, enabled, upd);
+    CDI_COMPARE_AND_SET(cfg_.seg().wifi_lcc().hub().enable, fd_, enabled, upd);
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
   string get_config_json()
   {
-    auto wifi = cfg_.seg().wifi();
+    auto wifi = cfg_.seg().wifi_lcc();
     auto ops = cfg_.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX);
     auto prog = cfg_.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX);
     

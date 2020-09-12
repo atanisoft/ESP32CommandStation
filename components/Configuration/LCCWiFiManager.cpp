@@ -196,7 +196,7 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
   LOG(INFO, "[WiFi] Starting WiFiManager");
   wifi_.reset(
     new Esp32WiFiManager(ssid_.c_str(), password_.c_str()
-                       , stack_, cfg_.seg().wifi(), CONFIG_HOSTNAME_PREFIX
+                       , stack_, cfg_.seg().wifi_lcc(), CONFIG_HOSTNAME_PREFIX
                        , mode_, stationIP_.get(), stationDNS_
                        , CONFIG_WIFI_SOFT_AP_CHANNEL));
 

@@ -343,6 +343,10 @@ if (CONFIG_OPS_HBRIDGE_SIGNAL_PIN EQUAL CONFIG_PROG_HBRIDGE_SIGNAL_PIN)
     message(FATAL_ERROR "OPS and PROG H-Bridge signal pin must be unique.")
 endif()
 
+if (CONFIG_OPS_ADC EQUAL CONFIG_PROG_ADC)
+    message(FATAL_ERROR "OPS and PROG H-Bridge current sense pins must be unique.")
+endif()
+
 if (CONFIG_STATUS_LED)
     if (CONFIG_STATUS_LED_DATA_PIN EQUAL CONFIG_OPS_HBRIDGE_ENABLE_PIN)
         message(FATAL_ERROR "Status LED data pin and OPS H-Bridge enable pin must be unique.")
@@ -628,3 +632,15 @@ if (CONFIG_GPIO_S88)
     endif()
 endif()
 
+###############################################################################
+# Thermal Monitor validations
+###############################################################################
+
+if (CONFIG_THERMALMONITOR)
+    if (CONFIG_OPS_ADC EQUAL CONFIG_THERMALMONITOR_ADC)
+        message(FATAL_ERROR "OPS H-Bridge current sense pin and thermal monitor pin must be unique.")
+    endif()
+    if (CONFIG_PROG_ADC EQUAL CONFIG_THERMALMONITOR_ADC)
+        message(FATAL_ERROR "PROG H-Bridge current sense pin and thermal monitor pin must be unique.")
+    endif()
+endif()

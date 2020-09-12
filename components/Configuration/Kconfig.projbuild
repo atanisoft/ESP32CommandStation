@@ -1,5 +1,3 @@
-
-
 menu "WiFi Configuration"
     config HOSTNAME_PREFIX
         string "Hostname prefix"
@@ -169,4 +167,88 @@ menu "Advanced Configuration Settings"
             When this pin is held LOW during startup all persistent
             configuration will be cleared and defaults will be restored. Note
             this will also clear the LCC configuration data.
+endmenu
+
+menu "Thermal Monitor"
+    config THERMALMONITOR
+        bool "Enable thermal monitor"
+        default n
+        help
+            Enables monitoring of an externally connected thermistor or similar
+            IC such as MCP9701.
+
+    choice THERMALMONITOR_TYPE
+        bool "Thermistor/IC"
+        depends on THERMALMONITOR
+        config THERMALMONITOR_TYPE_MCP9700
+            bool "MCP9700/MCP9700A"
+        config THERMALMONITOR_TYPE_MCP9701
+            bool "MCP9701/MCP9701A"
+        config THERMALMONITOR_TYPE_CUSTOM
+            bool "Custom"
+    endchoice
+
+    config THERMALMONITOR_ZERO_MV
+        int "Millivolts at 0C"
+        range 0 3300
+        default 0
+        default 500 if THERMALMONITOR_TYPE_MCP9700
+        default 400 if THERMALMONITOR_TYPE_MCP9701
+        depends on THERMALMONITOR
+        help
+            This value is used as a correction to the calculated millivolts
+            reading of the ADC pin as a 0C starting point. For the MCP9700 it
+            should be 500mV, MCP9701 should be 400mV.
+    
+    config THERMALMONITOR_MV_PER_C
+        int "Millivolts per 1C"
+        range 10 33000
+        default 10
+        default 100 if THERMALMONITOR_TYPE_MCP9700
+        default 195 if THERMALMONITOR_TYPE_MCP9701
+        depends on THERMALMONITOR
+        help
+            This value is used to convert the raw millivolts value into degrees.
+            NOTE: This value needs to be multiplied by 10 to account for the
+            fractions of a degree per millivolt.
+
+    choice THERMALMONITOR_PIN
+        bool "ADC pin"
+        default THERMALMONITOR_ADC_CHANNEL_7
+        depends on THERMALMONITOR
+        help
+            This pin must be connected to the thermistor/IC output pin.
+        config THERMALMONITOR_ADC_CHANNEL_0
+            bool "ADC1 Channel 0 (GPIO 36)"
+        config THERMALMONITOR_ADC_CHANNEL_1
+            bool "ADC1 Channel 1 (GPIO 37)"
+            help
+                Note this pin may not be exposed on all ESP32 modules
+        config THERMALMONITOR_ADC_CHANNEL_2
+            bool "ADC1 Channel 2 (GPIO 38)"
+            help
+                Note this pin may not be exposed on all ESP32 modules
+        config THERMALMONITOR_ADC_CHANNEL_3
+            bool "ADC1 Channel 3 (GPIO 39)"
+        config THERMALMONITOR_ADC_CHANNEL_4
+            bool "ADC1 Channel 4 (GPIO 32)"
+        config THERMALMONITOR_ADC_CHANNEL_5
+            bool "ADC1 Channel 5 (GPIO 33)"
+        config THERMALMONITOR_ADC_CHANNEL_6
+            bool "ADC1 Channel 6 (GPIO 34)"
+        config THERMALMONITOR_ADC_CHANNEL_7
+            bool "ADC1 Channel 7 (GPIO 35)"
+    endchoice
+
+    config THERMALMONITOR_ADC
+        int
+        default 0 if THERMALMONITOR_ADC_CHANNEL_0
+        default 1 if THERMALMONITOR_ADC_CHANNEL_1
+        default 2 if THERMALMONITOR_ADC_CHANNEL_2
+        default 3 if THERMALMONITOR_ADC_CHANNEL_3
+        default 4 if THERMALMONITOR_ADC_CHANNEL_4
+        default 5 if THERMALMONITOR_ADC_CHANNEL_5
+        default 6 if THERMALMONITOR_ADC_CHANNEL_6
+        default 7 if THERMALMONITOR_ADC_CHANNEL_7
+        depends on THERMALMONITOR
 endmenu

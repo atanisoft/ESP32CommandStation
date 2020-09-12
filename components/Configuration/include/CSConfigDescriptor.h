@@ -23,6 +23,7 @@ COPYRIGHT (c) 2019 Mike Dunston
 #include <openlcb/TractionCvCdi.hxx>
 #include <freertos_drivers/esp32/Esp32WiFiConfiguration.hxx>
 #include <TrackOutputDescriptor.h>
+#include "ThermalConfiguration.hxx"
 
 namespace esp32cs
 {
@@ -36,10 +37,12 @@ namespace esp32cs
     /// Each entry declares the name of the current entry, then the type and
     /// then optional arguments list.
     CDI_GROUP_ENTRY(internal_config, openlcb::InternalConfigData);
-    /// WiFi configuration
-    CDI_GROUP_ENTRY(wifi, WiFiConfiguration, Name("WiFi Configuration"));
-    /// H-Bridge configuration
+    /// LCC WiFi configuration.
+    CDI_GROUP_ENTRY(wifi_lcc, WiFiConfiguration, Name("LCC WiFi Configuration"));
+    /// H-Bridge configuration.
     CDI_GROUP_ENTRY(hbridge, TrackOutputs, Name("H-Bridge Configuration"));
+    /// Thermal Monitoring configuration.
+    CDI_GROUP_ENTRY(thermal, ThermalConfiguration, Name("Thermal Configuration"));
     CDI_GROUP_END();
 
     /// This segment is only needed temporarily until there is program code to set
