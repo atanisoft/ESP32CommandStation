@@ -106,11 +106,9 @@ string HBridgeShortDetector::getStateAsJson()
                         "\"name\":\"%s\","
                         "\"state\":\"%s\","
                         "\"usage\":%.2f,"
-                        "\"prog\":\"%s\""
+                        "\"prog\":%s"
                       "}"
-                      , name_.c_str()
-                      , getState().c_str()
-                      , getUsage() / 1000.0f
+                      , name_.c_str(), getState().c_str(), getUsage()
                       , isProgrammingTrack() ? "true" : "false"
                       );
 }
@@ -119,11 +117,11 @@ string HBridgeShortDetector::getStatusData()
 {
   if (state_ == STATE_ON)
   {
-    return StringPrintf("%s:On (%2.2f A)", name_.c_str(), getUsage() / 1000.0f);
+    return StringPrintf("%s:On (%.2f mA)", name_.c_str(), getUsage());
   }
   else if (state_ == STATE_OVERCURRENT)
   {
-    return StringPrintf("%s:F (%2.2f A)", name_.c_str(), getUsage() / 1000.0f);
+    return StringPrintf("%s:F (%.2f mA)", name_.c_str(), getUsage());
   }
   return StringPrintf("%s:Off", name_.c_str());
 }
@@ -146,19 +144,19 @@ void HBridgeShortDetector::configure()
   adc1_config_channel_atten(channel_, (adc_atten_t)CONFIG_ADC_ATTENUATION);
   LOG(INFO, "[%s] Configuring H-Bridge (%s %u mA max) using ADC 1:%d"
     , name_.c_str(), bridgeType_.c_str(), maxMilliAmps_, channel_);
-  LOG(INFO, "[%s] Short limit %u/4096 (%.2f mA), events (on: %s, off: %s)"
+  LOG(INFO, "[%s] Short limit %u/4096 (%6.2f mA), events (on: %s, off: %s)"
     , name_.c_str(), overCurrentLimit_
     , ((overCurrentLimit_ * maxMilliAmps_) / 4096.0f)
     , uint64_to_string_hex(shortBit_.event_on()).c_str()
     , uint64_to_string_hex(shortBit_.event_off()).c_str());
-  LOG(INFO, "[%s] Shutdown limit %u/4096 (%.2f mA), events (on: %s, off: %s)"
+  LOG(INFO, "[%s] Shutdown limit %u/4096 (%6.2f mA), events (on: %s, off: %s)"
     , name_.c_str(), shutdownLimit_
     , ((shutdownLimit_ * maxMilliAmps_) / 4096.0f)
     , uint64_to_string_hex(shutdownBit_.event_on()).c_str()
     , uint64_to_string_hex(shutdownBit_.event_off()).c_str());
   if (isProgTrack_)
   {
-    LOG(INFO, "[%s] Prog ACK: %u/4096 (%.2f mA)", name_.c_str(), progAckLimit_
+    LOG(INFO, "[%s] Prog ACK: %u/4096 (%6.2f mA)", name_.c_str(), progAckLimit_
       , ((progAckLimit_ * maxMilliAmps_) / 4096.0f));
   }
 }
@@ -201,10 +199,7 @@ void HBridgeShortDetector::poll_33hz(openlcb::WriteHelper *helper, Notifiable *d
     // If the average sample exceeds the shutdown limit (~90% typically)
     // trigger an immediate shutdown.
     LOG_ERROR("[%s] Shutdown threshold breached %6.2f mA (raw: %d / %d)"
-            , name_.c_str()
-            , getUsage() / 1000.0f
-            , lastReading_
-            , shutdownLimit_);
+            , name_.c_str(), getUsage(), lastReading_, shutdownLimit_);
     enablePin_->clr();
     state_ = STATE_SHUTDOWN;
 #if CONFIG_STATUS_LED
@@ -221,10 +216,7 @@ void HBridgeShortDetector::poll_33hz(openlcb::WriteHelper *helper, Notifiable *d
       // disable the h-bridge output
       enablePin_->clr();
       LOG_ERROR("[%s] Overcurrent detected %6.2f mA (raw: %d / %d)"
-              , name_.c_str()
-              , getUsage() / 1000.0f
-              , lastReading_
-              , overCurrentLimit_);
+              , name_.c_str(), getUsage(), lastReading_, overCurrentLimit_);
       state_ = STATE_OVERCURRENT;
 #if CONFIG_STATUS_LED
       Singleton<StatusLED>::instance()->setStatusLED((StatusLED::LED)targetLED_
@@ -261,8 +253,7 @@ void HBridgeShortDetector::poll_33hz(openlcb::WriteHelper *helper, Notifiable *d
      (esp_timer_get_time() - lastReport_) >= currentReportInterval_)
   {
     lastReport_ = esp_timer_get_time();
-    LOG(INFO, "[%s] %6.0f mA / %d mA", name_.c_str(), getUsage() / 1000.0f
-      , maxMilliAmps_);
+    LOG(INFO, "[%s] %6.2f mA / %d mA", name_.c_str(), getUsage(), maxMilliAmps_);
   }
 
   // if our state has changed send out applicable events
