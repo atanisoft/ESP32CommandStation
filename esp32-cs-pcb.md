@@ -21,12 +21,12 @@ Below is a rendering of the ESP32 Command Station PCB:
 ### Gerber files
 These can be used with any PCB manufacturing company.
 
-* v1.3 - Coming soon
+* v1.4 - Coming soon
 
 ### PCB Assembly (PCBA)
 Some PCB manufacturers are offering assembly of the PCBs before delivery. Currently the files below are suitable only for JLCPCB, other manufacturers may be supported in the future.
 
-* v1.3 - Coming soon
+* v1.4 - Coming soon
 
 ## Schematic and BOM
 
@@ -49,13 +49,13 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | 2 | SD-MISO |
 | 3 | UART0 RX |
 | 4 | OPS DCC ENABLE |
-| 5 | UART1 TX |
+| 5 | UART1 RX |
 | 6-11 | NOT AVAILABLE (connected to on chip flash) |
-| 12 | MTDI |
+| 12 | RAILCOM ENABLE |
 | 13 | SD-CS |
 | 14 | SD-CLK |
 | 15 | SD-MOSI |
-| 16 | UART1 RX |
+| 16 | UART1 TX |
 | 17 | OPS DCC SIGNAL |
 | 18 | PROG DCC ENABLE |
 | 19 | PROG DCC SIGNAL |
@@ -64,14 +64,14 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | 22 | Status LEDs (APA106/WS2812) |
 | 23 | I2C - SDA |
 | 24 | NOT AVAILABLE |
-| 25 | RAILCOM BRAKE |
-| 26 | RAILCOM DIRECTION |
-| 27 | RAILCOM ENABLE |
+| 25 | RAILCOM DIRECTION |
+| 26 | OPS DCC BRAKE  |
+| 27 | CAN RX |
 | 28-31 | NOT AVAILABLE |
 | 32 | CAN TX |
 | 33 | RAILCOM DATA |
 | 34 | FACTORY RESET |
-| 35 | CAN RX |
+| 35 | AMBIENT TEMP SENSOR |
 | 36 (SVP) | OPS CURRENT SENSE |
 | 37 | NOT AVAILABLE |
 | 38 | NOT AVAILABLE |
@@ -115,7 +115,7 @@ The PCB has four expansion ports available for optional features:
 | Port | Usage |
 | ---- | ----- |
 | I2C | OLED or LCD Screen. |
-| UART1 | Nextion Interface, LocoNet Interface. These are planned for the future and are not currently supported. |
+| UART1 | This is planned for future expansion purposes. |
 | SD-Module | When using the ESP32 DevKit-C module it is highly recommended to use an SD card adapter module to reduce wear on the ESP32 built-in flash by the SPIFFS filesystem. |
 
 [Return to ESP32 Command Station](./index.html)
