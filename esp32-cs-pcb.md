@@ -77,7 +77,7 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | 38 | NOT AVAILABLE |
 | 39 (SVP) | PROG CURRENT SENSE |
 
-## DCC signal capabilities
+## DCC Limits
 
 | Track | Current Limit | h-bridge | PTC Fuse |
 | ----- | ------------- | -------- | -------- |
