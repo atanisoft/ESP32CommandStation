@@ -1258,12 +1258,10 @@ function BSTabRefresh(section) {
  if(section === 'Status') {
   refreshTable({table: '#cs-table-power', url: '/power',
    fields: ['name', 'state', 'usage', function(record) {
-    if(record.state === 'Off') {
-     if(record.prog === 'false') {
-      return createButton({type:'power', id:String.format("cs-power-{0}-true", record.name), title:'Enable'});
-     } else {
-      return '';
-     }
+    if(record.prog) {
+     return '';
+    } else if(record.state === 'Off') {
+     return createButton({type:'power', id:String.format("cs-power-{0}-true", record.name), title:'Enable'});
     } else {
      return createButton({type:'power', id:String.format("cs-power-{0}-false", record.name), title:'Disable'});
     }
