@@ -116,16 +116,39 @@ FileSystemManager::FileSystemManager()
   }
 
   // Use SPI mode instead of SDMMC due to TTGO-T1 failing to mount the SD card.
+  esp_err_t err = ESP_FAIL;
   sdmmc_host_t sd_host = SDSPI_HOST_DEFAULT();
-  sdspi_slot_config_t sd_slot = SDSPI_SLOT_CONFIG_DEFAULT();
   esp_vfs_fat_mount_config_t sd_cfg =
   {
     .format_if_mount_failed = true,
     .max_files = 10,
     .allocation_unit_size = 0
   };
-  esp_err_t err = esp_vfs_fat_sdmmc_mount(VFS_MOUNT, &sd_host, &sd_slot
-                                        , &sd_cfg, &sd_);
+  gpio_set_pull_mode(GPIO_NUM_2, GPIO_PULLUP_ONLY);
+  gpio_set_pull_mode(GPIO_NUM_13, GPIO_PULLUP_ONLY);
+  gpio_set_pull_mode(GPIO_NUM_14, GPIO_PULLUP_ONLY);
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4,2,0)
+  sdspi_slot_config_t sd_slot = SDSPI_SLOT_CONFIG_DEFAULT();
+  err = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_vfs_fat_sdmmc_mount(VFS_MOUNT, &sd_host, &sd_slot, &sd_cfg, &sd_));
+#else
+  spi_bus_config_t bus_cfg =
+  {
+    .mosi_io_num = GPIO_NUM_15,
+    .miso_io_num = GPIO_NUM_2,
+    .sclk_io_num = GPIO_NUM_14,
+    .quadwp_io_num = GPIO_NUM_NC,
+    .quadhd_io_num = GPIO_NUM_NC,
+    .max_transfer_sz = 4000,
+    .flags = SPICOMMON_BUSFLAG_SCLK | SPICOMMON_BUSFLAG_MISO | SPICOMMON_BUSFLAG_MOSI,
+    .intr_flags = 0
+  };
+  sdspi_device_config_t device_cfg = SDSPI_DEVICE_CONFIG_DEFAULT();
+  err = ESP_ERROR_CHECK_WITHOUT_ABORT(spi_bus_initialize(HSPI_HOST, &bus_cfg, 1));
+  if (err == ESP_OK)
+  {
+    err = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_vfs_fat_sdspi_mount(VFS_MOUNT, &sd_host, &device_cfg, &sd_cfg, &sd_));
+  }
+#endif
   if (err == ESP_OK)
   {
     float capacity = ((uint64_t)sd_->csd.capacity) * sd_->csd.sector_size;
@@ -219,6 +242,9 @@ void FileSystemManager::shutdown()
   {
     LOG(INFO, "[FS] Unmounting SD...");
     ESP_ERROR_CHECK(esp_vfs_fat_sdmmc_unmount());
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+    ESP_ERROR_CHECK(spi_bus_free(HSPI_HOST));
+#endif
   }
 }
 
