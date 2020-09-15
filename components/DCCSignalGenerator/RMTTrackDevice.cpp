@@ -20,9 +20,31 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 
 #include <dcc/DccDebug.hxx>
 
-
 namespace esp32cs
 {
+
+#if CONFIG_DCC_RMT_USE_REF_CLOCK
+// Use the REF (1Mhz) clock for the RMT
+static constexpr const char * const RMT_TRACK_DEVICE_CLOCK_SOURCE = "REF";
+#else
+// Use the APB (80Mhz) clock for the RMT.
+static constexpr const char * const RMT_TRACK_DEVICE_CLOCK_SOURCE = "APB";
+#endif // CONFIG_DCC_RMT_USE_REF_CLOCK
+
+#if CONFIG_DCC_RMT_HIGH_FIRST
+// This configures the first half of the bit to be sent as a high and second
+// half as low.
+static constexpr const char * const RMT_TRACK_DEVICE_DCC_WAVE_FMT = "high,low";
+static constexpr uint8_t RMT_TRACK_DEVICE_DCC_TOP_HALF = 1;
+static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 0;
+#else
+// This configures the first half of the bit to be sent as a low and second
+// half as high.
+static constexpr const char * const RMT_TRACK_DEVICE_DCC_WAVE_FMT = "low,high";
+static constexpr uint8_t RMT_TRACK_DEVICE_DCC_TOP_HALF = 0;
+static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 1;
+#endif // CONFIG_DCC_RMT_HIGH_FIRST
+
 ///////////////////////////////////////////////////////////////////////////////
 // The NMRA DCC Signal is sent as a square wave with each half having
 // identical timing (or nearly identical). Packet Bytes have a minimum of 11
@@ -54,43 +76,24 @@ namespace esp32cs
 ///////////////////////////////////////////////////////////////////////////////
 // DCC ZERO bit pre-encoded in RMT format.
 ///////////////////////////////////////////////////////////////////////////////
-#if CONFIG_DCC_RMT_HIGH_FIRST
 static constexpr rmt_item32_t DCC_RMT_ZERO_BIT =
 {{{
-    CONFIG_DCC_RMT_TICKS_ZERO_PULSE // number of microseconds for TOP half
-  , 1                               // of the square wave.
-  , CONFIG_DCC_RMT_TICKS_ZERO_PULSE // number of microseconds for BOTTOM half
-  , 0                               // of the square wave.
+    CONFIG_DCC_RMT_TICKS_ZERO_PULSE  // number of microseconds for TOP half
+  , RMT_TRACK_DEVICE_DCC_TOP_HALF    // of the square wave.
+  , CONFIG_DCC_RMT_TICKS_ZERO_PULSE  // number of microseconds for BOTTOM half
+  , RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // of the square wave.
 }}};
-#else
-{{{
-    CONFIG_DCC_RMT_TICKS_ZERO_PULSE // number of microseconds for TOP half
-  , 0                               // of the square wave.
-  , CONFIG_DCC_RMT_TICKS_ZERO_PULSE // number of microseconds for BOTTOM half
-  , 1                               // of the square wave.
-}}};
-#endif // CONFIG_DCC_RMT_HIGH_FIRST
 
 ///////////////////////////////////////////////////////////////////////////////
 // DCC ONE bit pre-encoded in RMT format.
 ///////////////////////////////////////////////////////////////////////////////
-#if CONFIG_DCC_RMT_HIGH_FIRST
 static constexpr rmt_item32_t DCC_RMT_ONE_BIT =
 {{{
-    CONFIG_DCC_RMT_TICKS_ONE_PULSE  // number of microseconds for TOP half
-  , 1                               // of the square wave.
-  , CONFIG_DCC_RMT_TICKS_ONE_PULSE  // number of microseconds for BOTTOM half
-  , 0                               // of the square wave.
+    CONFIG_DCC_RMT_TICKS_ONE_PULSE   // number of microseconds for TOP half
+  , RMT_TRACK_DEVICE_DCC_TOP_HALF    // of the square wave.
+  , CONFIG_DCC_RMT_TICKS_ONE_PULSE   // number of microseconds for BOTTOM half
+  , RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // of the square wave.
 }}};
-#else
-static constexpr rmt_item32_t DCC_RMT_ONE_BIT =
-{{{
-    CONFIG_DCC_RMT_TICKS_ONE_PULSE  // number of microseconds for TOP half
-  , 0                               // of the square wave.
-  , CONFIG_DCC_RMT_TICKS_ONE_PULSE  // number of microseconds for BOTTOM half
-  , 1                               // of the square wave.
-}}};
-#endif // CONFIG_DCC_RMT_HIGH_FIRST
 
 ///////////////////////////////////////////////////////////////////////////////
 // Marklin Motorola bit timing (WIP)
@@ -194,95 +197,47 @@ RMTTrackDevice::RMTTrackDevice(const char *name
                              , railcomDriver_(railcomDriver)
                              , packetQueue_(DeviceBuffer<dcc::Packet>::create(packet_queue_len))
 {
+  // calculate the maximum number of bits that will be transmitted in a single
+  // dcc packet, with the current configuration the maximum number of bits in a
+  // single dcc packet is 192.
   uint16_t maxBitCount = dccPreambleBitCount_             // preamble bits
                         + 1                               // packet start bit
                         + (dcc::Packet::MAX_PAYLOAD * 8)  // payload bits
                         +  dcc::Packet::MAX_PAYLOAD       // end of byte bits
                         + 1                               // end of packet bit
-                        + 1;                              // RMT extra bit
+                        + 1                               // RMT extra bit
+                        + 1;                              // RMT "end of data" marker
   HASSERT(maxBitCount <= MAX_RMT_BITS);
-
   uint8_t memoryBlocks = (maxBitCount / RMT_MEM_ITEM_NUM) + 1;
   HASSERT(memoryBlocks <= MAX_RMT_MEMORY_BLOCKS);
 
-  LOG(INFO
-    , "[%s] DCC config: zero: %duS, one: %duS, preamble-bits: %d, wave: %s"
+  LOG(INFO, "[%s] DCC config: zero:%duS, one:%duS, preamble-bits:%d, wave:%s"
     , name_, CONFIG_DCC_RMT_TICKS_ZERO_PULSE, CONFIG_DCC_RMT_TICKS_ONE_PULSE
-    , dccPreambleBitCount_
-#if CONFIG_DCC_RMT_HIGH_FIRST
-    , "high, low"
-#else
-    , "low, high"
-#endif
-    );
-  /*LOG(INFO
+    , dccPreambleBitCount_, RMT_TRACK_DEVICE_DCC_WAVE_FMT);
+#if 0
+  LOG(INFO
     , "[%s] Marklin-Motorola config: zero: %duS (high), zero: %duS (low), "
       "one: %duS (high), one: %duS (low), preamble: %duS (low)",
     , name_, MARKLIN_ZERO_BIT_PULSE_HIGH_USEC, MARKLIN_ZERO_BIT_PULSE_LOW_USEC
     , MARKLIN_ONE_BIT_PULSE_HIGH_USEC, MARKLIN_ONE_BIT_PULSE_LOW_USEC
-    , MARKLIN_PREAMBLE_BIT_PULSE_HIGH_USEC + MARKLIN_PREAMBLE_BIT_PULSE_LOW_USEC);*/
-  LOG(INFO
-    , "[%s] signal pin: %d, RMT(ch:%d,mem:%d[%d],clk-div:%d,clk-src:%s)"
+    , MARKLIN_PREAMBLE_BIT_PULSE_HIGH_USEC + MARKLIN_PREAMBLE_BIT_PULSE_LOW_USEC);
+#endif
+  LOG(INFO, "[%s] signal pin: %d, RMT(ch:%d,mem:%d[%d],clk-div:%d,clk-src:%s)"
     , name_, pin, channel_, maxBitCount, memoryBlocks
-    , CONFIG_DCC_RMT_CLOCK_DIVIDER
-#if defined(CONFIG_DCC_RMT_USE_REF_CLOCK)
-    , "REF"
-#else
-    , "APB"
-#endif // CONFIG_DCC_RMT_USE_REF_CLOCK
-  );
-  rmt_config_t config =
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4,1,0)
-  {
-    .rmt_mode = RMT_MODE_TX,
-    .channel = channel_,
-    .clk_div = CONFIG_DCC_RMT_CLOCK_DIVIDER,
-    .gpio_num = pin,
-    .mem_block_num = memoryBlocks,
-    {
-      .tx_config =
-      {
-        .loop_en = false,
-        .carrier_freq_hz = 0,
-        .carrier_duty_percent = 0,
-        .carrier_level = rmt_carrier_level_t::RMT_CARRIER_LEVEL_LOW,
-        .carrier_en = false,
-        .idle_level = rmt_idle_level_t::RMT_IDLE_LEVEL_LOW,
-        .idle_output_en = false
-      }
-    }
-  };
-#else
-  {
-    .rmt_mode = RMT_MODE_TX,
-    .channel = channel_,
-    .gpio_num = pin,
-    .clk_div = CONFIG_DCC_RMT_CLOCK_DIVIDER,
-    .mem_block_num = memoryBlocks,
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
-    .flags = 0,
-#endif
-    {
-      .tx_config =
-      {
-        .carrier_freq_hz = 0,
-        .carrier_level = rmt_carrier_level_t::RMT_CARRIER_LEVEL_LOW,
-        .idle_level = rmt_idle_level_t::RMT_IDLE_LEVEL_LOW,
-        .carrier_duty_percent = 0,
-#if SOC_RMT_SUPPORT_TX_LOOP_COUNT
-        .loop_count = 0,
-#endif
-        .carrier_en = false,
-        .loop_en = false,
-        .idle_output_en = false
-      }
-    }
-  };
-#endif // IDF v4.0
+    , CONFIG_DCC_RMT_CLOCK_DIVIDER, RMT_TRACK_DEVICE_CLOCK_SOURCE);
+
+  // Configure the RMT channel for TX
+  rmt_config_t config;
+  bzero(&config, sizeof(rmt_config_t));
+  config.rmt_mode = RMT_MODE_TX;
+  config.channel = channel_;
+  config.clk_div = CONFIG_DCC_RMT_CLOCK_DIVIDER;
+  config.gpio_num = pin;
+  config.mem_block_num = memoryBlocks;
   ESP_ERROR_CHECK(rmt_config(&config));
   ESP_ERROR_CHECK(rmt_driver_install(channel_, 0, RMT_ISR_FLAGS));
 
-#if defined(CONFIG_DCC_RMT_USE_REF_CLOCK)
+#if CONFIG_DCC_RMT_USE_REF_CLOCK
   LOG(INFO, "[%s] Configuring RMT to use REF_CLK", name_);
   ESP_ERROR_CHECK(rmt_set_source_clk(channel_, RMT_BASECLK_REF));
 #endif // CONFIG_DCC_RMT_USE_APB_CLOCK
