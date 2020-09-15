@@ -62,6 +62,30 @@ public:
         "from the connected SSID. This should generally not need to be "
         "enabled unless you are powering the ESP32 from a battery.";
 
+    /// Visible name for the WiFi TX Power.
+    static constexpr const char *WIFI_TX_POWER_NAME =
+        "WiFi Transmit Power";
+
+    /// Visible description for the WiFi TX Power.
+    static constexpr const char *WIFI_TX_POWER_DESC =
+        "WiFi Radio transmit power in dB increments. This can be used to limit "
+        "the WiFi range. This option generally does not need to be changed.";
+
+    /// <map> of possible key and descriptive values to show to the user for
+    /// the power field.
+    static constexpr const char *WIFI_TX_POWER_MAP =
+        "<relation><property>8</property><value>2 dB</value></relation>"
+        "<relation><property>20</property><value>5 dB</value></relation>"
+        "<relation><property>28</property><value>7 dB</value></relation>"
+        "<relation><property>34</property><value>8 dB</value></relation>"
+        "<relation><property>44</property><value>11 dB</value></relation>"
+        "<relation><property>52</property><value>13 dB</value></relation>"
+        "<relation><property>56</property><value>14 dB</value></relation>"
+        "<relation><property>60</property><value>15 dB</value></relation>"
+        "<relation><property>66</property><value>16 dB</value></relation>"
+        "<relation><property>72</property><value>18 dB</value></relation>"
+        "<relation><property>78</property><value>20 dB</value></relation>";
+
     /// Visible name for the Hub Configuration group.
     static constexpr const char *HUB_NAME = "Hub Configuration";
 
@@ -120,6 +144,13 @@ CDI_GROUP_ENTRY(sleep, openlcb::Uint8ConfigEntry,
     Name(Esp32WiFiConfigurationParams::WIFI_POWER_SAVE_NAME),
     Description(Esp32WiFiConfigurationParams::WIFI_POWER_SAVE_DESC), Min(0),
     Max(1), Default(0), MapValues(Esp32WiFiConfigurationParams::BOOLEAN_MAP));
+/// Allows the WiFi system to use power-saving techniques to conserve power
+/// when the node is powered via battery.
+CDI_GROUP_ENTRY(tx_power, openlcb::Uint8ConfigEntry,
+    Name(Esp32WiFiConfigurationParams::WIFI_TX_POWER_NAME),
+    Description(Esp32WiFiConfigurationParams::WIFI_TX_POWER_DESC), Min(8),
+    Max(78), Default(78),
+    MapValues(Esp32WiFiConfigurationParams::WIFI_TX_POWER_MAP));
 // On the ESP32 S2 we do not expose the hub option.
 #if defined(CONFIG_IDF_TARGET_ESP32)
 /// CDI Configuration to enable this node to be a hub.

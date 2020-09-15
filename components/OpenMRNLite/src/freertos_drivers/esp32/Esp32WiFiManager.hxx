@@ -436,6 +436,9 @@ private:
     /// Internal flag to request the wifi_manager_task reload configuration.
     bool configReloadRequested_{true};
 
+    /// Internal flag used to indicate this is the first time startup.
+    bool initialConfigLoad_{true};
+
     /// Internal flag to request the wifi_manager_task to shutdown.
     bool shutdownRequested_{false};
 
@@ -488,7 +491,7 @@ private:
     /// Holder for callbacks to invoke when the WiFi connection is down.
     std::vector<esp32_network_down_callback_t> networkDownCallbacks_;
 
-    /// Holder for callbacks to invoke when the WiFi connection is down.
+    /// Holder for callbacks to invoke when the WiFi subsystem has started.
     std::vector<esp32_network_init_callback_t> networkInitCallbacks_;
 
 #if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)

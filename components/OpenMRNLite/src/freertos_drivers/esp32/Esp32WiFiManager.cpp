@@ -358,7 +358,7 @@ ConfigUpdateListener::UpdateAction Esp32WiFiManager::apply_configuration(
 
     // Cache the fd for later use by the wifi background task.
     configFd_ = fd;
-    configReloadRequested_ = initial_load;
+    initialConfigLoad_ = initial_load;
 
     // Load the CDI entry into memory to do an CRC-32 check against our last
     // loaded configuration so we can avoid reloading configuration when there
@@ -865,7 +865,7 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
         }
 
         // Check if there are configuration changes to pick up.
-        if (wifi->configReloadRequested_)
+        if (wifi->configReloadRequested_ || wifi->initialConfigLoad_)
         {
             // Since we are loading configuration data, shutdown the hub and
             // uplink if created previously.
@@ -888,6 +888,16 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
                 // connected to an always-on power supply (ie: not a battery).
                 ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
             }
+
+            // If this is not the initial loading of the configuration, set the
+            // maximum transmit power. Otherwise it will be handled as part of
+            // the initial configuration of the Station or SoftAP interface.
+            if (!wifi->initialConfigLoad_)
+            {
+                ESP_ERROR_CHECK_WITHOUT_ABORT(
+                    esp_wifi_set_max_tx_power(
+                        CDI_READ_TRIMMED(wifi->cfg_.tx_power, wifi->configFd_)));
+            }
 #if defined(CONFIG_IDF_TARGET_ESP32)
             if (CDI_READ_TRIMMED(wifi->cfg_.hub().enable, wifi->configFd_))
             {
@@ -898,6 +908,7 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
             // Start the uplink connection process in the background.
             wifi->start_uplink();
             wifi->configReloadRequested_ = false;
+            wifi->initialConfigLoad_ = false;
         }
 
         // Sleep until we are woken up again for configuration update or WiFi
@@ -1259,6 +1270,10 @@ void Esp32WiFiManager::on_station_started()
 #endif // IDF v4.1+
     }
 
+    // Set the maximum transmit power before we connect to the SSID.
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+        esp_wifi_set_max_tx_power(CDI_READ_TRIMMED(cfg_.tx_power, configFd_)));
+
     LOG(INFO,
         "[WiFi] Station started, attempting to connect to SSID: %s.", ssid_);
     // Start the SSID connection process.
@@ -1540,12 +1555,18 @@ void Esp32WiFiManager::on_softap_start()
     }
 #endif // IDF v4.1+
 
-    // If we are operating in SoftAP mode only we can start the mDNS system
-    // now, otherwise we need to defer it until the station has received
-    // it's IP address to avoid reinitializing the mDNS system.
     if (wifiMode_ == WIFI_MODE_AP)
     {
+        // If we are operating in SoftAP mode only we can start the mDNS system
+        // now, otherwise we need to defer it until the station has received
+        // it's IP address to avoid reinitializing the mDNS system.
         start_mdns_system();
+
+        // Set the maximum transmit power. In the case of Station+SoftAP mode
+        // this will be set as part of the station startup.
+        ESP_ERROR_CHECK_WITHOUT_ABORT(
+            esp_wifi_set_max_tx_power(
+                CDI_READ_TRIMMED(cfg_.tx_power, configFd_)));
     }
 
     // Schedule callbacks via the executor rather than call directly here.

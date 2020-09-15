@@ -239,6 +239,13 @@ public:
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
+  void reconfigure_wifi_tx_power(uint8_t value)
+  {
+    bool upd = false;
+    CDI_COMPARE_AND_SET(cfg_.seg().wifi_lcc().tx_power, fd_, value, upd);
+    MAYBE_TRIGGER_UPDATE(upd);
+  }
+
   string get_config_json()
   {
     auto wifi = cfg_.seg().wifi_lcc();
@@ -247,6 +254,7 @@ public:
     
     string config =
       StringPrintf("\"hub\":%s,"
+                   "\"tx_power\":%d"
                    "\"uplink\":{"
                      "\"reconnect\":%s,"
                      "\"auto_service\":\"%s\","
@@ -269,6 +277,7 @@ public:
                      "}"
                    "]"
                  , CDI_READ_TRIMMED(wifi.hub().enable, fd_) ? "true" : "false"
+                 , CDI_READ_TRIMMED(wifi.tx_power, fd_)
                  , CDI_READ_TRIMMED(wifi.uplink().reconnect, fd_) ? "true" : "false"
                  , wifi.uplink().auto_address().service_name().read(fd_).c_str()
                  , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
@@ -580,6 +589,10 @@ HTTP_HANDLER_IMPL(process_config, request)
   if (request->has_param("lcc-hub"))
   {
     configListener->reconfigure_lcc_hub(request->param("lcc-hub", false));
+  }
+  if (request->has_param("tx_power"))
+  {
+    configListener->reconfigure_wifi_tx_power(request->param("tx_power", 78));
   }
   if (request->has_param("uplink-mode") &&
       request->has_param("uplink-service") &&

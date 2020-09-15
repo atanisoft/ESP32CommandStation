@@ -316,6 +316,20 @@
            <option value="softap-station">Station and SoftAP</option>
            <option value="softap">SoftAP Only</option>
           </select>
+          <label for="cs-wifi-tx-power">WiFi TX Power:</label>
+          <select id="cs-wifi-tx-power">
+           <option value="8">2 dB</option>
+           <option value="20">5 dB</option>
+           <option value="28">7 dB</option>
+           <option value="34">8 dB</option>
+           <option value="44">11 dB</option>
+           <option value="52">13 dB</option>
+           <option value="56">14 dB</option>
+           <option value="60">15 dB</option>
+           <option value="66">16 dB</option>
+           <option value="72">18 dB</option>
+           <option value="78">20 dB</option>
+          </select>
          </div>
          <div class="ui-field-contain" id="cs-wifi-sta-div">
           <label for="cs-wifi-ssid">SSID:</label>
@@ -1120,7 +1134,8 @@ function csConfigUpdate(data) {
  $('#cs-cdi-prog-shutdown-clear').val(pad_hex(data.hbridges[1].shutdown_clear, 16));
  $('#cs-wifi-sta-div').hide();
  $('#cs-wifi-connect').hide();
- $("#cs-wifi-mode").val(data.wifi.mode).change();
+ $('#cs-wifi-mode').val(data.wifi.mode).change();
+ $('#cs-wifi-tx-power').val(data.wifi.tx_power).change();
  if(data.wifi.mode !== 'softap') {
   $('#cs-wifi-sta-div').show();
   $('#cs-wifi-connect').show();
@@ -1191,7 +1206,7 @@ function setupConfig() {
   var section = $("#cs-config-tabs").tabs("option", "active");
   var url = "";
   if (tablist[section] == "WiFi") {
-   url = String.format("/config?mode={0}", $('#cs-wifi-mode').val());
+   url = String.format("/config?mode={0}&tx_power={1}", $('#cs-wifi-mode').val(), $('#cs-wifi-tx-power').val());
   } else if (tablist[section] == "LCC") {
    url = String.format("/config?nodeid={0}&lcc-hub={1}&lcc-can={2}", $('#cs-lcc-node-id').val(), $('#cs-lcc-hub').prop('checked'), $('#cs-lcc-can').prop('checked'));
   } else if (tablist[section] == "Uplink") {
