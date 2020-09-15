@@ -8,6 +8,20 @@ if (IDF_VERSION_MAJOR LESS 4)
     message(FATAL_ERROR "ESP32CommandStation requires IDF v4.0 (or newer)")
 endif()
 
+# ESP-IDF v4.1 has a few known issues:
+# 1) RMT APIs will truncate the bit stream at 64 bits regardless of the number
+# of memory blocks allocated to the RMT channel.
+# 2) RailCom detector UART code may cause a ISR WDT timeout during init of the
+# StatusLED module even though they should have zero interactions.
+# 3) DCC Signal may be corrupted under certain circumstances (unconfirmed).
+if ("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" STREQUAL "4.1")
+    message(WARNING "ESP-IDF v${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH} has known stability issues, it is recommended to use ESP-IDF v4.0.x or v4.2+")
+    # if the StatusLED module is enabled break the build since it will not work at runtime.
+    if (CONFIG_STATUS_LED STREQUAL "y")
+        message(FATAL_ERROR "ESP-IDF v${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH} includes a breaking change in the RMT API which will result in the StatusLED module malfunctioning.")
+    endif()
+endif()
+
 set(SUPPORTED_TARGETS esp32)
 project(ESP32CommandStation)
 
