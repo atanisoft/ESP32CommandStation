@@ -39,11 +39,11 @@
 #define _FREERTOS_DRIVERS_ESP32_ESP32HWCAN_HXX_
 
 #include "freertos_drivers/arduino/Can.hxx"
+
 #include <driver/can.h>
 #include <driver/gpio.h>
 #include <esp_task.h>
 #include <esp_task_wdt.h>
-
 #include "os/OS.hxx"
 
 namespace openmrn_arduino {
@@ -172,19 +172,27 @@ private:
     /// provided by the @ref txBuf into an ESP32 can_message_t which can be
     /// processed by the native CAN driver. This task also covers the periodic
     /// status reporting and BUS recovery when necessary.
-    static void* tx_task(void *can)
+    static void *tx_task(void *can)
     {
         /// Get handle to our parent Esp32HardwareCan object to access the
         /// txBuf.
         Esp32HardwareCan *parent = reinterpret_cast<Esp32HardwareCan *>(can);
 
-        LOG(VERBOSE, "Esp32Can: TX startup");
+#if CONFIG_TASK_WDT
+        // Add this task to the WDT
+        esp_task_wdt_add(parent->txTaskHandle_);
+#endif // CONFIG_TASK_WDT
 
         /// Tracks the last time that we displayed the CAN driver status.
         TickType_t next_status_display_tick_count = 0;
 
         while (true)
         {
+#if CONFIG_TASK_WDT
+            // Feed the watchdog so it doesn't reset the ESP32
+            esp_task_wdt_reset();
+#endif // CONFIG_TASK_WDT
+
             // periodic CAN driver monitoring and reporting, this takes care of
             // bus recovery when the CAN driver disables the bus due to error
             // conditions exceeding thresholds.
@@ -291,15 +299,23 @@ private:
     /// Background task that takes care of receiving can_message_t objects from
     /// the ESP32 native CAN driver, when they are available, converting them to
     /// a @ref can_frame and pushing them to the @ref rxBuf.
-    static void* rx_task(void *can)
+    static void *rx_task(void *can)
     {
         /// Get handle to our parent Esp32HardwareCan object to access the rxBuf
         Esp32HardwareCan *parent = reinterpret_cast<Esp32HardwareCan *>(can);
 
-        LOG(VERBOSE, "Esp32Can: RX startup");
+#if CONFIG_TASK_WDT
+        // Add this task to the WDT
+        esp_task_wdt_add(parent->rxTaskHandle_);
+#endif // CONFIG_TASK_WDT
 
         while (true)
         {
+#if CONFIG_TASK_WDT
+            // Feed the watchdog so it doesn't reset the ESP32
+            esp_task_wdt_reset();
+#endif // CONFIG_TASK_WDT
+
             /// ESP32 native CAN driver frame
             can_message_t msg;
             bzero(&msg, sizeof(can_message_t));

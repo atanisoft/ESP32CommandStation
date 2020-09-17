@@ -37,6 +37,8 @@
 
 #include <stdint.h>
 
+#include "stm32f_hal_conf.hxx"
+
 #if defined (STM32F072xB) || defined (STM32F091xC)
 
 #include "stm32f0xx_hal_cortex.h"
@@ -103,11 +105,11 @@ Stm32Can::Stm32Can(const char *name)
     /* The priority of CAN interrupt is as high as possible while maintaining
      * FreeRTOS compatibility.
      */
-    NVIC_SetPriority(CAN_IRQN, configKERNEL_INTERRUPT_PRIORITY);
+    SetInterruptPriority(CAN_IRQN, configKERNEL_INTERRUPT_PRIORITY);
 
 #ifdef SPLIT_INT
     HAL_NVIC_DisableIRQ(CAN_SECOND_IRQN);
-    NVIC_SetPriority(CAN_SECOND_IRQN, configKERNEL_INTERRUPT_PRIORITY);
+    SetInterruptPriority(CAN_SECOND_IRQN, configKERNEL_INTERRUPT_PRIORITY);
 #endif
 #endif
 }

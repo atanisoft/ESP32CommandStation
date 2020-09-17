@@ -60,10 +60,10 @@ public:
     }
 
 protected:
-    unsigned srcAlias_ : 12;  ///< Source node alias.
-    unsigned dstAlias_ : 12;  ///< Destination node alias.
-    unsigned dataOffset_ : 8; /**< for continuation frames: which offset in
-                                * the Buffer should we start the payload at. */
+    NodeAlias srcAlias_;  ///< Source node alias.
+    NodeAlias dstAlias_;  ///< Destination node alias.
+    uint8_t dataOffset_; /**< for continuation frames: which offset in
+                          * the Buffer should we start the payload at. */
 
     Action send_to_hardware() override
     {
@@ -137,8 +137,8 @@ private:
             nmsg()->src.id);
 
         // Checks that there was no conflict on this alias.
-        if (if_can()->local_aliases()->lookup(alias) !=
-            AliasCache::RESERVED_ALIAS_NODE_ID)
+        if (!CanDefs::is_reserved_alias_node_id(
+                if_can()->local_aliases()->lookup(alias)))
         {
             LOG(INFO, "Alias has seen conflict: %03X", alias);
             // Problem. Let's take another alias.

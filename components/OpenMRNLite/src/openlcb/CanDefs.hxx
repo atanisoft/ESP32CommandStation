@@ -136,6 +136,18 @@ struct CanDefs {
         NOT_LAST_FRAME = 0x10,
     };
 
+    /// Constants used in the LocalAliasCache for reserved but not used
+    /// aliases.
+    enum ReservedAliasNodeId
+    {
+        /// To mark a reserved alias in the local alias cache, we use this as a
+        /// node ID and add the alias to the lowest 12 bits. Since this value
+        /// starts with a zero MSB byte, it is not a valid node ID.
+        RESERVED_ALIAS_NODE_BITS = 0xF000,
+        /// Mask for the reserved aliases.
+        RESERVED_ALIAS_NODE_MASK = 0xFFFFFFFFF000
+    };
+
     /** Get the source field value of the CAN ID.
      * @param can_id identifier to act upon
      * @return source field
@@ -361,6 +373,23 @@ struct CanDefs {
     {
         SET_CAN_FRAME_ID_EFF(frame, set_control_fields(src, field, sequence));
         frame.can_dlc = 0;
+    }
+
+    /** Computes a reserved alias node ID for the local alias cache map.
+     * @param alias the alias to reserve
+     * @return Node ID to use in the alias map as a key.
+     */
+    static NodeID get_reserved_alias_node_id(NodeAlias alias)
+    {
+        return RESERVED_ALIAS_NODE_BITS | alias;
+    }
+
+    /** Tests if a node ID is a reserved alias Node ID.
+     * @param id node id to test
+     * @return true if this is a reserved alias node ID. */
+    static bool is_reserved_alias_node_id(NodeID id)
+    {
+        return (id & RESERVED_ALIAS_NODE_MASK) == RESERVED_ALIAS_NODE_BITS;
     }
 
 private:

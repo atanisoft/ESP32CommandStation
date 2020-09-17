@@ -296,7 +296,7 @@ void MDNS::resolve_callback(AvahiServiceResolver *r,
                     sa_in->sin6_flowinfo = 0;
                     sa_in->sin6_family = AF_INET6;
                     sa_in->sin6_port = htons(port);
-                    memcpy(&sa_in->sin6_addr.s6_addr,
+                    memcpy(&(sa_in->sin6_addr.s6_addr),
                            address->data.ipv6.address,
                            sizeof(address->data.ipv6.address));
                     break;

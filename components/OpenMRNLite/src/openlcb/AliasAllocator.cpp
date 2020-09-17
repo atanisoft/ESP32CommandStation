@@ -216,8 +216,9 @@ StateFlowBase::Action AliasAllocator::send_rid_frame()
     pending_alias()->state = AliasInfo::STATE_RESERVED;
     if_can()->frame_dispatcher()->unregister_handler(
         &conflictHandler_, pending_alias()->alias, ~0x1FFFF000U);
-    if_can()->local_aliases()->add(AliasCache::RESERVED_ALIAS_NODE_ID,
-                                   pending_alias()->alias);
+    if_can()->local_aliases()->add(
+        CanDefs::get_reserved_alias_node_id(pending_alias()->alias),
+        pending_alias()->alias);
     reserved_alias_pool_.insert(transfer_message());
     return release_and_exit();
 }
@@ -259,7 +260,8 @@ void AliasAllocator::TEST_add_allocated_alias(NodeAlias alias, bool repeat)
         a->data()->do_not_reallocate();
     }
     if_can()->local_aliases()->add(
-        AliasCache::RESERVED_ALIAS_NODE_ID, a->data()->alias);
+        CanDefs::get_reserved_alias_node_id(a->data()->alias),
+        a->data()->alias);
     reserved_aliases()->insert(a);
 }
 

@@ -35,10 +35,12 @@
 #ifndef _UTILS_CLIENTCONNECTION_HXX_
 #define _UTILS_CLIENTCONNECTION_HXX_
 
-#include "utils/GridConnectHub.hxx"
 #include <stdio.h>
 #include <termios.h> /* tc* functions */
 #include <unistd.h>
+
+#include "utils/GridConnectHub.hxx"
+#include "utils/socket_listener.hxx"
 
 /// Abstract base class for the Hub's connections.
 class ConnectionClient

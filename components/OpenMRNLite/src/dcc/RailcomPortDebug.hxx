@@ -129,6 +129,72 @@ private:
     dcc::RailcomHubFlow *parent_;
 };
 
+/// This flow listens to Railcom packets coming from the hub, and if they are
+/// correctly decoded, pulses the given GPIO output.  Correctly decoded is
+/// defined as having every single byte be a correct 4/8 codepoint.
+class RailcomToGpioFlow : public dcc::RailcomHubPortInterface
+{
+public:
+    /// Constructor.
+    /// @param source is the railcom hub to listen to.
+    /// @param output
+    RailcomToGpioFlow(dcc::RailcomHubFlow *source, const Gpio *output)
+        : parent_(source)
+        , output_(output)
+    {
+        source->register_port(this);
+    }
+
+    ~RailcomToGpioFlow()
+    {
+        parent_->unregister_port(this);
+    }
+
+private:
+    /// Incoming railcom data.
+    ///
+    /// @param d railcom buffer.
+    /// @param prio priority
+    void send(Buffer<dcc::RailcomHubData> *d, unsigned prio) OVERRIDE
+    {
+        AutoReleaseBuffer<dcc::RailcomHubData> rb(d);
+        dcc::Feedback &fb = *d->data();
+        if (fb.channel >= 0xfe)
+        {
+            // Occupancy feedback, not railcom data.
+            return;
+        }
+        unsigned correct = 0;
+        unsigned total = 0;
+        for (unsigned i = 0; i < fb.ch1Size; i++)
+        {
+            ++total;
+            correct += (dcc::railcom_decode[fb.ch1Data[i]] != RailcomDefs::INV)
+                ? 1
+                : 0;
+        }
+        for (unsigned i = 0; i < fb.ch2Size; i++)
+        {
+            ++total;
+            correct += (dcc::railcom_decode[fb.ch2Data[i]] != RailcomDefs::INV)
+                ? 1
+                : 0;
+        }
+        if (total > 0 && correct == total)
+        {
+            // Produces a short pulse on the output
+            output_->write(true);
+            for (volatile int i = 0; i < 3000; i++) { }
+            output_->write(false);
+        }
+    }
+
+    /// Flow to which we are registered.
+    dcc::RailcomHubFlow *parent_;
+    /// Output gpio to toggle.
+    const Gpio *output_;
+}; // RailcomToGpioFlow
+
 } // namespace dcc
 
 namespace openlcb

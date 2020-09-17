@@ -106,10 +106,15 @@ void write_string_to_file(const string &filename, const string &data)
     while ((nr = fwrite(data.data() + offset, 1, data.size() - offset, f)) > 0)
     {
         offset += nr;
-        if (offset >= data.size()) break;
+        if (offset >= data.size())
+        {
+            break;
+        }
     }
-    if (nr < 0) {
-        fprintf(stderr, "error writing: %s\n", strerror(errno));
+    if (offset != data.size())
+    {
+        fprintf(stderr, "error writing: %s, offset: %zu, size: %zu\n",
+                strerror(errno), offset, data.size());
     }
     fclose(f);
 }

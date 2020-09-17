@@ -718,7 +718,7 @@ void IfCan::delete_local_node(Node *node) {
     if (alias) {
         // The node had a local alias.
         localAliases_.remove(alias);
-        localAliases_.add(AliasCache::RESERVED_ALIAS_NODE_ID, alias);
+        localAliases_.add(CanDefs::get_reserved_alias_node_id(alias), alias);
         // Sends AMR & returns alias to pool.
         aliasAllocator_->return_alias(node->node_id(), alias);
     }

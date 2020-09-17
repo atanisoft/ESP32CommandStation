@@ -34,6 +34,9 @@
 
 #include "openlcb/SimpleNodeInfo.hxx"
 
+#include "openmrn_features.h"
+#include "utils/format_utils.hxx"
+
 namespace openlcb
 {
 
@@ -46,15 +49,15 @@ const SimpleInfoDescriptor SNIPHandler::SNIP_RESPONSE[] = {
     {SimpleInfoDescriptor::C_STRING, 0, 0, SNIP_STATIC_DATA.model_name},
     {SimpleInfoDescriptor::C_STRING, 0, 0, SNIP_STATIC_DATA.hardware_version},
     {SimpleInfoDescriptor::C_STRING, 0, 0, SNIP_STATIC_DATA.software_version},
-#if defined(ARDUINO) && (!defined(ESP32))
+#if OPENMRN_HAVE_POSIX_FD
+    {SimpleInfoDescriptor::FILE_LITERAL_BYTE, 2, 0, SNIP_DYNAMIC_FILENAME},
+    {SimpleInfoDescriptor::FILE_C_STRING, 63, 1, SNIP_DYNAMIC_FILENAME},
+    {SimpleInfoDescriptor::FILE_C_STRING, 64, 64, SNIP_DYNAMIC_FILENAME},
+#else
     /// @todo(balazs.racz) Add eeprom support to arduino.
     {SimpleInfoDescriptor::LITERAL_BYTE, 2, 0, nullptr},
     {SimpleInfoDescriptor::LITERAL_BYTE, 0, 0, nullptr},
     {SimpleInfoDescriptor::LITERAL_BYTE, 0, 0, nullptr},
-#else
-    {SimpleInfoDescriptor::FILE_LITERAL_BYTE, 2, 0, SNIP_DYNAMIC_FILENAME},
-    {SimpleInfoDescriptor::FILE_C_STRING, 63, 1, SNIP_DYNAMIC_FILENAME},
-    {SimpleInfoDescriptor::FILE_C_STRING, 64, 64, SNIP_DYNAMIC_FILENAME},
 #endif
     {SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}};
 
@@ -65,9 +68,8 @@ void init_snip_user_file(int fd, const char *user_name,
     SimpleNodeDynamicValues data;
     memset(&data, 0, sizeof(data));
     data.version = 2;
-    strncpy(data.user_name, user_name, sizeof(data.user_name));
-    strncpy(data.user_description, user_description,
-            sizeof(data.user_description));
+    str_populate(data.user_name, user_name);
+    str_populate(data.user_description, user_description);
     int ofs = 0;
     auto *p = (const uint8_t *)&data;
     const int len = sizeof(data);

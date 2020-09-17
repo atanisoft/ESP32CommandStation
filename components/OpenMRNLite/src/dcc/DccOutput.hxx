@@ -186,11 +186,11 @@ public:
     /// \link DccOutput::DisableReason } These bits are all set by the
     /// application. The DCC Driver will only read this variable, and enable
     /// the output if all bits are zero.
-    static std::atomic_uint8_t outputDisableReasons_;
+    static std::atomic_uint_least8_t outputDisableReasons_;
 
     /// 0 if we should not produce a railcom cutout; 1 for short cutout; 2 for
     /// regular cutout. Set by the application and read by the DCC driver.
-    static std::atomic_uint8_t isRailcomCutoutEnabled_;
+    static std::atomic_uint_least8_t isRailcomCutoutEnabled_;
 
     /// 1 if we are in a railcom cutout currently. Set and cleared by the
     /// driver before calling the start/stop railcom cutout functions.
@@ -233,10 +233,10 @@ private:
 };
 
 template <int N>
-std::atomic_uint8_t DccOutputHw<N>::outputDisableReasons_ {
+std::atomic_uint_least8_t DccOutputHw<N>::outputDisableReasons_ {
     (uint8_t)DccOutput::DisableReason::INITIALIZATION_PENDING};
 template <int N>
-std::atomic_uint8_t DccOutputHw<N>::isRailcomCutoutEnabled_ {
+std::atomic_uint_least8_t DccOutputHw<N>::isRailcomCutoutEnabled_ {
     (uint8_t)DccOutput::RailcomCutout::LONG_CUTOUT};
 template <int N> uint8_t DccOutputHw<N>::isRailcomCutoutActive_ {0};
 

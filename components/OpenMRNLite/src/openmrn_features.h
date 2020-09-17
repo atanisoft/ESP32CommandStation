@@ -48,6 +48,13 @@
 #define OPENMRN_FEATURE_REENT 1
 #endif
 
+#if defined(__linux__) || defined(__MACH__) || defined(__WINNT__) || defined(ESP32) || defined(OPENMRN_FEATURE_DEVTAB)
+/// Enables the code using ::open ::close ::read ::write for non-volatile
+/// storage, FileMemorySpace for the configuration space, and
+/// SNIP_DYNAMIC_FILE_NAME for node names.
+#define OPENMRN_HAVE_POSIX_FD 1
+#endif
+
 /// @todo this should probably be a whitelist: __linux__ || __MACH__.
 #if !defined(__FreeRTOS__) && !defined(__WINNT__) && !defined(ESP32) &&        \
     !defined(ARDUINO) && !defined(ESP_NONOS)

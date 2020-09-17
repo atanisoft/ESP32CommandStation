@@ -38,6 +38,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "openmrn_features.h"
 #include "openlcb/If.hxx"
 #include "executor/StateFlow.hxx"
 
@@ -217,7 +218,7 @@ private:
                 }
                 break;
             }
-#if (!defined(ARDUINO)) || defined(ESP32)
+#if OPENMRN_HAVE_POSIX_FD
             case SimpleInfoDescriptor::FILE_CHAR_ARRAY:
                 open_and_seek_next_file();
                 // fall through
@@ -227,7 +228,7 @@ private:
                 currentLength_ = d.arg;
                 HASSERT(currentLength_);
                 break;
-#if (!defined(ARDUINO)) || defined(ESP32)
+#if OPENMRN_HAVE_POSIX_FD
             case SimpleInfoDescriptor::FILE_LITERAL_BYTE:
             {
                 open_and_seek_next_file();
@@ -240,7 +241,7 @@ private:
                 byteOffset_ = 0;
                 break;
             }
-#endif // NOT ARDUINO, YES ESP32
+#endif // if have fd
             default:
                 currentLength_ = 0;
         }

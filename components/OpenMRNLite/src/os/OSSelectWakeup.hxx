@@ -184,68 +184,7 @@ public:
      * asynchronously
      */
     int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
-        long long deadline_nsec)
-    {
-        {
-            AtomicHolder l(this);
-            inSelect_ = true;
-            if (pendingWakeup_)
-            {
-                deadline_nsec = 0;
-            }
-            else
-            {
-#if OPENMRN_FEATURE_DEVICE_SELECT
-                Device::select_clear();
-#endif
-            }
-        }
-#if OPENMRN_FEATURE_DEVICE_SELECT
-        int ret =
-            Device::select(nfds, readfds, writefds, exceptfds, deadline_nsec);
-        if (!ret && pendingWakeup_)
-        {
-            ret = -1;
-            errno = EINTR;
-        }
-#elif OPENMRN_HAVE_PSELECT
-        struct timespec timeout;
-        timeout.tv_sec = deadline_nsec / 1000000000;
-        timeout.tv_nsec = deadline_nsec % 1000000000;
-        int ret =
-            ::pselect(nfds, readfds, writefds, exceptfds, &timeout, &origMask_);
-#elif OPENMRN_HAVE_SELECT
-#ifdef ESP32
-        fd_set newexcept;
-        if (!exceptfds)
-        {
-            FD_ZERO(&newexcept);
-            exceptfds = &newexcept;
-        }
-        FD_SET(vfsFd_, exceptfds);
-        if (vfsFd_ >= nfds)
-        {
-            nfds = vfsFd_ + 1;
-        }
-#endif // ESP32
-        struct timeval timeout;
-        timeout.tv_sec = NSEC_TO_SEC(deadline_nsec);
-        timeout.tv_usec = NSEC_TO_USEC(deadline_nsec) % SEC_TO_USEC(1);
-        int ret =
-            ::select(nfds, readfds, writefds, exceptfds, &timeout);
-#elif !defined(OPENMRN_FEATURE_SINGLE_THREADED)
-        #error no select implementation in multi threaded OS.
-#else
-        // Single threaded OS: nothing to wake up.
-        int ret = 0;
-#endif
-        {
-            AtomicHolder l(this);
-            pendingWakeup_ = false;
-            inSelect_ = false;
-        }
-        return ret;
-    }
+               long long deadline_nsec);
 
 private:
 #ifdef ESP32

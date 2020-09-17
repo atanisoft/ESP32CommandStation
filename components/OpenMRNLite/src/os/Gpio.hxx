@@ -124,12 +124,12 @@ public:
     virtual void clr() const = 0;
 
     /** Sets the GPIO direction.
-     * @param dir @ref INPUT or @ref OUTPUT
+     * @param dir @ref DINPUT or @ref DOUTPUT
      */
     virtual void set_direction(Direction dir) const = 0;
 
     /** Gets the GPIO direction.
-     * @return @ref INPUT or @ref OUTPUT
+     * @return @ref DINPUT or @ref DOUTPUT
      */
     virtual Direction direction() const = 0;
 };

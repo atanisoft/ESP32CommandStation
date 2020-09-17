@@ -64,6 +64,8 @@ class Esp32Gpio : public Gpio
 public:
 #if defined(CONFIG_IDF_TARGET_ESP32)
     static_assert(PIN_NUM >= 0 && PIN_NUM <= 39, "Valid pin range is 0..39.");
+    static_assert(PIN_NUM != 24, "Pin does not exist");
+    static_assert(!(PIN_NUM >= 28 && PIN_NUM <= 31), "Pin does not exist");
     static_assert(PIN_NUM != 37, "Pin is connected to GPIO 36 via capacitor.");
     static_assert(PIN_NUM != 38, "Pin is connected to GPIO 39 via capacitor.");
 #ifndef ESP32_PICO
@@ -79,7 +81,6 @@ public:
     static_assert(PIN_NUM != 11 && PIN_NUM != 16 && PIN_NUM != 17
                 , "Pin is reserved for flash usage.");
 #endif
-    static_assert(PIN_NUM != 24, "Pin does not exist");
 #elif defined(CONFIG_IDF_TARGET_ESP32S2)
     static_assert(PIN_NUM >= 0 && PIN_NUM <= 46, "Valid pin range is 0..46.");
     static_assert(!(PIN_NUM >= 22 && PIN_NUM <= 24)

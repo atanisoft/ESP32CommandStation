@@ -1,5 +1,5 @@
-/** @copyright
- * Copyright (c) 2018, Stuart W. Baker
+/** \copyright
+ * Copyright (c) 2020, Balazs Racz
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,34 +24,26 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * @file BroadcastTime.cxx
+ * \file SocketCan.hxx
  *
- * Implementation of a Broadcast Time Protocol Interface.
+ * Helper functions to connect to CAN devices via SocketCan.
  *
- * @author Stuart W. Baker
- * @date 4 November 2018
+ * @author Balazs Racz
+ * @date 1 Sep 2020
  */
 
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200112L
+#ifndef _UTILS_SOCKETCAN_HXX_
+#define _UTILS_SOCKETCAN_HXX_
+
+#if defined(__linux__)
+
+/// Opens a SocketCan socket.
+/// @param device the name of the CAN device, e.g. can0
+/// @param loopback 1 to enable loopback locally to other open references,
+///                 0 to disable loopback locally to other open references.
+/// @return an open socket file descriptor, or -1 if there was an error.
+int socketcan_open(const char *device, int loopback);
+
 #endif
 
-#include "openlcb/BroadcastTime.hxx"
-
-namespace openlcb
-{
-
-//
-// BroadcastTimeClient::clear_timezone
-//
-void BroadcastTime::clear_timezone()
-{
-// The ESP32 uses a single global timezone setting and that may conflict if the
-// system is using a different timezone than the one specified below.
-#ifndef ESP32
-    setenv("TZ", "GMT0", 1);
-    tzset();
-#endif // ! ESP32
-}
-
-} // namespace openlcb
+#endif // _UTILS_SOCKETCAN_HXX_

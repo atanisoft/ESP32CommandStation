@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <cstdarg>
 
+#include "openmrn_features.h"
 #include "executor/Executable.hxx"
 #include "executor/Notifiable.hxx"
 #include "os/OS.hxx"

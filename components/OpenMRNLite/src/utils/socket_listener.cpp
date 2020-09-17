@@ -40,6 +40,12 @@
 #define _DEFAULT_SOURCE
 #endif
 
+#include "utils/socket_listener.hxx"
+
+#include "nmranet_config.h"
+#include "utils/logging.h"
+#include "utils/macros.h"
+
 #ifndef ESP32 // these don't exist on the ESP32 with LWiP
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -51,14 +57,8 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "utils/socket_listener.hxx"
-
-#include "nmranet_config.h"
-#include "utils/macros.h"
-#include "utils/logging.h"
-
-
-static void* accept_thread_start(void* arg) {
+static void* accept_thread_start(void* arg)
+{
   SocketListener* l = static_cast<SocketListener*>(arg);
   l->AcceptThreadBody();
   return NULL;
@@ -72,7 +72,7 @@ SocketListener::SocketListener(int port, connection_callback_t callback,
       port_(port),
       callback_(callback),
       accept_thread_(thread_name, 0, config_socket_listener_stack_size(),
-        accept_thread_start, this)
+                     accept_thread_start, this)
 {
 #if OPENMRN_FEATURE_BSD_SOCKETS_IGNORE_SIGPIPE
     // We expect write failures to occur but we want to handle them where the
@@ -81,8 +81,10 @@ SocketListener::SocketListener(int port, connection_callback_t callback,
 #endif // OPENMRN_FEATURE_BSD_SOCKETS_IGNORE_SIGPIPE
 }
 
-SocketListener::~SocketListener() {
-    if (!shutdownComplete_) {
+SocketListener::~SocketListener()
+{
+    if (!shutdownComplete_)
+    {
         shutdown();
     }
 }
@@ -90,12 +92,14 @@ SocketListener::~SocketListener() {
 void SocketListener::shutdown()
 {
     shutdownRequested_ = 1;
-    while (!shutdownComplete_) {
+    while (!shutdownComplete_)
+    {
         usleep(1000);
     }
 }
 
-void SocketListener::AcceptThreadBody() {
+void SocketListener::AcceptThreadBody()
+{
   socklen_t namelen;
   struct sockaddr_in addr;
   int listenfd;
@@ -141,16 +145,20 @@ void SocketListener::AcceptThreadBody() {
 
   startupComplete_ = 1;
 
-  while (!shutdownRequested_) {
+  while (!shutdownRequested_)
+  {
     namelen = sizeof(addr);
     connfd = accept(listenfd,
                     (struct sockaddr *)&addr,
                     &namelen);
-    if (connfd < 0) {
-      if (errno == EINTR || errno == EAGAIN || errno == EMFILE) {
+    if (connfd < 0)
+    {
+      if (errno == EINTR || errno == EAGAIN || errno == EMFILE)
+      {
         continue;
       }
-      else if (errno == ECONNABORTED) {
+      else if (errno == ECONNABORTED)
+      {
         break;
       }
       print_errno_and_exit("accept");

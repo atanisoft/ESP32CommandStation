@@ -339,6 +339,15 @@ public:
         updateCallback_ = std::move(update_callback);
     }
 
+#ifdef GTEST
+    void TEST_assign_listening_node(openlcb::NodeID dst)
+    {
+        dst_ = dst;
+        set_assigned();
+        set_listening();
+    }
+#endif
+
 private:
     Action entry() override
     {
@@ -718,6 +727,11 @@ private:
     void listen_reply(Buffer<GenMessage> *msg)
     {
         AutoReleaseBuffer<GenMessage> rb(msg);
+        if (msg->data()->dstNode != node_)
+        {
+            // For a different throttle.
+            return;
+        }
         if (!iface()->matching_node(msg->data()->src, NodeHandle(dst_)))
         {
             return;

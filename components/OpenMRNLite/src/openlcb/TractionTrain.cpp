@@ -42,7 +42,7 @@
 namespace openlcb
 {
 
-TrainNode::TrainNode(TrainService *service, TrainImpl *train)
+DefaultTrainNode::DefaultTrainNode(TrainService *service, TrainImpl *train)
     : service_(service)
     , train_(train)
     , isInitialized_(0)
@@ -52,22 +52,46 @@ TrainNode::TrainNode(TrainService *service, TrainImpl *train)
 
 TrainNode::~TrainNode()
 {
-    while (!consistSlaves_.empty()) {
+}
+
+TrainNodeWithConsist::~TrainNodeWithConsist()
+{
+    while (!consistSlaves_.empty())
+    {
         delete consistSlaves_.pop_front();
     }
 }
 
+DefaultTrainNode::~DefaultTrainNode()
+{
+}
+
 TrainNodeForProxy::TrainNodeForProxy(TrainService *service, TrainImpl *train)
-    : TrainNode(service, train) {
-    service_->register_train(this);
+    : DefaultTrainNode(service, train)
+{
+    service->register_train(this);
+}
+
+TrainNodeForProxy::~TrainNodeForProxy()
+{
+    /// @todo enable this line of code. It currently breaks unit tests due to
+    /// bugs
+    // service_->unregister_train(this);
 }
 
 TrainNodeWithId::TrainNodeWithId(
     TrainService *service, TrainImpl *train, NodeID node_id)
-    : TrainNode(service, train)
+    : DefaultTrainNode(service, train)
     , nodeId_(node_id)
 {
-    service_->register_train(this);
+    service->register_train(this);
+}
+
+TrainNodeWithId::~TrainNodeWithId()
+{
+    /// @todo enable this line of code. It currently breaks unit tests due to
+    /// bugs
+    // service_->unregister_train(this);
 }
 
 NodeID TrainNodeForProxy::node_id()
@@ -76,7 +100,7 @@ NodeID TrainNodeForProxy::node_id()
         train_->legacy_address_type(), train_->legacy_address());
 }
 
-If *TrainNode::iface()
+If *DefaultTrainNode::iface()
 {
     return service_->iface();
 }
@@ -150,8 +174,7 @@ struct TrainService::Impl
                 return release_and_exit();
             }
             // Checks if destination is a local traction-enabled node.
-            if (trainService_->nodes_.find(train_node()) ==
-                trainService_->nodes_.end())
+            if (!trainService_->nodes_->is_node_registered(train_node()))
             {
                 LOG(VERBOSE, "Traction message for node %p that is not "
                              "traction enabled.",
@@ -605,9 +628,10 @@ struct TrainService::Impl
     TractionRequestFlow traction_;
 };
 
-TrainService::TrainService(If *iface)
+TrainService::TrainService(If *iface, NodeRegistry *train_node_registry)
     : Service(iface->executor())
     , iface_(iface)
+    , nodes_(train_node_registry)
 {
     impl_ = new Impl(this);
 }
@@ -623,9 +647,16 @@ void TrainService::register_train(TrainNode *node)
     extern void StartInitializationFlow(Node * node);
     StartInitializationFlow(node);
     AtomicHolder h(this);
-    nodes_.insert(node);
+    nodes_->register_node(node);
     LOG(VERBOSE, "Registered node %p for traction.", node);
-    HASSERT(nodes_.find(node) != nodes_.end());
+}
+
+void TrainService::unregister_train(TrainNode *node)
+{
+    HASSERT(nodes_->is_node_registered(node));
+    iface_->delete_local_node(node);
+    AtomicHolder h(this);
+    nodes_->unregister_node(node);
 }
 
 } // namespace openlcb

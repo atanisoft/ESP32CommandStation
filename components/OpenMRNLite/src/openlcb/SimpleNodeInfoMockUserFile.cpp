@@ -37,7 +37,9 @@
 #define  _POSIX_C_SOURCE  200112L
 #endif
 
-#include "SimpleNodeInfoMockUserFile.hxx"
+#include "openlcb/SimpleNodeInfoMockUserFile.hxx"
+
+#include "utils/format_utils.hxx"
 
 #ifdef __FreeRTOS__
 openlcb::MockSNIPUserFile::MockSNIPUserFile(const char *user_name,
@@ -45,9 +47,8 @@ openlcb::MockSNIPUserFile::MockSNIPUserFile(const char *user_name,
     : snipData_{2}
     , userFile_(MockSNIPUserFile::snip_user_file_path, &snipData_, false)
 {
-    strncpy(snipData_.user_name, user_name, sizeof(snipData_.user_name));
-    strncpy(snipData_.user_description, user_description,
-            sizeof(snipData_.user_description));
+    str_populate(snipData_.user_name, user_name);
+    str_populate(snipData_.user_description, user_description);
 }
 
 openlcb::MockSNIPUserFile::~MockSNIPUserFile()
@@ -63,8 +64,7 @@ openlcb::MockSNIPUserFile::MockSNIPUserFile(const char *user_name,
 {
     init_snip_user_file(userFile_.fd(), user_name, user_description);
     HASSERT(userFile_.name().size() < sizeof(snip_user_file_path));
-    strncpy(snip_user_file_path, userFile_.name().c_str(),
-            sizeof(snip_user_file_path));
+    str_populate(snip_user_file_path, userFile_.name().c_str());
 }
 
 char openlcb::MockSNIPUserFile::snip_user_file_path[128] = "/dev/zero";

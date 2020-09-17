@@ -35,6 +35,14 @@
 #include "utils/macros.h"
 #include "utils/format_utils.hxx"
 
+/// Translates a number 0..15 to a hex character.
+/// @param nibble input number
+/// @return character in 0-9a-f
+static char nibble_to_hex(unsigned nibble)
+{
+    return nibble <= 9 ? '0' + nibble : 'a' + (nibble - 10);
+}
+
 char* unsigned_integer_to_buffer_hex(unsigned int value, char* buffer)
 {
     int num_digits = 0;
@@ -50,16 +58,8 @@ char* unsigned_integer_to_buffer_hex(unsigned int value, char* buffer)
     do
     {
         HASSERT(num_digits >= 0);
-        unsigned int tmp2 = tmp % 16;
-        if (tmp2 <= 9)
-        {
-            buffer[num_digits--] = '0' + tmp2;
-        }
-        else
-        {
-            buffer[num_digits--] = 'a' + (tmp2 - 10);
-        }
-        tmp /= 16;
+        buffer[num_digits--] = nibble_to_hex(tmp & 0xf);
+        tmp >>= 4;
     } while (tmp);
     HASSERT(num_digits == -1);
     return ret;
@@ -80,16 +80,8 @@ char* uint64_integer_to_buffer_hex(uint64_t value, char* buffer)
     do
     {
         HASSERT(num_digits >= 0);
-        uint64_t tmp2 = tmp % 16;
-        if (tmp2 <= 9)
-        {
-            buffer[num_digits--] = '0' + tmp2;
-        }
-        else
-        {
-            buffer[num_digits--] = 'a' + (tmp2 - 10);
-        }
-        tmp /= 16;
+        buffer[num_digits--] = nibble_to_hex(tmp & 0xf);
+        tmp >>= 4;
     } while (tmp);
     HASSERT(num_digits == -1);
     return ret;
@@ -233,6 +225,19 @@ string int64_to_string_hex(int64_t value, unsigned padding)
     if (padding > ret.size())
     {
         ret.insert(0, padding - ret.size(), ' ');
+    }
+    return ret;
+}
+
+string string_to_hex(const string &arg)
+{
+    string ret;
+    ret.reserve(arg.size() * 2);
+    for (char c : arg)
+    {
+        uint8_t cc = static_cast<uint8_t>(c);
+        ret.push_back(nibble_to_hex((cc >> 4) & 0xf));
+        ret.push_back(nibble_to_hex(cc & 0xf));
     }
     return ret;
 }

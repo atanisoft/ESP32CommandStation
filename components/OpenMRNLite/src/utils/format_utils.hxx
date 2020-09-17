@@ -36,6 +36,7 @@
 #define _UTILS_FORMAT_UTILS_HXX_
 
 #include <string>
+#include <string.h>
 
 /** Renders an integer to string, left-justified. @param buffer must be an at
  * @param buffer must be an at least 10 character long array.
@@ -121,6 +122,12 @@ string uint64_to_string_hex(uint64_t value, unsigned padding = 0);
  */
 string int64_to_string_hex(int64_t value, unsigned padding = 0);
 
+/// Converts a (binary) string into a sequence of hex digits.
+/// @param arg input string
+/// @return string twice the length of arg with hex digits representing the
+/// original data.
+string string_to_hex(const string& arg);
+
 /// Formats a MAC address to string. Works both for Ethernet addresses as well
 /// as for OpenLCB node IDs.
 ///
@@ -155,6 +162,19 @@ string ipv4_to_string(uint8_t ip[4]);
 inline string ipv4_to_string(uint32_t ip)
 {
     return ipv4_to_string((uint8_t*)&ip);
+}
+
+/// Populates a character array with a C string. Copies the C string,
+/// appropriately truncating if it is too long and filling the remaining space
+/// with zeroes. Ensures that at least one null terminator character is
+/// present.
+/// @param dst a character array of fixed length, declared as char sdata[N]
+/// @param src a C string to fill it with.
+template <unsigned int N>
+inline void str_populate(char (&dst)[N], const char *src)
+{
+    strncpy(dst, src, N - 1);
+    dst[N - 1] = 0;
 }
 
 #endif // _UTILS_FORMAT_UTILS_HXX_

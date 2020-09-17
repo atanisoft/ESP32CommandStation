@@ -120,8 +120,7 @@ public:
                 }
                 break;
         }
-        strncpy(data_, str.c_str(), sizeof(data_) - 1);
-        data_[sizeof(data_) - 1] = '\0';
+        str_populate(data_, str.c_str());
         hasInitial_ = true;
     }
 

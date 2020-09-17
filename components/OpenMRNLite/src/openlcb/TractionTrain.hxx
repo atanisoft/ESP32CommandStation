@@ -38,6 +38,7 @@
 #include <set>
 
 #include "executor/Service.hxx"
+#include "openlcb/DefaultNodeRegistry.hxx"
 #include "openlcb/Node.hxx"
 #include "openlcb/TractionDefs.hxx"
 #include "openlcb/TrainInterface.hxx"
@@ -47,24 +48,6 @@ namespace openlcb
 
 
 class TrainService;
-
-/// Linked list entry for all registered consist clients for a given train
-/// node.
-struct ConsistEntry : public QMember {
-    ConsistEntry(NodeID s, uint8_t flags) : payload((s << 8) | flags) {}
-    NodeID get_slave() const {
-        return payload >> 8;
-    }
-    uint8_t get_flags() const {
-        return payload & 0xff;
-    }
-    void set_flags(uint8_t new_flags) {
-        payload ^= (payload & 0xff);
-        payload |= new_flags;
-    }
-private:
-    uint64_t payload;
-};
 
 /// Virtual node class for an OpenLCB train protocol node.
 ///
@@ -77,39 +60,17 @@ private:
 class TrainNode : public Node
 {
 public:
-    TrainNode(TrainService *service, TrainImpl *train);
     ~TrainNode();
 
-    If *iface() OVERRIDE;
-    bool is_initialized() OVERRIDE
-    {
-        return isInitialized_;
-    }
-    void set_initialized() OVERRIDE
-    {
-        isInitialized_ = 1;
-    }
+    /// @return the train implementation object for issuing control commands to
+    /// this train.
+    virtual TrainImpl *train() = 0;
 
-    // Used for restarting the stack.
-    void clear_initialized() OVERRIDE
-    {
-        isInitialized_ = 0;
-    }
+    /// @return the last stored controller node.
+    virtual NodeHandle get_controller() = 0;
 
-    TrainImpl *train()
-    {
-        return train_;
-    }
-
-    NodeHandle get_controller()
-    {
-        return controllerNodeId_;
-    }
-
-    void set_controller(NodeHandle id)
-    {
-        controllerNodeId_ = id;
-    }
+    /// @param id the controller node of this train.
+    virtual void set_controller(NodeHandle id) = 0;
 
     // Thread-safety information
     //
@@ -124,9 +85,71 @@ public:
     // before any consist change requests would reach the front of the queue
     // for the traction flow.
 
+    /// Adds a node ID to the consist targets. @return false if the node was
+    /// already in the target list, true if it was newly added.
+    /// @param tgt the destination of the consist link
+    /// @param flags consisting flags from the Traction protocol.
+    virtual bool add_consist(NodeID tgt, uint8_t flags) = 0;
+
+    /// Removes a node ID from the consist targets. @return true if the target
+    /// was removed, false if the target was not on the list.
+    /// @param tgt destination of consist link to remove.
+    virtual bool remove_consist(NodeID tgt) = 0;
+    
+    /// Fetch a given consist link.
+    /// @return The target of a given consist link, or NodeID(0) if there are
+    /// fewer than id consist targets.
+    /// @param id zero-based index of consist links.
+    /// @param flags retrieved consist link's flags go here.
+    virtual NodeID query_consist(int id, uint8_t* flags) = 0;
+
+    /// @return the number of slaves in this consist.
+    virtual int query_consist_length() = 0;
+};
+
+/// Linked list entry for all registered consist clients for a given train
+/// node.
+struct ConsistEntry : public QMember
+{
+    /// Creates a new consist entry storage.
+    /// @param s the stored node ID
+    /// @param flags the stored flag byte
+    ConsistEntry(NodeID s, uint8_t flags)
+        : payload((s << 8) | flags)
+    {
+    }
+    /// @return the stored Node ID.
+    NodeID get_slave() const
+    {
+        return payload >> 8;
+    }
+    /// @return the stored flags byte.
+    uint8_t get_flags() const
+    {
+        return payload & 0xff;
+    }
+    /// Overrides the stored flags.
+    /// @param new_flags the new value of the flags byte.
+    void set_flags(uint8_t new_flags)
+    {
+        payload ^= (payload & 0xff);
+        payload |= new_flags;
+    }
+
+private:
+    /// Data contents.
+    uint64_t payload;
+};
+
+/// Intermediate class which is still abstract, but adds implementation for the
+/// consist management functions.
+class TrainNodeWithConsist : public TrainNode {
+public:
+    ~TrainNodeWithConsist();
+    
     /** Adds a node ID to the consist targets. @return false if the node was
      * already in the target list, true if it was newly added. */
-    bool add_consist(NodeID tgt, uint8_t flags)
+    bool add_consist(NodeID tgt, uint8_t flags) override
     {
         if (!tgt)
         {
@@ -150,8 +173,8 @@ public:
     }
 
     /** Removes a node ID from the consist targets. @return true if the target
-     * was removesd, false if the target was not on the list. */
-    bool remove_consist(NodeID tgt)
+     * was removed, false if the target was not on the list. */
+    bool remove_consist(NodeID tgt) override
     {
         for (auto it = consistSlaves_.begin(); it != consistSlaves_.end(); ++it)
         {
@@ -168,7 +191,7 @@ public:
 
     /** Returns the consist target with offset id, or NodeID(0) if there are
      * fewer than id consist targets. id is zero-based. */
-    NodeID query_consist(int id, uint8_t* flags)
+    NodeID query_consist(int id, uint8_t* flags) override
     {
         int k = 0;
         for (auto it = consistSlaves_.begin();
@@ -184,7 +207,7 @@ public:
     }
 
     /** Returns the number of slaves in this consist. */
-    int query_consist_length()
+    int query_consist_length() override
     {
         int ret = 0;
         for (auto it = consistSlaves_.begin(); it != consistSlaves_.end();
@@ -194,38 +217,101 @@ public:
         return ret;
     }
 
+    TypedQueue<ConsistEntry> consistSlaves_;
+};
+
+/// Default implementation of a train node.
+class DefaultTrainNode : public TrainNodeWithConsist
+{
+public:
+    DefaultTrainNode(TrainService *service, TrainImpl *impl);
+    ~DefaultTrainNode();
+
+    NodeHandle get_controller() override
+    {
+        return controllerNodeId_;
+    }
+
+    void set_controller(NodeHandle id) override
+    {
+        controllerNodeId_ = id;
+    }
+
+    If *iface() override;
+    bool is_initialized() override
+    {
+        return isInitialized_;
+    }
+    void set_initialized() override
+    {
+        isInitialized_ = 1;
+    }
+    // Used for restarting the stack.
+    void clear_initialized() override
+    {
+        isInitialized_ = 0;
+    }
+
+    TrainImpl *train() override
+    {
+        return train_;
+    }
+
 protected:
+    /// Pointer to the traction service.
     TrainService *service_;
+    /// Pointer to the train implementation object.
     TrainImpl *train_;
 
 private:
+    /// Node is initialized bit for startup transient.
     unsigned isInitialized_ : 1;
 
     /// Controller node that is assigned to run this train. 0 if none.
     NodeHandle controllerNodeId_;
-    TypedQueue<ConsistEntry> consistSlaves_;
 };
 
-
 /// Train node class with a an OpenLCB Node ID from the DCC pool. Used for command stations.
-class TrainNodeForProxy : public TrainNode {
+class TrainNodeForProxy : public DefaultTrainNode
+{
 public:
+    /// Constructor.
+    /// @param service the traction service object that will own this node.
+    /// @param train the implementation object that the traction messages
+    /// should be forwarded to.
     TrainNodeForProxy(TrainService *service, TrainImpl *train);
 
+    /// Destructor.
+    ~TrainNodeForProxy();
+
+    /// @return the OpenLCB node ID, generated from the legacy protocol types
+    /// that we get from TrainImpl.
     NodeID node_id() OVERRIDE;
 };
 
 /// Train node class with a fixed OpenLCB Node ID. This is useful for native
 /// train nodes that are not dynamically generated by a command station.
-class TrainNodeWithId : public TrainNode {
+class TrainNodeWithId : public DefaultTrainNode
+{
 public:
+    /// Constructor.
+    /// @param service the traction service object that will own this node.
+    /// @param train the implementation object that the traction messages
+    /// should be forwarded to.
+    /// @param node_id the OpenLCB node ID for this train.
     TrainNodeWithId(TrainService *service, TrainImpl *train, NodeID node_id);
 
-    NodeID node_id() OVERRIDE {
+    /// Destructor.
+    ~TrainNodeWithId();
+
+    /// @return the openlcb node ID.
+    NodeID node_id() OVERRIDE
+    {
         return nodeId_;
     }
 
 private:
+    /// The OpenLCB node ID.
     NodeID nodeId_;
 };
 
@@ -237,7 +323,12 @@ private:
 class TrainService : public Service, private Atomic
 {
 public:
-    TrainService(If *iface);
+    /// Constructor.
+    /// @param iface the OpenLCB interface to which the train nodes are bound.
+    /// @param train_node_registry implementation of the
+    /// NodeRegistry. Ownership is transferred.
+    TrainService(
+        If *iface, NodeRegistry *train_node_registry = new DefaultNodeRegistry);
     ~TrainService();
 
     If *iface()
@@ -249,14 +340,27 @@ public:
         initialization flow for the train. */
     void register_train(TrainNode *node);
 
+    /// Removes a train node from the local interface.
+    /// @param node train to remove from registry.
+    void unregister_train(TrainNode *node);
+
+    /// Checks if the a given node is a train node operated by this Traction
+    /// Service.
+    /// @param node a virtual node
+    /// @return true if this is a known train node.
+    bool is_known_train_node(Node *node)
+    {
+        return nodes_->is_node_registered(node);
+    }
+
 private:
     struct Impl;
     /** Implementation flows. */
     Impl *impl_;
-
+    /** OpenLCB interface */
     If *iface_;
     /** List of train nodes managed by this Service. */
-    std::set<TrainNode *> nodes_;
+    std::unique_ptr<NodeRegistry> nodes_;
 };
 
 } // namespace openlcb

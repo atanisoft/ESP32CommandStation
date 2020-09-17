@@ -47,6 +47,7 @@
 #endif
 #include <fcntl.h>
 #include <ifaddrs.h>
+#include <array>
 
 #include "executor/StateFlow.hxx"
 #include "executor/Timer.hxx"

@@ -1,5 +1,5 @@
-/** @copyright
- * Copyright (c) 2018, Stuart W. Baker
+/** \copyright
+ * Copyright (c) 2020, Balazs Racz
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,34 +24,55 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * @file BroadcastTime.cxx
+ * \file DefaultNodeRegistry.hxx
  *
- * Implementation of a Broadcast Time Protocol Interface.
+ * Default implementations for data structures keyed by virtual nodes.
  *
- * @author Stuart W. Baker
- * @date 4 November 2018
+ * @author Balazs Racz
+ * @date 12 Sep 2020
  */
 
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200112L
-#endif
+#ifndef _OPENLCB_DEFAULTNODEREGISTRY_HXX_
+#define _OPENLCB_DEFAULTNODEREGISTRY_HXX_
 
-#include "openlcb/BroadcastTime.hxx"
+#include <set>
+
+#include "openlcb/NodeRegistry.hxx"
 
 namespace openlcb
 {
 
-//
-// BroadcastTimeClient::clear_timezone
-//
-void BroadcastTime::clear_timezone()
+class Node;
+
+class DefaultNodeRegistry : public NodeRegistry
 {
-// The ESP32 uses a single global timezone setting and that may conflict if the
-// system is using a different timezone than the one specified below.
-#ifndef ESP32
-    setenv("TZ", "GMT0", 1);
-    tzset();
-#endif // ! ESP32
-}
+public:
+    /// Adds a node to the list of registered nodes.
+    /// @param node a virtual node.
+    void register_node(openlcb::Node *node) override
+    {
+        nodes_.insert(node);
+    }
+
+    /// Removes a node from the list of registered nodes.
+    /// @param node a virtual node.
+    void unregister_node(openlcb::Node *node) override
+    {
+        nodes_.erase(node);
+    }
+
+    /// Checks if a node is registered.
+    /// @param node a virtual node.
+    /// @return true if this node has been registered.
+    bool is_node_registered(openlcb::Node *node) override
+    {
+        return nodes_.find(node) != nodes_.end();
+    }
+
+private:
+    std::set<Node *> nodes_;
+};
 
 } // namespace openlcb
+
+#endif // _OPENLCB_DEFAULTNODEREGISTRY_HXX_
