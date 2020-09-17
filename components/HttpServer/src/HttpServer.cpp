@@ -1,31 +1,55 @@
-/**********************************************************************
-ESP32 COMMAND STATION
-
-COPYRIGHT (c) 2019 Mike Dunston
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see http://www.gnu.org/licenses
-**********************************************************************/
+/** \copyright
+ * Copyright (c) 2019-2020, Mike Dunston
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are  permitted provided that the following conditions are met:
+ *
+ *  - Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ *  - Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * \file HttpServer.cpp
+ *
+ * Implementation of the HTTP server.
+ *
+ * @author Mike Dunston
+ * @date 13 Sept 2019
+ */
 
 #include "Httpd.h"
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <sys/fcntl.h>
+#include <sys/socket.h>
 
 #ifdef CONFIG_IDF_TARGET
 
+#if !defined(CONFIG_HTTP_DNS_LIGHT_OPENMRN_LIB)
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
+#endif // !CONFIG_HTTP_DNS_LIGHT_OPENMRN_LIB
+
 #include <esp_system.h>
 
 // this method is not exposed via the MDNS class today, declare it here so we
 // can call it if needed. This is implemented inside Esp32WiFiManager.cxx.
 void mdns_unpublish(const char *service);
-
 #endif // CONFIG_IDF_TARGET
 
 namespace http
@@ -54,7 +78,7 @@ Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name, const string service
   socket_timeout_.tv_sec = 0;
   socket_timeout_.tv_usec = MSEC_TO_USEC(config_httpd_socket_timeout_ms());
 
-#ifdef ESP32
+#if defined(CONFIG_IDF_TARGET) && !defined(CONFIG_HTTP_DNS_LIGHT_OPENMRN_LIB)
   // Hook into the Esp32WiFiManager to start/stop the listener automatically
   // based on the AP/Station interface status.
   Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
@@ -72,7 +96,7 @@ Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name, const string service
     stop_http_listener();
     stop_dns_listener();
   });
-#endif // CONFIG_IDF_TARGET
+#endif // CONFIG_IDF_TARGET && !CONFIG_HTTP_DNS_LIGHT_OPENMRN_LIB
 }
 
 Httpd::~Httpd()
@@ -163,7 +187,7 @@ void Httpd::broadcast_websocket_text(std::string &text)
 
 void Httpd::new_connection(int fd)
 {
-  sockaddr_in source;
+  struct sockaddr_in source;
   socklen_t source_len = sizeof(sockaddr_in);
   if (getpeername(fd, (sockaddr *)&source, &source_len))
   {

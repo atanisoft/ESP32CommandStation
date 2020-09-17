@@ -11,6 +11,12 @@
 # Note that FATAL will cause the MCU to reboot!
 
 menu "HTTP/DNS Server"
+    menu "Dependencies"
+        config HTTP_DNS_LIGHT_OPENMRN_LIB
+            bool "Include OpenMRN dependencies"
+            default y
+    endmenu
+    
     choice HTTP_DNS_LOGGING
         bool "DNS logging"
         default HTTP_DNS_LOGGING_MINIMAL

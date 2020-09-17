@@ -9,7 +9,7 @@ set(COMPONENT_ADD_INCLUDEDIRS "include" )
 set(COMPONENT_REQUIRES
     "DCCSignalGenerator"
     "esp_adc_cal"
-    "Esp32HttpServer"
+    "HttpServer"
     "spiffs"
     "vfs"
     "fatfs"

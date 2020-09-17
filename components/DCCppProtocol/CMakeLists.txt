@@ -10,7 +10,7 @@ set(COMPONENT_REQUIRES
     "Configuration"
     "DCCSignalGenerator"
     "DCCTurnoutManager"
-    "Esp32HttpServer"
+    "HttpServer"
     "GPIO"
 )
 
