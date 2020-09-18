@@ -254,7 +254,7 @@ public:
     
     string config =
       StringPrintf("\"hub\":%s,"
-                   "\"tx_power\":%d"
+                   "\"tx_power\":%d,"
                    "\"uplink\":{"
                      "\"reconnect\":%s,"
                      "\"auto_service\":\"%s\","
