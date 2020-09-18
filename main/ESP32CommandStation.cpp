@@ -66,6 +66,27 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 
 const char * buildTime = __DATE__ " " __TIME__;
 
+///////////////////////////////////////////////////////////////////////////////
+// If select() is enabled and the GC delay is less than 1500 usec increase the
+// delay to 1500.
+///////////////////////////////////////////////////////////////////////////////
+#if CONFIG_LCC_USE_SELECT && CONFIG_LCC_GC_DELAY_USEC < 1500
+#undef CONFIG_LCC_GC_DELAY_USEC
+#define CONFIG_LCC_GC_DELAY_USEC 1500
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+// If compiling with IDF v4.2+ ensure that select() is enabled.
+// NOTE: This must be done after the check above since we will be lowering the
+// delay value to only 500 usec.
+///////////////////////////////////////////////////////////////////////////////
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+#undef CONFIG_LCC_USE_SELECT
+#define CONFIG_LCC_USE_SELECT 1
+#undef CONFIG_LCC_GC_DELAY_USEC
+#define CONFIG_LCC_GC_DELAY_USEC 500
+#endif
+
 #if CONFIG_LCC_GC_NEWLINES
 ///////////////////////////////////////////////////////////////////////////////
 // This will generate newlines after GridConnect each packet being sent.
@@ -98,7 +119,7 @@ OVERRIDE_CONST_DEFERRED(gridconnect_buffer_size, (CONFIG_LWIP_TCP_MSS * 2));
 OVERRIDE_CONST_DEFERRED(gridconnect_buffer_delay_usec
                       , CONFIG_LCC_GC_DELAY_USEC);
 
-#if CONFIG_LCC_USE_SELECT || ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+#if CONFIG_LCC_USE_SELECT
 ///////////////////////////////////////////////////////////////////////////////
 // Enable usage of select() for GridConnect connections.
 ///////////////////////////////////////////////////////////////////////////////

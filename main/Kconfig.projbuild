@@ -90,7 +90,7 @@ menu "LCC Configuration"
 
     config LCC_GC_DELAY_USEC
         int "GridConnect packet delay (microseconds)"
-        default 1500 if LCC_HUB_USE_SELECT
+        default 1500 if LCC_USE_SELECT
         default 500
         depends on !LCC_TCP_STACK
         help
@@ -121,6 +121,8 @@ menu "LCC Configuration"
             By enabling this option OpenMRN will use select() to detect when a
             TCP/IP connection is ready to be serviced. When not enabled two
             extra threads are created for servicing the TCP/IP connection.
+            NOTE: Starting with IDF v4.2 this will be used regardless of this
+            setting.
 endmenu
 
 # note: nextion is not supported for v1.5.0
