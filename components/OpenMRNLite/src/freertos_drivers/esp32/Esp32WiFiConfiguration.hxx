@@ -69,7 +69,9 @@ public:
     /// Visible description for the WiFi TX Power.
     static constexpr const char *WIFI_TX_POWER_DESC =
         "WiFi Radio transmit power in dB increments. This can be used to limit "
-        "the WiFi range. This option generally does not need to be changed.";
+        "the WiFi range. This option generally does not need to be changed. "
+        "NOTE: Setting this option to a very low value can cause communication "
+        "failures.";
 
     /// <map> of possible key and descriptive values to show to the user for
     /// the power field.
@@ -144,12 +146,13 @@ CDI_GROUP_ENTRY(sleep, openlcb::Uint8ConfigEntry,
     Name(Esp32WiFiConfigurationParams::WIFI_POWER_SAVE_NAME),
     Description(Esp32WiFiConfigurationParams::WIFI_POWER_SAVE_DESC), Min(0),
     Max(1), Default(0), MapValues(Esp32WiFiConfigurationParams::BOOLEAN_MAP));
-/// Allows the WiFi system to use power-saving techniques to conserve power
-/// when the node is powered via battery.
+/// Allows adjustment of the WiFi TX power. This can be beneficial for reducing
+/// the available range of the SoftAP. However, it can cause communication
+/// failures when connecting nodes via TCP/IP.
 CDI_GROUP_ENTRY(tx_power, openlcb::Uint8ConfigEntry,
     Name(Esp32WiFiConfigurationParams::WIFI_TX_POWER_NAME),
     Description(Esp32WiFiConfigurationParams::WIFI_TX_POWER_DESC), Min(8),
-    Max(78), Default(78),
+    Max(79), Default(78),
     MapValues(Esp32WiFiConfigurationParams::WIFI_TX_POWER_MAP));
 // On the ESP32 S2 we do not expose the hub option.
 #if defined(CONFIG_IDF_TARGET_ESP32)

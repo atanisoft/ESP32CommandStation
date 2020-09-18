@@ -163,13 +163,14 @@ public:
     {
         mdnsService_ = cfg_.auto_address().service_name().read(configFd_);
         staticHost_ = cfg_.manual_address().ip_address().read(configFd_);
-        staticPort_ = CDI_READ_TRIMMED(cfg_.manual_address().port, configFd_);
+        staticPort_ =
+            CDI_READ_TRIM_DEFAULT(cfg_.manual_address().port, configFd_);
     }
 
     /// @return search mode for how to locate the server.
     SearchMode search_mode() override
     {
-        return (SearchMode)CDI_READ_TRIMMED(cfg_.search_mode, configFd_);
+        return (SearchMode)CDI_READ_TRIM_DEFAULT(cfg_.search_mode, configFd_);
     }
 
     /// @return null or empty string if any mdns server is okay to connect
@@ -184,7 +185,7 @@ public:
     /// last_host_name:last_port.
     bool enable_last() override
     {
-        return CDI_READ_TRIMMED(cfg_.reconnect, configFd_);
+        return CDI_READ_TRIM_DEFAULT(cfg_.reconnect, configFd_);
     }
 
     /// @return the last successfully used IP address, as dotted
@@ -198,7 +199,7 @@ public:
     /// @return the last successfully used port number.
     int last_port() override
     {
-        return CDI_READ_TRIMMED(cfg_.last_address().port, configFd_);
+        return CDI_READ_TRIM_DEFAULT(cfg_.last_address().port, configFd_);
     }
 
     /// Stores the last connection details for use when reconnect is enabled.
@@ -873,7 +874,7 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
             wifi->stop_hub();
             wifi->stop_uplink();
 
-            if (CDI_READ_TRIMMED(wifi->cfg_.sleep, wifi->configFd_))
+            if (CDI_READ_TRIM_DEFAULT(wifi->cfg_.sleep, wifi->configFd_))
             {
                 // When sleep is enabled this will trigger the WiFi system to
                 // only wake up every DTIM period to receive beacon updates.
@@ -895,12 +896,14 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
             // the initial configuration of the Station or SoftAP interface.
             if (!wifi->initialConfigLoad_)
             {
+                int8_t power =
+                    CDI_READ_TRIM_DEFAULT(wifi->cfg_.tx_power, wifi->configFd_);
+                LOG(INFO, "[WiFi] Setting TX power to: %d", power);
                 ESP_ERROR_CHECK_WITHOUT_ABORT(
-                    esp_wifi_set_max_tx_power(
-                        CDI_READ_TRIMMED(wifi->cfg_.tx_power, wifi->configFd_)));
+                    esp_wifi_set_max_tx_power(power));
             }
 #if defined(CONFIG_IDF_TARGET_ESP32)
-            if (CDI_READ_TRIMMED(wifi->cfg_.hub().enable, wifi->configFd_))
+            if (CDI_READ_TRIM_DEFAULT(wifi->cfg_.hub().enable, wifi->configFd_))
             {
                 // Since hub mode is enabled start the hub creation process.
                 wifi->start_hub();
@@ -945,7 +948,7 @@ void Esp32WiFiManager::start_hub()
 {
 #if defined(CONFIG_IDF_TARGET_ESP32)
     hubServiceName_ = cfg_.hub().service_name().read(configFd_);
-    uint16_t hub_port = CDI_READ_TRIMMED(cfg_.hub().port, configFd_);
+    uint16_t hub_port = CDI_READ_TRIM_DEFAULT(cfg_.hub().port, configFd_);
 
     LOG(INFO, "[Hub] Starting TCP/IP listener on port %d", hub_port);
     // TODO: find a better solution for this that does not require a cast and
@@ -1272,8 +1275,9 @@ void Esp32WiFiManager::on_station_started()
     }
 
     // Set the maximum transmit power before we connect to the SSID.
-    ESP_ERROR_CHECK_WITHOUT_ABORT(
-        esp_wifi_set_max_tx_power(CDI_READ_TRIMMED(cfg_.tx_power, configFd_)));
+    int8_t power = CDI_READ_TRIM_DEFAULT(cfg_.tx_power, configFd_);
+    LOG(INFO, "[WiFi] Setting TX power to: %d", power);
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_max_tx_power(power));
 
     LOG(INFO,
         "[WiFi] Station started, attempting to connect to SSID: %s.", ssid_);
@@ -1566,9 +1570,9 @@ void Esp32WiFiManager::on_softap_start()
 
         // Set the maximum transmit power. In the case of Station+SoftAP mode
         // this will be set as part of the station startup.
-        ESP_ERROR_CHECK_WITHOUT_ABORT(
-            esp_wifi_set_max_tx_power(
-                CDI_READ_TRIMMED(cfg_.tx_power, configFd_)));
+        int8_t power = CDI_READ_TRIM_DEFAULT(cfg_.tx_power, configFd_);
+        LOG(INFO, "[WiFi] Setting TX power to: %d", power);
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_max_tx_power(power));
     }
 
     // Schedule callbacks via the executor rather than call directly here.
