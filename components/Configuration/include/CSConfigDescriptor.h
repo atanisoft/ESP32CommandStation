@@ -40,7 +40,8 @@ namespace esp32cs
     /// LCC WiFi configuration.
     CDI_GROUP_ENTRY(wifi_lcc, WiFiConfiguration, Name("LCC WiFi Configuration"));
     /// H-Bridge configuration.
-    CDI_GROUP_ENTRY(hbridge, TrackOutputs, Name("H-Bridge Configuration"));
+    CDI_GROUP_ENTRY(hbridge, TrackOutputs, Name("H-Bridge Configuration"),
+                    RepName("H-Bridge"));
     /// Thermal Monitoring configuration.
     CDI_GROUP_ENTRY(thermal, ThermalConfiguration, Name("Thermal Configuration"));
     CDI_GROUP_END();

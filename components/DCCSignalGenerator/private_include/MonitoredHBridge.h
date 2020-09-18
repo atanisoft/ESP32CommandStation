@@ -147,7 +147,7 @@ public:
     LOG(INFO
       , "[LCC] MonitoredHBridge(%s) factory_reset(%d) invoked, defaulting "
         "configuration", name_.c_str(), fd);
-    cfg_.description().write(fd, StringPrintf("%s Track", name_.c_str()));
+    cfg_.description().write(fd, name_.c_str());
   }
 
   void poll_33hz(openlcb::WriteHelper *helper, Notifiable *done) override;
