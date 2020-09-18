@@ -89,7 +89,7 @@ OVERRIDE_CONST_DEFERRED(num_memory_spaces, CONFIG_LCC_MEMORY_SPACES);
 // Increase the GridConnect buffer size to improve performance by bundling more
 // than one GridConnect packet into the same send() call to the socket.
 ///////////////////////////////////////////////////////////////////////////////
-OVERRIDE_CONST_DEFERRED(gridconnect_buffer_size, (CONFIG_LWIP_TCP_MSS / 2));
+OVERRIDE_CONST_DEFERRED(gridconnect_buffer_size, (CONFIG_LWIP_TCP_MSS * 2));
 
 ///////////////////////////////////////////////////////////////////////////////
 // Increase the time for the buffer to fill up before sending it out over the
@@ -98,7 +98,7 @@ OVERRIDE_CONST_DEFERRED(gridconnect_buffer_size, (CONFIG_LWIP_TCP_MSS / 2));
 OVERRIDE_CONST_DEFERRED(gridconnect_buffer_delay_usec
                       , CONFIG_LCC_GC_DELAY_USEC);
 
-#if CONFIG_LCC_USE_SELECT
+#if CONFIG_LCC_USE_SELECT || ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
 ///////////////////////////////////////////////////////////////////////////////
 // Enable usage of select() for GridConnect connections.
 ///////////////////////////////////////////////////////////////////////////////
