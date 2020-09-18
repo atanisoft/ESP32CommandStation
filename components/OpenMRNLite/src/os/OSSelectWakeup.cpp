@@ -88,7 +88,7 @@ int OSSelectWakeup::select(int nfds, fd_set *readfds,
 #endif //ESP32
     struct timeval timeout;
     timeout.tv_sec = deadline_nsec / 1000000000LL;
-    timeout.tv_usec = (deadline_nsec / 1000LL) % 1000000LL;
+    timeout.tv_usec = deadline_nsec % 1000000000LL;
     int ret =
         ::select(nfds, readfds, writefds, exceptfds, &timeout);
 #elif !defined(OPENMRN_FEATURE_SINGLE_THREADED)
@@ -291,11 +291,7 @@ void OSSelectWakeup::esp_wakeup()
     woken_ = true;
 #if defined(ESP_IDF_VERSION_MAJOR)
     LOG(VERBOSE, "wakeup es %p %u", espSem_.sem, *(unsigned*)espSem_.sem);
-    if (espSem_.sem)
-    {
-        esp_vfs_select_triggered(espSem_);
-        espSem_.sem = nullptr;
-    }
+    esp_vfs_select_triggered(espSem_);
 #else
     LOG(VERBOSE, "wakeup es %p %u lws %p", espSem_, *(unsigned*)espSem_, lwipSem_);
     if (espSem_)
@@ -337,11 +333,7 @@ void OSSelectWakeup::esp_wakeup_from_isr()
     woken_ = true;
     BaseType_t woken = pdFALSE;
 #if defined(ESP_IDF_VERSION_MAJOR)
-    if (espSem_.sem)
-    {
-        esp_vfs_select_triggered_isr(espSem_, &woken);
-        espSem_.sem = nullptr;
-    }
+    esp_vfs_select_triggered_isr(espSem_, &woken);
 #else
     if (espSem_)
     {
