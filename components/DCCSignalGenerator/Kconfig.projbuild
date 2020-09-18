@@ -178,6 +178,16 @@ menu "DCC Signal"
             default n
             depends on OPS_RAILCOM
 
+        config OPS_RAILCOM_FEEDBACK_QUEUE
+            int "RailCom Feedback queue size"
+            default 10
+            depends on OPS_RAILCOM
+            help
+                This controls the number of RailCom feedback packets to
+                pre-allocate for receiving feedback from RailCom enabled DCC
+                decoders. This value must be larger than the OPS DCC packet
+                queue size.
+
         config OPS_DCC_PREAMBLE_BITS
             int "DCC packet preamble bits"
             range 11 20
@@ -188,8 +198,9 @@ menu "DCC Signal"
                 this must be at least 16.
 
         config OPS_PACKET_QUEUE_SIZE
-            int "Number of packets to queue for the OPS track"
+            int "OPS Track DCC Packet queue size"
             default 5
+            range 5 20
             help
                 This is the number of raw packets to allow for outbound
                 transmission to the track. Generally this does not need to
@@ -333,8 +344,9 @@ menu "DCC Signal"
                 only a problem with some brands of sound decoders.
 
         config PROG_PACKET_QUEUE_SIZE
-            int "Number of packets to queue for the PROG track"
+            int "PROG Track DCC Packet queue size"
             default 5
+            range 5 20
             help
                 This is the number of raw packets to allow for outbound
                 transmission to the track. Generally this does not need to

@@ -18,11 +18,14 @@ COPYRIGHT (c) 2020 Mike Dunston
 #ifndef ESP32_RAILCOM_DRIVER_H_
 #define ESP32_RAILCOM_DRIVER_H_
 
+#include "sdkconfig.h"
+
 #include <dcc/RailCom.hxx>
 #include <dcc/RailcomHub.hxx>
 #include <esp_intr_alloc.h>
 #include <esp32/clk.h>
 #include <esp32/rom/gpio.h>
+#include <freertos_drivers/arduino/DeviceBuffer.hxx>
 #include <freertos_drivers/arduino/RailcomDriver.hxx>
 #include <os/Gpio.hxx>
 #include <soc/dport_reg.h>
@@ -177,18 +180,7 @@ public:
 
   void set_feedback_key(uint32_t key) override
   {
-    if (railComFeedback_)
-    {
-      // send the feedback to the hub
-      railComHubFlow_->send(railComFeedback_);
-    }
-    // allocate a feedback packet
-    railComFeedback_ = railComHubFlow_->alloc();
-    if (railComFeedback_)
-    {
-      railComFeedback_->data()->reset(key);
-      railcomFeedbackKey_ = key;
-    }
+    railcomFeedbackKey_ = key;
   }
 
   void timer_tick()
@@ -225,9 +217,20 @@ public:
     return railcomPhase_;
   }
 
-  Buffer<dcc::RailcomHubData> *buf()
+  dcc::RailcomHubData *railcom_buffer()
   {
-    return railComFeedback_;
+    dcc::RailcomHubData *data = nullptr;
+    if (railComFeedbackBuffer_->data_write_pointer(&data) > 0)
+    {
+      data->reset(railcomFeedbackKey_);
+    }
+    return data;
+  }
+
+  void advance_railcom_buffer()
+  {
+    railComFeedbackBuffer_->advance(1);
+    railComFeedbackBuffer_->signal_condition_from_isr();
   }
 
   size_t rx_to_buf(uint8_t *buf, size_t max_len)
@@ -293,7 +296,8 @@ private:
 
   uintptr_t railcomFeedbackKey_{0}; 
   dcc::RailcomHubFlow *railComHubFlow_;
-  Buffer<dcc::RailcomHubData> *railComFeedback_{nullptr};
+  DeviceBuffer<dcc::RailcomHubData> *railComFeedbackBuffer_{
+    DeviceBuffer<dcc::RailcomHubData>::create(CONFIG_OPS_RAILCOM_FEEDBACK_QUEUE)};
   RailComPhase railcomPhase_{RailComPhase::PRE_CUTOUT};
   bool enabled_{false};
 };
@@ -312,26 +316,24 @@ static void esp32_railcom_uart_isr(void *param)
   portENTER_CRITICAL_SAFE(&esp32_uart_mux);
   Esp32RailComDriver<HW> *driver =
     reinterpret_cast<Esp32RailComDriver<HW> *>(param);
-  Buffer<dcc::RailcomHubData> *fb = driver->buf();
-  uint8_t rx_buf[6] = {0};
-
-  if (driver->railcom_phase() ==
-      Esp32RailComDriver<HW>::RailComPhase::CUTOUT_PHASE1)
+  dcc::RailcomHubData *fb = driver->railcom_buffer();
+  uint8_t rx_buf[6] = {0, 0, 0, 0, 0, 0};
+  size_t rx_bytes = driver->rx_to_buf(rx_buf, 6);
+  if (fb)
   {
-    size_t rx_bytes = driver->rx_to_buf(rx_buf, 2);
     for (size_t idx = 0; idx < rx_bytes; idx++)
     {
-      fb->data()->add_ch1_data(rx_buf[idx]);
+      if (driver->railcom_phase() ==
+          Esp32RailComDriver<HW>::RailComPhase::CUTOUT_PHASE1)
+      {
+        fb->add_ch1_data(rx_buf[idx]);
+      }
+      else
+      {
+        fb->add_ch2_data(rx_buf[idx]);
+      }
     }
-  }
-  else if (driver->railcom_phase() ==
-            Esp32RailComDriver<HW>::RailComPhase::CUTOUT_PHASE2)
-  {
-    size_t rx_bytes = driver->rx_to_buf(rx_buf, 6);
-    for (size_t idx = 0; idx < rx_bytes; idx++)
-    {
-      fb->data()->add_ch2_data(rx_buf[idx]);
-    }
+    driver->advance_railcom_buffer();
   }
   // clear interrupt status
   HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
