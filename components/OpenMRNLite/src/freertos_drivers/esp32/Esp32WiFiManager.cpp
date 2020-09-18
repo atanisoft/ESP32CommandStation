@@ -418,6 +418,7 @@ void Esp32WiFiManager::factory_reset(int fd)
 
     // General WiFi configuration settings.
     CDI_FACTORY_RESET(cfg_.sleep);
+    CDI_FACTORY_RESET(cfg_.tx_power);
 
 #if defined(CONFIG_IDF_TARGET_ESP32)
     // Hub specific configuration settings.
@@ -1333,7 +1334,8 @@ void Esp32WiFiManager::on_station_disconnected(uint8_t reason)
     else
     {
         LOG(INFO,
-            "[WiFi] Connection failed, reconnecting to SSID: %s.", ssid_);
+            "[WiFi] Connection failed, reconnecting to SSID: %s (reason:%d).",
+            ssid_, reason);
     }
     esp_wifi_connect();
 
