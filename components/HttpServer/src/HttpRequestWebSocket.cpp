@@ -216,6 +216,7 @@ StateFlowBase::Action WebSocketFlow::handshake_sent()
     return yield_and_call(STATE(shutdown_connection));
   }
   handler_(this, WebSocketEvent::WS_EVENT_CONNECT, nullptr, 0);
+  connect_event_sent_ = true;
   return yield_and_call(STATE(read_frame_header));
 }
 
@@ -373,7 +374,10 @@ StateFlowBase::Action WebSocketFlow::recv_frame_data()
 
 StateFlowBase::Action WebSocketFlow::shutdown_connection()
 {
-  handler_(this, WebSocketEvent::WS_EVENT_DISCONNECT, nullptr, 0);
+  if (connect_event_sent_)
+  {
+    handler_(this, WebSocketEvent::WS_EVENT_DISCONNECT, nullptr, 0);
+  }
   server_->schedule_cleanup(this);
   return exit();
 }

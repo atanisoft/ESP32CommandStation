@@ -1265,6 +1265,10 @@ private:
   /// WebSocket connection at it's next opportunity.
   bool close_requested_{false};
 
+  /// Flag to indicate that the @ref WebSocketHandler has been invoked for
+  /// connect and the disconnect event should be sent.
+  bool connect_event_sent_{false};
+
   // helper for fully reading a data block with a timeout so we can close the
   // socket if there are too many timeout errors
   uint8_t *buf_{nullptr};
