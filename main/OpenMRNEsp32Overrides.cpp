@@ -35,27 +35,37 @@ extern "C"
 void *node_reboot(void *arg)
 {
   // shutdown any background refresh tasks.
+  LOG(ALWAYS, "[Reboot] Shutting down DCC signal generator(s)...");
   esp32cs::shutdown_dcc_vfs();
   Singleton<FreeRTOSTaskMonitor>::instance()->stop();
+#if !CONFIG_DISPLAY_TYPE_NONE
+  LOG(ALWAYS, "[Reboot] Shutting down StatusDisplay...");
   Singleton<StatusDisplay>::instance()->stop();
+#endif
 #if CONFIG_STATUS_LED
   Singleton<StatusLED>::instance()->stop();
 #endif
+  LOG(ALWAYS, "[Reboot] Shutting down DCC turnout manager...");
   Singleton<TurnoutManager>::instance()->stop();
+  LOG(ALWAYS, "[Reboot] Shutting down Train Database...");
   Singleton<esp32cs::Esp32TrainDatabase>::instance()->stop();
   if (Singleton<http::Httpd>::exists())
   {
+    LOG(ALWAYS, "[Reboot] Waiting for httpd to shutdown...");
     // sleep for 1 sec to give time for restart broadcast (if needed)
     usleep(1000);
     Singleton<http::Httpd>::instance()->executor()->shutdown();
   }
+  LOG(ALWAYS, "[Reboot] Shutting down WiFi...");
   Singleton<esp32cs::LCCWiFiManager>::instance()->shutdown();
+  LOG(ALWAYS, "[Reboot] Shutting down Lcc stack...");
   Singleton<esp32cs::LCCStackManager>::instance()->shutdown();
   
+  LOG(ALWAYS, "[Reboot] Shutting down Filesystem...");
   // shutdown and cleanup the configuration manager
   Singleton<FileSystemManager>::instance()->shutdown();
 
-  LOG(INFO, "Restarting ESP32 Command Station");
+  LOG(ALWAYS, "[Reboot] Everything shutdown, invoking esp_restart...");
   // restart the node
   esp_restart();
 }
