@@ -987,12 +987,16 @@ HTTP_HANDLER_IMPL(process_loco, request)
         if (request->has_param(JSON_NAME_NODE))
         {
           auto name = request->param(JSON_NAME_NODE);
-          if (name.empty() || name.length() > 16)
+          if (name.length() > 16)
           {
             LOG_ERROR("[WebSrv] Received locomotive name that is too long, "
                       "returning error.\n%s", request->to_string().c_str());
             request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
             return nullptr;
+          }
+          else if (name.empty())
+          {
+            name = integer_to_string(address);
           }
           traindb->set_train_name(address, name);
         }
