@@ -339,11 +339,10 @@ public:
 
     Action send_new_node_response()
     {
-      auto *b = get_allocation_result(
-          tractionService_->iface()->global_message_write_flow());
+      auto *b = get_allocation_result(iface()->global_message_write_flow());
       b->data()->reset(openlcb::Defs::MTI_PRODUCER_IDENTIFIED_VALID, newNodeId_,
                        openlcb::eventid_to_buffer(eventId_));
-      tractionService_->iface()->global_message_write_flow()->send(b);
+      iface()->global_message_write_flow()->send(b);
       return exit();
     }
 
@@ -357,7 +356,6 @@ public:
       return parent_->iface();
     }
     FindProtocolServer *parent_;
-    openlcb::TrainService* tractionService_;
 
     openlcb::EventId eventId_;
     union
