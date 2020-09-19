@@ -41,6 +41,7 @@
 #include <openlcb/SimpleInfoProtocol.hxx>
 #include <utils/Singleton.hxx>
 
+#include "AllTrainNodesInterface.hxx"
 #include "TrainDb.hxx"
 
 namespace openlcb
@@ -56,7 +57,8 @@ namespace commandstation
 {
 class FindProtocolServer;
 
-class AllTrainNodes : public Singleton<AllTrainNodes>
+class AllTrainNodes : public AllTrainNodesInterface
+                    , public Singleton<AllTrainNodes>
 {
  public:
   AllTrainNodes(TrainDb* db, openlcb::TrainService* traction_service,
@@ -77,16 +79,21 @@ class AllTrainNodes : public Singleton<AllTrainNodes>
   openlcb::TrainImpl* get_train_impl(DccMode drive_type, int address);
 
   /// Returns a traindb entry or nullptr if the id is too high.
-  std::shared_ptr<TrainDbEntry> get_traindb_entry(int id);
+  std::shared_ptr<TrainDbEntry> get_traindb_entry(size_t id) override;
 
   /// Returns a node id or 0 if the id is not known to be a train.
-  openlcb::NodeID get_train_node_id(int id, bool allocate=true);
+  openlcb::NodeID get_train_node_id(size_t id) override
+  {
+    return get_train_node_id_ext(id, true);
+  }
+
+  openlcb::NodeID get_train_node_id_ext(size_t id, bool allocate=true);
 
   /// Creates a new train node based on the given address and drive mode.
   /// @param drive_type describes what kind of train node this should be
   /// @param address is the hardware (legacy) address
   /// @return 0 if the allocation fails (invalid arguments)
-  openlcb::NodeID allocate_node(DccMode drive_type, int address);
+  openlcb::NodeID allocate_node(DccMode drive_type, unsigned address) override;
 
   /// Return the maximum number of locomotives currently being serviced.
   size_t size();
@@ -105,6 +112,9 @@ class AllTrainNodes : public Singleton<AllTrainNodes>
   /// Impl structure will be returned. If the node is not known (or not a train
   /// node maintained by this object), we return nullptr.
   Impl* find_node(openlcb::Node* node);
+
+  /// Extension to the find_node implementation that exposes the option to not
+  /// allocate a node when no existing node is found.
   Impl* find_node(openlcb::NodeID node_id, bool allocate=true);
 
   /// Helper function to create lok objects. Adds a new Impl structure to
@@ -113,7 +123,6 @@ class AllTrainNodes : public Singleton<AllTrainNodes>
 
   // Externally owned.
   TrainDb* db_;
-  openlcb::TrainService* tractionService_;
   openlcb::MemoryConfigHandler* memoryConfigService_;
   openlcb::MemorySpace* ro_train_cdi_;
   openlcb::MemorySpace* ro_tmp_train_cdi_;

@@ -652,7 +652,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(StatusCommand,
   auto trains = Singleton<commandstation::AllTrainNodes>::instance();
   for (size_t id = 0; id < trains->size(); id++)
   {
-    auto nodeid = trains->get_train_node_id(id);
+    auto nodeid = trains->get_train_node_id_ext(id, false);
     if (nodeid)
     {
       auto impl = trains->get_train_impl(nodeid);
