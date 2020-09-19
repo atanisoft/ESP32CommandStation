@@ -101,6 +101,11 @@ GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_HBRIDGE_ENABLE_PIN);
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 16
 #endif
 
+#if !defined(CONFIG_OPS_RAILCOM_FEEDBACK_QUEUE) || \
+    (CONFIG_OPS_RAILCOM_FEEDBACK_QUEUE < CONFIG_OPS_PACKET_QUEUE_SIZE)
+#define CONFIG_OPS_RAILCOM_FEEDBACK_QUEUE (CONFIG_OPS_PACKET_QUEUE_SIZE * 2)
+#endif // CONFIG_OPS_RAILCOM_FEEDBACK_QUEUE
+
 /// RailCom detector enable pin, active HIGH.
 GPIO_PIN(OPS_RAILCOM_ENABLE, GpioOutputSafeLow, CONFIG_OPS_RAILCOM_ENABLE_PIN);
 
@@ -167,7 +172,7 @@ struct RailComHW
 };
 
 /// RailCom driver instance for the OPS track.
-Esp32RailComDriver<RailComHW> opsRailComDriver;
+Esp32RailComDriver<RailComHW> opsRailComDriver(CONFIG_OPS_RAILCOM_FEEDBACK_QUEUE);
 
 #else
 

@@ -18,8 +18,6 @@ COPYRIGHT (c) 2020 Mike Dunston
 #ifndef ESP32_RAILCOM_DRIVER_H_
 #define ESP32_RAILCOM_DRIVER_H_
 
-#include "sdkconfig.h"
-
 #include <dcc/RailCom.hxx>
 #include <dcc/RailcomHub.hxx>
 #include <esp_intr_alloc.h>
@@ -37,7 +35,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 
 namespace esp32cs
 {
-
+  
 template <class HW>
 static void esp32_railcom_timer_tick(void *param);
 
@@ -56,7 +54,8 @@ template <class HW>
 class Esp32RailComDriver : public RailcomDriver
 {
 public:
-  Esp32RailComDriver()
+  Esp32RailComDriver(size_t queue_size)
+    : railComFeedbackBuffer_(DeviceBuffer<dcc::RailcomHubData>::create(queue_size))
   {
   }
 
@@ -253,7 +252,6 @@ public:
   }
 
 private:
-
   void configure_timer(bool reload, uint16_t divider, bool enable, bool count_up, uint64_t alarm, bool alarm_en)
   {
     portENTER_CRITICAL_SAFE(&esp32_timer_mux);
@@ -296,8 +294,7 @@ private:
 
   uintptr_t railcomFeedbackKey_{0}; 
   dcc::RailcomHubFlow *railComHubFlow_;
-  DeviceBuffer<dcc::RailcomHubData> *railComFeedbackBuffer_{
-    DeviceBuffer<dcc::RailcomHubData>::create(CONFIG_OPS_RAILCOM_FEEDBACK_QUEUE)};
+  DeviceBuffer<dcc::RailcomHubData> *railComFeedbackBuffer_;
   RailComPhase railcomPhase_{RailComPhase::PRE_CUTOUT};
   bool enabled_{false};
 };
