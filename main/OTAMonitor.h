@@ -55,7 +55,9 @@ public:
     Singleton<StatusLED>::instance()->setStatusLED(
       StatusLED::LED::EXT_2, StatusLED::COLOR::GREEN_BLINK, true);
 #endif // CONFIG_STATUS_LED
+#if !CONFIG_DISPLAY_TYPE_NONE
     Singleton<StatusDisplay>::instance()->status("Update starting");
+#endif // !CONFIG_DISPLAY_TYPE_NONE
 #if CONFIG_NEXTION
     titlePage_->show();
     titlePage_->setStatusText(0, "OTA Started...");
@@ -81,8 +83,9 @@ public:
     titlePage_->setStatusText(1, "Update Complete");
     titlePage_->setStatusText(2, "Rebooting");
 #endif
+#if !CONFIG_DISPLAY_TYPE_NONE
     Singleton<StatusDisplay>::instance()->status("Update Complete");
-
+#endif // !CONFIG_DISPLAY_TYPE_NONE
     // reset countdown and trigger the restart
     countdown_ = StatusLED::LED::MAX_LED;
     start_flow(STATE(delay_and_reboot));
@@ -106,8 +109,10 @@ public:
 #if CONFIG_NEXTION
     titlePage_->setStatusText(1, esp_err_to_name(err));
 #endif
+#if !CONFIG_DISPLAY_TYPE_NONE
     Singleton<StatusDisplay>::instance()->status(esp_err_to_name(err));
-
+#endif // !CONFIG_DISPLAY_TYPE_NONE
+    LOG_ERROR("[OTA] Failure: %s", esp_err_to_name(err));
     // restart the node due to failure
     start_flow(STATE(reboot_node));
    }
@@ -115,7 +120,9 @@ public:
   void report_progress(uint32_t progress)
   {
     progress_ += progress;
+#if !CONFIG_DISPLAY_TYPE_NONE
     Singleton<StatusDisplay>::instance()->status("Recv: %d", progress_);
+#endif // !CONFIG_DISPLAY_TYPE_NONE
 #if CONFIG_NEXTION
     titlePage_->setStatusText(1
                             , StringPrintf("Received: %d", progress_).c_str());
@@ -145,12 +152,14 @@ private:
       Singleton<StatusLED>::instance()->setStatusLED(
         (StatusLED::LED)countdown_, StatusLED::COLOR::OFF);
 #endif // CONFIG_STATUS_LED
+#if !CONFIG_DISPLAY_TYPE_NONE
       Singleton<StatusDisplay>::instance()->status("reboot in %2d...", countdown_);
-      LOG(WARNING, "ESP32 will reboot in %d seconds...", countdown_);
+#endif // !CONFIG_DISPLAY_TYPE_NONE
+      LOG(WARNING, "[OTA] Rebooting in %d seconds...", countdown_);
       --countdown_;
       return sleep_and_call(&timer_, SEC_TO_NSEC(1), STATE(delay_and_reboot));
     }
-    LOG(WARNING, "ESP32 will reboot NOW!");
+    LOG(WARNING, "[OTA] Rebooting!");
     return call_immediately(STATE(reboot_node));
   }
 };

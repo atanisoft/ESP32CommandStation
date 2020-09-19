@@ -177,7 +177,9 @@ uninitialized<NextionHMI> nextionHMI;
 void nextionInterfaceInit(Service *service)
 {
 #if CONFIG_NEXTION
+#if !CONFIG_DISPLAY_TYPE_NONE
   Singleton<StatusDisplay>::instance()->status("Init Nextion");
+#endif // !CONFIG_DISPLAY_TYPE_NONE
   nextionHMI.emplace(service);
   auto nextionTitlePage = static_cast<NextionTitlePage *>(nextionPages[TITLE_PAGE]);
   nextionTitlePage->setStatusText(0, "Starting up...");

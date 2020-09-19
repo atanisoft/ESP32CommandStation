@@ -290,9 +290,11 @@ extern "C" void app_main()
   init_webserver(cfg);
 #endif
 
+#if !CONFIG_DISPLAY_TYPE_NONE
   // Initialize the status display module (dependency of WiFi)
   StatusDisplay statusDisplay(stackManager.stack()
                             , stackManager.service());
+#endif // !CONFIG_DISPLAY_TYPE_NONE
 
 #if CONFIG_NEXTION
   // Initialize the Nextion module (dependency of WiFi)
@@ -399,7 +401,9 @@ extern "C" void app_main()
   FreeRTOSTaskMonitor taskMon(stackManager.service());
 
   LOG(INFO, "\n\nESP32 Command Station Startup complete!\n");
+#if !CONFIG_DISPLAY_TYPE_NONE
   Singleton<StatusDisplay>::instance()->status("ESP32-CS Started");
+#endif // !CONFIG_DISPLAY_TYPE_NONE
 
   // donate our task thread to OpenMRN executor.
   stackManager.stack()->loop_executor();
