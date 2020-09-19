@@ -318,17 +318,17 @@
           </select>
           <label for="cs-wifi-tx-power">WiFi TX Power:</label>
           <select id="cs-wifi-tx-power">
-           <option value="8">2 dB</option>
-           <option value="20">5 dB</option>
-           <option value="28">7 dB</option>
-           <option value="34">8 dB</option>
-           <option value="44">11 dB</option>
-           <option value="52">13 dB</option>
-           <option value="56">14 dB</option>
-           <option value="60">15 dB</option>
-           <option value="66">16 dB</option>
-           <option value="72">18 dB</option>
-           <option value="78">20 dB</option>
+           <option value="8">2 dBm</option>
+           <option value="20">5 dBm</option>
+           <option value="28">7 dBm</option>
+           <option value="34">8 dBm</option>
+           <option value="44">11 dBm</option>
+           <option value="52">13 dBm</option>
+           <option value="56">14 dBm</option>
+           <option value="60">15 dBm</option>
+           <option value="66">16 dBm</option>
+           <option value="72">18 dBm</option>
+           <option value="78">20 dBm</option>
           </select>
          </div>
          <div class="ui-field-contain" id="cs-wifi-sta-div">
@@ -1135,7 +1135,7 @@ function csConfigUpdate(data) {
  $('#cs-wifi-sta-div').hide();
  $('#cs-wifi-connect').hide();
  $('#cs-wifi-mode').val(data.wifi.mode).change();
- $('#cs-wifi-tx-power').val(data.wifi.tx_power).change();
+ $('#cs-wifi-tx-power').val(data.tx_power).change();
  if(data.wifi.mode !== 'softap') {
   $('#cs-wifi-sta-div').show();
   $('#cs-wifi-connect').show();
