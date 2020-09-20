@@ -65,11 +65,14 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <JmriInterface.h>
 #endif
 
+#if !CONFIG_ESP32CS_SINGLE_EXECUTOR
 ///////////////////////////////////////////////////////////////////////////////
 // Set the priority of the httpd executor to the effective value used for the
-// primary OpenMRN executor.
+// primary OpenMRN executor. This is necessary to ensure the executor is not
+// starved of cycles due to the CAN driver.
 ///////////////////////////////////////////////////////////////////////////////
 OVERRIDE_CONST_DEFERRED(httpd_server_priority, (ESP_TASK_MAIN_PRIO + 3));
+#endif // !CONFIG_ESP32CS_SINGLE_EXECUTOR
 
 ///////////////////////////////////////////////////////////////////////////////
 // If select() is enabled and the GC delay is less than 1500 usec increase the
@@ -291,7 +294,11 @@ extern "C" void app_main()
 #if !defined(CONFIG_WIFI_MODE_DISABLED)
   // Initialize the Http server and mDNS instance
   MDNS mDNS;
-  http::Httpd httpd(&mDNS);
+  http::Httpd httpd(
+#if CONFIG_ESP32CS_SINGLE_EXECUTOR
+    stackManager.executor(),
+#endif
+    &mDNS);
   init_webserver(cfg);
 #endif
 

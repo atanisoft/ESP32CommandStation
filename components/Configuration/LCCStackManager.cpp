@@ -227,6 +227,11 @@ openlcb::SimpleStackBase *LCCStackManager::stack()
   return stack_;
 }
 
+ExecutorBase *LCCStackManager::executor()
+{
+  return stack_->executor();
+}
+
 Service *LCCStackManager::service()
 {
   return stack_->service();

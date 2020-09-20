@@ -28,6 +28,7 @@ namespace openlcb
 }
 
 class AutoSyncFileFlow;
+class ExecutorBase;
 class Service;
 
 namespace openmrn_arduino
@@ -43,6 +44,7 @@ class LCCStackManager : public Singleton<LCCStackManager>
 public:
   LCCStackManager(const esp32cs::Esp32ConfigDef &cfg);
   openlcb::SimpleStackBase *stack();
+  ExecutorBase *executor();
   Service *service();
   openlcb::Node *node();
   openlcb::SimpleInfoFlow *info_flow();
