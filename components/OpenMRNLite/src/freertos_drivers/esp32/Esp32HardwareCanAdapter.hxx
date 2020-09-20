@@ -97,10 +97,10 @@ public:
         ESP_ERROR_CHECK(can_driver_install(
             &can_general_config, &can_timing_config, &can_filter_config));
 
-        os_thread_create(&rxTaskHandle_,  "CAN-RX", RX_TASK_PRIORITY,
-                         RX_TASK_STACK_SIZE, rx_task, this);
-        os_thread_create(&txTaskHandle_,  "CAN-TX", TX_TASK_PRIORITY,
-                         TX_TASK_STACK_SIZE, tx_task, this);
+        xTaskCreate(rx_task, "CAN-RX", RX_TASK_STACK_SIZE, this,
+                    RX_TASK_PRIORITY, &rxTaskHandle_);
+        xTaskCreate(tx_task, "CAN-TX", TX_TASK_STACK_SIZE, this,
+                    TX_TASK_PRIORITY, &txTaskHandle_);
     }
 
     ~Esp32HardwareCan()
@@ -141,11 +141,11 @@ private:
 
     /// Handle for the tx_task that converts and transmits can_frame to the
     /// native can driver.
-    os_thread_t txTaskHandle_;
+    TaskHandle_t txTaskHandle_;
 
     /// Handle for the rx_task that receives and converts the native can driver
     /// frames to can_frame.
-    os_thread_t rxTaskHandle_;
+    TaskHandle_t rxTaskHandle_;
 
     /// Interval at which to print the ESP32 CAN bus status.
     static constexpr TickType_t STATUS_PRINT_INTERVAL = pdMS_TO_TICKS(10000);
@@ -159,20 +159,20 @@ private:
 
     /// Priority to use for the rx_task. This needs to be higher than the
     /// tx_task and lower than @ref OPENMRN_TASK_PRIORITY.
-    static constexpr UBaseType_t RX_TASK_PRIORITY = ESP_TASK_TCPIP_PRIO - 2;
+    static constexpr UBaseType_t RX_TASK_PRIORITY = ESP_TASK_MAIN_PRIO + 2;
 
     /// Stack size to allocate for the ESP32 CAN TX task.
     static constexpr uint32_t TX_TASK_STACK_SIZE = 2048L;
 
     /// Priority to use for the tx_task. This should be lower than
     /// @ref RX_TASK_PRIORITY and @ref OPENMRN_TASK_PRIORITY.
-    static constexpr UBaseType_t TX_TASK_PRIORITY = ESP_TASK_TCPIP_PRIO - 3;
+    static constexpr UBaseType_t TX_TASK_PRIORITY = ESP_TASK_MAIN_PRIO + 1;
 
     /// Background task that takes care of the conversion of the @ref can_frame
     /// provided by the @ref txBuf into an ESP32 can_message_t which can be
     /// processed by the native CAN driver. This task also covers the periodic
     /// status reporting and BUS recovery when necessary.
-    static void *tx_task(void *can)
+    static void tx_task(void *can)
     {
         /// Get handle to our parent Esp32HardwareCan object to access the
         /// txBuf.
@@ -293,13 +293,12 @@ private:
                 vTaskDelay(TX_DEFAULT_DELAY);
             }
         } // loop on task
-        return nullptr;
     }
 
     /// Background task that takes care of receiving can_message_t objects from
     /// the ESP32 native CAN driver, when they are available, converting them to
     /// a @ref can_frame and pushing them to the @ref rxBuf.
-    static void *rx_task(void *can)
+    static void rx_task(void *can)
     {
         /// Get handle to our parent Esp32HardwareCan object to access the rxBuf
         Esp32HardwareCan *parent = reinterpret_cast<Esp32HardwareCan *>(can);
@@ -375,7 +374,6 @@ private:
             parent->rxBuf->advance(1);
             parent->rxBuf->signal_condition();
         }
-        return nullptr;
     }
     DISALLOW_COPY_AND_ASSIGN(Esp32HardwareCan);
 };

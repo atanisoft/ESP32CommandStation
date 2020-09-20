@@ -31,6 +31,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <esp_adc_cal.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
+#include <esp_task.h>
 #include <executor/PoolToQueueFlow.hxx>
 #include <FreeRTOSTaskMonitor.h>
 #include <HC12Radio.h>
@@ -64,7 +65,11 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <JmriInterface.h>
 #endif
 
-const char * buildTime = __DATE__ " " __TIME__;
+///////////////////////////////////////////////////////////////////////////////
+// Set the priority of the httpd executor to the effective value used for the
+// primary OpenMRN executor.
+///////////////////////////////////////////////////////////////////////////////
+OVERRIDE_CONST_DEFERRED(httpd_server_priority, (ESP_TASK_MAIN_PRIO + 3));
 
 ///////////////////////////////////////////////////////////////////////////////
 // If select() is enabled and the GC delay is less than 1500 usec increase the
@@ -404,6 +409,9 @@ extern "C" void app_main()
 #if !CONFIG_DISPLAY_TYPE_NONE
   Singleton<StatusDisplay>::instance()->status("ESP32-CS Started");
 #endif // !CONFIG_DISPLAY_TYPE_NONE
+
+  // increase our task priority to higher than the CAN driver
+  vTaskPrioritySet(nullptr, ESP_TASK_MAIN_PRIO + 3);
 
   // donate our task thread to OpenMRN executor.
   stackManager.stack()->loop_executor();
