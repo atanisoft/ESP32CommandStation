@@ -41,9 +41,7 @@
 
 #ifdef CONFIG_IDF_TARGET
 
-#if !defined(CONFIG_HTTP_DNS_LIGHT_OPENMRN_LIB)
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
-#endif // !CONFIG_HTTP_DNS_LIGHT_OPENMRN_LIB
 
 #include <esp_system.h>
 
@@ -65,7 +63,8 @@ void incoming_http_connection(int fd)
   Singleton<Httpd>::instance()->new_connection(fd);
 }
 
-Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name, const string service_name)
+Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name
+           , const string service_name)
   : Service(&executor_)
   , name_(name)
   , mdns_(mdns)
@@ -74,36 +73,30 @@ Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name, const string service
             , config_httpd_server_stack_size())
   , port_(port)
 {
-  // pre-initialize the timeout parameters for all sockets that are accepted
-  socket_timeout_.tv_sec = 0;
-  socket_timeout_.tv_usec = MSEC_TO_USEC(config_httpd_socket_timeout_ms());
+  init_server();
+}
 
-#if defined(CONFIG_IDF_TARGET) && !defined(CONFIG_HTTP_DNS_LIGHT_OPENMRN_LIB)
-  // Hook into the Esp32WiFiManager to start/stop the listener automatically
-  // based on the AP/Station interface status.
-  Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
-  [&](esp_interface_t interface, uint32_t ip)
-  {
-    if (interface == ESP_IF_WIFI_AP)
-    {
-      start_dns_listener(ntohl(ip));
-    }
-    start_http_listener();
-  });
-  Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
-  [&](esp_interface_t interface)
-  {
-    stop_http_listener();
-    stop_dns_listener();
-  });
-#endif // CONFIG_IDF_TARGET && !CONFIG_HTTP_DNS_LIGHT_OPENMRN_LIB
+Httpd::Httpd(ExecutorBase *executor, MDNS *mdns, uint16_t port
+           , const string &name, const string service_name)
+  : Service(executor)
+  , name_(name)
+  , mdns_(mdns)
+  , mdns_service_(service_name)
+  , executor_(NO_THREAD()) // unused
+  , externalExecutor_(true)
+  , port_(port)
+{
+  init_server();
 }
 
 Httpd::~Httpd()
 {
   stop_http_listener();
   stop_dns_listener();
-  executor_.shutdown();
+  if (!externalExecutor_)
+  {
+    executor_.shutdown();
+  }
   handlers_.clear();
   static_uris_.clear();
   redirect_uris_.clear();
@@ -219,6 +212,36 @@ void Httpd::captive_portal(string first_access_response
   captive_auth_uri_.assign(std::move(auth_uri));
   captive_timeout_ = auth_timeout;
   captive_active_ = true;
+}
+
+void Httpd::init_server()
+{
+  // pre-initialize the timeout parameters for all sockets that are accepted
+  socket_timeout_.tv_sec = 0;
+  socket_timeout_.tv_usec = MSEC_TO_USEC(config_httpd_socket_timeout_ms());
+
+#if defined(CONFIG_IDF_TARGET)
+  if (Singleton<Esp32WiFiManager>::exists())
+  {
+    // Hook into the Esp32WiFiManager to start/stop the listener automatically
+    // based on the AP/Station interface status.
+    Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
+    [&](esp_interface_t interface, uint32_t ip)
+    {
+      if (interface == ESP_IF_WIFI_AP)
+      {
+        start_dns_listener(ntohl(ip));
+      }
+      start_http_listener();
+    });
+    Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
+    [&](esp_interface_t interface)
+    {
+      stop_http_listener();
+      stop_dns_listener();
+    });
+  }
+#endif // CONFIG_IDF_TARGET
 }
 
 void Httpd::schedule_cleanup(Executable *flow)
