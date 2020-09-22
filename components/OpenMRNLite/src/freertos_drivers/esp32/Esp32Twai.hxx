@@ -48,9 +48,12 @@
 #if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2) || \
     defined(CONFIG_IDF_TARGET_ESP32S3)
 
+#if defined __has_include
+#if __has_include(<soc/soc_caps.h>)
 // This needs to be included before other includes so that SOC_TWAI_SUPPORTED
 // is defined early.
 #include <soc/soc_caps.h>
+#endif
 
 #include <algorithm>
 #include <atomic>
