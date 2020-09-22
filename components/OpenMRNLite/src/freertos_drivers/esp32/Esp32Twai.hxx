@@ -37,12 +37,13 @@
 
 #ifndef _FREERTOS_DRIVERS_ESP32_ESP32TWAI_HXX_
 
-// GCC flag to exclude non-IDF platforms
+// Target platform check via the sdkconfig.h file which is only present on the
+// ESP32 platform.
 #if defined __has_include
 #if __has_include("sdkconfig.h")
 #include "sdkconfig.h"
 #endif
-#endif
+#endif // defined __has_include
 
 // Only define the class if we are compiling for a supported platform
 #if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2) || \
@@ -54,6 +55,7 @@
 // is defined early.
 #include <soc/soc_caps.h>
 #endif
+#endif // defined __has_include
 
 #include <algorithm>
 #include <atomic>
@@ -88,7 +90,7 @@
 #define TWAI_MSG_FLAG_EXTD CAN_MSG_FLAG_EXTD
 #define TWAI_MSG_FLAG_RTR CAN_MSG_FLAG_RTR
 #define TWAI_MSG_FLAG_NONE CAN_MSG_FLAG_NONE
-#endif
+#endif // SOC_TWAI_SUPPORTED
 #include <esp_log.h>
 #include <esp_vfs.h>
 #include <freertos/FreeRTOS.h>
