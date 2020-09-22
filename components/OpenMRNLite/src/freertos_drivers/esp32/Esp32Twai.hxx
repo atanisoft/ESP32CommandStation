@@ -195,7 +195,7 @@ public:
     /// Enables the TWAI driver and starts the periodic timer.
     void enable()
     {
-        LOG(INFO, "[TWAI] Enabling TWAI driver");
+        LOG(INFO, "[TWAI] Starting TWAI low-level driver");
         ESP_ERROR_CHECK_WITHOUT_ABORT(twai_start());
         LOG(INFO, "[TWAI] Starting periodic timer");
         xTimerStart(timer_, TWAI_TIMER_MAX_WAIT);
@@ -204,13 +204,14 @@ public:
     /// Disables the TWAI driver and periodic timer (if active).
     void disable()
     {
-        LOG(INFO, "[TWAI] Disabling TWAI driver");
-        ESP_ERROR_CHECK_WITHOUT_ABORT(twai_stop());
+        // stop the timer before we stop the driver
         if (xTimerIsTimerActive(timer_) == pdTRUE)
         {
-            LOG(INFO, "[TWAI] Stoping periodic timer");
+            LOG(INFO, "[TWAI] Stopping periodic timer");
             xTimerStop(timer_, TWAI_TIMER_MAX_WAIT);
         }
+        LOG(INFO, "[TWAI] Stopping TWAI low-level driver");
+        ESP_ERROR_CHECK_WITHOUT_ABORT(twai_stop());
     }
 
     /// VFS interface helper for write()
@@ -344,13 +345,18 @@ public:
         ESP_ERROR_CHECK(twai_get_status_info(&status));
         if (status.state == TWAI_STATE_BUS_OFF)
         {
-            LOG(INFO, "[TWAI] Bus is off, initiating recovery");
+            LOG(INFO, "[TWAI] Bus is off, initiating recovery.");
             ESP_ERROR_CHECK(twai_initiate_recovery());
             busOffCount_++;
         }
         else if (status.state == TWAI_STATE_RECOVERING)
         {
-            LOG(INFO, "[TWAI] Bus is recovering from an off condition");
+            LOG(INFO, "[TWAI] Bus is recovering from an off condition.");
+        }
+        else if (status.state == TWAI_STATE_STOPPED)
+        {
+            LOG(WARNING, "[TWAI] Bus is in a stopped state!");
+            ESP_ERROR_CHECK(twai_start());
         }
         else
         {
@@ -364,7 +370,7 @@ public:
                     // in the RX queue.
                     size_t to_rx =
                         std::min((size_t)status.msgs_to_rx, rx_space);
-                    LOG(INFO, "[TWAI] RX Q-space:%zu, ll-Q:%d/%d, to_rx:%zu"
+                    LOG(VERBOSE, "[TWAI] RX Q:%zu, ll-Q:%d/%d, to_rx:%zu"
                       , rx_space, status.msgs_to_rx
                       , config_can_rx_buffer_size(), to_rx);
                     for (size_t idx = 0; idx < to_rx; ++idx)
@@ -376,8 +382,8 @@ public:
                         {
                             if (res != ESP_ERR_TIMEOUT)
                             {
-                                LOG(INFO, "[TWAI] RX error: %s (%d)"
-                                , esp_err_to_name(res), res);
+                                LOG_ERROR("[TWAI] RX error: %s (%d)"
+                                        , esp_err_to_name(res), res);
                             }
                             break;
                         }
@@ -398,8 +404,7 @@ public:
                         memset(&can_frame, 0, sizeof(struct can_frame));
                         can_frame.can_id = msg.identifier;
                         can_frame.can_dlc = msg.data_length_code;
-                        memcpy(can_frame.data, msg.data
-                             , msg.data_length_code);
+                        memcpy(can_frame.data, msg.data, msg.data_length_code);
                         if (msg.flags & TWAI_MSG_FLAG_EXTD)
                         {
                             SET_CAN_FRAME_EFF(can_frame);
@@ -434,7 +439,7 @@ public:
                 size_t available_tx_space =
                     config_can_tx_buffer_size() - status.msgs_to_tx;
                 size_t to_tx = std::min(available_tx_space, tx_ready);
-                LOG(INFO, "[TWAI] TX Q-ready:%zu, ll-Q:%d/%d, to_tx:%zu"
+                LOG(VERBOSE, "[TWAI] TX Q:%zu, ll-Q:%d/%d, to_tx:%zu"
                   , tx_ready, status.msgs_to_tx, config_can_tx_buffer_size()
                   , to_tx);
                 for (size_t idx = 0; idx < to_tx; ++idx)
@@ -442,6 +447,11 @@ public:
                     {
                         const std::lock_guard<std::mutex> lock(mux_);
                         txBuf_->data_read_pointer(&can_frame);
+                    }
+                    if (can_frame == nullptr)
+                    {
+                        LOG_ERROR("[TWAI] TX ERROR: can_frame is null!");
+                        break;
                     }
                     twai_message_t msg;
                     memset(&msg, 0, sizeof(twai_message_t));
@@ -457,8 +467,14 @@ public:
                     {
                         msg.flags |= TWAI_MSG_FLAG_RTR;
                     }
-                    if (twai_transmit(&msg, MAX_TWAI_TX_TIME) != ESP_OK)
+                    esp_err_t res = twai_transmit(&msg, MAX_TWAI_TX_TIME);
+                    if (res != ESP_OK)
                     {
+                        if (res != ESP_ERR_TIMEOUT)
+                        {
+                            LOG_ERROR("[TWAI] TX error: %s (%d)"
+                                    , esp_err_to_name(res), res);
+                        }
                         // there was an error sending the frame to the driver,
                         // give up and retry on next interval.
                         break;
@@ -495,8 +511,9 @@ public:
             {
                 nextStatusDisplayTick_ = tick + STATUS_PRINT_INTERVAL;
                 LOG(INFO
-                  , "[TWAI] %sRX:%d (q:%d,err:%d,overrun:%d) "
-                    "TX:%d (q:%d,err:%d) bus (arb-err:%d,err:%d,off:%d,st:%s)"
+                  , "[TWAI] %sRX:%d (ll-q:%d,err:%d,overrun:%d) "
+                    "TX:%d (ll-q:%d,err:%d) "
+                    "bus (arb-err:%d,err:%d,off:%d,st:%s)"
                   , overrunWarningPrinted_ ? "!!OVERRUN!! " : ""
                   , numReceivedPackets_, status.msgs_to_rx
                   , status.rx_error_counter, overrunCount_
