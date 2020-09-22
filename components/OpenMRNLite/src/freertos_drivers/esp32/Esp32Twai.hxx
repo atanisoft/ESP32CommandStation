@@ -78,6 +78,16 @@
 #define twai_filter_config_t can_filter_config_t
 #define twai_general_config_t can_general_config_t
 #define twai_status_info_t can_status_info_t
+#define twai_message_t can_message_t
+#define TWAI_MODE_NORMAL CAN_MODE_NORMAL
+#define TWAI_STATE_STOPPED CAN_STATE_STOPPED
+#define TWAI_STATE_RUNNING CAN_STATE_RUNNING
+#define TWAI_STATE_BUS_OFF CAN_STATE_BUS_OFF
+#define TWAI_STATE_RECOVERING CAN_STATE_RECOVERING
+#define TWAI_MSG_FLAG_DLC_NON_COMP CAN_MSG_FLAG_DLC_NON_COMP
+#define TWAI_MSG_FLAG_EXTD CAN_MSG_FLAG_EXTD
+#define TWAI_MSG_FLAG_RTR CAN_MSG_FLAG_RTR
+#define TWAI_MSG_FLAG_NONE CAN_MSG_FLAG_NONE
 #endif
 #include <esp_log.h>
 #include <esp_vfs.h>
