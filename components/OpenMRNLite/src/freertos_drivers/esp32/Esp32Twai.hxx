@@ -176,9 +176,10 @@ public:
         {
             ESP_ERROR_CHECK(esp_vfs_unregister(vfsPath_));
         }
-        if (vfsRegistered_)
+        if (twaiInitialized_)
         {
             ESP_ERROR_CHECK(twai_driver_uninstall());
+            xTimerDelete(timer_, TWAI_TIMER_MAX_WAIT);
         }
         txBuf_->destroy();
         rxBuf_->destroy();
@@ -510,8 +511,8 @@ public:
             overrunWarningPrinted_ = false;
         }
 
-        // reload and restart the timer
-        xTimerChangePeriod(timer_, TWAI_TIMER_TICKS, TWAI_TIMER_MAX_WAIT);
+        // reset the periodic timer so it calls again in the next interval.
+        xTimerReset(timer_, TWAI_TIMER_MAX_WAIT);
     }
 private:
     DISALLOW_COPY_AND_ASSIGN(Esp32Twai);
@@ -628,6 +629,7 @@ private:
                                 , pdFALSE            /* auto reload */
                                 , nullptr            /* timer id    */
                                 , twai_timer_tick);  /* callback    */
+            HASSERT(timer_ != nullptr);
             twaiInitialized_ = true;
         }
     }

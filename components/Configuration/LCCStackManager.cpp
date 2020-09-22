@@ -30,12 +30,10 @@ static constexpr const char LCC_RESET_MARKER_FILE[] = "lcc-rst";
 static constexpr const char LCC_CAN_MARKER_FILE[] = "lcc-can";
 
 #if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
-#define CAN_ACTIVE true
+#define CAN_ACTIVE 1
 Esp32Twai twai("/dev/can"
              , (gpio_num_t)CONFIG_LCC_CAN_RX_PIN
              , (gpio_num_t)CONFIG_LCC_CAN_TX_PIN);
-#else
-#define CAN_ACTIVE false
 #endif
 
 LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
@@ -97,15 +95,17 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
   stack_ = new openlcb::SimpleTcpStack(nodeID_);
 #else
   stack_ = new openlcb::SimpleCanStack(nodeID_);
+#if CAN_ACTIVE
   // If the user has not explicitly disabled the CAN interface create it and
   // start a background task to send/receive packets.
-  if (!fs->exists(LCC_CAN_MARKER_FILE) && CAN_ACTIVE)
+  if (!fs->exists(LCC_CAN_MARKER_FILE))
   {
     LOG(INFO, "[LCC] Enabling CAN interface (rx: %d, tx: %d)"
       , CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
     twai.hw_init();
     ((openlcb::SimpleCanStack *)stack_)->add_can_port_select("/dev/can");
   }
+#endif // CAN_ACTIVE
 #endif // CONFIG_LCC_TCP_STACK
 }
 
