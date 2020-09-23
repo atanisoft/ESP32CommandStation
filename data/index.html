@@ -419,6 +419,7 @@
        <input type="button" id="cs-save-config" value="Save" class='ui-button-inline'/>
        <input type="button" id="cs-factory-reset" value="Factory Reset" class='ui-button-inline'/>
        <input type="button" id="cs-wifi-connect" value="Connect to Network" class='ui-button-inline'/>
+       <input type="button" id="cs-lcc-clear-uplink" value="Reset Uplink Address" class='ui-button-inline'/>
       </div>
      </div>
     </div>
@@ -1151,6 +1152,7 @@ function csConfigUpdate(data) {
  } else {
   $('#cs-wifi-stat-div').hide();
  }
+ $('#cs-lcc-clear-uplink').hide();
 }
 function refreshSSIDList() {
  $('#ssid-connect-confirm').hide();
@@ -1192,6 +1194,11 @@ function refreshSSIDList() {
 }
 function setupConfig() {
  $("#cs-config-tabs").on("tabsactivate", function(event, ui) {
+  if(ui.newTab.text() === 'LCC') {
+   $('#cs-lcc-clear-uplink').show();
+  } else {
+   $('#cs-lcc-clear-uplink').hide();
+  }
   if(ui.newTab.text() === "WiFi") {
    $('#cs-wifi-connect').show();
   } else {
@@ -1226,6 +1233,14 @@ function setupConfig() {
    error : function(xhr, status, error) {showErrorDialog("The command station reported a failure saving configuration data", error);}
   });
  });
+ $('#cs-lcc-clear-uplink').on('vclick', function() {
+  $.ajax({method:'GET',url:'/config?uplink-clear-last=true',
+   beforeSend:function() {showSpinner(String.format('Saving {0} config...', tablist[section]));},
+   complete:hideSpinner,
+   success:function (data, status, xhr) {if(!data.hasOwnProperty('restart')) {csConfigUpdate(data);} else {showSpinner(data.restart, true);}},
+   error:function(xhr, status, error) {showErrorDialog("The command station reported a failure saving configuration data", error);}
+  });
+ })
  $('#cs-wifi-mode').on('change', function() {
   if($("#cs-wifi-mode").val() === 'station' || $("#cs-wifi-mode").val() === 'softap-station') {
    $('#cs-wifi-sta-div').show();

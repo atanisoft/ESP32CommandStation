@@ -212,6 +212,13 @@ public:
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
+  void clear_last_uplink()
+  {
+    auto uplink = cfg_.seg().wifi_lcc().uplink();
+    uplink.last_address().ip_address().write(fd_, "");
+    MAYBE_TRIGGER_UPDATE(true);
+  }
+
   void reconfigure_uplink(SocketClientParams::SearchMode mode
                         , string uplink_service_name
                         , string manual_hostname
@@ -260,7 +267,9 @@ public:
                      "\"auto_service\":\"%s\","
                      "\"manual_host\":\"%s\","
                      "\"manual_port\":%d,"
-                     "\"mode\":%d"
+                     "\"mode\":%d,"
+                     "\"last_uplink\":\"%s\","
+                     "\"last_port\":%d"
                    "},"
                    "\"hbridges\":["
                      "{"
@@ -279,6 +288,8 @@ public:
                  , CDI_READ_TRIMMED(wifi.hub().enable, fd_) ? "true" : "false"
                  , CDI_READ_TRIMMED(wifi.tx_power, fd_)
                  , CDI_READ_TRIMMED(wifi.uplink().reconnect, fd_) ? "true" : "false"
+                 , wifi.uplink().last_address().ip_address().read(fd_)
+                 , CDI_READ_TRIMMED(wifi.uplink().last_address().ip_address().port)
                  , wifi.uplink().auto_address().service_name().read(fd_).c_str()
                  , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
                  , CDI_READ_TRIMMED(wifi.uplink().manual_address().port, fd_)
@@ -593,6 +604,10 @@ HTTP_HANDLER_IMPL(process_config, request)
   if (request->has_param("tx_power"))
   {
     configListener->reconfigure_wifi_tx_power(request->param("tx_power", 78));
+  }
+  if (request->has_param("uplink-clear-last"))
+  {
+    configListener->clear_last_uplink();
   }
   if (request->has_param("uplink-mode") &&
       request->has_param("uplink-service") &&
