@@ -26,10 +26,10 @@ set(SUPPORTED_TARGETS esp32)
 project(ESP32CommandStation)
 
 ###############################################################################
-# Switch from GNU++11 to C++14
+# Switch from GNU++11 to GNU++14
 ###############################################################################
 
-string(REPLACE "-std=gnu++11" "-std=c++14" CXX_OPTIONS "${CXX_COMPILE_OPTIONS}" )
+string(REPLACE "-std=gnu++11" "-std=gnu++14" CXX_OPTIONS "${CXX_COMPILE_OPTIONS}" )
 idf_build_set_property(CXX_COMPILE_OPTIONS "${CXX_OPTIONS}" REPLACE)
 
 ###############################################################################
