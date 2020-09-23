@@ -65,14 +65,16 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <JmriInterface.h>
 #endif
 
-#if !CONFIG_ESP32CS_SINGLE_EXECUTOR
+//#define ADJUST_TASK_PRIORITIES 1
+
+#if !CONFIG_ESP32CS_SINGLE_EXECUTOR && ADJUST_TASK_PRIORITIES
 ///////////////////////////////////////////////////////////////////////////////
 // Set the priority of the httpd executor to the effective value used for the
 // primary OpenMRN executor. This is necessary to ensure the executor is not
 // starved of cycles due to the CAN driver.
 ///////////////////////////////////////////////////////////////////////////////
 OVERRIDE_CONST_DEFERRED(httpd_server_priority, (ESP_TASK_MAIN_PRIO + 3));
-#endif // !CONFIG_ESP32CS_SINGLE_EXECUTOR
+#endif // !CONFIG_ESP32CS_SINGLE_EXECUTOR && ADJUST_TASK_PRIORITIES
 
 ///////////////////////////////////////////////////////////////////////////////
 // If select() is enabled and the GC delay is less than 1500 usec increase the
@@ -417,8 +419,10 @@ extern "C" void app_main()
   Singleton<StatusDisplay>::instance()->status("ESP32-CS Started");
 #endif // !CONFIG_DISPLAY_TYPE_NONE
 
+#if ADJUST_TASK_PRIORITIES
   // increase our task priority to higher than the CAN driver
   vTaskPrioritySet(nullptr, ESP_TASK_MAIN_PRIO + 3);
+#endif // ADJUST_TASK_PRIORITIES
 
   // donate our task thread to OpenMRN executor.
   stackManager.stack()->loop_executor();

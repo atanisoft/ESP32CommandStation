@@ -93,6 +93,7 @@
 #endif // SOC_TWAI_SUPPORTED
 #include <esp_log.h>
 #include <esp_vfs.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
 #include <mutex>
@@ -104,14 +105,39 @@
 #include "utils/Singleton.hxx"
 
 //#define USE_PORT_MUX 1
+//#define USE_ESP_TIMER 1
 
 #if USE_PORT_MUX
+#define MUTEX_INIT(mux) {mux = portMUX_INITIALIZER_UNLOCKED}
+#define MUTEX_TYPE portMUX_TYPE
 #define LOCK_BUFFER() vPortEnterCritical(&mux_);
 #define UNLOCK_BUFFER() vPortExitCritical(&mux_);
 #else
+#define MUTEX_INIT(mux)
+#define MUTEX_TYPE std::mutex
 #define LOCK_BUFFER() const std::lock_guard<std::mutex> lock(mux_);
 #define UNLOCK_BUFFER()
-#endif
+#endif // USE_PORT_MUX
+
+#if USE_ESP_TIMER
+#define TIMER_ARG_TYPE void *
+#define TIMER_HANDLE esp_timer_handle_t
+#define TIMER_START(timer, interval, max_wait) esp_timer_start_once(timer, interval)
+#define TIMER_RESET(timer, interval, max_wait) esp_timer_start_once(timer, interval)
+#define TIMER_STOP(timer, max_wait) esp_timer_stop(timer)
+#define TIMER_DELETE(timer, max_wait) esp_timer_delete(timer)
+#else
+#define TIMER_ARG_TYPE xTimerHandle
+#define TIMER_HANDLE xTimerHandle
+#define TIMER_START(timer, interval, max_wait) xTimerStart(timer, max_wait)
+#define TIMER_RESET(timer, interval, max_wait) xTimerReset(timer, max_wait)
+#define TIMER_STOP(timer, max_wait) {       \
+if (xTimerIsTimerActive(timer) == pdTRUE)   \
+{                                           \
+    xTimerStop(timer, max_wait);            \
+}}
+#define TIMER_DELETE(timer, max_wait) xTimerDelete(timer, max_wait)
+#endif // USE_ESP_TIMER
 
 namespace openmrn_arduino 
 {
@@ -175,9 +201,7 @@ public:
     {
         HASSERT(GPIO_IS_VALID_GPIO(rxPin_));
         HASSERT(GPIO_IS_VALID_OUTPUT_GPIO(txPin_));
-#if USE_PORT_MUX
-        mux_ = portMUX_INITIALIZER_UNLOCKED;
-#endif
+        MUTEX_INIT(mux_);
     }
 
     /// Destructor.
@@ -191,8 +215,8 @@ public:
         }
         if (twaiInitialized_)
         {
+            TIMER_DELETE(timer_, TWAI_TIMER_MAX_WAIT);
             ESP_ERROR_CHECK(twai_driver_uninstall());
-            xTimerDelete(timer_, TWAI_TIMER_MAX_WAIT);
         }
         txBuf_->destroy();
         rxBuf_->destroy();
@@ -211,18 +235,14 @@ public:
         LOG(INFO, "[TWAI] Starting TWAI low-level driver");
         ESP_ERROR_CHECK_WITHOUT_ABORT(twai_start());
         LOG(INFO, "[TWAI] Starting periodic timer");
-        xTimerStart(timer_, TWAI_TIMER_MAX_WAIT);
+        TIMER_START(timer_, TWAI_TIMER_TICK_INTERVAL, TWAI_TIMER_MAX_WAIT);
     }
 
     /// Disables the TWAI driver and periodic timer (if active).
     void disable()
     {
-        // stop the timer before we stop the driver
-        if (xTimerIsTimerActive(timer_) == pdTRUE)
-        {
-            LOG(INFO, "[TWAI] Stopping periodic timer");
-            xTimerStop(timer_, TWAI_TIMER_MAX_WAIT);
-        }
+        LOG(INFO, "[TWAI] Stopping periodic timer");
+        TIMER_STOP(timer_, TWAI_TIMER_MAX_WAIT);
         LOG(INFO, "[TWAI] Stopping TWAI low-level driver");
         ESP_ERROR_CHECK_WITHOUT_ABORT(twai_stop());
     }
@@ -565,9 +585,7 @@ public:
             }
             overrunWarningPrinted_ = false;
         }
-
-        // reset the periodic timer so it calls again in the next interval.
-        xTimerReset(timer_, TWAI_TIMER_MAX_WAIT);
+        TIMER_RESET(timer_, TWAI_TIMER_TICK_INTERVAL, TWAI_TIMER_MAX_WAIT);
     }
 private:
     DISALLOW_COPY_AND_ASSIGN(Esp32Twai);
@@ -622,18 +640,13 @@ private:
     esp_vfs_select_sem_t selectSem_;
 
     /// Periodic timer handle.
-    xTimerHandle timer_;
+    TIMER_HANDLE timer_;
 
-#if USE_PORT_MUX
     /// Mutex protecting txBuf_, rxBuf_ and selectSem_.
-    portMUX_TYPE mux_;
-#else
-    /// Mutex protecting txBuf_, rxBuf_ and selectSem_.
-    std::mutex mux_;
-#endif
+    MUTEX_TYPE mux_;
 
     /// Interval at which the TWAI timer will be invoked.
-    static constexpr TickType_t TWAI_TIMER_TICKS = pdMS_TO_TICKS(5);
+    static constexpr TickType_t TWAI_TIMER_TICK_INTERVAL = pdMS_TO_TICKS(5);
 
     /// Maximum time that a Timer API call can take before timeout.
     static constexpr TickType_t TWAI_TIMER_MAX_WAIT = pdMS_TO_TICKS(1);
@@ -684,11 +697,22 @@ private:
             LOG(INFO, "[TWAI] using RX: %d, TX: %d, RX-Q: %d, TX-Q: %d"
               , rxPin_, txPin_, config_can_rx_buffer_size()
               , config_can_tx_buffer_size());
-            timer_ = xTimerCreate(vfsPath_           /* timer name  */
-                                , TWAI_TIMER_TICKS   /* interval    */
-                                , pdFALSE            /* auto reload */
-                                , nullptr            /* timer id    */
-                                , twai_timer_tick);  /* callback    */
+#if USE_ESP_TIMER
+            esp_timer_create_args_t timer_args =
+            {
+                .callback = twai_timer_tick                 /* callback     */
+              , .arg = nullptr                              /* callback arg */
+              , .dispatch_method = ESP_TIMER_TASK           /* timer mode   */
+              , .name = vfsPath_                            /* timer name   */
+            };
+            ESP_ERROR_CHECK(esp_timer_create(&timer_args, &timer_));
+#else
+            timer_ = xTimerCreate(vfsPath_                  /* timer name  */
+                                , TWAI_TIMER_TICK_INTERVAL  /* interval    */
+                                , pdFALSE                   /* auto reload */
+                                , nullptr                   /* timer id    */
+                                , twai_timer_tick);         /* callback    */
+#endif
             HASSERT(timer_ != nullptr);
             twaiInitialized_ = true;
         }
@@ -816,8 +840,8 @@ esp_err_t twai_vfs_end_select(void *end_select_args)
 
 /// Periodic timer tick callback.
 ///
-/// @param args Arguments passed into the periodic timer (not used).
-void twai_timer_tick(TimerHandle_t xTimer)
+/// @param arg Argument passed into the periodic timer (not used).
+void twai_timer_tick(TIMER_ARG_TYPE arg)
 {
     Singleton<Esp32Twai>::instance()->timer_tick();
 }
