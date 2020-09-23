@@ -289,7 +289,7 @@ public:
                  , CDI_READ_TRIMMED(wifi.tx_power, fd_)
                  , CDI_READ_TRIMMED(wifi.uplink().reconnect, fd_) ? "true" : "false"
                  , wifi.uplink().last_address().ip_address().read(fd_)
-                 , CDI_READ_TRIMMED(wifi.uplink().last_address().ip_address().port)
+                 , CDI_READ_TRIMMED(wifi.uplink().last_address().ip_address().port, fd_)
                  , wifi.uplink().auto_address().service_name().read(fd_).c_str()
                  , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
                  , CDI_READ_TRIMMED(wifi.uplink().manual_address().port, fd_)
