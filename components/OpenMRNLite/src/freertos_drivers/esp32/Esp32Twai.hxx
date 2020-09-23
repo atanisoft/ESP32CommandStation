@@ -103,6 +103,16 @@
 #include "utils/logging.h"
 #include "utils/Singleton.hxx"
 
+//#define USE_PORT_MUX 1
+
+#if USE_PORT_MUX
+#define LOCK_BUFFER() vPortEnterCritical(&mux_);
+#define UNLOCK_BUFFER() vPortExitCritical(&mux_);
+#else
+#define LOCK_BUFFER() const std::lock_guard<std::mutex> lock(mux_);
+#define UNLOCK_BUFFER()
+#endif
+
 namespace openmrn_arduino 
 {
 
@@ -165,6 +175,9 @@ public:
     {
         HASSERT(GPIO_IS_VALID_GPIO(rxPin_));
         HASSERT(GPIO_IS_VALID_OUTPUT_GPIO(txPin_));
+#if USE_PORT_MUX
+        mux_ = portMUX_INITIALIZER_UNLOCKED;
+#endif
     }
 
     /// Destructor.
@@ -231,8 +244,9 @@ public:
         {
             size_t frames_written = 0;
             {
-                const std::lock_guard<std::mutex> lock(mux_);
+                UNLOCK_BUFFER()
                 frames_written = txBuf_->put(data, size < 8 ? size : 8);
+                UNLOCK_BUFFER()
             }
             if (frames_written == 0)
             {
@@ -268,8 +282,9 @@ public:
         {
             size_t frames_read = 0;
             {
-                const std::lock_guard<std::mutex> lock(mux_);
+                LOCK_BUFFER()
                 frames_read = rxBuf_->get(data, size < 8 ? size : 8);
+                UNLOCK_BUFFER()
             }
             if (frames_read == 0)
             {
@@ -301,20 +316,29 @@ public:
                              , fd_set *exceptfds, esp_vfs_select_sem_t sem
                              , void **end_select_args)
     {
-        const std::lock_guard<std::mutex> lock(mux_);
+        size_t tx_space = 0;
+        size_t rx_ready = 0;
+        {
+            LOCK_BUFFER()
+            tx_space = txBuf_->space();
+            rx_ready = rxBuf_->pending();
+            UNLOCK_BUFFER()
+        }
         *end_select_args = nullptr;
         // check if we can/should wake up now.
-        if (rxBuf_->pending() || txBuf_->space())
+        if (tx_space || rx_ready)
         {
             LOG(VERBOSE
-              , "[TWAI] vfs_start_select: calling esp_vfs_select_triggered");
+              , "[TWAI] invoking esp_vfs_select_triggered as there is at least "
+                "one frame available in the RX/TX buffers");
             esp_vfs_select_triggered(sem);
         }
         else
         {
-            LOG(VERBOSE, "[TWAI] storing semaphore");
+            LOCK_BUFFER()
             selectSem_ = sem;
             selectPending_ = true;
+            UNLOCK_BUFFER()
         }
         return ESP_OK;
     }
@@ -325,8 +349,9 @@ public:
     /// @return ESP_OK for success.
     esp_err_t vfs_end_select(void *end_select_args)
     {
-        const std::lock_guard<std::mutex> lock(mux_);
+        LOCK_BUFFER()
         selectPending_ = false;
+        UNLOCK_BUFFER()
         return ESP_OK;
     }
 
@@ -338,9 +363,10 @@ public:
         size_t rx_space = 0;
         size_t tx_ready = 0;
         {
-            const std::lock_guard<std::mutex> lock(mux_);
+            LOCK_BUFFER()
             rx_space = rxBuf_->space();
             tx_ready = txBuf_->pending();
+            UNLOCK_BUFFER()
         }
         ESP_ERROR_CHECK(twai_get_status_info(&status));
         if (status.state == TWAI_STATE_BUS_OFF)
@@ -414,8 +440,9 @@ public:
                             SET_CAN_FRAME_RTR(can_frame);
                         }
                         {
-                            const std::lock_guard<std::mutex> lock(mux_);
+                            LOCK_BUFFER()
                             rxBuf_->put(&can_frame, 1);
+                            UNLOCK_BUFFER()
                         }
                         numReceivedPackets_++;
                         tx_rx_count++;
@@ -445,8 +472,9 @@ public:
                 for (size_t idx = 0; idx < to_tx; ++idx)
                 {
                     {
-                        const std::lock_guard<std::mutex> lock(mux_);
+                        LOCK_BUFFER()
                         txBuf_->data_read_pointer(&can_frame);
+                        UNLOCK_BUFFER()
                     }
                     if (can_frame == nullptr)
                     {
@@ -486,8 +514,9 @@ public:
                         msg.data[0], msg.data[1], msg.data[2], msg.data[3],
                         msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
                     {
-                        const std::lock_guard<std::mutex> lock(mux_);
+                        LOCK_BUFFER()
                         txBuf_->consume(1);
+                        UNLOCK_BUFFER()
                     }
                     numTransmittedPackets_++;
                     tx_rx_count++;
@@ -497,11 +526,19 @@ public:
 
         // if we have a select() pending and we transfered at least one frame
         // wake up the select() call.
-        if (tx_rx_count && selectPending_)
+        if (tx_rx_count)
         {
-            LOG(VERBOSE
-              , "[TWAI] timer_tick: calling esp_vfs_select_triggered");
-            esp_vfs_select_triggered(selectSem_);
+            LOCK_BUFFER()
+            if (selectPending_)
+            {
+                LOG(VERBOSE
+                  , "[TWAI] invoking esp_vfs_select_triggered as %zu frames "
+                    "were transfered to/from the low-level driver"
+                  , tx_rx_count);
+                esp_vfs_select_triggered(selectSem_);
+                selectPending_ = false;
+            }
+            UNLOCK_BUFFER()
         }
 
         if (reportStats_)
@@ -511,14 +548,15 @@ public:
             {
                 nextStatusDisplayTick_ = tick + STATUS_PRINT_INTERVAL;
                 LOG(INFO
-                  , "[TWAI] %sRX:%d (ll-q:%d,err:%d,overrun:%d) "
-                    "TX:%d (ll-q:%d,err:%d) "
+                  , "[TWAI] %sRX:%d (ll-q:%d,err:%d,overrun:%d,miss:%d) "
+                    "TX:%d (ll-q:%d,err:%d,fail:%d) "
                     "bus (arb-err:%d,err:%d,off:%d,st:%s)"
                   , overrunWarningPrinted_ ? "!!OVERRUN!! " : ""
                   , numReceivedPackets_, status.msgs_to_rx
                   , status.rx_error_counter, overrunCount_
-                  , numTransmittedPackets_, status.msgs_to_tx
-                  , status.tx_error_counter, status.arb_lost_count
+                  , status.rx_missed_count, numTransmittedPackets_
+                  , status.msgs_to_tx, status.tx_error_counter
+                  , status.tx_failed_count, status.arb_lost_count
                   , status.bus_error_count, busOffCount_
                   , status.state == TWAI_STATE_STOPPED ? "Stopped"
                   : status.state == TWAI_STATE_RUNNING ? "Running"
@@ -586,11 +624,16 @@ private:
     /// Periodic timer handle.
     xTimerHandle timer_;
 
-    /// Mutex protecting txBuf_ and rxBuf_.
+#if USE_PORT_MUX
+    /// Mutex protecting txBuf_, rxBuf_ and selectSem_.
+    portMUX_TYPE mux_;
+#else
+    /// Mutex protecting txBuf_, rxBuf_ and selectSem_.
     std::mutex mux_;
+#endif
 
     /// Interval at which the TWAI timer will be invoked.
-    static constexpr TickType_t TWAI_TIMER_TICKS = pdMS_TO_TICKS(10);
+    static constexpr TickType_t TWAI_TIMER_TICKS = pdMS_TO_TICKS(5);
 
     /// Maximum time that a Timer API call can take before timeout.
     static constexpr TickType_t TWAI_TIMER_MAX_WAIT = pdMS_TO_TICKS(1);
@@ -599,7 +642,7 @@ private:
     static constexpr TickType_t MAX_TWAI_RX_TIME = pdMS_TO_TICKS(5);
 
     /// Maximum time to allow for sending a frame to the TWAI driver.
-    static constexpr TickType_t MAX_TWAI_TX_TIME = pdMS_TO_TICKS(50);
+    static constexpr TickType_t MAX_TWAI_TX_TIME = pdMS_TO_TICKS(5);
 
     /// Interval at which to print the ESP32 CAN bus status.
     static constexpr TickType_t STATUS_PRINT_INTERVAL = pdMS_TO_TICKS(10000);
