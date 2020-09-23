@@ -292,7 +292,7 @@ public:
                  , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
                  , CDI_READ_TRIMMED(wifi.uplink().manual_address().port, fd_)
                  , CDI_READ_TRIMMED(wifi.uplink().search_mode, fd_)
-                 , wifi.uplink().last_address().ip_address().read(fd_)
+                 , wifi.uplink().last_address().ip_address().read(fd_).c_str()
                  , CDI_READ_TRIMMED(wifi.uplink().last_address().port, fd_)
                  , uint64_to_string_hex(ops.event_short().read(fd_)).c_str()
                  , uint64_to_string_hex(ops.event_short_cleared().read(fd_)).c_str()
