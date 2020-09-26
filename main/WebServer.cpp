@@ -387,6 +387,10 @@ void init_webserver(const esp32cs::Esp32ConfigDef &cfg)
       {
         mimetype = http::MIME_TYPE_APPLICATION_JSON;
       }
+      else if (path.find(".elf") != string::npos)
+      {
+        mimetype = http::MIME_TYPE_OCTET_STREAM;
+      }
       return new StringResponse(data, mimetype);
     }
     request->set_status(HttpStatusCode::STATUS_NOT_FOUND);

@@ -24,6 +24,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <driver/sdmmc_host.h>
 #include <driver/sdmmc_types.h>
 #include <driver/sdspi_host.h>
+#include <esp_partition.h>
 #include <esp_spiffs.h>
 #include <esp_vfs_fat.h>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
@@ -226,6 +227,37 @@ FileSystemManager::FileSystemManager()
   mkdir(CS_CONFIG_DIR, ACCESSPERMS);
   // Pre-create LCC configuration directory.
   mkdir(LCC_CFG_DIR, ACCESSPERMS);
+
+  LOG(INFO, "[FS] Converting coredump partition to file...");
+  // dump coredump partition to file
+  const esp_partition_t *coredump =
+    esp_partition_find_first(ESP_PARTITION_TYPE_DATA
+                           , ESP_PARTITION_SUBTYPE_DATA_COREDUMP, "coredump");
+  if (coredump != NULL)
+  {
+    uint8_t buffer[CONFIG_WL_SECTOR_SIZE];
+    uint32_t remaining = coredump->size;
+    size_t offset = 0;
+    int fd = ::open(StringPrintf("%s/coredump.elf", VFS_MOUNT).c_str()
+                  , O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR);
+    while (remaining > 0)
+    {
+      bzero(&buffer, CONFIG_WL_SECTOR_SIZE);
+      esp_partition_read(coredump, offset, buffer,
+                         (size_t)std::min(remaining, (uint32_t)CONFIG_WL_SECTOR_SIZE));
+      offset += CONFIG_WL_SECTOR_SIZE;
+      remaining -= CONFIG_WL_SECTOR_SIZE;
+      ssize_t written = ::write(fd, buffer, CONFIG_WL_SECTOR_SIZE);
+      if (written != CONFIG_WL_SECTOR_SIZE)
+      {
+        LOG_ERROR("[FS] Short write of coredump.elf: %zu vs %d", written
+                , CONFIG_WL_SECTOR_SIZE);
+        break;
+      }
+    }
+    LOG(INFO, "[FS] %s/coredump.elf %zu bytes", VFS_MOUNT, offset);
+    ::close(fd);
+  }
 }
 
 void FileSystemManager::shutdown()
