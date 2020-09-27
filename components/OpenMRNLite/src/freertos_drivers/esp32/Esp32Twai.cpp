@@ -140,24 +140,24 @@ static inline void twai_reset_rx_queue()
 /// Enables the low-level TWAI driver.
 void twai_enable()
 {
-    portENTER_CRITICAL_SAFE(&twai_spinlock);
+    portENTER_CRITICAL(&twai_spinlock);
 
     twai_reset_tx_queue();
     twai_reset_rx_queue();
 
     twai_hal_start(&twai_context, TWAI_MODE_NORMAL);
-    portEXIT_CRITICAL_SAFE(&twai_spinlock);
+    portEXIT_CRITICAL(&twai_spinlock);
 }
 
 /// Disables the low-level TWAI driver.
 void twai_disable()
 {
-    portENTER_CRITICAL_SAFE(&twai_spinlock);
+    portENTER_CRITICAL(&twai_spinlock);
 
     twai_hal_stop(&twai_context);
     twai_reset_tx_queue();
     
-    portEXIT_CRITICAL_SAFE(&twai_spinlock);
+    portEXIT_CRITICAL(&twai_spinlock);
 }
 
 /// VFS adapter for open(path, flags, mode).
@@ -216,6 +216,7 @@ static ssize_t vfs_write(int fd, const void *buf, size_t size)
         tx_frame.identifier = data->can_id;
         tx_frame.extd = IS_CAN_FRAME_EFF(*data);
         tx_frame.rtr = IS_CAN_FRAME_RTR(*data);
+        tx_frame.data_length_code = data->can_dlc;
         memcpy(tx_frame.data, data->data, data->can_dlc);
 
         twai_hal_frame_t hal_frame;
@@ -234,7 +235,7 @@ static ssize_t vfs_write(int fd, const void *buf, size_t size)
 
         if (xQueueSend(twai_tx_queue, &hal_frame, pdMS_TO_TICKS(1)) == pdTRUE)
         {
-            portENTER_CRITICAL_SAFE(&twai_spinlock);
+            portENTER_CRITICAL(&twai_spinlock);
             twai_tx_pending++;
             if ((!twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_TX_BUFF_OCCUPIED))
               && twai_tx_pending > 0)
@@ -246,7 +247,7 @@ static ssize_t vfs_write(int fd, const void *buf, size_t size)
                 }
             }
             sent++;
-            portEXIT_CRITICAL_SAFE(&twai_spinlock);
+            portEXIT_CRITICAL(&twai_spinlock);
             size--;
         }
         else
@@ -281,13 +282,13 @@ static ssize_t vfs_read(int fd, void *buf, size_t size)
     {
         twai_hal_frame_t hal_frame;
         memset(&hal_frame, 0, sizeof(twai_hal_frame_t));
-        if (xQueueReceive(twai_rx_queue, &hal_frame, 0) != pdTRUE)
+        if (xQueueReceive(twai_rx_queue, &hal_frame, pdMS_TO_TICKS(1)) != pdTRUE)
         {
             break;
         }
-        portENTER_CRITICAL_SAFE(&twai_spinlock);
+        portENTER_CRITICAL(&twai_spinlock);
         twai_rx_pending--;
-        portEXIT_CRITICAL_SAFE(&twai_spinlock);
+        portEXIT_CRITICAL(&twai_spinlock);
 
         if (hal_frame.dlc > TWAI_FRAME_MAX_DLC)
         {
@@ -339,10 +340,10 @@ static esp_err_t vfs_start_select(int nfds, fd_set *readfds
 {
     HASSERT(nfds >= 1);
     *end_select_args = nullptr;
-    portENTER_CRITICAL_SAFE(&twai_spinlock);
+    portENTER_CRITICAL(&twai_spinlock);
     twai_select_pending = 1;
     twai_select_sem = sem;
-    portEXIT_CRITICAL_SAFE(&twai_spinlock);
+    portEXIT_CRITICAL(&twai_spinlock);
 
     return ESP_OK;
 }
@@ -353,9 +354,9 @@ static esp_err_t vfs_start_select(int nfds, fd_set *readfds
 /// @return ESP_OK for success.
 static esp_err_t vfs_end_select(void *end_select_args)
 {
-    portENTER_CRITICAL_SAFE(&twai_spinlock);
+    portENTER_CRITICAL(&twai_spinlock);
     twai_select_pending = 0;
-    portEXIT_CRITICAL_SAFE(&twai_spinlock);
+    portEXIT_CRITICAL(&twai_spinlock);
     return ESP_OK;
 }
 
@@ -394,34 +395,25 @@ static int vfs_ioctl(int fd, int cmd, va_list args)
         errno = EINVAL;
         return -1;
     }
-
-    // Will be called at the end if non-null.
-    Notifiable* n = nullptr;
-
-    if (IOC_SIZE(cmd) == NOTIFIABLE_TYPE)
+    else if (IOC_SIZE(cmd) == NOTIFIABLE_TYPE)
     {
-        n = reinterpret_cast<Notifiable*>(va_arg(args, uintptr_t));
+        Notifiable* n = reinterpret_cast<Notifiable*>(va_arg(args, uintptr_t));
         HASSERT(n);
-    }
+        portENTER_CRITICAL(&twai_spinlock);
+        if (cmd == CAN_IOC_WRITE_ACTIVE && twai_tx_pending == 0)
+        {
+            std::swap(n, twai_tx_notifiable);
+        }
+        else if (cmd == CAN_IOC_READ_ACTIVE && twai_rx_pending == 0)
+        {
+            std::swap(n, twai_rx_notifiable);
+        }
+        portEXIT_CRITICAL(&twai_spinlock);
 
-    if (cmd == CAN_IOC_WRITE_ACTIVE &&
-        uxQueueSpacesAvailable(twai_tx_queue) == 0)
-    {
-        portENTER_CRITICAL_SAFE(&twai_spinlock);
-        std::swap(n, twai_tx_notifiable);
-        portEXIT_CRITICAL_SAFE(&twai_spinlock);
-    }
-    else if (cmd == CAN_IOC_READ_ACTIVE &&
-             uxQueueMessagesWaiting(twai_rx_queue) == 0)
-    {
-        portENTER_CRITICAL_SAFE(&twai_spinlock);
-        std::swap(n, twai_rx_notifiable);
-        portEXIT_CRITICAL_SAFE(&twai_spinlock);
-    }
-
-    if (n)
-    {
-        n->notify();
+        if (n)
+        {
+            n->notify();
+        }
     }
     return 0;
 }
@@ -430,7 +422,7 @@ static IRAM_ATTR void twai_isr(void *arg)
 {
     BaseType_t wakeup = pdFALSE;
 
-    portENTER_CRITICAL_SAFE(&twai_spinlock);
+    portENTER_CRITICAL_ISR(&twai_spinlock);
     uint32_t init_twai_rx_pending = twai_rx_pending;
     uint32_t init_twai_tx_pending = twai_tx_pending;
 
@@ -504,7 +496,7 @@ static IRAM_ATTR void twai_isr(void *arg)
             twai_rx_notifiable = nullptr;
         }
     }
-    portEXIT_CRITICAL_SAFE(&twai_spinlock);
+    portEXIT_CRITICAL_ISR(&twai_spinlock);
 
     portYIELD_FROM_ISR(wakeup);
 }
@@ -515,7 +507,7 @@ static void report_stats(xTimerHandle handle)
     {
         return;
     }
-    portENTER_CRITICAL_SAFE(&twai_spinlock);
+    portENTER_CRITICAL(&twai_spinlock);
     uint32_t tx_pending = twai_tx_pending;
     uint32_t rx_pending = twai_rx_pending;
     uint32_t rx_processed = twai_rx_processed;
@@ -526,7 +518,7 @@ static void report_stats(xTimerHandle handle)
     uint32_t tx_failed_count = twai_tx_failed_count;
     uint32_t arb_lost_count = twai_arb_lost_count;
     uint32_t bus_error_count = twai_bus_error_count;
-    portEXIT_CRITICAL_SAFE(&twai_spinlock);
+    portEXIT_CRITICAL(&twai_spinlock);
 
     LOG(INFO
       , "[TWAI] RX:%d (pending:%d,overrun:%d,discard:%d)"

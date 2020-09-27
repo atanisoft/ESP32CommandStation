@@ -34,6 +34,9 @@ static constexpr const char LCC_CAN_MARKER_FILE[] = "lcc-can";
     CONFIG_LCC_CAN_TX_PIN != -1
 Esp32Twai twai("/dev/can", CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
 #define CAN_PERIPHERAL_AVAILABLE 1
+
+#define CAN_PERIPHERAL_SELECT 1
+
 #endif // ESP32_TWAI_DRIVER_SUPPORTED
 
 LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
@@ -104,7 +107,11 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
     LOG(INFO, "[LCC] Enabling CAN interface (rx: %d, tx: %d)"
       , CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
     twai.hw_init();
+#if CAN_PERIPHERAL_SELECT
     static_cast<openlcb::SimpleCanStack *>(stack_)->add_can_port_select("/dev/can/can0");
+#else
+    static_cast<openlcb::SimpleCanStack *>(stack_)->add_can_port_async("/dev/can/can0");
+#endif
   }
 #endif // CAN_PERIPHERAL_AVAILABLE
 #endif // CONFIG_LCC_TCP_STACK
