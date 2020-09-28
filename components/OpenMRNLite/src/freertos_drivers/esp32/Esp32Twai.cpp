@@ -572,13 +572,21 @@ void Esp32Twai::hw_init()
     LOG(INFO, "[TWAI] Configuring TWAI TX pin: %d", txPin_);
 
     gpio_set_pull_mode(txPin_, GPIO_FLOATING);
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
     gpio_matrix_out(txPin_, TWAI_TX_IDX, false, false);
+#else
+    gpio_matrix_out(txPin_, CAN_TX_IDX, false, false);
+#endif
     gpio_pad_select_gpio(txPin_);
 
     LOG(INFO, "[TWAI] Configuring TWAI RX pin: %d", rxPin_);
     gpio_set_pull_mode(rxPin_, GPIO_FLOATING);
     gpio_set_direction(rxPin_, GPIO_MODE_INPUT);
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
     gpio_matrix_in(rxPin_, TWAI_RX_IDX, false);
+#else
+    gpio_matrix_in(rxPin_, CAN_RX_IDX, false);
+#endif
     gpio_pad_select_gpio(rxPin_);
 
     LOG(INFO, "[TWAI] Creating TWAI TX queue: %d", TWAI_TX_BUFFER_SIZE);
@@ -588,8 +596,13 @@ void Esp32Twai::hw_init()
     twai_rx_queue = xQueueCreate(TWAI_RX_BUFFER_SIZE, sizeof(twai_hal_frame_t));
     HASSERT(twai_rx_queue != nullptr);
 
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
     periph_module_reset(PERIPH_TWAI_MODULE);
     periph_module_enable(PERIPH_TWAI_MODULE);
+#else
+    periph_module_reset(PERIPH_CAN_MODULE);
+    periph_module_enable(PERIPH_CAN_MODULE);
+#endif
     HASSERT(twai_hal_init(&twai_context));
     twai_timing_config_t timingCfg = TWAI_TIMING_CONFIG_125KBITS();
     twai_filter_config_t filterCfg = TWAI_FILTER_CONFIG_ACCEPT_ALL();
@@ -597,8 +610,13 @@ void Esp32Twai::hw_init()
     twai_hal_configure(&twai_context, &timingCfg, &filterCfg
                      , TWAI_DEFAULT_INTERRUPTS, 0);
     LOG(INFO, "[TWAI] Allocating TWAI ISR");
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
     ESP_ERROR_CHECK(esp_intr_alloc(ETS_TWAI_INTR_SOURCE, 0, twai_isr, NULL
                   , &twai_isr_handle));
+#else
+    ESP_ERROR_CHECK(esp_intr_alloc(ETS_CAN_INTR_SOURCE, 0, twai_isr, NULL
+                  , &twai_isr_handle));
+#endif
     twai_is_configured = true;
     if (twai_status_timer != nullptr)
     {

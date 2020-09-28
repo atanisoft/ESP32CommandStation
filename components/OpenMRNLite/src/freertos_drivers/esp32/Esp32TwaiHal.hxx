@@ -541,7 +541,7 @@ static inline void twai_ll_set_bus_timing(ESP32_CAN_DEV_TYPE *hw, uint32_t brp, 
     hw->bus_timing_1_reg.sam = triple_sampling;
 #else
     hw->bus_timing_0_reg.baud_rate_prescaler = (brp / 2) - 1;
-    hw->bus_timing_0_reg.sjw = sync_jump_width - 1;
+    hw->bus_timing_0_reg.sync_jump_width = sync_jump_width - 1;
     hw->bus_timing_1_reg.time_seg_1 = tseg1 - 1;
     hw->bus_timing_1_reg.time_seg_2 = tseg2 - 1;
     hw->bus_timing_1_reg.sampling = triple_sampling;
@@ -695,7 +695,11 @@ static inline void twai_ll_set_acc_filter(ESP32_CAN_DEV_TYPE* hw, uint32_t code,
         hw->acceptance_filter.mask_reg[i].byte = ((mask_swapped >> (i * 8)) & 0xFF);
 #endif
     }
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->mode_reg.afm = single_filter;
+#else
+    hw->mode_reg.acceptance_filter = single_filter;
+#endif
 }
 
 /* ------------------------- TX/RX Buffer Registers ------------------------- */
@@ -1142,7 +1146,78 @@ static inline bool twai_hal_check_state_flags(twai_hal_context_t *hal_ctx, uint3
  * @param hal_ctx Context of the HAL layer
  * @return Bit mask of events that have occurred
  */
-uint32_t twai_hal_decode_interrupt_events(twai_hal_context_t *hal_ctx);
+static inline uint32_t twai_hal_decode_interrupt_events(twai_hal_context_t *hal_ctx)
+{
+    uint32_t events = 0;
+    //Read interrupt, status
+    uint32_t interrupts = twai_ll_get_and_clear_intrs(hal_ctx->dev);
+    uint32_t status = twai_ll_get_status(hal_ctx->dev);
+    uint32_t tec = twai_ll_get_tec(hal_ctx->dev);
+    uint32_t rec = twai_ll_get_rec(hal_ctx->dev);
+
+    //Error Warning Interrupt set whenever Error or Bus Status bit changes
+    if (interrupts & TWAI_LL_INTR_EI) {
+        if (status & TWAI_LL_STATUS_BS) {
+            //Currently in BUS OFF state
+            if (status & TWAI_LL_STATUS_ES) {    //EWL is exceeded, thus must have entered BUS OFF
+                twai_ll_set_mode(hal_ctx->dev, TWAI_MODE_LISTEN_ONLY);  //Set to listen only to freeze tec and rec
+                events |= TWAI_HAL_EVENT_BUS_OFF;
+                TWAI_HAL_SET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_BUS_OFF);
+                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_RUNNING);
+                //Any TX would have been halted by entering bus off. Reset its flag
+                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_TX_BUFF_OCCUPIED);
+            } else {
+                //Below EWL. Therefore TEC is counting down in bus recovery
+                events |= TWAI_HAL_EVENT_BUS_RECOV_PROGRESS;
+            }
+        } else {
+            //Not in BUS OFF
+            if (status & TWAI_LL_STATUS_ES) {       //Just Exceeded EWL
+                events |= TWAI_HAL_EVENT_ABOVE_EWL;  
+                TWAI_HAL_SET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_ERR_WARN);
+            } else if (hal_ctx->state_flags & TWAI_HAL_STATE_FLAG_RECOVERING) {
+                //Previously undergoing bus recovery. Thus means bus recovery complete
+                twai_ll_enter_reset_mode(hal_ctx->dev);     //Enter reset mode to stop the peripheral
+                events |= TWAI_HAL_EVENT_BUS_RECOV_CPLT;
+                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_RECOVERING);
+                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_BUS_OFF);
+            } else {        //Just went below EWL
+                events |= TWAI_HAL_EVENT_BELOW_EWL;
+                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_ERR_WARN);
+            }
+        }
+    }
+    //Receive Interrupt set whenever RX FIFO  is not empty
+    if (interrupts & TWAI_LL_INTR_RI) {
+        events |= TWAI_HAL_EVENT_RX_BUFF_FRAME;
+    }
+    //Transmit interrupt set whenever TX buffer becomes free
+    if (interrupts & TWAI_LL_INTR_TI) {
+        events |= TWAI_HAL_EVENT_TX_BUFF_FREE;
+        TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_TX_BUFF_OCCUPIED);
+    }
+    //Error Passive Interrupt on transition from error active to passive or vice versa
+    if (interrupts & TWAI_LL_INTR_EPI) {
+        if (tec >= TWAI_ERR_PASS_THRESH || rec >= TWAI_ERR_PASS_THRESH) {
+            events |= TWAI_HAL_EVENT_ERROR_PASSIVE;
+            TWAI_HAL_SET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_ERR_PASSIVE);
+        } else {
+            events |= TWAI_HAL_EVENT_ERROR_ACTIVE;
+            TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_ERR_PASSIVE);
+        }
+    }
+    //Bus error interrupt triggered on a bus error (e.g. bit, ACK, stuff etc)
+    if (interrupts & TWAI_LL_INTR_BEI) {
+        twai_ll_clear_err_code_cap(hal_ctx->dev);
+        events |= TWAI_HAL_EVENT_BUS_ERR;
+    }
+    //Arbitration Lost Interrupt triggered on losing arbitration
+    if (interrupts & TWAI_LL_INTR_ALI) {
+        twai_ll_clear_arb_lost_cap(hal_ctx->dev);
+        events |= TWAI_HAL_EVENT_ARB_LOST;
+    }
+    return events;
+}
 
 /* ------------------------------- TX and RX -------------------------------- */
 
@@ -1224,79 +1299,6 @@ static inline void twai_hal_read_rx_buffer_and_clear(twai_hal_context_t *hal_ctx
      * Todo: Support overrun handling by:
      * - Check overrun status bit. Return false if overrun
      */
-}
-
-static inline uint32_t twai_hal_decode_interrupt_events(twai_hal_context_t *hal_ctx)
-{
-    uint32_t events = 0;
-    //Read interrupt, status
-    uint32_t interrupts = twai_ll_get_and_clear_intrs(hal_ctx->dev);
-    uint32_t status = twai_ll_get_status(hal_ctx->dev);
-    uint32_t tec = twai_ll_get_tec(hal_ctx->dev);
-    uint32_t rec = twai_ll_get_rec(hal_ctx->dev);
-
-    //Error Warning Interrupt set whenever Error or Bus Status bit changes
-    if (interrupts & TWAI_LL_INTR_EI) {
-        if (status & TWAI_LL_STATUS_BS) {
-            //Currently in BUS OFF state
-            if (status & TWAI_LL_STATUS_ES) {    //EWL is exceeded, thus must have entered BUS OFF
-                twai_ll_set_mode(hal_ctx->dev, TWAI_MODE_LISTEN_ONLY);  //Set to listen only to freeze tec and rec
-                events |= TWAI_HAL_EVENT_BUS_OFF;
-                TWAI_HAL_SET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_BUS_OFF);
-                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_RUNNING);
-                //Any TX would have been halted by entering bus off. Reset its flag
-                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_TX_BUFF_OCCUPIED);
-            } else {
-                //Below EWL. Therefore TEC is counting down in bus recovery
-                events |= TWAI_HAL_EVENT_BUS_RECOV_PROGRESS;
-            }
-        } else {
-            //Not in BUS OFF
-            if (status & TWAI_LL_STATUS_ES) {       //Just Exceeded EWL
-                events |= TWAI_HAL_EVENT_ABOVE_EWL;  
-                TWAI_HAL_SET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_ERR_WARN);
-            } else if (hal_ctx->state_flags & TWAI_HAL_STATE_FLAG_RECOVERING) {
-                //Previously undergoing bus recovery. Thus means bus recovery complete
-                twai_ll_enter_reset_mode(hal_ctx->dev);     //Enter reset mode to stop the peripheral
-                events |= TWAI_HAL_EVENT_BUS_RECOV_CPLT;
-                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_RECOVERING);
-                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_BUS_OFF);
-            } else {        //Just went below EWL
-                events |= TWAI_HAL_EVENT_BELOW_EWL;
-                TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_ERR_WARN);
-            }
-        }
-    }
-    //Receive Interrupt set whenever RX FIFO  is not empty
-    if (interrupts & TWAI_LL_INTR_RI) {
-        events |= TWAI_HAL_EVENT_RX_BUFF_FRAME;
-    }
-    //Transmit interrupt set whenever TX buffer becomes free
-    if (interrupts & TWAI_LL_INTR_TI) {
-        events |= TWAI_HAL_EVENT_TX_BUFF_FREE;
-        TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_TX_BUFF_OCCUPIED);
-    }
-    //Error Passive Interrupt on transition from error active to passive or vice versa
-    if (interrupts & TWAI_LL_INTR_EPI) {
-        if (tec >= TWAI_ERR_PASS_THRESH || rec >= TWAI_ERR_PASS_THRESH) {
-            events |= TWAI_HAL_EVENT_ERROR_PASSIVE;
-            TWAI_HAL_SET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_ERR_PASSIVE);
-        } else {
-            events |= TWAI_HAL_EVENT_ERROR_ACTIVE;
-            TWAI_HAL_RESET_FLAG(hal_ctx->state_flags, TWAI_HAL_STATE_FLAG_ERR_PASSIVE);
-        }
-    }
-    //Bus error interrupt triggered on a bus error (e.g. bit, ACK, stuff etc)
-    if (interrupts & TWAI_LL_INTR_BEI) {
-        twai_ll_clear_err_code_cap(hal_ctx->dev);
-        events |= TWAI_HAL_EVENT_BUS_ERR;
-    }
-    //Arbitration Lost Interrupt triggered on losing arbitration
-    if (interrupts & TWAI_LL_INTR_ALI) {
-        twai_ll_clear_arb_lost_cap(hal_ctx->dev);
-        events |= TWAI_HAL_EVENT_ARB_LOST;
-    }
-    return events;
 }
 
 #ifdef __cplusplus
