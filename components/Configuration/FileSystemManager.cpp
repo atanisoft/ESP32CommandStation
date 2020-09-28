@@ -235,7 +235,7 @@ FileSystemManager::FileSystemManager()
                            , ESP_PARTITION_SUBTYPE_DATA_COREDUMP, "coredump");
   if (coredump != NULL)
   {
-    string coreFilePath = StringPrintf("%s/core.elf", VFS_MOUNT);
+    string coreFilePath;
     // if we are using an SD card preserve the last five core dump files by
     // renaming the current core.elf file (if present) to core1.elf and all
     // other coreX.elf files up by one until there are core1.elf through
@@ -244,19 +244,23 @@ FileSystemManager::FileSystemManager()
     {
       struct stat statbuf;
       coreFilePath = StringPrintf("%s/core5.elf", VFS_MOUNT);
-      string newCoreFilePath = "";
+      string newCoreFilePath;
       // remove core5.elf if present.
       if (!stat(coreFilePath.c_str(), &statbuf))
       {
         LOG(INFO, "[FS] Removing %s", coreFilePath.c_str());
         unlink(coreFilePath.c_str());
       }
-      // rename core1.elf -> core2.elf, core2.elf -> core3.elf,
-      // core3.elf -> core4.elf, core4.elf -> core5.elf
-      for (uint8_t idx = 4; idx > 0; idx--)
+      // rename core.elf -> core1.elf, core1.elf -> core2.elf,
+      // core2.elf -> core3.elf, core3.elf -> core4.elf, core4.elf -> core5.elf
+      for (int8_t idx = 4; idx >= 0; idx--)
       {
         coreFilePath = StringPrintf("%s/core%d.elf", VFS_MOUNT, idx);
         newCoreFilePath = StringPrintf("%s/core%d.elf", VFS_MOUNT, idx + 1);
+        if (idx == 0)
+        {
+          coreFilePath = StringPrintf("%s/core.elf", VFS_MOUNT);
+        }
         if (!stat(coreFilePath.c_str(), &statbuf))
         {
           LOG(INFO, "[FS] Renaming %s to %s", coreFilePath.c_str()
@@ -264,19 +268,10 @@ FileSystemManager::FileSystemManager()
           rename(coreFilePath.c_str(), newCoreFilePath.c_str());
         }
       }
-      // rename core.elf -> core1.elf
-      coreFilePath = StringPrintf("%s/core.elf", VFS_MOUNT);
-      newCoreFilePath = StringPrintf("%s/core1.elf", VFS_MOUNT);
-      if (!stat(coreFilePath.c_str(), &statbuf))
-      {
-        LOG(INFO, "[FS] Renaming %s to %s", coreFilePath.c_str()
-          , newCoreFilePath.c_str());
-        rename(coreFilePath.c_str(), newCoreFilePath.c_str());
-      }
     }
 
     // record the current contents of the coredump partition as core.elf
-    void *buffer = nullptr;
+    const void *buffer;
     spi_flash_mmap_handle_t handle;
     coreFilePath = StringPrintf("%s/core.elf", VFS_MOUNT);
     int fd = ::open(coreFilePath.c_str()
