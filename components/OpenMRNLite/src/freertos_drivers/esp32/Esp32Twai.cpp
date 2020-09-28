@@ -38,18 +38,16 @@
 #if ESP32_TWAI_DRIVER_SUPPORTED
 
 // If we are using IDF 4.2+ we can leverage the TWAI HAL layer
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,3,0)
 #include <soc/twai_periph.h>
 #include <hal/twai_hal.h>
 #include <hal/twai_types.h>
-//#elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
-//#include <soc/can_periph.h>
-//#include <hal/can_hal.h>
+//#else
+//#include "esp32_twai_hal.h"
 #endif
 
 #include <driver/gpio.h>
 #include <driver/periph_ctrl.h>
-#include <esp_rom_gpio.h>
 #include <esp_vfs.h>
 #include <esp_intr_alloc.h>
 
@@ -61,26 +59,6 @@
 #include "executor/Notifiable.hxx"
 #include "nmranet_config.h"
 #include "utils/logging.h"
-
-typedef enum
-{
-    /// Stopped state.
-    /// The TWAI controller will not participate in any TWAI bus activities.
-    TWAI_STATE_STOPPED,
-    
-    /// Running state.
-    /// The TWAI controller can transmit and receive messages.
-    TWAI_STATE_RUNNING,
-    
-    /// Bus-off state.
-    /// The TWAI controller cannot participate in bus activities until it has
-    /// recovered.
-    TWAI_STATE_BUS_OFF,
-
-    /// Recovering state.
-    /// The TWAI controller is undergoing bus recovery.
-    TWAI_STATE_RECOVERING
-} twai_state_t;
 
 static constexpr int TWAI_VFS_FD = 0;
 
@@ -138,26 +116,24 @@ static inline void twai_reset_rx_queue()
 }
 
 /// Enables the low-level TWAI driver.
-void twai_enable()
+static inline void twai_enable()
 {
-    portENTER_CRITICAL(&twai_spinlock);
-
     twai_reset_tx_queue();
     twai_reset_rx_queue();
 
+    portENTER_CRITICAL(&twai_spinlock);
     twai_hal_start(&twai_context, TWAI_MODE_NORMAL);
     portEXIT_CRITICAL(&twai_spinlock);
 }
 
 /// Disables the low-level TWAI driver.
-void twai_disable()
+static inline void twai_disable()
 {
     portENTER_CRITICAL(&twai_spinlock);
-
     twai_hal_stop(&twai_context);
-    twai_reset_tx_queue();
-    
     portEXIT_CRITICAL(&twai_spinlock);
+
+    twai_reset_tx_queue();
 }
 
 /// VFS adapter for open(path, flags, mode).
@@ -222,7 +198,9 @@ static ssize_t vfs_write(int fd, const void *buf, size_t size)
         twai_hal_frame_t hal_frame;
         if (twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_BUS_OFF))
         {
+            portENTER_CRITICAL(&twai_spinlock);
             twai_hal_start_bus_recovery(&twai_context);
+            portEXIT_CRITICAL(&twai_spinlock);
             twai_reset_tx_queue();
             break;
         }
@@ -587,14 +565,14 @@ void Esp32Twai::hw_init()
     LOG(INFO, "[TWAI] Configuring TWAI TX pin: %d", txPin_);
 
     gpio_set_pull_mode(txPin_, GPIO_FLOATING);
-    esp_rom_gpio_connect_out_signal(txPin_, TWAI_TX_IDX, false, false);
-    esp_rom_gpio_pad_select_gpio(txPin_);
+    gpio_matrix_out(txPin_, TWAI_TX_IDX, false, false);
+    gpio_pad_select_gpio(txPin_);
 
     LOG(INFO, "[TWAI] Configuring TWAI RX pin: %d", rxPin_);
     gpio_set_pull_mode(rxPin_, GPIO_FLOATING);
-    esp_rom_gpio_connect_in_signal(rxPin_, TWAI_RX_IDX, false);
-    esp_rom_gpio_pad_select_gpio(rxPin_);
     gpio_set_direction(rxPin_, GPIO_MODE_INPUT);
+    gpio_matrix_in(rxPin_, TWAI_RX_IDX, false);
+    gpio_pad_select_gpio(rxPin_);
 
     LOG(INFO, "[TWAI] Creating TWAI TX queue: %d", TWAI_TX_BUFFER_SIZE);
     twai_tx_queue = xQueueCreate(TWAI_TX_BUFFER_SIZE, sizeof(twai_hal_frame_t));
