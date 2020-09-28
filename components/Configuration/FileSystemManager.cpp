@@ -31,6 +31,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <sdmmc_cmd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <utils/FdUtils.hxx>
 #include <utils/FileUtils.hxx>
 
 static constexpr const char FACTORY_RESET_MARKER_FILE[] = "resetcfg.txt";
@@ -229,33 +230,73 @@ FileSystemManager::FileSystemManager()
   mkdir(LCC_CFG_DIR, ACCESSPERMS);
 
   LOG(INFO, "[FS] Converting coredump partition to file...");
-  // dump coredump partition to file
   const esp_partition_t *coredump =
     esp_partition_find_first(ESP_PARTITION_TYPE_DATA
                            , ESP_PARTITION_SUBTYPE_DATA_COREDUMP, "coredump");
   if (coredump != NULL)
   {
-    uint8_t buffer[CONFIG_WL_SECTOR_SIZE];
-    uint32_t remaining = coredump->size;
-    size_t offset = 0;
-    int fd = ::open(StringPrintf("%s/coredump.elf", VFS_MOUNT).c_str()
-                  , O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR);
-    while (remaining > 0)
+    string coreFilePath = StringPrintf("%s/core.elf", VFS_MOUNT);
+    // if we are using an SD card preserve the last five core dump files by
+    // renaming the current core.elf file (if present) to core1.elf and all
+    // other coreX.elf files up by one until there are core1.elf through
+    // core5.elf present on the SD card.
+    if (sd_)
     {
-      bzero(&buffer, CONFIG_WL_SECTOR_SIZE);
-      esp_partition_read(coredump, offset, buffer,
-                         (size_t)std::min(remaining, (uint32_t)CONFIG_WL_SECTOR_SIZE));
-      offset += CONFIG_WL_SECTOR_SIZE;
-      remaining -= CONFIG_WL_SECTOR_SIZE;
-      ssize_t written = ::write(fd, buffer, CONFIG_WL_SECTOR_SIZE);
-      if (written != CONFIG_WL_SECTOR_SIZE)
+      struct stat statbuf;
+      coreFilePath = StringPrintf("%s/core5.elf", VFS_MOUNT);
+      string newCoreFilePath = "";
+      // remove core5.elf if present.
+      if (!stat(coreFilePath.c_str(), &statbuf))
       {
-        LOG_ERROR("[FS] Short write of coredump.elf: %zu vs %d", written
-                , CONFIG_WL_SECTOR_SIZE);
-        break;
+        LOG(INFO, "[FS] Removing %s", coreFilePath.c_str());
+        unlink(coreFilePath.c_str());
+      }
+      // rename core1.elf -> core2.elf, core2.elf -> core3.elf,
+      // core3.elf -> core4.elf, core4.elf -> core5.elf
+      for (uint8_t idx = 4; idx > 0; idx--)
+      {
+        coreFilePath = StringPrintf("%s/core%d.elf", VFS_MOUNT, idx);
+        newCoreFilePath = StringPrintf("%s/core%d.elf", VFS_MOUNT, idx + 1);
+        if (!stat(coreFilePath.c_str(), &statbuf))
+        {
+          LOG(INFO, "[FS] Renaming %s to %s", coreFilePath.c_str()
+            , newCoreFilePath.c_str());
+          rename(coreFilePath.c_str(), newCoreFilePath.c_str());
+        }
+      }
+      // rename core.elf -> core1.elf
+      coreFilePath = StringPrintf("%s/core.elf", VFS_MOUNT);
+      newCoreFilePath = StringPrintf("%s/core1.elf", VFS_MOUNT);
+      if (!stat(coreFilePath.c_str(), &statbuf))
+      {
+        LOG(INFO, "[FS] Renaming %s to %s", coreFilePath.c_str()
+          , newCoreFilePath.c_str());
+        rename(coreFilePath.c_str(), newCoreFilePath.c_str());
       }
     }
-    LOG(INFO, "[FS] %s/coredump.elf %zu bytes", VFS_MOUNT, offset);
+
+    // record the current contents of the coredump partition as core.elf
+    void *buffer = nullptr;
+    spi_flash_mmap_handle_t handle;
+    coreFilePath = StringPrintf("%s/core.elf", VFS_MOUNT);
+    int fd = ::open(coreFilePath.c_str()
+                  , O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IWUSR);
+    if (ESP_ERROR_CHECK_WITHOUT_ABORT(
+      esp_partition_mmap(coredump, 0, coredump->size
+                       , SPI_FLASH_MMAP_DATA, &buffer, &handle)) == ESP_OK &&
+      buffer != nullptr && fd >= 0)
+    {
+      LOG(INFO, "[FS] Creating %s", coreFilePath.c_str());
+      FdUtils::repeated_write(fd, buffer, coredump->size);
+      spi_flash_munmap(handle);
+      LOG(INFO, "[FS] Wrote %d bytes to %s", coredump->size
+        , coreFilePath.c_str());
+    }
+    else
+    {
+      LOG_ERROR("[FS] Failed to memory map coredump partition, unable to "
+                "preserve coredump.");
+    }
     ::close(fd);
   }
 }
