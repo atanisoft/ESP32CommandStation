@@ -541,7 +541,7 @@ static inline void twai_ll_set_bus_timing(ESP32_CAN_DEV_TYPE *hw, uint32_t brp, 
     hw->bus_timing_1_reg.sam = triple_sampling;
 #else
     hw->bus_timing_0_reg.baud_rate_prescaler = (brp / 2) - 1;
-    hw->bus_timing_0_reg.sync_jump_width = sync_jump_width - 1;
+    hw->bus_timing_0_reg.sync_jump_width = sjw - 1;
     hw->bus_timing_1_reg.time_seg_1 = tseg1 - 1;
     hw->bus_timing_1_reg.time_seg_2 = tseg2 - 1;
     hw->bus_timing_1_reg.sampling = triple_sampling;
