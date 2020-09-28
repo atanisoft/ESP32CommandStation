@@ -38,12 +38,12 @@
 #if ESP32_TWAI_DRIVER_SUPPORTED
 
 // If we are using IDF 4.2+ we can leverage the TWAI HAL layer
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,3,0)
-#include <soc/twai_periph.h>
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
 #include <hal/twai_hal.h>
-#include <hal/twai_types.h>
-//#else
-//#include "esp32_twai_hal.h"
+#elif CONFIG_IDF_TARGET_ESP32
+#include "Esp32TwaiHal.hxx"
+#else
+#error Unsupported architecture
 #endif
 
 #include <driver/gpio.h>
