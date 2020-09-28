@@ -476,7 +476,14 @@ static IRAM_ATTR void twai_isr(void *arg)
     }
     portEXIT_CRITICAL_ISR(&twai_spinlock);
 
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
     portYIELD_FROM_ISR(wakeup);
+#else
+    if (wakeup == pdTRUE)
+    {
+        portYIELD_FROM_ISR();
+    }
+#endif
 }
 
 static void report_stats(xTimerHandle handle)
