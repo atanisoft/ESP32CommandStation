@@ -56,13 +56,11 @@
 #endif
 
 // If we are using IDF 4.2+ we can leverage the TWAI HAL layer
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,0,0)
 #define ESP32_TWAI_DRIVER_SUPPORTED 1
-//#elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
 #else
-// IDF 4.0 and earlier.
 #warning Unsupported IDF version
-#endif // IDF 4.2+
+#endif // IDF 4.0+
 
 #endif // CONFIG_IDF_TARGET
 
