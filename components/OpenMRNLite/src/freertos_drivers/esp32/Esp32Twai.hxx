@@ -99,6 +99,9 @@ private:
 
     /// GPIO pin connected to the external transceiver TX pin.
     const gpio_num_t txPin_;
+
+    /// Flag to indicate that TWAI statistics should be periodically reported.
+    const bool reportStats_;
 };
 
 } // namespace openmrn_arduino

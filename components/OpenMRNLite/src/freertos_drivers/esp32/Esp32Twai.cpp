@@ -40,6 +40,7 @@
 
 #include <driver/gpio.h>
 #include <driver/periph_ctrl.h>
+#include <esp_task.h>
 #include <esp_vfs.h>
 #include <esp_intr_alloc.h>
 #include <freertos/FreeRTOS.h>
@@ -53,27 +54,50 @@
 #include "nmranet_config.h"
 #include "utils/logging.h"
 
-//#define USE_FREERTOS_PORTMUX 1
-#define USE_FREERTOS_BIN_SEMAPHORE 1
-
-#if USE_FREERTOS_PORTMUX && USE_FREERTOS_BIN_SEMAPHORE
-#error Only one of these can be enabled at one time: USE_FREERTOS_PORTMUX or USE_FREERTOS_BIN_SEMAPHORE.
-#endif
-
+#define INCLUDE_VFS_SELECT_SUPPORT 1
 //#define INCLUDE_VFS_IOCTL_SUPPORT 1
 
+/// Default file descriptor to return in the vfs_open() call.
+/// NOTE: The TWAI driver only supports one file descriptor at this time.
 static constexpr int TWAI_VFS_FD = 0;
 
 /// Interval at which to print the ESP32 TWAI bus status.
 static constexpr TickType_t STATUS_PRINT_INTERVAL = pdMS_TO_TICKS(10000);
 
-static const size_t TWAI_RX_BUFFER_SIZE = 
-    ((size_t)config_can_rx_buffer_size()) * 10;
-static const size_t TWAI_TX_BUFFER_SIZE =
-    (size_t)config_can_tx_buffer_size();
+/// Stack size to use for the periodic statistics reporting task.
+static constexpr size_t STATUS_TASK_STACK_SIZE = 2048;
 
-/// Periodic timer handle.
-static xTimerHandle twai_status_timer = nullptr;
+/// TWAI peripheral ISR flags.
+static constexpr int TWAI_ISR_FLAGS =
+    ESP_INTR_FLAG_LOWMED |  // ISR is written in C/C++ code.
+    ESP_INTR_FLAG_IRAM;     // ISR can be called with cache disabled.
+
+// Starting in IDF v4.2 the CAN peripheral was renamed to TWAI.
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+/// Pin matrix index for the TWAI TX peripheral pin.
+static constexpr uint32_t TWAI_TX_SIGNAL_IDX = TWAI_TX_IDX;
+
+/// Pin matrix index for the TWAI RX peripheral pin.
+static constexpr uint32_t TWAI_RX_SIGNAL_IDX = TWAI_RX_IDX;
+
+/// TWAI peripheral ISR source index.
+static constexpr int TWAI_ISR_SOURCE = ETS_TWAI_INTR_SOURCE;
+
+/// TWAI Peripheral module ID.
+static constexpr periph_module_t TWAI_PERIPHERAL = PERIPH_TWAI_MODULE;
+#else
+/// Pin matrix index for the TWAI TX peripheral pin.
+static constexpr uint32_t TWAI_TX_SIGNAL_IDX = CAN_TX_IDX;
+
+/// Pin matrix index for the TWAI RX peripheral pin.
+static constexpr uint32_t TWAI_RX_SIGNAL_IDX = CAN_RX_IDX;
+
+/// TWAI peripheral ISR source index.
+static constexpr int TWAI_ISR_SOURCE = ETS_CAN_INTR_SOURCE;
+
+/// TWAI Peripheral module ID.
+static constexpr periph_module_t TWAI_PERIPHERAL = PERIPH_CAN_MODULE;
+#endif
 
 /// Internal flag used for tracking if the VFS driver has been registered.
 static bool vfs_is_registered = false;
@@ -82,77 +106,99 @@ static bool vfs_is_registered = false;
 /// configured.
 static bool twai_is_configured = false;
 
-//Exclude data overrun (bit[3]) and brp_div (bit[4])
+/// TWAI default interrupt enable mask, excludes data overrun (bit[3]) and
+/// brp_div (bit[4]) since these are not supported on all models.
 static constexpr uint32_t TWAI_DEFAULT_INTERRUPTS = 0xE7;
+
+/// TWAI HAL context object.
 static twai_hal_context_t twai_context;
+
+/// Handle for the TWAI ISR.
 static intr_handle_t twai_isr_handle;
+
+/// TWAI Pending TX Queue.
 static QueueHandle_t twai_tx_queue;
+
+/// TWAI Pending RX Queue.
 static QueueHandle_t twai_rx_queue;
 
+/// Number of frames that are pending transmission by the low-level TWAI
+/// driver.
+/// NOTE: This saves calling FreeRTOS functions to check @ref twai_tx_queue.
 static volatile uint32_t twai_tx_pending = 0;
+
+/// Number of frames that have been received by the low-level TWAI driver but
+/// have not been read from @ref twai_rx_queue.
+/// NOTE: This saves calling FreeRTOS functions to check @ref twai_rx_queue.
 static volatile uint32_t twai_rx_pending = 0;
+
+/// Number of frames have been removed from @ref twai_rx_queue and sent to the
+/// OpenMRN stack.
 static volatile uint32_t twai_rx_processed = 0;
+
+/// Number of frames frames that could not be sent to @ref twai_rx_queue.
 static volatile uint32_t twai_rx_overrun_count = 0;
+
+/// Number of frames that were discarded that had too large of a DLC count.
 static volatile uint32_t twai_rx_discard_count = 0;
+
+/// Number of frames that have been sent to the @ref twai_tx_queue by the
+/// OpenMRN stack successfully.
 static volatile uint32_t twai_tx_processed = 0;
+
+/// Number of frames that have been transmitted successfully by the low-level
+/// TWAI driver.
 static volatile uint32_t twai_tx_success_count = 0;
+
+/// Number of frames that have been could not be transmitted successfully by
+/// the low-level TWAI driver.
 static volatile uint32_t twai_tx_failed_count = 0;
+
+/// Number of arbitration errors that have been observed on the TWAI bus.
 static volatile uint32_t twai_arb_lost_count = 0;
+
+/// Number of general bus errors that have been observed on the TWAI bus.
 static volatile uint32_t twai_bus_error_count = 0;
 
-#if USE_FREERTOS_PORTMUX
-static portMUX_TYPE twai_spinlock = portMUX_INITIALIZER_UNLOCKED;
-#define LOCK_MUX() portENTER_CRITICAL(&twai_spinlock)
-#define LOCK_MUX_ISR(wakeup) portENTER_CRITICAL_ISR(&twai_spinlock)
-#define UNLOCK_MUX() portEXIT_CRITICAL(&twai_spinlock)
-#define UNLOCK_MUX_ISR(wakeup) portEXIT_CRITICAL_ISR(&twai_spinlock)
-#elif USE_FREERTOS_BIN_SEMAPHORE
-static SemaphoreHandle_t twai_spinlock;
-#define LOCK_MUX() xSemaphoreTake(twai_spinlock, pdMS_TO_TICKS(1))
-#define LOCK_MUX_ISR(wakeup) xSemaphoreTakeFromISR(twai_spinlock, &wakeup)
-#define UNLOCK_MUX() xSemaphoreGive(twai_spinlock)
-#define UNLOCK_MUX_ISR(wakeup) xSemaphoreGiveFromISR(twai_spinlock, &wakeup)
-#else
-#error USE_FREERTOS_PORTMUX or USE_FREERTOS_BIN_SEMAPHORE must be defined to 1.
-#endif
-static uint32_t twai_select_pending = 0;
+/// Thread handle for the statistics reporting task.
+static os_thread_t status_thread_handle;
+
+#if INCLUDE_VFS_SELECT_SUPPORT
+/// Semaphore provided by the VFS layer when select() is invoked on one of the
+/// file descriptors handle by the TWAI VFS adapter.
 static esp_vfs_select_sem_t twai_select_sem;
+
+/// Internal flag indicating that the VFS layer has called
+/// @ref vfs_start_select() and that @ref twai_select_sem should be used if/when
+/// there is a change in @ref twai_tx_queue or @ref twai_rx_queue.
+static volatile uint32_t twai_select_pending;
+#endif // INCLUDE_VFS_SELECT_SUPPORT
+
 #if INCLUDE_VFS_IOCTL_SUPPORT
-static Notifiable* twai_tx_notifiable = nullptr;
-static Notifiable* twai_rx_notifiable = nullptr;
+/// Spinlock protecting the ioctl @ref Notifiable objects below.
+static SemaphoreHandle_t twai_ioctl_spinlock;
+
+/// @ref Notifable object used to wakeup when there is room for at least one
+/// frame in @ref twai_tx_queue.
+static Notifiable *twai_tx_notifiable = nullptr;
+
+/// @ref Notifable object used to wakeup when there is at least one frame
+/// available in @ref twai_rx_queue.
+static Notifiable *twai_rx_notifiable = nullptr;
 #endif // INCLUDE_VFS_IOCTL_SUPPORT
 
-static inline void twai_reset_tx_queue()
+/// Flushes all frames in @ref twai_tx_queue.
+static inline void twai_flush_tx_queue()
 {
     xQueueReset(twai_tx_queue);
     twai_tx_pending = 0;
 }
 
-static inline void twai_reset_rx_queue()
+/// Flushes all frames in @ref twai_rx_queue.
+static inline void twai_flush_rx_queue()
 {
     xQueueReset(twai_rx_queue);
     twai_rx_pending = 0;
-}
-
-/// Enables the low-level TWAI driver.
-static inline void twai_enable()
-{
-    twai_reset_tx_queue();
-    twai_reset_rx_queue();
-
-    LOCK_MUX();
-    twai_hal_start(&twai_context, TWAI_MODE_NORMAL);
-    UNLOCK_MUX();
-}
-
-/// Disables the low-level TWAI driver.
-static inline void twai_disable()
-{
-    LOCK_MUX();
-    twai_hal_stop(&twai_context);
-    UNLOCK_MUX();
-
-    twai_reset_tx_queue();
 }
 
 /// VFS adapter for open(path, flags, mode).
@@ -169,8 +215,12 @@ static int vfs_open(const char *path, int flags, int mode)
 {
     // skip past the '/' that is passed in as first character
     path++;
-    LOG(INFO, "[TWAI] Opening TWAI device:%s", path);
-    twai_enable();
+
+    LOG(INFO, "[TWAI] Enabling TWAI device:%s", path);
+    twai_flush_tx_queue();
+    twai_flush_rx_queue();
+
+    twai_hal_start(&twai_context, TWAI_MODE_NORMAL);
     return TWAI_VFS_FD;
 }
 
@@ -186,8 +236,10 @@ static int vfs_open(const char *path, int flags, int mode)
 /// @return zero upon success, negative value with errno for failure.
 static int vfs_close(int fd)
 {
-    LOG(INFO, "[TWAI] Closing TWAI fd:%d", fd);
-    twai_disable();
+    LOG(INFO, "[TWAI] Disabling TWAI fd:%d", fd);
+    twai_flush_tx_queue();
+
+    twai_hal_stop(&twai_context);
     return 0;
 }
 
@@ -206,49 +258,41 @@ static ssize_t vfs_write(int fd, const void *buf, size_t size)
     size /= sizeof(struct can_frame);
     while (size)
     {
-        twai_message_t tx_frame;
-        memset(&tx_frame, 0, sizeof(twai_message_t));
-        tx_frame.identifier = data->can_id;
-        tx_frame.extd = IS_CAN_FRAME_EFF(*data);
-        tx_frame.rtr = IS_CAN_FRAME_RTR(*data);
-        tx_frame.data_length_code = data->can_dlc;
-        memcpy(tx_frame.data, data->data, data->can_dlc);
-
-        twai_hal_frame_t hal_frame;
         if (twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_BUS_OFF))
         {
-            LOCK_MUX();
             twai_hal_start_bus_recovery(&twai_context);
-            UNLOCK_MUX();
-            twai_reset_tx_queue();
+            twai_flush_tx_queue();
             break;
         }
         else if (!twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_RUNNING))
         {
             break;
         }
-        memset(&hal_frame, 0, sizeof(twai_hal_frame_t));
-        twai_hal_format_frame(&tx_frame, &hal_frame);
 
-        if (xQueueSend(twai_tx_queue, &hal_frame, pdMS_TO_TICKS(1)) == pdTRUE)
+        twai_message_t tx_frame;
+        twai_hal_frame_t hal_frame;
+        bzero(&tx_frame, sizeof(twai_message_t));
+        tx_frame.identifier = data->can_id;
+        tx_frame.extd = data->can_eff;
+        tx_frame.rtr = data->can_rtr;
+        tx_frame.data_length_code = data->can_dlc;
+        memcpy(tx_frame.data, data->data, data->can_dlc);
+        twai_hal_format_frame(&tx_frame, &hal_frame);
+        if (xQueueSend(twai_tx_queue, &hal_frame, 0) == pdTRUE)
         {
-            LOCK_MUX();
             twai_tx_pending++;
-            if ((!twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_TX_BUFF_OCCUPIED))
-              && twai_tx_pending > 0)
+            if (twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_RUNNING) &&
+                !twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_TX_BUFF_OCCUPIED) &&
+                xQueueReceive(twai_tx_queue, &hal_frame, 0) == pdTRUE)
             {
-                if (twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_RUNNING) &&
-                    xQueueReceive(twai_tx_queue, &hal_frame, 0) == pdTRUE)
-                {
-                    twai_hal_set_tx_buffer_and_transmit(&twai_context, &hal_frame);
-                }
+                twai_hal_set_tx_buffer_and_transmit(&twai_context, &hal_frame);
             }
             sent++;
-            UNLOCK_MUX();
             size--;
         }
         else
         {
+            // No space in the TX queue
             break;
         }
     }
@@ -279,13 +323,12 @@ static ssize_t vfs_read(int fd, void *buf, size_t size)
     {
         twai_hal_frame_t hal_frame;
         memset(&hal_frame, 0, sizeof(twai_hal_frame_t));
-        if (xQueueReceive(twai_rx_queue, &hal_frame, pdMS_TO_TICKS(1)) != pdTRUE)
+        if (xQueueReceive(twai_rx_queue, &hal_frame, 0) != pdTRUE)
         {
+            // no frames available to receive
             break;
         }
-        LOCK_MUX();
         twai_rx_pending--;
-        UNLOCK_MUX();
         twai_message_t rx_frame;
         twai_hal_parse_frame(&hal_frame, &rx_frame);
         memcpy(data->data, rx_frame.data, TWAI_FRAME_MAX_DLC);
@@ -307,6 +350,7 @@ static ssize_t vfs_read(int fd, void *buf, size_t size)
     return received * sizeof(struct can_frame);
 }
 
+#if INCLUDE_VFS_SELECT_SUPPORT
 /// VFS interface helper for select()
 ///
 /// @param nfds is the number of FDs being checked.
@@ -323,10 +367,8 @@ static esp_err_t vfs_start_select(int nfds, fd_set *readfds
 {
     HASSERT(nfds >= 1);
     *end_select_args = nullptr;
-    LOCK_MUX();
-    twai_select_pending = 1;
     twai_select_sem = sem;
-    UNLOCK_MUX();
+    twai_select_pending = 1;
 
     return ESP_OK;
 }
@@ -337,11 +379,10 @@ static esp_err_t vfs_start_select(int nfds, fd_set *readfds
 /// @return ESP_OK for success.
 static esp_err_t vfs_end_select(void *end_select_args)
 {
-    LOCK_MUX();
     twai_select_pending = 0;
-    UNLOCK_MUX();
     return ESP_OK;
 }
+#endif // INCLUDE_VFS_SELECT_SUPPORT
 
 /// VFS adapter for fcntl(fd, cmd, arg).
 ///
@@ -383,7 +424,7 @@ static int vfs_ioctl(int fd, int cmd, va_list args)
     {
         Notifiable* n = reinterpret_cast<Notifiable*>(va_arg(args, uintptr_t));
         HASSERT(n);
-        LOCK_MUX();
+        xSemaphoreTake(twai_ioctl_spinlock, portMAX_DELAY);
         if (cmd == CAN_IOC_WRITE_ACTIVE && twai_tx_pending == 0)
         {
             std::swap(n, twai_tx_notifiable);
@@ -392,7 +433,7 @@ static int vfs_ioctl(int fd, int cmd, va_list args)
         {
             std::swap(n, twai_rx_notifiable);
         }
-        UNLOCK_MUX();
+        xSemaphoreGive(twai_ioctl_spinlock);
 
         if (n)
         {
@@ -403,16 +444,18 @@ static int vfs_ioctl(int fd, int cmd, va_list args)
 }
 #endif // INCLUDE_VFS_IOCTL_SUPPORT
 
+/// Interrupt routine that processing events raised by the low-level TWAI
+/// driver.
+///
+/// @param arg Unused
 static IRAM_ATTR void twai_isr(void *arg)
 {
     BaseType_t wakeup = pdFALSE;
+    uint32_t events = twai_hal_decode_interrupt_events(&twai_context);
+    bool is_rx = (events & TWAI_HAL_EVENT_RX_BUFF_FRAME);
+    bool is_tx = (events & TWAI_HAL_EVENT_TX_BUFF_FREE);
 
-    LOCK_MUX_ISR(wakeup);
-    uint32_t init_twai_rx_pending = twai_rx_pending;
-    uint32_t init_twai_tx_pending = twai_tx_pending;
-
-    uint32_t event = twai_hal_decode_interrupt_events(&twai_context);
-    if (event & TWAI_HAL_EVENT_RX_BUFF_FRAME)
+    if (is_rx)
     {
         uint32_t msg_count = twai_hal_get_rx_msg_count(&twai_context);
         for (int i = 0; i < msg_count; i++)
@@ -433,8 +476,10 @@ static IRAM_ATTR void twai_isr(void *arg)
             }
         }
     }
-    if (event & TWAI_HAL_EVENT_TX_BUFF_FREE)
+
+    if (is_tx)
     {
+        twai_tx_pending--;
         if (twai_hal_check_last_tx_successful(&twai_context))
         {
             twai_tx_success_count++;
@@ -444,50 +489,50 @@ static IRAM_ATTR void twai_isr(void *arg)
             twai_tx_failed_count++;
         }
 
-        twai_tx_pending--;
-        twai_hal_frame_t frame;
-        if (twai_tx_pending > 0 &&
-            xQueueReceiveFromISR(twai_tx_queue, &frame, &wakeup) == pdTRUE)
+        twai_hal_frame_t tx_frame;
+        if (xQueueReceiveFromISR(twai_tx_queue, &tx_frame, &wakeup) == pdTRUE)
         {
-            twai_hal_set_tx_buffer_and_transmit(&twai_context, &frame);
+            twai_hal_set_tx_buffer_and_transmit(&twai_context, &tx_frame);
         }
     }
 
-    if (event & TWAI_HAL_EVENT_BUS_RECOV_CPLT)
+    if (events & TWAI_HAL_EVENT_BUS_RECOV_CPLT)
     {
         twai_hal_start(&twai_context, TWAI_MODE_NORMAL);
     }
-    if (event & TWAI_HAL_EVENT_BUS_ERR)
+    if (events & TWAI_HAL_EVENT_BUS_ERR)
     {
         twai_bus_error_count++;
     }
-    if (event & TWAI_HAL_EVENT_ARB_LOST)
+    if (events & TWAI_HAL_EVENT_ARB_LOST)
     {
         twai_arb_lost_count++;
     }
 
-    if (init_twai_tx_pending != twai_tx_pending ||
-        init_twai_rx_pending != twai_rx_pending)
+#if INCLUDE_VFS_SELECT_SUPPORT
+    if ((is_rx || is_tx) && twai_select_pending)
     {
-        if (twai_select_pending)
-        {
-            esp_vfs_select_triggered_isr(twai_select_sem, &wakeup);
-            twai_select_pending = 0;
-        }
+        esp_vfs_select_triggered_isr(twai_select_sem, &wakeup);
+    }
+#endif // INCLUDE_VFS_SELECT_SUPPORT
+
 #if INCLUDE_VFS_IOCTL_SUPPORT
-        if (twai_tx_notifiable && init_twai_tx_pending != twai_tx_pending)
+    if ((is_tx || is_rx) &&
+        xSemaphoreTakeFromISR(twai_ioctl_spinlock, &wakeup) == pdTRUE)
+    {
+        if (twai_tx_notifiable)
         {
             twai_tx_notifiable->notify_from_isr();
             twai_tx_notifiable = nullptr;
         }
-        if (twai_rx_notifiable && init_twai_rx_pending != twai_rx_pending)
+        if (twai_rx_notifiable)
         {
             twai_rx_notifiable->notify_from_isr();
             twai_rx_notifiable = nullptr;
         }
-#endif // INCLUDE_VFS_IOCTL_SUPPORT
+        xSemaphoreGiveFromISR(twai_ioctl_spinlock, &wakeup);
     }
-    UNLOCK_MUX_ISR(wakeup);
+#endif // INCLUDE_VFS_IOCTL_SUPPORT
 
 #if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
     portYIELD_FROM_ISR(wakeup);
@@ -499,97 +544,67 @@ static IRAM_ATTR void twai_isr(void *arg)
 #endif
 }
 
-static void report_stats(xTimerHandle handle)
+/// Periodic TWAI statistics reporting task.
+///
+/// @param param (unused)
+static void *report_stats(void *param)
 {
-    if (!twai_is_configured)
+    while (twai_is_configured)
     {
-        return;
-    }
-    LOCK_MUX();
-    uint32_t tx_pending = twai_tx_pending;
-    uint32_t rx_pending = twai_rx_pending;
-    uint32_t rx_processed = twai_rx_processed;
-    uint32_t rx_overrun_count = twai_rx_overrun_count;
-    uint32_t rx_discard_count = twai_rx_discard_count;
-    uint32_t tx_processed = twai_tx_processed;
-    uint32_t tx_success_count = twai_tx_success_count;
-    uint32_t tx_failed_count = twai_tx_failed_count;
-    uint32_t arb_lost_count = twai_arb_lost_count;
-    uint32_t bus_error_count = twai_bus_error_count;
-    UNLOCK_MUX();
+        LOG(INFO
+          , "[TWAI] RX:%d (pending:%d,overrun:%d,discard:%d)"
+            " TX:%d (pending:%d,suc:%d,fail:%d)"
+            " bus (arb-err:%d,err:%d,state:%s)"
+          , twai_rx_processed, twai_rx_pending, twai_rx_overrun_count
+          , twai_rx_discard_count, twai_tx_processed, twai_tx_pending
+          , twai_tx_success_count, twai_tx_failed_count, twai_arb_lost_count
+          , twai_bus_error_count
+          , twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_RUNNING) ? "Running"
+          : twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_RECOVERING) ? "Recovering"
+          : twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_ERR_WARN) ? "Err-Warn"
+          : twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_ERR_PASSIVE) ? "Err-Pasv"
+          : "Bus Off");
 
-    LOG(INFO
-      , "[TWAI] RX:%d (pending:%d,overrun:%d,discard:%d)"
-        " TX:%d (pending:%d,suc:%d,fail:%d)"
-        " bus (arb-err:%d,err:%d,state:%s)"
-      , rx_processed, rx_pending, rx_overrun_count, rx_discard_count
-      , tx_processed, tx_pending, tx_success_count, tx_failed_count
-      , arb_lost_count, bus_error_count
-      , twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_RUNNING) ? "Running"
-      : twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_RECOVERING) ? "Recovering"
-      : twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_ERR_WARN) ? "Err-Warn"
-      : twai_hal_check_state_flags(&twai_context, TWAI_HAL_STATE_FLAG_ERR_PASSIVE) ? "Err-Pasv"
-      : "Bus Off");
+        // delay until the next reporting interval, this is being used instead
+        // of vTaskDelay to allow early wake up in the case of shutdown of the
+        // TWAI driver.
+        ulTaskNotifyTake(pdTRUE, STATUS_PRINT_INTERVAL);
+    }
+    return nullptr;
 }
 
 static inline void configure_twai_gpio(gpio_num_t tx, gpio_num_t rx)
 {
     LOG(INFO, "[TWAI] Configuring TWAI TX pin: %d", tx);
-
     gpio_set_pull_mode(tx, GPIO_FLOATING);
-#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
-    gpio_matrix_out(tx, TWAI_TX_IDX, false, false);
-#else
-    gpio_matrix_out(tx, CAN_TX_IDX, false, false);
-#endif
+    gpio_matrix_out(tx, TWAI_TX_SIGNAL_IDX, false, false);
     gpio_pad_select_gpio(tx);
 
     LOG(INFO, "[TWAI] Configuring TWAI RX pin: %d", rx);
     gpio_set_pull_mode(rx, GPIO_FLOATING);
     gpio_set_direction(rx, GPIO_MODE_INPUT);
-#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
-    gpio_matrix_in(rx, TWAI_RX_IDX, false);
-#else
-    gpio_matrix_in(rx, CAN_RX_IDX, false);
-#endif
+    gpio_matrix_in(rx, TWAI_RX_SIGNAL_IDX, false);
     gpio_pad_select_gpio(rx);
 }
 
 static inline void create_twai_buffers()
 {
-    LOG(INFO, "[TWAI] Creating TWAI TX queue: %d", TWAI_TX_BUFFER_SIZE);
-    twai_tx_queue = xQueueCreate(TWAI_TX_BUFFER_SIZE, sizeof(twai_hal_frame_t));
+    LOG(INFO, "[TWAI] Creating TWAI TX queue: %d"
+      , config_can_tx_buffer_size());
+    twai_tx_queue =
+        xQueueCreate(config_can_tx_buffer_size(), sizeof(twai_hal_frame_t));
     HASSERT(twai_tx_queue != nullptr);
-    LOG(INFO, "[TWAI] Creating TWAI RX queue: %d", TWAI_RX_BUFFER_SIZE);
-    twai_rx_queue = xQueueCreate(TWAI_RX_BUFFER_SIZE, sizeof(twai_hal_frame_t));
+    LOG(INFO, "[TWAI] Creating TWAI RX queue: %d"
+      , config_can_rx_buffer_size());
+    twai_rx_queue =
+        xQueueCreate(config_can_rx_buffer_size(), sizeof(twai_hal_frame_t));
     HASSERT(twai_rx_queue != nullptr);
-}
-
-static void create_twai_isr(void *param)
-{
-    Notifiable *notif = static_cast<Notifiable *>(param);
-#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
-    ESP_ERROR_CHECK(esp_intr_alloc(ETS_TWAI_INTR_SOURCE
-                  , ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM, twai_isr, NULL
-                  , &twai_isr_handle));
-#else
-    ESP_ERROR_CHECK(esp_intr_alloc(ETS_CAN_INTR_SOURCE
-                  , ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM, twai_isr, NULL
-                  , &twai_isr_handle));
-#endif
-    notif->notify();
-    vTaskDelete(nullptr);
 }
 
 static inline void initialize_twai()
 {
-#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
-    periph_module_reset(PERIPH_TWAI_MODULE);
-    periph_module_enable(PERIPH_TWAI_MODULE);
-#else
-    periph_module_reset(PERIPH_CAN_MODULE);
-    periph_module_enable(PERIPH_CAN_MODULE);
-#endif
+    periph_module_reset(TWAI_PERIPHERAL);
+    periph_module_enable(TWAI_PERIPHERAL);
     HASSERT(twai_hal_init(&twai_context));
     twai_timing_config_t timingCfg = TWAI_TIMING_CONFIG_125KBITS();
     twai_filter_config_t filterCfg = TWAI_FILTER_CONFIG_ACCEPT_ALL();
@@ -597,23 +612,18 @@ static inline void initialize_twai()
     twai_hal_configure(&twai_context, &timingCfg, &filterCfg
                      , TWAI_DEFAULT_INTERRUPTS, 0);
     LOG(INFO, "[TWAI] Allocating TWAI ISR");
-    SyncNotifiable notif;
-    xTaskCreatePinnedToCore(create_twai_isr, "TWAI-ISR", 2048, &notif, 15, nullptr, APP_CPU_NUM);
-    notif.wait_for_notification();
+    ESP_ERROR_CHECK(
+        esp_intr_alloc(TWAI_ISR_SOURCE, TWAI_ISR_FLAGS, twai_isr, NULL
+                     , &twai_isr_handle));
 }
 
 // Constructor.
 Esp32Twai::Esp32Twai(const char *vfsPath, int rxPin, int txPin, bool report)
     : vfsPath_(vfsPath), rxPin_((gpio_num_t)rxPin), txPin_((gpio_num_t)txPin)
+    , reportStats_(report)
 {
     HASSERT(GPIO_IS_VALID_GPIO(rxPin));
     HASSERT(GPIO_IS_VALID_OUTPUT_GPIO(txPin));
-    if (report)
-    {
-        // Create periodic automatic reload timer to print out TWAI statistics.
-        twai_status_timer = xTimerCreate(vfsPath_, STATUS_PRINT_INTERVAL
-                                       , pdTRUE, nullptr, report_stats);
-    }
 }
 
 // Destructor.
@@ -623,15 +633,15 @@ Esp32Twai::~Esp32Twai()
     {
         ESP_ERROR_CHECK(esp_vfs_unregister(vfsPath_));
     }
+
     if (twai_is_configured)
     {
-        twai_disable();
-        twai_hal_deinit(&twai_context);
         ESP_ERROR_CHECK(esp_intr_free(twai_isr_handle));
-    }
-    if (twai_status_timer != nullptr)
-    {
-        xTimerDelete(twai_status_timer, pdMS_TO_TICKS(1));
+        twai_hal_deinit(&twai_context);
+        twai_is_configured = false;
+        xTaskNotifyGive(status_thread_handle);
+        vQueueDelete(twai_tx_queue);
+        vQueueDelete(twai_rx_queue);
     }
 }
 
@@ -654,8 +664,8 @@ void Esp32Twai::hw_init()
     ESP_ERROR_CHECK(esp_vfs_register(vfsPath_, &vfs, this));
     vfs_is_registered = true;
 
-#if USE_FREERTOS_BIN_SEMAPHORE
-    twai_spinlock = xSemaphoreCreateBinary();
+#if INCLUDE_VFS_IOCTL_SUPPORT
+    twai_ioctl_spinlock = xSemaphoreCreateBinary();
 #endif
 
     configure_twai_gpio(txPin_, rxPin_);
@@ -663,10 +673,11 @@ void Esp32Twai::hw_init()
     initialize_twai();
 
     twai_is_configured = true;
-    if (twai_status_timer != nullptr)
+    if (reportStats_)
     {
-        LOG(INFO, "[TWAI] Starting TWAI periodic timer");
-        xTimerStart(twai_status_timer, pdMS_TO_TICKS(1));
+        os_thread_create(&status_thread_handle, "TWAI-STATS"
+                       , ESP_TASK_MAIN_PRIO, STATUS_TASK_STACK_SIZE
+                       , report_stats, nullptr);
     }
 }
 
