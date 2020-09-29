@@ -25,6 +25,11 @@
 #if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(4,1,0)
 #include <soc/can_periph.h>
 typedef can_dev_t ESP32_CAN_DEV_TYPE;
+#define TWAI_BRP_MIN                         2
+#define TWAI_BRP_MAX                         128
+#define TWAI_BRP_MAX_ECO                     256
+#define TWAI_BRP_DIV_THRESH                  128
+#define TWAI_SUPPORT_MULTI_ADDRESS_LAYOUT    1
 #else
 #include <soc/twai_periph.h>
 typedef twai_dev_t ESP32_CAN_DEV_TYPE;
@@ -501,7 +506,7 @@ static inline uint32_t twai_ll_get_and_clear_intrs(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_enabled_intrs(ESP32_CAN_DEV_TYPE *hw, uint32_t intr_mask)
 {
-#if (CONFIG_ESP32_REV_MIN >= 2)
+#if (CONFIG_IDF_TARGET_ESP32 && CONFIG_ESP32_REV_MIN >= 2)
     //ESP32 Rev 2 or later has brp div field. Need to mask it out
     hw->interrupt_enable_reg.val = (hw->interrupt_enable_reg.val & 0x10) | intr_mask;
 #else
@@ -527,7 +532,7 @@ static inline void twai_ll_set_enabled_intrs(ESP32_CAN_DEV_TYPE *hw, uint32_t in
  */
 static inline void twai_ll_set_bus_timing(ESP32_CAN_DEV_TYPE *hw, uint32_t brp, uint32_t sjw, uint32_t tseg1, uint32_t tseg2, bool triple_sampling)
 {
-#if (CONFIG_ESP32_REV_MIN >= 2)
+#if (CONFIG_IDF_TARGET_ESP32 && CONFIG_ESP32_REV_MIN >= 2)
     if (brp > TWAI_BRP_DIV_THRESH) {
         //Need to set brp_div bit
         hw->interrupt_enable_reg.brp_div = 1;
@@ -594,7 +599,7 @@ static inline void twai_ll_set_err_warn_lim(ESP32_CAN_DEV_TYPE *hw, uint32_t ewl
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->error_warning_limit_reg.ewl = ewl;
 #else
-    hw->error_warning_limit_reg.val = ewl;
+    hw->error_warning_limit_reg.byte = ewl;
 #endif
 }
 
@@ -638,7 +643,7 @@ static inline void twai_ll_set_rec(ESP32_CAN_DEV_TYPE *hw, uint32_t rec)
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->rx_error_counter_reg.rxerr = rec;
 #else
-    hw->rx_error_counter_reg.val = rec;
+    hw->rx_error_counter_reg.byte = rec;
 #endif
 }
 
@@ -670,7 +675,7 @@ static inline void twai_ll_set_tec(ESP32_CAN_DEV_TYPE *hw, uint32_t tec)
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->tx_error_counter_reg.txerr = tec;
 #else
-    hw->tx_error_counter_reg.val = tec;
+    hw->tx_error_counter_reg.byte = tec;
 #endif
 }
 
