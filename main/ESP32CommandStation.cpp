@@ -33,6 +33,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <esp_ota_ops.h>
 #include <esp_task.h>
 #include <executor/PoolToQueueFlow.hxx>
+#include <freertos_drivers/arduino/CpuLoad.hxx>
 #include <FreeRTOSTaskMonitor.h>
 #include <HC12Radio.h>
 #include <Httpd.h>
@@ -65,13 +66,14 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <JmriInterface.h>
 #endif
 
+#define ENABLE_CPU_PROFILING 1
+
 #if !CONFIG_ESP32CS_SINGLE_EXECUTOR
 ///////////////////////////////////////////////////////////////////////////////
 // Set the priority of the httpd executor to the effective value used for the
-// primary OpenMRN executor. This is necessary to ensure the executor is not
-// starved of cycles due to the CAN driver.
+// primary OpenMRN executor.
 ///////////////////////////////////////////////////////////////////////////////
-OVERRIDE_CONST_DEFERRED(httpd_server_priority, (ESP_TASK_MAIN_PRIO + 3));
+OVERRIDE_CONST_DEFERRED(httpd_server_priority, ESP_TASK_TCPIP_PRIO - 1);
 #endif // !CONFIG_ESP32CS_SINGLE_EXECUTOR
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -222,6 +224,15 @@ public:
 };
 
 void init_webserver(const esp32cs::Esp32ConfigDef &cfg);
+
+#if ENABLE_CPU_PROFILING
+void cpu_tick(void *param)
+{
+  // Retrieves the vtable pointer from the currently running executable.
+  unsigned *pp = (unsigned *)Singleton<esp32cs::LCCStackManager>::instance()->executor()->current();
+  cpuload_tick(pp ? pp[0] | 1 : 0);
+}
+#endif // ENABLE_CPU_PROFILING
 
 extern "C" void app_main()
 {
@@ -423,8 +434,16 @@ extern "C" void app_main()
   Singleton<StatusDisplay>::instance()->status("ESP32-CS Started");
 #endif // !CONFIG_DISPLAY_TYPE_NONE
 
-  // increase our task priority to higher than the CAN driver
-  vTaskPrioritySet(nullptr, ESP_TASK_MAIN_PRIO + 3);
+#if ENABLE_CPU_PROFILING
+  CpuLoad cpu_load;
+  CpuLoadLog cpu_log(stackManager.service());
+  TimerHandle_t cpu_timer =
+    xTimerCreate("cpu-load", pdMS_TO_TICKS(6), true, nullptr, cpu_tick);
+  xTimerStart(cpu_timer, 0);
+#endif // ENABLE_CPU_PROFILING
+
+  // Increase task priority
+  vTaskPrioritySet(NULL, config_arduino_openmrn_task_priority());
 
   // donate our task thread to OpenMRN executor.
   stackManager.stack()->loop_executor();
