@@ -171,10 +171,9 @@ void HBridgeShortDetector::poll_33hz(openlcb::WriteHelper *helper, Notifiable *d
   vector<int> samples;
 
   // collect samples from ADC
-  while(samples.size() < adcSampleCount_)
+  while (samples.size() < adcSampleCount_)
   {
     samples.push_back(adc1_get_raw(channel_));
-    ets_delay_us(1);
   }
   // average the collected samples
   lastReading_ = (std::accumulate(samples.begin(), samples.end(), 0) / samples.size());
@@ -216,7 +215,7 @@ void HBridgeShortDetector::poll_33hz(openlcb::WriteHelper *helper, Notifiable *d
   {
     // If we have at least a couple averages that are over the soft limit
     // trigger an immediate shutdown as a short is likely to have occurred.
-    if(overCurrentCheckCount_++ >= overCurrentRetryCount_)
+    if (overCurrentCheckCount_++ >= overCurrentRetryCount_)
     {
       // disable the h-bridge output
       enablePin_->clr();
