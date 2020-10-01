@@ -14,15 +14,13 @@
 
 #include "sdkconfig.h"
 
-#ifdef CONFIG_IDF_TARGET
-
 #if __has_include(<esp_idf_version.h>)
 #include <esp_idf_version.h>
 #else
 #include <esp_system.h>
 #endif
 
-#if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(4,1,0)
+#if !defined(ESP_IDF_VERSION) || ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(4,1,0)
 #include <soc/can_periph.h>
 typedef can_dev_t ESP32_CAN_DEV_TYPE;
 #define TWAI_BRP_MIN                         2
@@ -220,7 +218,7 @@ _Static_assert(sizeof(twai_ll_frame_buffer_t) == 13, "TX/RX buffer type should b
  */
 static inline void twai_ll_enter_reset_mode(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->mode_reg.rm = 1;
 #else
     hw->mode_reg.reset = 1;
@@ -240,7 +238,7 @@ static inline void twai_ll_enter_reset_mode(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_exit_reset_mode(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->mode_reg.rm = 0;
 #else
     hw->mode_reg.reset = 0;
@@ -254,7 +252,7 @@ static inline void twai_ll_exit_reset_mode(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline bool twai_ll_is_in_reset_mode(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     return hw->mode_reg.rm;
 #else
     return hw->mode_reg.reset;
@@ -272,7 +270,7 @@ static inline bool twai_ll_is_in_reset_mode(ESP32_CAN_DEV_TYPE *hw)
 static inline void twai_ll_set_mode(ESP32_CAN_DEV_TYPE *hw, twai_mode_t mode)
 {
     if (mode == TWAI_MODE_NORMAL) {           //Normal Operating mode
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
         hw->mode_reg.lom = 0;
         hw->mode_reg.stm = 0;
 #else
@@ -280,7 +278,7 @@ static inline void twai_ll_set_mode(ESP32_CAN_DEV_TYPE *hw, twai_mode_t mode)
         hw->mode_reg.self_test = 0;
 #endif
     } else if (mode == TWAI_MODE_NO_ACK) {    //Self Test Mode (No Ack)
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
         hw->mode_reg.lom = 0;
         hw->mode_reg.stm = 1;
 #else
@@ -288,7 +286,7 @@ static inline void twai_ll_set_mode(ESP32_CAN_DEV_TYPE *hw, twai_mode_t mode)
         hw->mode_reg.self_test = 1;
 #endif
     } else if (mode == TWAI_MODE_LISTEN_ONLY) {       //Listen Only Mode
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
         hw->mode_reg.lom = 1;
         hw->mode_reg.stm = 0;
 #else
@@ -315,7 +313,7 @@ static inline void twai_ll_set_mode(ESP32_CAN_DEV_TYPE *hw, twai_mode_t mode)
  */
 static inline void twai_ll_set_cmd_tx(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->command_reg.tr = 1;
 #else
     hw->command_reg.tx_req = 1;
@@ -355,7 +353,7 @@ static inline void twai_ll_set_cmd_tx_single_shot(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_cmd_abort_tx(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->command_reg.at = 1;
 #else
     hw->command_reg.abort_tx = 1;
@@ -371,7 +369,7 @@ static inline void twai_ll_set_cmd_abort_tx(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_cmd_release_rx_buffer(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->command_reg.rrb = 1;
 #else
     hw->command_reg.release_rx_buff = 1;
@@ -387,7 +385,7 @@ static inline void twai_ll_set_cmd_release_rx_buffer(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_cmd_clear_data_overrun(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->command_reg.cdo = 1;
 #else
     hw->command_reg.clear_data_overrun = 1;
@@ -410,7 +408,7 @@ static inline void twai_ll_set_cmd_clear_data_overrun(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_cmd_self_rx_request(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->command_reg.srr = 1;
 #else
     hw->command_reg.self_rx_req = 1;
@@ -456,7 +454,7 @@ static inline uint32_t twai_ll_get_status(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline bool twai_ll_is_fifo_overrun(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     return hw->status_reg.dos;
 #else
     return hw->status_reg.data_overrun;
@@ -471,7 +469,7 @@ static inline bool twai_ll_is_fifo_overrun(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline bool twai_ll_is_last_tx_successful(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     return hw->status_reg.tcs;
 #else
     return hw->status_reg.tx_complete;
@@ -532,7 +530,7 @@ static inline void twai_ll_set_enabled_intrs(ESP32_CAN_DEV_TYPE *hw, uint32_t in
  */
 static inline void twai_ll_set_bus_timing(ESP32_CAN_DEV_TYPE *hw, uint32_t brp, uint32_t sjw, uint32_t tseg1, uint32_t tseg2, bool triple_sampling)
 {
-#if (CONFIG_IDF_TARGET_ESP32 && CONFIG_ESP32_REV_MIN >= 2)
+#if (CONFIG_ESP32_REV_MIN >= 2)
     if (brp > TWAI_BRP_DIV_THRESH) {
         //Need to set brp_div bit
         hw->interrupt_enable_reg.brp_div = 1;
@@ -541,7 +539,7 @@ static inline void twai_ll_set_bus_timing(ESP32_CAN_DEV_TYPE *hw, uint32_t brp, 
         hw->interrupt_enable_reg.brp_div = 0;
     }
 #endif
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->bus_timing_0_reg.brp = (brp / 2) - 1;
     hw->bus_timing_0_reg.sjw = sjw - 1;
     hw->bus_timing_1_reg.tseg1 = tseg1 - 1;
@@ -596,7 +594,7 @@ static inline void twai_ll_clear_err_code_cap(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_err_warn_lim(ESP32_CAN_DEV_TYPE *hw, uint32_t ewl)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->error_warning_limit_reg.ewl = ewl;
 #else
     hw->error_warning_limit_reg.byte = ewl;
@@ -640,7 +638,7 @@ static inline uint32_t twai_ll_get_rec(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_rec(ESP32_CAN_DEV_TYPE *hw, uint32_t rec)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->rx_error_counter_reg.rxerr = rec;
 #else
     hw->rx_error_counter_reg.byte = rec;
@@ -672,7 +670,7 @@ static inline uint32_t twai_ll_get_tec(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_tec(ESP32_CAN_DEV_TYPE *hw, uint32_t tec)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->tx_error_counter_reg.txerr = tec;
 #else
     hw->tx_error_counter_reg.byte = tec;
@@ -695,7 +693,7 @@ static inline void twai_ll_set_acc_filter(ESP32_CAN_DEV_TYPE* hw, uint32_t code,
     uint32_t code_swapped = __builtin_bswap32(code);
     uint32_t mask_swapped = __builtin_bswap32(mask);
     for (int i = 0; i < 4; i++) {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
         hw->acceptance_filter.acr[i].byte = ((code_swapped >> (i * 8)) & 0xFF);
         hw->acceptance_filter.amr[i].byte = ((mask_swapped >> (i * 8)) & 0xFF);
 #else
@@ -703,7 +701,7 @@ static inline void twai_ll_set_acc_filter(ESP32_CAN_DEV_TYPE* hw, uint32_t code,
         hw->acceptance_filter.mask_reg[i].byte = ((mask_swapped >> (i * 8)) & 0xFF);
 #endif
     }
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->mode_reg.afm = single_filter;
 #else
     hw->mode_reg.acceptance_filter = single_filter;
@@ -868,12 +866,12 @@ static inline uint32_t twai_ll_get_rx_msg_count(ESP32_CAN_DEV_TYPE *hw)
  */
 static inline void twai_ll_set_clkout(ESP32_CAN_DEV_TYPE *hw, uint32_t divider)
 {
-#if CONFIG_IDF_TARGET_ESP32
+#if !CONFIG_IDF_TARGET_ESP32S2
     if (divider >= 2 && divider <= 14) {
-#elif CONFIG_IDF_TARGET_ESP32S2
+#else
     if (divider >= 2 && divider <= 490) {
 #endif
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
         hw->clock_divider_reg.co = 0;
         hw->clock_divider_reg.cd = (divider / 2) - 1;
 #else
@@ -881,12 +879,12 @@ static inline void twai_ll_set_clkout(ESP32_CAN_DEV_TYPE *hw, uint32_t divider)
         hw->clock_divider_reg.clock_divider = (divider / 2) - 1;
 #endif
     } else if (divider == 1) {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
         hw->clock_divider_reg.co = 0;
-#if CONFIG_IDF_TARGET_ESP32
+#if !CONFIG_IDF_TARGET_ESP32S2
         //Setting the divider reg to max value (7) means a divider of 1
         hw->clock_divider_reg.cd = 7;
-#elif CONFIG_IDF_TARGET_ESP32S2
+#else
         //Setting the divider reg to max value (255) means a divider of 1
         hw->clock_divider_reg.cd = 255;
 #endif
@@ -895,7 +893,7 @@ static inline void twai_ll_set_clkout(ESP32_CAN_DEV_TYPE *hw, uint32_t divider)
         hw->clock_divider_reg.clock_divider = 7;
 #endif
     } else {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
         hw->clock_divider_reg.co = 1;
         hw->clock_divider_reg.cd = 0;
 #else
@@ -905,7 +903,7 @@ static inline void twai_ll_set_clkout(ESP32_CAN_DEV_TYPE *hw, uint32_t divider)
     }
 }
 
-#if TWAI_SUPPORT_MULTI_ADDRESS_LAYOUT || CONFIG_IDF_TARGET_ESP32
+#if !CONFIG_IDF_TARGET_ESP32S2
 /**
  * @brief   Set register address mapping to extended mode
  *
@@ -919,13 +917,13 @@ static inline void twai_ll_set_clkout(ESP32_CAN_DEV_TYPE *hw, uint32_t divider)
  */
 static inline void twai_ll_enable_extended_reg_layout(ESP32_CAN_DEV_TYPE *hw)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     hw->clock_divider_reg.cm = 1;
 #else
     hw->clock_divider_reg.can_mode = 1;
 #endif
 }
-#endif
+#endif // !ESP32-S2
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -982,7 +980,7 @@ typedef twai_ll_frame_buffer_t twai_hal_frame_t;
 static inline bool twai_hal_init(twai_hal_context_t *hal_ctx)
 {
     //Initialize HAL context
-#if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(4,1,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(4,1,0)
     hal_ctx->dev = (ESP32_CAN_DEV_TYPE*)&CAN;
 #else
     hal_ctx->dev = (ESP32_CAN_DEV_TYPE*)&TWAI;
@@ -993,7 +991,7 @@ static inline bool twai_hal_init(twai_hal_context_t *hal_ctx)
     if (!twai_ll_is_in_reset_mode(hal_ctx->dev)) {    //Must enter reset mode to write to config registers
         return false;
     }
-#if TWAI_SUPPORT_MULTI_ADDRESS_LAYOUT || CONFIG_IDF_TARGET_ESP32
+#if !CONFIG_IDF_TARGET_ESP32S2
     twai_ll_enable_extended_reg_layout(hal_ctx->dev);        //Changes the address layout of the registers
 #endif
     twai_ll_set_mode(hal_ctx->dev, TWAI_MODE_LISTEN_ONLY);    //Freeze REC by changing to LOM mode
@@ -1321,5 +1319,3 @@ static inline void twai_hal_read_rx_buffer_and_clear(twai_hal_context_t *hal_ctx
      * - Check overrun status bit. Return false if overrun
      */
 }
-
-#endif // CONFIG_IDF_TARGET

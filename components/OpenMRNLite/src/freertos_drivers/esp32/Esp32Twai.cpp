@@ -38,6 +38,18 @@
 
 #if ESP32_TWAI_DRIVER_SUPPORTED
 
+/// This option enables support for using select() on the TWAI device driver.
+#define INCLUDE_VFS_SELECT_SUPPORT 1
+
+/// Enabling this option will include support for using ioctl() on the TWAI
+/// device.
+///
+/// NOTE: This option is not enabled by default as there is minimal differences
+/// in performance between select() and ioctl() usage, there is also the added
+/// cost in the ISR relating to a shared mutex. Additionally it is marked
+/// deprecated in @ref SimpleCanStack and feature masked to only __FreeRTOS__.
+#define INCLUDE_VFS_IOCTL_SUPPORT 0
+
 #include <driver/gpio.h>
 #include <driver/periph_ctrl.h>
 #include <esp_task.h>
@@ -52,12 +64,11 @@
 #include "executor/Notifiable.hxx"
 #include "freertos_drivers/arduino/DeviceBuffer.hxx"
 #include "nmranet_config.h"
+#include "utils/constants.hxx"
 #include "utils/logging.h"
 
-#define INCLUDE_VFS_SELECT_SUPPORT 1
-//#define INCLUDE_VFS_IOCTL_SUPPORT 1
-
 /// Default file descriptor to return in the vfs_open() call.
+///
 /// NOTE: The TWAI driver only supports one file descriptor at this time.
 static constexpr int TWAI_VFS_FD = 0;
 
@@ -73,7 +84,7 @@ static constexpr int TWAI_ISR_FLAGS =
     ESP_INTR_FLAG_IRAM;     // ISR can be called with cache disabled.
 
 // Starting in IDF v4.2 the CAN peripheral was renamed to TWAI.
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
 /// Pin matrix index for the TWAI TX peripheral pin.
 static constexpr uint32_t TWAI_TX_SIGNAL_IDX = TWAI_TX_IDX;
 
@@ -409,8 +420,6 @@ static int vfs_fcntl(int fd, int cmd, int arg)
 /// @param cmd to be executed.
 /// @param args args to be used for the operation.
 ///
-/// This method is currently a NO-OP.
-///
 /// @return zero upon success, negative value with errno for failure.
 static int vfs_ioctl(int fd, int cmd, va_list args)
 {
@@ -534,7 +543,10 @@ static IRAM_ATTR void twai_isr(void *arg)
     }
 #endif // INCLUDE_VFS_IOCTL_SUPPORT
 
-#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
+// In IDF v4.3 the portYIELD_FROM_ISR macro was extended to take the value of
+// the wakeup flag and if true will yield as expected otherwise it is mostly a
+// no-op.
+#if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
     portYIELD_FROM_ISR(wakeup);
 #else
     if (wakeup == pdTRUE)
@@ -575,12 +587,12 @@ static void *report_stats(void *param)
 
 static inline void configure_twai_gpio(gpio_num_t tx, gpio_num_t rx)
 {
-    LOG(INFO, "[TWAI] Configuring TWAI TX pin: %d", tx);
+    LOG(VERBOSE, "[TWAI] Configuring TWAI TX pin: %d", tx);
     gpio_set_pull_mode(tx, GPIO_FLOATING);
     gpio_matrix_out(tx, TWAI_TX_SIGNAL_IDX, false, false);
     gpio_pad_select_gpio(tx);
 
-    LOG(INFO, "[TWAI] Configuring TWAI RX pin: %d", rx);
+    LOG(VERBOSE, "[TWAI] Configuring TWAI RX pin: %d", rx);
     gpio_set_pull_mode(rx, GPIO_FLOATING);
     gpio_set_direction(rx, GPIO_MODE_INPUT);
     gpio_matrix_in(rx, TWAI_RX_SIGNAL_IDX, false);
@@ -589,12 +601,12 @@ static inline void configure_twai_gpio(gpio_num_t tx, gpio_num_t rx)
 
 static inline void create_twai_buffers()
 {
-    LOG(INFO, "[TWAI] Creating TWAI TX queue: %d"
+    LOG(VERBOSE, "[TWAI] Creating TWAI TX queue: %d"
       , config_can_tx_buffer_size());
     twai_tx_queue =
         xQueueCreate(config_can_tx_buffer_size(), sizeof(twai_hal_frame_t));
     HASSERT(twai_tx_queue != nullptr);
-    LOG(INFO, "[TWAI] Creating TWAI RX queue: %d"
+    LOG(VERBOSE, "[TWAI] Creating TWAI RX queue: %d"
       , config_can_rx_buffer_size());
     twai_rx_queue =
         xQueueCreate(config_can_rx_buffer_size(), sizeof(twai_hal_frame_t));
@@ -608,10 +620,10 @@ static inline void initialize_twai()
     HASSERT(twai_hal_init(&twai_context));
     twai_timing_config_t timingCfg = TWAI_TIMING_CONFIG_125KBITS();
     twai_filter_config_t filterCfg = TWAI_FILTER_CONFIG_ACCEPT_ALL();
-    LOG(INFO, "[TWAI] Initiailizing TWAI peripheral");
+    LOG(VERBOSE, "[TWAI] Initiailizing TWAI peripheral");
     twai_hal_configure(&twai_context, &timingCfg, &filterCfg
                      , TWAI_DEFAULT_INTERRUPTS, 0);
-    LOG(INFO, "[TWAI] Allocating TWAI ISR");
+    LOG(VERBOSE, "[TWAI] Allocating TWAI ISR");
     ESP_ERROR_CHECK(
         esp_intr_alloc(TWAI_ISR_SOURCE, TWAI_ISR_FLAGS, twai_isr, NULL
                      , &twai_isr_handle));
@@ -676,7 +688,8 @@ void Esp32Twai::hw_init()
     if (reportStats_)
     {
         os_thread_create(&status_thread_handle, "TWAI-STATS"
-                       , ESP_TASK_MAIN_PRIO, STATUS_TASK_STACK_SIZE
+                       , config_arduino_openmrn_task_priority()
+                       , STATUS_TASK_STACK_SIZE
                        , report_stats, nullptr);
     }
 }

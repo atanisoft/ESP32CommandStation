@@ -131,11 +131,20 @@
 
 #endif // native C
 
+/// Defines the default value of a constant using an externally defined value
+/// by using deferred expansion to work around pre-compiler limitations. Like
+/// @ref DEFAULT_CONST use this in a single .cxx file and make sure NOT to
+/// include the header that has the respective DECLARE_CONST macro.
+///
+/// @param var name of the constant.
+/// @param value is what the actual value should be.
+#define DEFAULT_CONST_DEFERRED(var, value) DEFAULT_CONST(var, value)
+
 /// Overrides the value of a constant using an externally defined value by
 /// using deferred expansion to work around pre-compiler limitations. Like
 /// @ref OVERRIDE_CONST use this in a single .cxx file (usually main.cxx).
 ///
-/// @param name name of the constant.
+/// @param var name of the constant.
 /// @param value is what the actual value should be.
 #define OVERRIDE_CONST_DEFERRED(var, value) OVERRIDE_CONST(var, value)
 
