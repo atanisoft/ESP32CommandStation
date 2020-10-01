@@ -31,11 +31,6 @@ class AutoSyncFileFlow;
 class ExecutorBase;
 class Service;
 
-namespace openmrn_arduino
-{
-  class Esp32HardwareCan;
-}
-
 namespace esp32cs
 {
 
@@ -61,7 +56,6 @@ private:
   int fd_;
   uint64_t nodeID_{UINT64_C(CONFIG_LCC_NODE_ID)};
   openlcb::SimpleStackBase *stack_;
-  openmrn_arduino::Esp32HardwareCan *can_;
   AutoSyncFileFlow *configAutoSync_;
 };
 

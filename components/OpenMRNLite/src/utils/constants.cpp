@@ -164,3 +164,18 @@ DEFAULT_CONST(socket_listener_stack_size, 1000);
 /// Allow up to five sockets to be pending for accept() in SocketListener.
 DEFAULT_CONST(socket_listener_backlog, 5);
 #endif
+
+/// Default stack size to use for OpenMRN tasks on the Arduino platform.
+DEFAULT_CONST(arduino_openmrn_stack_size, 4096);
+
+#ifdef ESP32
+#include <esp_task.h>
+/// Default thread priority for any OpenMRN owned tasks on the ESP32 platform.
+/// Note: This is set to one priority level lower than the TCP/IP task uses on
+/// the ESP32.
+DEFAULT_CONST_DEFERRED(arduino_openmrn_task_priority, ESP_TASK_TCPIP_PRIO - 1);
+#else
+/// Default thread priority for any OpenMRN owned tasks on the Arduino
+/// platform.
+DEFAULT_CONST(arduino_openmrn_task_priority, 0xdefa01);
+#endif

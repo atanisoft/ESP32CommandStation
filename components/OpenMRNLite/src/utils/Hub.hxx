@@ -201,10 +201,10 @@ public:
         string s(message()->data()->data(), message()->data()->size());
         if (timestamped_) {
             long long ts = os_get_time_monotonic();
-            printf("%lld.%06lld: %s", ts / 1000000000, (ts / 1000) % 1000000,
+            printf("%lld.%06lld: %s\n", ts / 1000000000, (ts / 1000) % 1000000,
                    s.c_str());
         } else {
-            printf("%s", s.c_str());
+            printf("%s\n", s.c_str());
         }
         return release_and_exit();
     }

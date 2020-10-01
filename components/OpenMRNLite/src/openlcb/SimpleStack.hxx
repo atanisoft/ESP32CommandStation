@@ -317,7 +317,7 @@ public:
         additionalComponents_.emplace_back(port);
     }
 
-#ifdef __FreeRTOS__
+#if defined(__FreeRTOS__) || defined(ESP32)
     /// Adds a CAN bus port with asynchronous driver API.
     ///
     /// @deprecated: most current FreeRTOS drivers use the the select-based

@@ -35,17 +35,25 @@
 #define _UTILS_HUBDEVICENONBLOCK_HXX_
 
 // Nonblocking hubdevice only works on FreeRTOS.
-#ifdef __FreeRTOS__
+#if defined(__FreeRTOS__) || defined(ESP32)
 
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
 
 #include "executor/StateFlow.hxx"
+#ifdef ESP32
+#include "can_ioctl.h"
+#else
 #include "freertos/can_ioctl.h"
+#endif
 #include "utils/Hub.hxx"
 
+#ifdef ESP32
+#include <sys/ioctl.h>
+#else
 extern int ioctl(int fd, unsigned long int key, ...);
+#endif
 
 template <class HFlow> class HubDeviceNonBlock : public Destructable, private Atomic, public Service
 {
