@@ -58,7 +58,7 @@ string HTTP_BUILD_TIME = __DATE__ " " __TIME__;
 /// Callback for a newly accepted socket connection.
 ///
 /// @param fd is the socket handle.
-void incoming_http_connection(int fd)
+static void incoming_http_connection(int fd)
 {
   Singleton<Httpd>::instance()->new_connection(fd);
 }
@@ -72,6 +72,8 @@ Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name
   , executor_(name.c_str(), config_httpd_server_priority()
             , config_httpd_server_stack_size())
   , port_(port)
+  , websocket_uris_(config_httpd_websocket_max_clients())
+  , websockets_(config_httpd_websocket_max_clients())
 {
   init_server();
 }
@@ -85,6 +87,8 @@ Httpd::Httpd(ExecutorBase *executor, MDNS *mdns, uint16_t port
   , executor_(NO_THREAD()) // unused
   , externalExecutor_(true)
   , port_(port)
+  , websocket_uris_(config_httpd_websocket_max_clients())
+  , websockets_(config_httpd_websocket_max_clients())
 {
   init_server();
 }
@@ -101,6 +105,7 @@ Httpd::~Httpd()
   static_uris_.clear();
   redirect_uris_.clear();
   websocket_uris_.clear();
+  websockets_.clear();
 }
 
 void Httpd::uri(const std::string &uri, const size_t method_mask
@@ -142,13 +147,21 @@ void Httpd::static_uri(const string &uri, const uint8_t *payload
 
 void Httpd::websocket_uri(const string &uri, WebSocketHandler handler)
 {
-  websocket_uris_.insert(std::make_pair(std::move(uri), std::move(handler)));
+  if (websocket_uris_.size() < websocket_uris_.max_size())
+  {
+    websocket_uris_[uri] = handler;
+  }
+  else
+  {
+    LOG(FATAL, "[Httpd] Discarding WebSocket URI '%s' as max URI limit has "
+               "been reached!", uri.c_str());
+  }
 }
 
 void Httpd::send_websocket_binary(int id, uint8_t *data, size_t len)
 {
   OSMutexLock l(&websocketsLock_);
-  if (!websockets_.count(id))
+  if (websockets_.find(id) == websockets_.end())
   {
     LOG_ERROR("[Httpd] Attempt to send data to unknown websocket:%d, "
               "discarding.", id);
@@ -160,7 +173,7 @@ void Httpd::send_websocket_binary(int id, uint8_t *data, size_t len)
 void Httpd::send_websocket_text(int id, std::string &text)
 {
   OSMutexLock l(&websocketsLock_);
-  if (!websockets_.count(id))
+  if (websockets_.find(id) == websockets_.end())
   {
     LOG_ERROR("[Httpd] Attempt to send text to unknown websocket:%d, "
               "discarding text.", id);
@@ -201,8 +214,17 @@ void Httpd::new_connection(int fd)
   // Reconfigure the socket for non-blocking operations
   ::fcntl(fd, F_SETFL, O_RDWR | O_NONBLOCK);
 
-  // Start the HTTP processing on this new socket
-  new HttpRequestFlow(this, fd, ntohl(source.sin_addr.s_addr));
+  // Start the HTTP processing flow or close the socket if we fail to allocate
+  // the request handler.
+  auto *req =
+    new(std::nothrow) HttpRequestFlow(this, fd, ntohl(source.sin_addr.s_addr));
+  if (req == nullptr)
+  {
+    LOG_ERROR("[%s fd:%d/%s] Failed to allocate request handler, closing!"
+            , name_.c_str(), fd
+            , ipv4_to_string(ntohl(source.sin_addr.s_addr)).c_str());
+    ::close(fd);
+  }
 }
 
 void Httpd::captive_portal(string first_access_response
@@ -247,6 +269,8 @@ void Httpd::init_server()
 void Httpd::schedule_cleanup(Executable *flow)
 {
   Executable *target_flow = flow;
+  // TODO: should this use (std::nothrow) and validate that the executor was
+  // created?
   executor()->add(new CallbackExecutable([target_flow]()
   {
     delete target_flow;
@@ -310,10 +334,17 @@ void Httpd::stop_dns_listener()
   }
 }
 
-void Httpd::add_websocket(int id, WebSocketFlow *ws)
+bool Httpd::add_websocket(int id, WebSocketFlow *ws)
 {
   OSMutexLock l(&websocketsLock_);
-  websockets_[id] = ws;
+  if (websockets_.size() < websockets_.max_size())
+  {
+    websockets_[id] = ws;
+    return true;
+  }
+  LOG_ERROR("[%s] Rejecting WebSocket client as maximum concurrent clients "
+            "has been reached.", name_.c_str());
+  return false;
 }
 
 void Httpd::remove_websocket(int id)
@@ -380,7 +411,7 @@ bool Httpd::is_servicable_uri(HttpRequest *req)
 
   // check if it is a GET of a known URI or if it is a Websocket URI
   if ((req->method() == HttpMethod::GET && have_known_response(req->uri())) ||
-      websocket_uris_.count(req->uri()))
+      websocket_uris_.find(req->uri()) == websocket_uris_.end())
   {
     LOG(CONFIG_HTTP_SERVER_LOG_LEVEL, "[Httpd uri:%s] Known GET URI"
       , req->uri().c_str());
@@ -440,7 +471,7 @@ StreamProcessor Httpd::stream_handler(const std::string &uri)
 
 WebSocketHandler Httpd::ws_handler(const string &uri)
 {
-  if (websocket_uris_.count(uri))
+  if (websocket_uris_.find(uri) != websocket_uris_.end())
   {
     return websocket_uris_[uri];
   }

@@ -91,7 +91,8 @@ static std::map<HttpStatusCode, string> http_code_strings =
 
 AbstractHttpResponse::AbstractHttpResponse(HttpStatusCode code
                                          , const string &mime_type)
-                                         : code_(code), mime_type_(mime_type)
+                                         : headers_(config_httpd_max_header_count())
+                                         , code_(code), mime_type_(mime_type)
                                          , encoded_headers_("")
 {
   // seed default headers
@@ -164,14 +165,23 @@ string AbstractHttpResponse::to_string(bool include_body, bool keep_alive
   return encoded_headers_;
 }
 
-void AbstractHttpResponse::header(const string &header, const string &value)
+void AbstractHttpResponse::header(const string &name, const string &value)
 {
-  headers_[header] = std::move(value);
+  if (headers_.size() < headers_.max_size())
+  {
+    headers_[name] = std::move(value);
+  }
+  else
+  {
+    LOG_ERROR("[HttpResp %p] Discarding header '%s' as maximum header limit "
+              "has been reached!", this, name.c_str());
+  }
 }
 
-void AbstractHttpResponse::header(const HttpHeader header, const string &value)
+void AbstractHttpResponse::header(const HttpHeader name
+                                , const string &value)
 {
-  headers_[well_known_http_headers[header]] = std::move(value);
+  header(well_known_http_headers[name], value);
 }
 
 RedirectResponse::RedirectResponse(const string &target_uri)

@@ -51,8 +51,8 @@ static void* dns_thread_start(void* arg)
 
 Dnsd::Dnsd(uint32_t ip, string name, uint16_t port)
   : local_ip_(ip), name_(name), port_(port)
-  , dns_thread_(name_.c_str(), 1, config_dnsd_stack_size(), dns_thread_start
-              , nullptr)
+  , dns_thread_(name_.c_str(), config_dnsd_priority(), config_dnsd_stack_size()
+              , dns_thread_start, nullptr)
 {
 }
 

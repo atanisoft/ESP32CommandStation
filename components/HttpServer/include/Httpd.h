@@ -49,6 +49,7 @@
 #include <utils/Base64.hxx>
 #include <utils/constants.hxx>
 #include <utils/format_utils.hxx>
+#include <utils/Map.hxx>
 #include <utils/Singleton.hxx>
 #include <utils/socket_listener.hxx>
 #include <utils/StringPrintf.hxx>
@@ -82,6 +83,14 @@ DECLARE_CONST(httpd_response_chunk_size);
 /// with a BAD_REQUEST (400) error code.
 DECLARE_CONST(httpd_max_header_size);
 
+/// This controls how many headers will be allowed in the http request before
+/// ignoring new ones. Default is 20.
+DECLARE_CONST(httpd_max_header_count);
+
+/// This controls how many request parameters will be allowed before ignroing
+/// new ones. Default is 20.
+DECLARE_CONST(httpd_max_param_count);
+
 /// Maximum size of the HTTP request body payload. Any request which exceeds
 /// this limit will be forcibly aborted.
 DECLARE_CONST(httpd_max_req_size);
@@ -113,6 +122,14 @@ DECLARE_CONST(httpd_websocket_max_frame_size);
 /// This controls how many attempts will be allowed to receive a websocket
 /// frame before attempting to send out a websocket frame.
 DECLARE_CONST(httpd_websocket_max_read_attempts);
+
+/// This controls how many websocket URIs that can be registered at one time.
+/// Default is 1.
+DECLARE_CONST(httpd_websocket_max_uris);
+
+/// This controls how many websocket clients can connect at one time.
+/// Default is 10.
+DECLARE_CONST(httpd_websocket_max_clients);
 
 /// This controls the Cache-Control: max-age=XXX value in the response headers
 /// for static content.
@@ -369,19 +386,19 @@ public:
 protected:
   /// Adds an arbitrary HTTP header to the response object.
   ///
-  /// @param header is the HTTP header name to add.
+  /// @param name is the HTTP header name to add.
   /// @param value is the HTTP header value to add.
-  void header(const std::string &header, const std::string &value);
+  void header(const std::string &name, const std::string &value);
 
   /// Adds a well-known HTTP header to the response object.
   ///
-  /// @param header is the HTTP header name to add.
+  /// @param name is the HTTP header name to add.
   /// @param value is the HTTP header value to add.
-  void header(const HttpHeader header, const std::string &value);
+  void header(const HttpHeader name, const std::string &value);
 
 private:
   /// Collection of headers and values for this HTTP response.
-  std::map<std::string, std::string> headers_;
+  Map<std::string, std::string> headers_;
 
   /// @ref HttpStatusCode for this HTTP response.
   HttpStatusCode code_;
@@ -537,6 +554,9 @@ public:
 class HttpRequest
 {
 public:
+  /// Constructor.
+  HttpRequest();
+  
   /// @return the parsed well-known @ref HttpMethod.
   HttpMethod method();
 
@@ -624,13 +644,15 @@ private:
 
   /// Adds a URI parameter to the request.
   ///
-  /// @param value is a pair<string, string> of the key:value pair.
-  void param(const std::pair<std::string, std::string> &value);
+  /// @param name is the name of the parameter.
+  /// @param value is the value of the parameter.
+  void param(const string &name, const string &value);
 
   /// Adds an HTTP Header to the request.
   ///
-  /// @param value is a pair<string, string> of the key:value pair.
-  void header(const std::pair<std::string, std::string> &value);
+  /// @param name is the name of the header.
+  /// @param value is the value of the header.
+  void header(const string &name, const string &value);
 
   /// Adds/replaces a HTTP Header to the request.
   ///
@@ -652,10 +674,10 @@ private:
 
   /// Collection of HTTP Headers that have been parsed from the HTTP request
   /// stream.
-  std::map<std::string, std::string> headers_;
+  Map<std::string, std::string> headers_;
 
   /// Collection of parameters supplied with the HTTP Request after the URI.
-  std::map<std::string, std::string> params_;
+  Map<std::string, std::string> params_;
 
   /// Parsed @ref HttpMethod for this @ref HttpRequest.
   HttpMethod method_;
@@ -930,7 +952,8 @@ private:
   ///
   /// @param id is the ID of the WebSocket client.
   /// @param ws is the @ref WebSocketFlow managing the WebSocket client.
-  void add_websocket(int id, WebSocketFlow *ws);
+  /// @return true if the websocket was recorded, false otherwise.
+  bool add_websocket(int id, WebSocketFlow *ws);
 
   /// Removes a previously registered WebSocket client.
   ///
@@ -1022,10 +1045,10 @@ private:
   std::map<std::string, std::shared_ptr<AbstractHttpResponse>> redirect_uris_;
 
   /// Internal map of all registered @ref WebSocketHandler URIs.
-  std::map<std::string, WebSocketHandler> websocket_uris_;
+  Map<std::string, WebSocketHandler> websocket_uris_;
 
   /// Internal map of active @ref WebSocketFlow instances.
-  std::map<int, WebSocketFlow *> websockets_;
+  Map<int, WebSocketFlow *> websockets_;
 
   /// Lock object for websockets_.
   OSMutex websocketsLock_;

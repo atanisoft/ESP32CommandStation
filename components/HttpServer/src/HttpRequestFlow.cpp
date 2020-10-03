@@ -51,6 +51,23 @@ static vector<string> captive_portal_uris =
   "/kindle-wifi/wifistub.html"      // Kindle
 };
 
+static std::shared_ptr<AbstractHttpResponse> captive_no_content{
+  new AbstractHttpResponse(HttpStatusCode::STATUS_NO_CONTENT)};
+
+static std::shared_ptr<AbstractHttpResponse> captive_ok{
+  new AbstractHttpResponse(HttpStatusCode::STATUS_OK)};
+
+static std::shared_ptr<AbstractHttpResponse> captive_msft_ncsi{
+  new StringResponse("Microsoft NCSI", MIME_TYPE_TEXT_PLAIN)};
+
+static std::shared_ptr<AbstractHttpResponse> captive_success{
+  new StringResponse("success", MIME_TYPE_TEXT_PLAIN)};
+
+static std::shared_ptr<AbstractHttpResponse> captive_success_ios{
+  new StringResponse("<HTML><HEAD><TITLE>Success</TITLE></HEAD>"
+                     "<BODY>Success</BODY></HTML>"
+                   , MIME_TYPE_TEXT_HTML)};
+
 HttpRequestFlow::HttpRequestFlow(Httpd *server, int fd
                                , uint32_t remote_ip)
                                : StateFlowBase(server)
@@ -137,7 +154,11 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
       tokenize(part, params, "&");
       for (auto param : params)
       {
-        req_.param(break_string(param, "="));
+        auto p = break_string(param, "=");
+        // URL decode the parameter name and value
+        p.first = url_decode(p.first);
+        p.second = url_decode(p.second);
+        req_.param(p.first, p.second);
       }
     }
     // remove the first line since we processed it
@@ -194,28 +215,22 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
                   req_.uri().find("status.php") > 0)
           {
             // These URIs require a generic response with code 204
-            res_.reset(
-              new AbstractHttpResponse(HttpStatusCode::STATUS_NO_CONTENT));
+            res_ = captive_no_content;
           }
           else if (req_.uri().find("ncsi.txt") > 0)
           {
             // Windows success page content
-            res_.reset(
-              new StringResponse("Microsoft NCSI", MIME_TYPE_TEXT_PLAIN));
+            res_ = captive_msft_ncsi;
           }
           else if (req_.uri().find("success.txt") > 0)
           {
             // Generic success.txt page content
-            res_.reset(
-              new StringResponse("success", MIME_TYPE_TEXT_PLAIN));
+            res_ = captive_success;
           }
           else
           {
             // iOS success page content
-            res_.reset(
-              new StringResponse("<HTML><HEAD><TITLE>Success</TITLE></HEAD>"
-                                "<BODY>Success</BODY></HTML>"
-                              , MIME_TYPE_TEXT_HTML));
+            res_ = captive_success_ios;
           }
         }
         else if (server_->captive_active_ &&
@@ -223,7 +238,7 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
         {
           server_->captive_auth_[remote_ip_] =
             esp_timer_get_time() + server_->captive_timeout_;
-          res_.reset(new AbstractHttpResponse(HttpStatusCode::STATUS_OK));
+          res_ = captive_ok;
         }
         else
         {
@@ -262,7 +277,7 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
       h.second = url_decode(h.second);
 
       // stash the header for later retrieval
-      req_.header(h);
+      req_.header(h.first, h.second);
     }
   }
 
@@ -825,7 +840,7 @@ StateFlowBase::Action HttpRequestFlow::parse_form_data()
     LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL
       , "param: %s, value: %s", p.first.c_str(), p.second.c_str());
     // add the parameter to the request
-    req_.param(p);
+    req_.param(p.first, p.second);
   }
 
   // If there is more body payload to read request more data before processing
@@ -967,13 +982,24 @@ StateFlowBase::Action HttpRequestFlow::request_complete()
 
 StateFlowBase::Action HttpRequestFlow::upgrade_to_websocket()
 {
-  // keep the socket open since we will reuse it as the websocket
-  close_ = false;
-  LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL
-    , "[Httpd fd:%d,uri:%s] Upgrading to WebSocket", fd_, req_.uri().c_str());
-  new WebSocketFlow(server_, fd_, remote_ip_, req_.header(HttpHeader::WS_KEY)
-                  , req_.header(HttpHeader::WS_VERSION)
-                  , server_->ws_handler(req_.uri()));
+  auto *ws_req =
+    new(std::nothrow) WebSocketFlow(server_, fd_, remote_ip_
+                                  , req_.header(HttpHeader::WS_KEY)
+                                  , req_.header(HttpHeader::WS_VERSION)
+                                  , server_->ws_handler(req_.uri()));
+  if (ws_req == nullptr)
+  {
+    LOG_ERROR("[Httpd fd:%d,uri:%s] Failed to upgrade request to websocket!"
+            , fd_, req_.uri().c_str());
+  }
+  else
+  {
+    // keep the socket open since we will reuse it as the websocket
+    close_ = false;
+    LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL
+      , "[Httpd fd:%d,uri:%s] Upgrading to WebSocket", fd_
+      , req_.uri().c_str());
+  }
   req_.reset();
   server_->schedule_cleanup(this);
   return exit();
