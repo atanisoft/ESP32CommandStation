@@ -51,23 +51,6 @@ static vector<string> captive_portal_uris =
   "/kindle-wifi/wifistub.html"      // Kindle
 };
 
-static std::shared_ptr<AbstractHttpResponse> captive_no_content{
-  new AbstractHttpResponse(HttpStatusCode::STATUS_NO_CONTENT)};
-
-static std::shared_ptr<AbstractHttpResponse> captive_ok{
-  new AbstractHttpResponse(HttpStatusCode::STATUS_OK)};
-
-static std::shared_ptr<AbstractHttpResponse> captive_msft_ncsi{
-  new StringResponse("Microsoft NCSI", MIME_TYPE_TEXT_PLAIN)};
-
-static std::shared_ptr<AbstractHttpResponse> captive_success{
-  new StringResponse("success", MIME_TYPE_TEXT_PLAIN)};
-
-static std::shared_ptr<AbstractHttpResponse> captive_success_ios{
-  new StringResponse("<HTML><HEAD><TITLE>Success</TITLE></HEAD>"
-                     "<BODY>Success</BODY></HTML>"
-                   , MIME_TYPE_TEXT_HTML)};
-
 HttpRequestFlow::HttpRequestFlow(Httpd *server, int fd
                                , uint32_t remote_ip)
                                : StateFlowBase(server)
@@ -207,30 +190,29 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
               (server_->captive_auth_[remote_ip_] > server_->captive_timeout_ &&
               server_->captive_timeout_ != UINT32_MAX))
           {
-            // new client or authentication expired, send the canned response
-            res_.reset(new StringResponse(server_->captive_response_
-                                        , MIME_TYPE_TEXT_HTML));
+            // new client or authentication expired
+            res_ = server_->captive_response_;
           }
           else if (req_.uri().find("_204") > 0 ||
                   req_.uri().find("status.php") > 0)
           {
             // These URIs require a generic response with code 204
-            res_ = captive_no_content;
+            res_ = server_->captive_no_content_;
           }
           else if (req_.uri().find("ncsi.txt") > 0)
           {
             // Windows success page content
-            res_ = captive_msft_ncsi;
+            res_ = server_->captive_msft_ncsi_;
           }
           else if (req_.uri().find("success.txt") > 0)
           {
             // Generic success.txt page content
-            res_ = captive_success;
+            res_ = server_->captive_success_;
           }
           else
           {
             // iOS success page content
-            res_ = captive_success_ios;
+            res_ = server_->captive_success_ios_;
           }
         }
         else if (server_->captive_active_ &&
@@ -238,7 +220,7 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
         {
           server_->captive_auth_[remote_ip_] =
             esp_timer_get_time() + server_->captive_timeout_;
-          res_ = captive_ok;
+          res_ = server_->captive_ok_;
         }
         else
         {

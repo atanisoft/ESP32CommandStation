@@ -230,7 +230,21 @@ void Httpd::new_connection(int fd)
 void Httpd::captive_portal(string first_access_response
                          , string auth_uri, uint64_t auth_timeout)
 {
-  captive_response_.assign(std::move(first_access_response));
+  captive_response_ =
+    std::make_shared<StringResponse>(first_access_response
+                                   , MIME_TYPE_TEXT_HTML);
+  captive_no_content_ = 
+    std::make_shared<AbstractHttpResponse>(HttpStatusCode::STATUS_NO_CONTENT);
+  captive_ok_ = 
+    std::make_shared<AbstractHttpResponse>(HttpStatusCode::STATUS_OK);
+  captive_msft_ncsi_ =
+    std::make_shared<StringResponse>("Microsoft NCSI", MIME_TYPE_TEXT_PLAIN);
+  captive_success_ = 
+    std::make_shared<StringResponse>("success", MIME_TYPE_TEXT_PLAIN);
+  captive_success_ios_= 
+    std::make_shared<StringResponse>("<HTML><HEAD><TITLE>Success</TITLE></HEAD>"
+                                     "<BODY>Success</BODY></HTML>"
+                                   , MIME_TYPE_TEXT_HTML);
   captive_auth_uri_.assign(std::move(auth_uri));
   captive_timeout_ = auth_timeout;
   captive_active_ = true;

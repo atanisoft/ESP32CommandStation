@@ -1053,10 +1053,25 @@ private:
   /// Lock object for websockets_.
   OSMutex websocketsLock_;
 
-  /// Internal holder for captive portal response.
-  std::string captive_response_;
+  /// Captive portal response for HTTP 204 NO CONTENT.
+  std::shared_ptr<AbstractHttpResponse> captive_no_content_;
 
-  /// Internal holder for captive portal response.
+  /// Captive portal response for HTTP 200 OK.
+  std::shared_ptr<AbstractHttpResponse> captive_ok_;
+
+  /// Captive portal response for Microsoft NCSI.
+  std::shared_ptr<AbstractHttpResponse> captive_msft_ncsi_;
+
+  /// Captive portal response for generic success.txt.
+  std::shared_ptr<AbstractHttpResponse> captive_success_;
+
+  /// Captive portal response for iOS devices.
+  std::shared_ptr<AbstractHttpResponse> captive_success_ios_;
+
+  /// Captive portal response for first access.
+  std::shared_ptr<AbstractHttpResponse> captive_response_;
+
+  /// Captive portal authentication URL.
   std::string captive_auth_uri_;
 
   /// Timeout for captive portal authenticated clients.
