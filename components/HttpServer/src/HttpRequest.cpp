@@ -65,11 +65,6 @@ std::map<HttpHeader, string> well_known_http_headers =
 , { WS_ACCEPT, "Sec-WebSocket-Accept"}
 };
 
-HttpRequest::HttpRequest() : headers_(config_httpd_max_header_count())
-                           , params_(config_httpd_max_param_count())
-{
-}
-
 void HttpRequest::method(const string &value)
 {
   LOG(CONFIG_HTTP_REQ_LOG_LEVEL
@@ -125,7 +120,7 @@ void HttpRequest::uri(const string &value)
 
 void HttpRequest::param(const string &name, const string &value)
 {
-  if (params_.size() < params_.max_size())
+  if (params_.size() < config_httpd_max_param_count())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[HttpReq %p] Adding param: %s: %s", this, name.c_str()
@@ -141,7 +136,7 @@ void HttpRequest::param(const string &name, const string &value)
 
 void HttpRequest::header(const string &name, const string &value)
 {
-  if (headers_.size() < headers_.max_size())
+  if (headers_.size() < config_httpd_max_header_count())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[HttpReq %p] Adding header: %s: %s", this, name.c_str()
@@ -164,7 +159,7 @@ void HttpRequest::header(HttpHeader header, std::string value)
       , well_known_http_headers[header].c_str(), value.c_str()
       , headers_[well_known_http_headers[header]].c_str());
   }
-  else if (headers_.size() < headers_.max_size())
+  else if (headers_.size() < config_httpd_max_header_count())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[HttpReq %p] Adding header: %s: %s", this

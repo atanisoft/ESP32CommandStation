@@ -49,7 +49,6 @@
 #include <utils/Base64.hxx>
 #include <utils/constants.hxx>
 #include <utils/format_utils.hxx>
-#include <utils/Map.hxx>
 #include <utils/Singleton.hxx>
 #include <utils/socket_listener.hxx>
 #include <utils/StringPrintf.hxx>
@@ -398,7 +397,7 @@ protected:
 
 private:
   /// Collection of headers and values for this HTTP response.
-  Map<std::string, std::string> headers_;
+  std::map<std::string, std::string> headers_;
 
   /// @ref HttpStatusCode for this HTTP response.
   HttpStatusCode code_;
@@ -553,10 +552,7 @@ public:
 /// Runtime state of an HTTP Request.
 class HttpRequest
 {
-public:
-  /// Constructor.
-  HttpRequest();
-  
+public:  
   /// @return the parsed well-known @ref HttpMethod.
   HttpMethod method();
 
@@ -674,10 +670,10 @@ private:
 
   /// Collection of HTTP Headers that have been parsed from the HTTP request
   /// stream.
-  Map<std::string, std::string> headers_;
+  std::map<std::string, std::string> headers_;
 
   /// Collection of parameters supplied with the HTTP Request after the URI.
-  Map<std::string, std::string> params_;
+  std::map<std::string, std::string> params_;
 
   /// Parsed @ref HttpMethod for this @ref HttpRequest.
   HttpMethod method_;
@@ -1045,10 +1041,10 @@ private:
   std::map<std::string, std::shared_ptr<AbstractHttpResponse>> redirect_uris_;
 
   /// Internal map of all registered @ref WebSocketHandler URIs.
-  Map<std::string, WebSocketHandler> websocket_uris_;
+  std::map<std::string, WebSocketHandler> websocket_uris_;
 
   /// Internal map of active @ref WebSocketFlow instances.
-  Map<int, WebSocketFlow *> websockets_;
+  std::map<int, WebSocketFlow *> websockets_;
 
   /// Lock object for websockets_.
   OSMutex websocketsLock_;

@@ -91,8 +91,7 @@ static std::map<HttpStatusCode, string> http_code_strings =
 
 AbstractHttpResponse::AbstractHttpResponse(HttpStatusCode code
                                          , const string &mime_type)
-                                         : headers_(config_httpd_max_header_count())
-                                         , code_(code), mime_type_(mime_type)
+                                         : code_(code), mime_type_(mime_type)
                                          , encoded_headers_("")
 {
   // seed default headers
@@ -167,7 +166,7 @@ string AbstractHttpResponse::to_string(bool include_body, bool keep_alive
 
 void AbstractHttpResponse::header(const string &name, const string &value)
 {
-  if (headers_.size() < headers_.max_size())
+  if (headers_.size() < config_httpd_max_header_count())
   {
     headers_[name] = std::move(value);
   }

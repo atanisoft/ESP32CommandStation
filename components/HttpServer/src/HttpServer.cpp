@@ -72,8 +72,6 @@ Httpd::Httpd(MDNS *mdns, uint16_t port, const string &name
   , executor_(name.c_str(), config_httpd_server_priority()
             , config_httpd_server_stack_size())
   , port_(port)
-  , websocket_uris_(config_httpd_websocket_max_clients())
-  , websockets_(config_httpd_websocket_max_clients())
 {
   init_server();
 }
@@ -87,8 +85,6 @@ Httpd::Httpd(ExecutorBase *executor, MDNS *mdns, uint16_t port
   , executor_(NO_THREAD()) // unused
   , externalExecutor_(true)
   , port_(port)
-  , websocket_uris_(config_httpd_websocket_max_clients())
-  , websockets_(config_httpd_websocket_max_clients())
 {
   init_server();
 }
@@ -147,7 +143,7 @@ void Httpd::static_uri(const string &uri, const uint8_t *payload
 
 void Httpd::websocket_uri(const string &uri, WebSocketHandler handler)
 {
-  if (websocket_uris_.size() < websocket_uris_.max_size())
+  if (websocket_uris_.size() < config_httpd_websocket_max_uris())
   {
     websocket_uris_[uri] = handler;
   }
@@ -351,7 +347,7 @@ void Httpd::stop_dns_listener()
 bool Httpd::add_websocket(int id, WebSocketFlow *ws)
 {
   OSMutexLock l(&websocketsLock_);
-  if (websockets_.size() < websockets_.max_size())
+  if (websockets_.size() < config_httpd_websocket_max_clients())
   {
     websockets_[id] = ws;
     return true;
