@@ -72,42 +72,47 @@ WebSocketFlow::WebSocketFlow(Httpd *server, int fd, uint32_t remote_ip
                            , max_frame_size_(config_httpd_websocket_max_frame_size())
                            , handler_(handler)
 {
-  server_->add_websocket(fd, this);
-  string key_data = ws_key + WEBSOCKET_UUID;
-
-  // replace spaces with + which might have been removed by url_decode
-  std::replace(key_data.begin(), key_data.end(), ' ', '+');
-
-  unsigned char key_sha1[20];
-  LOG(CONFIG_HTTP_WS_LOG_LEVEL
-    , "[WebSocket fd:%d] Connected, starting handshake", fd_);
-#ifdef HTTP_USE_MBEDTLS_SHA1
-  // SHA1 encode the ws_key plus the websocket UUID, if this fails close the
-  // socket immediately.
-  if (!mbedtls_sha1_ret((unsigned char *)key_data.c_str(), key_data.length()
-                      , key_sha1))
+  if(server_->add_websocket(fd, this))
   {
-    AbstractHttpResponse resp(STATUS_SWITCH_PROTOCOL);
-    resp.header(HttpHeader::CONNECTION, HTTP_CONNECTION_UPGRADE);
-    resp.header(HttpHeader::UPGRADE, HTTP_UPGRADE_HEADER_WEBSOCKET);
-    resp.header(HttpHeader::WS_VERSION, ws_version);
-    resp.header(HttpHeader::WS_ACCEPT
-              , base64_encode(string((char *)key_sha1, 20)));
-    handshake_.assign(std::move(resp.to_string()));
+    string key_data = ws_key + WEBSOCKET_UUID;
 
-    // Allocate buffer for frame data.
-    data_ = (uint8_t *)malloc(max_frame_size_);
-    if (data_)
+    // replace spaces with + which might have been removed by url_decode
+    std::replace(key_data.begin(), key_data.end(), ' ', '+');
+
+    unsigned char key_sha1[20];
+    LOG(CONFIG_HTTP_WS_LOG_LEVEL
+      , "[WebSocket fd:%d] Connected, starting handshake", fd_);
+#ifdef HTTP_USE_MBEDTLS_SHA1
+    // SHA1 encode the ws_key plus the websocket UUID, if this fails close the
+    // socket immediately.
+    if (!mbedtls_sha1_ret((unsigned char *)key_data.c_str(), key_data.length()
+                        , key_sha1))
     {
-      start_flow(STATE(send_handshake));
-      return;
+      AbstractHttpResponse resp(STATUS_SWITCH_PROTOCOL);
+      resp.header(HttpHeader::CONNECTION, HTTP_CONNECTION_UPGRADE);
+      resp.header(HttpHeader::UPGRADE, HTTP_UPGRADE_HEADER_WEBSOCKET);
+      resp.header(HttpHeader::WS_VERSION, ws_version);
+      resp.header(HttpHeader::WS_ACCEPT
+                , base64_encode(string((char *)key_sha1, 20)));
+      handshake_.assign(std::move(resp.to_string()));
+
+      // Allocate buffer for frame data.
+      data_ = (uint8_t *)malloc(max_frame_size_);
+      if (data_)
+      {
+        start_flow(STATE(send_handshake));
+        return;
+      }
     }
-  }
-  LOG_ERROR("[WebSocket fd:%d] Error estabilishing connection, aborting", fd_);
+    LOG_ERROR("[WebSocket fd:%d] Error estabilishing connection, aborting", fd_);
 #else
-  LOG_ERROR("[WebSocket fd:%d] No SHA1 library available, aborting", fd_);
+    LOG_ERROR("[WebSocket fd:%d] No SHA1 library available, aborting", fd_);
 #endif // HTTP_USE_MBEDTLS_SHA1
-  
+  }
+  else
+  {
+    LOG_ERROR("[WebSocket fd:%d] Failed to allocate websocket, aborting!", fd_);
+  }
   server_->schedule_cleanup(this);
 }
 
