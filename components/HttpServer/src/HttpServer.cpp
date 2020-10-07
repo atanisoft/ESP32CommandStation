@@ -421,7 +421,7 @@ bool Httpd::is_servicable_uri(HttpRequest *req)
 
   // check if it is a GET of a known URI or if it is a Websocket URI
   if ((req->method() == HttpMethod::GET && have_known_response(req->uri())) ||
-      websocket_uris_.find(req->uri()) == websocket_uris_.end())
+      websocket_uris_.find(req->uri()) != websocket_uris_.end())
   {
     LOG(CONFIG_HTTP_SERVER_LOG_LEVEL, "[Httpd uri:%s] Known GET URI"
       , req->uri().c_str());
