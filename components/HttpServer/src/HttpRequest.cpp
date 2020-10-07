@@ -44,7 +44,7 @@ static constexpr const char * HTTP_METHOD_POST = "POST";
 static constexpr const char * HTTP_METHOD_PATCH = "PATCH";
 static constexpr const char * HTTP_METHOD_PUT = "PUT";
 
-std::map<HttpHeader, string> well_known_http_headers =
+std::map<HttpHeader, const char *> well_known_http_headers =
 {
   { ACCEPT, "Accept" }
 , { CACHE_CONTROL, "Cache-Control" }
@@ -156,20 +156,20 @@ void HttpRequest::header(HttpHeader header, std::string value)
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[HttpReq %p] Replacing header: %s: %s (old: %s)", this
-      , well_known_http_headers[header].c_str(), value.c_str()
+      , well_known_http_headers[header], value.c_str()
       , headers_[well_known_http_headers[header]].c_str());
   }
   else if (headers_.size() < config_httpd_max_header_count())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[HttpReq %p] Adding header: %s: %s", this
-      , well_known_http_headers[header].c_str(), value.c_str());
+      , well_known_http_headers[header], value.c_str());
   }
   else
   {
     LOG_ERROR("[HttpReq %p] Discarding header '%s' as maximum header limit "
               "has been reached!", this
-            , well_known_http_headers[header].c_str());
+            , well_known_http_headers[header]);
     return;
   }
   headers_[well_known_http_headers[header]] = value;

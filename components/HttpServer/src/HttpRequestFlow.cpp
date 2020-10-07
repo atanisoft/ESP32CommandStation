@@ -58,6 +58,7 @@ HttpRequestFlow::HttpRequestFlow(Httpd *server, int fd
                                , fd_(fd)
                                , remote_ip_(remote_ip)
 {
+  raw_header_.reserve(header_read_size_ + 1);
   start_flow(STATE(start_request));
   LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL, "[Httpd fd:%d] Connected.", fd_);
 }
@@ -75,10 +76,13 @@ StateFlowBase::Action HttpRequestFlow::start_request()
 {
   LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL, "[Httpd fd:%d] reading header", fd_);
   req_.reset();
-  part_boundary_.assign("");
-  part_filename_.assign("");
-  part_type_.assign("");
-  raw_header_.assign("");
+  part_boundary_.clear();
+  part_boundary_.shrink_to_fit();
+  part_filename_.clear();
+  part_filename_.shrink_to_fit();
+  part_type_.clear();
+  part_type_.shrink_to_fit();
+  raw_header_.clear();
   start_time_ = esp_timer_get_time();
   buf_.resize(header_read_size_);
   return read_repeated_with_timeout(&helper_, timeout_, fd_, buf_.data()
@@ -457,7 +461,7 @@ StateFlowBase::Action HttpRequestFlow::start_multipart_processing()
   return call_immediately(STATE(read_multipart_headers));
 }
 
-extern std::map<HttpHeader, string> well_known_http_headers;
+extern std::map<HttpHeader, const char *> well_known_http_headers;
 StateFlowBase::Action HttpRequestFlow::parse_multipart_headers()
 {
   // https://tools.ietf.org/html/rfc7578
@@ -609,7 +613,7 @@ StateFlowBase::Action HttpRequestFlow::parse_multipart_headers()
         LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL
           , "[Httpd fd:%d,uri:%s] multipart/form-data segment(%d) uses %s:%s"
           , fd_, req_.uri().c_str(), part_count_
-          , well_known_http_headers[HttpHeader::CONTENT_TYPE].c_str()
+          , well_known_http_headers[HttpHeader::CONTENT_TYPE]
           , part_type_.c_str());
       }
       else if (!parts.first.compare(
