@@ -393,10 +393,19 @@ StateFlowBase::Action HttpRequestFlow::process_request_handler()
   else
   {
     auto handler = server_->handler(req_.method(), req_.uri());
-    auto res = handler(&req_);
-    if (res && !res_)
+    if (handler)
     {
-      res_.reset(res);
+      auto res = handler(&req_);
+      if (res && !res_)
+      {
+        res_.reset(res);
+      }
+    }
+    else
+    {
+      LOG_ERROR("[Httpd fd:%d] Unable to locate handler for URI:%s", fd_
+              , req_.uri().c_str());
+      req_.set_status(HttpStatusCode::STATUS_SERVER_ERROR);
     }
   }
 
