@@ -65,7 +65,7 @@ DEFAULT_CONST(httpd_cache_max_age_sec, 300);
 ///////////////////////////////////////////////////////////////////////////////
 
 DEFAULT_CONST(dnsd_priority, 0);
-DEFAULT_CONST(dnsd_stack_size, 3072);
+DEFAULT_CONST(dnsd_stack_size, 2048);
 DEFAULT_CONST(dnsd_buffer_size, 512);
 
 } // namespace http

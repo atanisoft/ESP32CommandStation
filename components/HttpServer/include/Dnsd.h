@@ -144,6 +144,15 @@ private:
     /// Response IP address (payload).
     uint32_t address;
   } __attribute__((packed));
+
+  /// Buffer for the incoming request and the response payload.
+  std::vector<uint8_t> buffer_;
+
+  /// Flags to use for ::sendto() when responding to the DNS request.
+  static constexpr int DNS_SENDTO_FLAGS = 0;
+
+  /// Flags to use for ::recvfrom() when receiving the DNS request.
+  static constexpr int DNS_RECVFROM_FLAGS = 0;
 };
 
 } // namespace http
