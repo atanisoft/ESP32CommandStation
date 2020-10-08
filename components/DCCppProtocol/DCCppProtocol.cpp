@@ -195,17 +195,11 @@ DCC_PROTOCOL_COMMAND_HANDLER(PowerOffCommand,
 
 #define GET_LOCO_VIA_EXECUTOR(NAME, address)                                          \
   openlcb::TrainImpl *NAME = nullptr;                                                 \
-  {                                                                                   \
-    SyncNotifiable n;                                                                 \
-    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->add(        \
-    new CallbackExecutable([&]()                                                      \
-    {                                                                                 \
-      NAME = Singleton<commandstation::AllTrainNodes>::instance()->get_train_impl(    \
+  Singleton<commandstation::AllTrainNodes>::instance()->train_service()->executor()->sync_run( \
+  [&]() {                                                                             \
+    NAME = Singleton<commandstation::AllTrainNodes>::instance()->get_train_impl(      \
                                         commandstation::DccMode::DCC_128, address);   \
-      n.notify();                                                                     \
-    }));                                                                              \
-    n.wait_for_notification();                                                        \
-  }
+  });
 
 // <t {REGISTER} {LOCO} {SPEED} {DIRECTION}> command handler, this command
 // converts the provided locomotive control command into a compatible DCC
