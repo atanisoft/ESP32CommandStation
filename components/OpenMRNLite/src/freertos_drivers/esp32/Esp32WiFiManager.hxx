@@ -333,6 +333,9 @@ private:
     /// Initializes the mDNS system if it hasn't already been initialized.
     void start_mdns_system();
 
+    /// Configures the WiFi maximum TX power.
+    void configure_wifi_max_tx_power();
+
     /// Event handler called when the ESP32 Station interface has started.
     ///
     /// This will handle configuration of any static IP address, hostname, DNS
