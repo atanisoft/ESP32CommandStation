@@ -139,7 +139,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(WriteCVBitOpsCommand,
 string convert_loco_to_dccpp_state(openlcb::TrainImpl *impl, size_t id)
 {
   SpeedType speed(impl->get_speed());
-  if (speed.mph())
+  if (speed.mph() && !impl->get_emergencystop())
   {
     return StringPrintf("<T %d %d %d>", id, (int)speed.mph() + 1
                       , speed.direction() == SpeedType::FORWARD);
@@ -195,17 +195,11 @@ DCC_PROTOCOL_COMMAND_HANDLER(PowerOffCommand,
 
 #define GET_LOCO_VIA_EXECUTOR(NAME, address)                                          \
   openlcb::TrainImpl *NAME = nullptr;                                                 \
-  {                                                                                   \
-    SyncNotifiable n;                                                                 \
-    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->add(        \
-    new CallbackExecutable([&]()                                                      \
-    {                                                                                 \
-      NAME = Singleton<commandstation::AllTrainNodes>::instance()->get_train_impl(    \
+  Singleton<commandstation::AllTrainNodes>::instance()->train_service()->executor()->sync_run( \
+  [&]() {                                                                             \
+    NAME = Singleton<commandstation::AllTrainNodes>::instance()->get_train_impl(      \
                                         commandstation::DccMode::DCC_128, address);   \
-      n.notify();                                                                     \
-    }));                                                                              \
-    n.wait_for_notification();                                                        \
-  }
+  });
 
 // <t {REGISTER} {LOCO} {SPEED} {DIRECTION}> command handler, this command
 // converts the provided locomotive control command into a compatible DCC
@@ -216,19 +210,27 @@ DCC_PROTOCOL_COMMAND_HANDLER(ThrottleCommandAdapter,
 {
   int reg_num = std::stoi(arguments[0]);
   uint16_t loco_addr = std::stoi(arguments[1]);
-  uint8_t req_speed = std::stoi(arguments[2]);
+  int8_t req_speed = std::stoi(arguments[2]);
   uint8_t req_dir = std::stoi(arguments[3]);
 
   GET_LOCO_VIA_EXECUTOR(impl, loco_addr);
-  LOG(INFO, "[DCC++ loco %d] Set speed to %d", loco_addr, req_speed);
-  LOG(INFO, "[DCC++ loco %d] Set direction to %s", loco_addr
-      , req_dir ? "FWD" : "REV");
-  auto speed = SpeedType::from_mph(req_speed);
-  if (!req_dir)
+  if (req_speed == -1)
   {
-    speed.set_direction(SpeedType::REVERSE);
+    LOG(INFO, "[DCC++ loco %d] Sending e-stop to this locomotive.", loco_addr);
+    impl->set_emergencystop();
   }
-  impl->set_speed(speed);
+  else
+  {
+    LOG(INFO, "[DCC++ loco %d] Set speed to %d", loco_addr, req_speed);
+    LOG(INFO, "[DCC++ loco %d] Set direction to %s", loco_addr
+        , req_dir ? "FWD" : "REV");
+    auto speed = SpeedType::from_mph(req_speed);
+    if (!req_dir)
+    {
+      speed.set_direction(SpeedType::REVERSE);
+    }
+    impl->set_speed(speed);
+  }
   return convert_loco_to_dccpp_state(impl, reg_num);
 });
 
@@ -656,6 +658,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(StatusCommand,
     if (nodeid)
     {
       auto impl = trains->get_train_impl(nodeid);
+      LOG(INFO, "[DCC++ status] idx:%zu address:%d", id, impl->legacy_address());
       status += convert_loco_to_dccpp_state(impl, id);
     }
   }

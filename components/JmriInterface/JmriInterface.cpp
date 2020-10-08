@@ -20,7 +20,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #if CONFIG_JMRI
 
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
-#include <Httpd.h>
+#include <LCCStackManager.h>
 #include <memory>
 #include <utils/socket_listener.hxx>
 #include "JmriClientFlow.h"
@@ -39,14 +39,13 @@ void init_jmri_interface()
         new SocketListener(CONFIG_JMRI_LISTENER_PORT,
         [](int fd)
         {
-        sockaddr_in source;
-        socklen_t source_len = sizeof(sockaddr_in);
-        bzero(&source, sizeof(sockaddr_in));
-        getpeername(fd, (sockaddr *)&source, &source_len);
-        // Create new JMRI client and attach it to the Httpd
-        // instance rather than the default executor.
-        new JmriClientFlow(fd, ntohl(source.sin_addr.s_addr)
-                            , Singleton<http::Httpd>::instance());
+          sockaddr_in source;
+          socklen_t source_len = sizeof(sockaddr_in);
+          bzero(&source, sizeof(sockaddr_in));
+          getpeername(fd, (sockaddr *)&source, &source_len);
+          auto service =
+            Singleton<esp32cs::LCCStackManager>::instance()->service();
+          new JmriClientFlow(fd, ntohl(source.sin_addr.s_addr), service);
         }, "jmri"));
       Singleton<Esp32WiFiManager>::instance()->mdns_publish(
         CONFIG_JMRI_MDNS_SERVICE_NAME, CONFIG_JMRI_LISTENER_PORT);
