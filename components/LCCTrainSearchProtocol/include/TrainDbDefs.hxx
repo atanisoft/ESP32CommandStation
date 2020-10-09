@@ -38,12 +38,13 @@
 #include <utils/logging.h>
 #include <dcc/Defs.hxx>
 
-namespace commandstation {
+namespace commandstation
+{
 
-#define DCC_MAX_FN 29
+static constexpr size_t DCC_MAX_FN = 29;
 
-
-enum Symbols {
+enum Symbols
+{
   FN_NONEXISTANT = 0,
   LIGHT = 1,
   BEAMER = 2,
@@ -129,7 +130,8 @@ enum Symbols {
 
 
 
-enum DccMode {
+enum DccMode
+{
   DCCMODE_DEFAULT = 0,
   DCCMODE_FAKE_DRIVE = 1,
   DCCMODE_OLCBUSER = 1,
@@ -140,6 +142,9 @@ enum DccMode {
   /// Mask for testing whether the protocol is a Markin-Motorola protocol
   /// variant.
   MARKLIN_ANY_MASK = 0b11100,
+  /// Mask for the Marklin protocol version speed step setting.
+  MARKLIN_V_MASK = 0b00011,
+
   /// Acquisition for a Marklin locomotive with default setting.
   MARKLIN_DEFAULT = MARKLIN_ANY,
   /// Force MM protocol version 1 (F0 only).
@@ -191,15 +196,20 @@ enum DccMode {
 /// DCCMODE_DEFAULT (usually a query did not specify any restriction) or
 /// UNSUPPORTED if we did not recognize the code in the DccMode bitfield.
 inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
-                                                      uint32_t address) {
-  if (mode == DCCMODE_DEFAULT) {
+                                                      uint32_t address)
+{
+  if (mode == DCCMODE_DEFAULT)
+  {
     return dcc::TrainAddressType::UNSPECIFIED;
   }
-  if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY) {
+  if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY)
+  {
     return dcc::TrainAddressType::MM;
   }
-  if ((mode & DCC_ANY_MASK) == DCC_ANY) {
-    if ((mode & DCC_LONG_ADDRESS) || (address >= 128)) {
+  if ((mode & DCC_ANY_MASK) == DCC_ANY)
+  {
+    if ((mode & DCC_LONG_ADDRESS) || (address >= 128))
+    {
       return dcc::TrainAddressType::DCC_LONG_ADDRESS;
     }
     return dcc::TrainAddressType::DCC_SHORT_ADDRESS;
@@ -213,15 +223,19 @@ inline dcc::TrainAddressType dcc_mode_to_address_type(DccMode mode,
 /// @param mode the detailed mode bit field.
 /// @return a stripped down mode bit field which does not specify any details
 /// about the protocol variant.
-inline DccMode dcc_mode_to_protocol(DccMode mode) {
+inline DccMode dcc_mode_to_protocol(DccMode mode)
+{
   if (mode == DCCMODE_DEFAULT ||
-      mode == DCCMODE_OLCBUSER) {
+      mode == DCCMODE_OLCBUSER)
+  {
     return mode;
   }
-  if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY) {
+  if ((mode & MARKLIN_ANY_MASK) == MARKLIN_ANY)
+  {
     return MARKLIN_ANY;
   }
-  if ((mode & DCC_ANY_MASK) == DCC_ANY) {
+  if ((mode & DCC_ANY_MASK) == DCC_ANY)
+  {
     return DCC_ANY;
   }
   LOG_ERROR("Unknown DCC Mode %d", (int)mode);
