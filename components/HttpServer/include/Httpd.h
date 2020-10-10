@@ -82,6 +82,14 @@ DECLARE_CONST(httpd_response_chunk_size);
 /// with a BAD_REQUEST (400) error code.
 DECLARE_CONST(httpd_max_header_size);
 
+/// This controls how many headers will be allowed in the http request before
+/// ignoring new ones. Default is 20.
+DECLARE_CONST(httpd_max_header_count);
+
+/// This controls how many request parameters will be allowed before ignroing
+/// new ones. Default is 20.
+DECLARE_CONST(httpd_max_param_count);
+
 /// Maximum size of the HTTP request body payload. Any request which exceeds
 /// this limit will be forcibly aborted.
 DECLARE_CONST(httpd_max_req_size);
@@ -113,6 +121,14 @@ DECLARE_CONST(httpd_websocket_max_frame_size);
 /// This controls how many attempts will be allowed to receive a websocket
 /// frame before attempting to send out a websocket frame.
 DECLARE_CONST(httpd_websocket_max_read_attempts);
+
+/// This controls how many websocket URIs that can be registered at one time.
+/// Default is 1.
+DECLARE_CONST(httpd_websocket_max_uris);
+
+/// This controls how many websocket clients can connect at one time.
+/// Default is 10.
+DECLARE_CONST(httpd_websocket_max_clients);
 
 /// This controls the Cache-Control: max-age=XXX value in the response headers
 /// for static content.
@@ -369,15 +385,15 @@ public:
 protected:
   /// Adds an arbitrary HTTP header to the response object.
   ///
-  /// @param header is the HTTP header name to add.
+  /// @param name is the HTTP header name to add.
   /// @param value is the HTTP header value to add.
-  void header(const std::string &header, const std::string &value);
+  void header(const std::string &name, const std::string &value);
 
   /// Adds a well-known HTTP header to the response object.
   ///
-  /// @param header is the HTTP header name to add.
+  /// @param name is the HTTP header name to add.
   /// @param value is the HTTP header value to add.
-  void header(const HttpHeader header, const std::string &value);
+  void header(const HttpHeader name, const std::string &value);
 
 private:
   /// Collection of headers and values for this HTTP response.
@@ -624,13 +640,15 @@ private:
 
   /// Adds a URI parameter to the request.
   ///
-  /// @param value is a pair<string, string> of the key:value pair.
-  void param(const std::pair<std::string, std::string> &value);
+  /// @param name is the name of the parameter.
+  /// @param value is the value of the parameter.
+  void param(const string &name, const string &value);
 
   /// Adds an HTTP Header to the request.
   ///
-  /// @param value is a pair<string, string> of the key:value pair.
-  void header(const std::pair<std::string, std::string> &value);
+  /// @param name is the name of the header.
+  /// @param value is the value of the header.
+  void header(const string &name, const string &value);
 
   /// Adds/replaces a HTTP Header to the request.
   ///
@@ -930,7 +948,8 @@ private:
   ///
   /// @param id is the ID of the WebSocket client.
   /// @param ws is the @ref WebSocketFlow managing the WebSocket client.
-  void add_websocket(int id, WebSocketFlow *ws);
+  /// @return true if the websocket was recorded, false otherwise.
+  bool add_websocket(int id, WebSocketFlow *ws);
 
   /// Removes a previously registered WebSocket client.
   ///
@@ -1030,10 +1049,25 @@ private:
   /// Lock object for websockets_.
   OSMutex websocketsLock_;
 
-  /// Internal holder for captive portal response.
-  std::string captive_response_;
+  /// Captive portal response for HTTP 204 NO CONTENT.
+  std::shared_ptr<AbstractHttpResponse> captive_no_content_;
 
-  /// Internal holder for captive portal response.
+  /// Captive portal response for HTTP 200 OK.
+  std::shared_ptr<AbstractHttpResponse> captive_ok_;
+
+  /// Captive portal response for Microsoft NCSI.
+  std::shared_ptr<AbstractHttpResponse> captive_msft_ncsi_;
+
+  /// Captive portal response for generic success.txt.
+  std::shared_ptr<AbstractHttpResponse> captive_success_;
+
+  /// Captive portal response for iOS devices.
+  std::shared_ptr<AbstractHttpResponse> captive_success_ios_;
+
+  /// Captive portal response for first access.
+  std::shared_ptr<AbstractHttpResponse> captive_response_;
+
+  /// Captive portal authentication URL.
   std::string captive_auth_uri_;
 
   /// Timeout for captive portal authenticated clients.
