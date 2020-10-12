@@ -22,30 +22,37 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 
 #include <AllTrainNodes.hxx>
 #include <FileSystemManager.h>
-#include <dcc/ProgrammingTrackBackend.hxx>
-#include <dcc/RailcomHub.hxx>
-#include <dcc/SimpleUpdateLoop.hxx>
 #include <DCCSignalVFS.h>
 #include <driver/uart.h>
-#include <DuplexedTrackIf.h>
 #include <esp_adc_cal.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <esp_task.h>
-#include <executor/PoolToQueueFlow.hxx>
 #include <FreeRTOSTaskMonitor.h>
-#include <HC12Radio.h>
+#if !defined(CONFIG_WIFI_MODE_DISABLED)
 #include <Httpd.h>
 #include <HttpStringUtils.h>
+#endif
 #include <LCCStackManager.h>
 #include <LCCWiFiManager.h>
 #include <nvs.h>
 #include <nvs_flash.h>
 #include <openlcb/SimpleInfoProtocol.hxx>
 #include <os/MDNS.hxx>
-#include <StatusDisplay.h>
-#include <StatusLED.h>
 #include <Turnouts.h>
+
+#if CONFIG_HC12
+#include <HC12Radio.h>
+#endif
+
+#if !CONFIG_DISPLAY_TYPE_NONE
+#include <StatusDisplay.h>
+#endif
+
+#if CONFIG_STATUS_LED
+#include <StatusLED.h>
+#endif
+
 #if CONFIG_THERMALMONITOR
 #include <ThermalMonitorFlow.hxx>
 #endif // CONFIG_THERMALMONITOR
@@ -359,7 +366,7 @@ extern "C" void app_main()
   StatusLED statusLED(stackManager.service());
 #endif // CONFIG_STATUS_LED
 
-  // cppcheck-suppress UnusedVar
+  // Initialize the OTA monitor
   OTAMonitorFlow ota(stackManager.service());
 
   // Initialize the factory reset helper for the CS.
@@ -367,30 +374,9 @@ extern "C" void app_main()
 
   // Initialize the DCC VFS adapter, this will also initialize the DCC signal
   // generation code.
-  esp32cs::init_dcc_vfs(stackManager.node(), stackManager.service()
-                      , cfg.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX)
-                      , cfg.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX));
-
-  int ops_track = ::open(
-    StringPrintf("/dev/track/%s", CONFIG_OPS_TRACK_NAME).c_str(), O_WRONLY);
-  HASSERT(ops_track > 0);
-
-  int prog_track = ::open(
-    StringPrintf("/dev/track/%s", CONFIG_PROG_TRACK_NAME).c_str(), O_WRONLY);
-  HASSERT(prog_track > 0);
-
-  // Initialize Local Track inteface.
-  esp32cs::DuplexedTrackIf track(stackManager.service()
-                               , CONFIG_DCC_PACKET_POOL_SIZE
-                               , ops_track, prog_track);
-
-  // Initialize the DCC Update Loop.
-  dcc::SimpleUpdateLoop dccUpdateLoop(stackManager.service(), &track);
-
-  // Attach the DCC update loop to the track interface
-  PoolToQueueFlow<Buffer<dcc::Packet>> dccPacketFlow(stackManager.service()
-                                                   , track.pool()
-                                                   , &dccUpdateLoop);
+  esp32cs::init_dcc(stackManager.node(), stackManager.service()
+                  , cfg.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX)
+                  , cfg.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX));
 
   // Starts the OpenMRN stack, this needs to be done *AFTER* all other LCC
   // dependent components as it will initiate configuration load and factory

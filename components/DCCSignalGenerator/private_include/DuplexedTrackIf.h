@@ -18,10 +18,12 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 #ifndef DUPLEXED_TRACK_IF_H_
 #define DUPLEXED_TRACK_IF_H_
 
-#include <executor/Executor.hxx>
-#include <executor/StateFlow.hxx>
 #include <dcc/Packet.hxx>
-#include <utils/Singleton.hxx>
+#include <executor/Executor.hxx>
+#include <executor/Service.hxx>
+#include <executor/StateFlow.hxx>
+#include <utils/Buffer.hxx>
+#include <utils/Queue.hxx>
 
 namespace esp32cs
 {
@@ -32,9 +34,10 @@ namespace esp32cs
 /// The device driver must support the notifiable-based asynchronous write
 /// model.
 class DuplexedTrackIf : public StateFlow<Buffer<dcc::Packet>, QList<1>>
-                      , public Singleton<DuplexedTrackIf>
 {
 public:
+    /// Constructor.
+    ///
     /// Creates a TrackInterface from an fd to the mainline and an fd for prog.
     ///
     /// This class currently does synchronous writes to the device. In order not
@@ -43,15 +46,17 @@ public:
     /// @param service THE EXECUTOR OF THIS SERVICE WILL BE BLOCKED.
     /// @param pool_size will determine how many packets the current flow's
     /// alloc() will have.
-    /// @param ops_fd is the file descriptor for the OPS track.
-    /// @param prog_fd is the file descriptor for the PROG track.
-    DuplexedTrackIf(Service *service, int pool_size, int ops_fd, int prog_fd);
+    /// @param ops is the name of the OPS track.
+    /// @param prog is the name of the PROG track.
+    /// @param track_base_path is the base path for track drivers.
+    DuplexedTrackIf(Service *service, size_t pool_size, const char *ops
+                  , const char *prog, const char *track_base_path);
+
+    /// Destructor.
+    ~DuplexedTrackIf();
 
     /// @return the @ref FixedPool for dcc::Packet objects to send to the track.
-    FixedPool *pool() override
-    {
-        return &pool_;
-    }
+    FixedPool *pool() override;
 
 protected:
     /// Sends a queued packet to either the OPS or PROG track.
@@ -67,17 +72,11 @@ protected:
     /// blocked.
     Action entry() override;
 
-    /// @return next action.
-    Action finish()
-    {
-        return release_and_exit();
-    }
-
     /// File descriptor for the OPS track output.
-    const int fd_ops_;
+    int fd_ops_;
 
     /// File descriptor for the PROG track output.
-    const int fd_prog_;
+    int fd_prog_;
 
     /// Packet pool from which to allocate packets.
     FixedPool pool_;

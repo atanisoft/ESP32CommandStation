@@ -15,9 +15,11 @@ COPYRIGHT (c) 2020 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "RMTTrackDevice.h"
+#include "DuplexedTrackIf.h"
 #include "EStopHandler.h"
 #include "Esp32RailComDriver.h"
+#include "PrioritizedUpdateLoop.hxx"
+#include "RMTTrackDevice.h"
 #include "TrackPowerBitInterface.h"
 
 #include <dcc/DccOutput.hxx>
@@ -30,6 +32,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include <driver/timer.h>
 #include <driver/uart.h>
 #include <esp_vfs.h>
+#include <executor/PoolToQueueFlow.hxx>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
 #include <map>
@@ -193,6 +196,10 @@ static std::unique_ptr<HBridgeShortDetector> track_mon[RMT_CHANNEL_MAX];
 static std::unique_ptr<openlcb::BitEventConsumer> power_event;
 static std::unique_ptr<EStopHandler> estop_handler;
 static std::unique_ptr<ProgrammingTrackBackend> prog_track_backend;
+static std::unique_ptr<esp32cs::DuplexedTrackIf> track_interface;
+static std::unique_ptr<esp32cs::PrioritizedUpdateLoop> track_update_loop;
+static std::unique_ptr<PoolToQueueFlow<Buffer<dcc::Packet>>> track_flow;
+
 #if CONFIG_OPS_RAILCOM
 static std::unique_ptr<dcc::RailcomHubFlow> railcom_hub;
 static std::unique_ptr<dcc::RailcomPrintfFlow> railcom_dumper;
@@ -369,6 +376,8 @@ static void rmt_tx_callback(rmt_channel_t channel, void *ctx)
 /// core of the ESP32.
 static void init_rmt_outputs(void *param)
 {
+  Notifiable *notif = static_cast<Notifiable *>(param);
+  AutoNotify n(notif);
   // Connect our callback into the RMT so we can queue up the next packet for
   // transmission when needed.
   rmt_register_tx_end_callback(rmt_tx_callback, nullptr);
@@ -385,10 +394,6 @@ static void init_rmt_outputs(void *param)
                      , CONFIG_PROG_PACKET_QUEUE_SIZE, PROG_SIGNAL_Pin::pin()
                      , &progRailComDriver));
 
-#if defined(CONFIG_OPS_ENERGIZE_ON_STARTUP)
-  power_event->set_state(true);
-#endif
-
   // this is a one-time task, shutdown the task before returning
   vTaskDelete(nullptr);
 }
@@ -399,9 +404,9 @@ static void init_rmt_outputs(void *param)
 /// @param service is the OpenLCB @ref Service to use for recurring tasks.
 /// @param ops_cfg is the CDI element for the OPS track output.
 /// @param prog_cfg is the CDI element for the PROG track output.
-void init_dcc_vfs(openlcb::Node *node, Service *service
-                , const esp32cs::TrackOutputConfig &ops_cfg
-                , const esp32cs::TrackOutputConfig &prog_cfg)
+void init_dcc(openlcb::Node *node, Service *service
+            , const esp32cs::TrackOutputConfig &ops_cfg
+            , const esp32cs::TrackOutputConfig &prog_cfg)
 {
   // register the VFS handler as the LocalTrackIf uses this to route DCC
   // packets to the track.
@@ -443,11 +448,14 @@ void init_dcc_vfs(openlcb::Node *node, Service *service
                            , CONFIG_PROG_HBRIDGE_TYPE_NAME
                            , prog_cfg));
 
-  // initialize the RMT using the second core so that the ISR is bound to that
-  // core instead of this core.
-  // TODO: should this block until the RMT is running?
-  xTaskCreatePinnedToCore(&init_rmt_outputs, "RMT Init", 2048, nullptr, 2
+  SyncNotifiable notif;
+  // initialize the track signal generators on the second core so that the ISR
+  // is bound to that core instead of the first core.
+  xTaskCreatePinnedToCore(&init_rmt_outputs, "DCC RMT Init", 2048, &notif, 2
                         , nullptr, APP_CPU_NUM);
+
+  // block until the RMT init task completes
+  notif.wait_for_notification();
 
   LOG(INFO
     , "[Track] Registering LCC EventConsumer for Track Power (On:%s, Off:%s)"
@@ -471,6 +479,25 @@ void init_dcc_vfs(openlcb::Node *node, Service *service
     { track_mon[OPS_RMT_CHANNEL].get()
     , track_mon[PROG_RMT_CHANNEL].get()
   }));
+
+  track_interface.reset(
+    new esp32cs::DuplexedTrackIf(service, CONFIG_DCC_PACKET_POOL_SIZE
+                               , CONFIG_OPS_TRACK_NAME
+                               , CONFIG_PROG_TRACK_NAME
+                               , "/dev/track"));
+  track_update_loop.reset(
+    new esp32cs::PrioritizedUpdateLoop(service, track_interface.get()));
+
+  // Attach the DCC update loop to the track interface
+  track_flow.reset(
+    new PoolToQueueFlow<Buffer<dcc::Packet>>(service, track_interface->pool()
+                                           , track_update_loop.get()));
+
+#if defined(CONFIG_OPS_ENERGIZE_ON_STARTUP)
+  // with everything up and running it's time to energize the track if it is
+  // set to default to ON during startup.
+  power_event->set_state(true);
+#endif
 
   update_status_display();
 }

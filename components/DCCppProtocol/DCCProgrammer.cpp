@@ -19,7 +19,8 @@ COPYRIGHT (c) 2019 Mike Dunston
 
 #include <dcc/ProgrammingTrackBackend.hxx>
 #include <dcc/DccDebug.hxx>
-#include <DuplexedTrackIf.h>
+#include <dcc/UpdateLoop.hxx>
+#include <mutex>
 #include <utils/Uninitialized.hxx>
 
 // number of attempts the programming track will make to read/write a CV
@@ -196,63 +197,87 @@ bool writeProgCVBit(const uint16_t cv, const uint8_t bit, const bool value)
   return writeVerified;
 }
 
-void writeOpsCVByte(const uint16_t locoAddress, const uint16_t cv
-                  , const uint8_t cvValue)
+class TemporaryPacketSource : public dcc::NonTrainPacketSource
 {
-  auto track = Singleton<esp32cs::DuplexedTrackIf>::instance();
-  dcc::PacketFlowInterface::message_type *pkt = nullptr;
-  mainBufferPool->alloc(&pkt);
-  if (pkt)
+public:
+  TemporaryPacketSource(const uint16_t locoAddress, const uint16_t cv
+                      , const uint8_t cvValue)
+    : address_(locoAddress), cv_(cv - 1), bit_(-1), value_(cvValue)
   {
-    LOG(INFO, "[OPS] Updating CV %d to %d for loco %d", cv, cvValue
-      , locoAddress);
+    packet_processor_add_refresh_source(this, dcc::UpdateLoopBase::EXCLUSIVE_MIN_PRIORITY);
+  }
 
-    pkt->data()->start_dcc_packet();
-    if(locoAddress > 127)
+  TemporaryPacketSource(const uint16_t locoAddress, const uint16_t cv
+                      , const int8_t bit, const uint8_t value)
+    : address_(locoAddress), cv_(cv - 1), bit_(bit)
+    , value_(0xF0 + bit_ + value * 8)
+  {
+    packet_processor_add_refresh_source(this, dcc::UpdateLoopBase::EXCLUSIVE_MIN_PRIORITY);
+  }
+
+  ~TemporaryPacketSource()
+  {
+    packet_processor_remove_refresh_source(this);
+  }
+
+  void get_next_packet(unsigned code, dcc::Packet* packet) override
+  {
+    if (sent_)
     {
-      pkt->data()->add_dcc_address(dcc::DccLongAddress(locoAddress));
+      const std::lock_guard<std::mutex> lock(mux_);
+      packet->set_dcc_idle();
+      if (cleanup_)
+      {
+        return;
+      }
+      cleanup_ = true;
+      auto ptr = this;
+      Singleton<ProgrammingTrackBackend>::instance()->service()->executor()->add(
+        new CallbackExecutable([ptr]()
+      {
+        delete ptr;
+      }));
+      return;
+    }
+    sent_ = true;
+    packet->start_dcc_packet();
+    if(address_ > 127)
+    {
+      packet->add_dcc_address(dcc::DccLongAddress(address_));
     }
     else
     {
-      pkt->data()->add_dcc_address(dcc::DccShortAddress(locoAddress));
+      packet->add_dcc_address(dcc::DccShortAddress(address_));
     }
-    pkt->data()->add_dcc_pom_write1(cv - 1, cvValue);
-    pkt->data()->packet_header.rept_count = 3;
-    track->send(pkt);
+    if (bit_ > 0)
+    {
+      packet->add_dcc_prog_command(0xe8, cv_, value_);
+    }
+    else
+    {
+      packet->add_dcc_pom_write1(cv_, value_);
+    }
+    packet->packet_header.rept_count = 3;
   }
-  else
-  {
-    LOG_ERROR("[OPS] Failed to retrieve DCC Packet for programming request");
-  }
+
+private:
+  const uint16_t address_;
+  const uint16_t cv_;
+  const int8_t bit_;
+  const uint8_t value_;
+  bool sent_{false};
+  bool cleanup_{false};
+  std::mutex mux_;
+};
+
+void writeOpsCVByte(const uint16_t locoAddress, const uint16_t cv
+                  , const uint8_t cvValue)
+{
+  new TemporaryPacketSource(locoAddress, cv, cvValue);
 }
 
 void writeOpsCVBit(const uint16_t locoAddress, const uint16_t cv
                  , const uint8_t bit, const bool value)
 {
-  auto track = Singleton<esp32cs::DuplexedTrackIf>::instance();
-  dcc::PacketFlowInterface::message_type *pkt = nullptr;
-  mainBufferPool->alloc(&pkt);
-  if (pkt)
-  {
-    LOG(INFO, "[OPS] Updating CV %d bit %d to %d for loco %d", cv, bit, value
-      , locoAddress);
-    pkt->data()->start_dcc_packet();
-    if(locoAddress > 127)
-    {
-      pkt->data()->add_dcc_address(dcc::DccLongAddress(locoAddress));
-    }
-    else
-    {
-      pkt->data()->add_dcc_address(dcc::DccShortAddress(locoAddress));
-    }
-    // TODO add_dcc_pom_write_bit(cv, bit, value)
-    pkt->data()->add_dcc_prog_command(0xe8, cv - 1
-                                    , (uint8_t)(0xF0 + bit + value * 8));
-    pkt->data()->packet_header.rept_count = 3;
-    track->send(pkt);
-  }
-  else
-  {
-    LOG_ERROR("[OPS] Failed to retrieve DCC Packet for programming request");
-  }
+  new TemporaryPacketSource(locoAddress, cv, bit, value);
 }

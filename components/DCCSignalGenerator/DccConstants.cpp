@@ -15,31 +15,11 @@ COPYRIGHT (c) 2020 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "TrackOutputDescriptor.h"
-
-#include <executor/Service.hxx>
-#include <openlcb/Node.hxx>
+#include <utils/constants.hxx>
 
 namespace esp32cs
 {
 
-void init_dcc(openlcb::Node *node, Service *service
-            , const esp32cs::TrackOutputConfig &ops_cfg
-            , const esp32cs::TrackOutputConfig &prog_cfg);
-
-void shutdown_dcc_vfs();
-
-void initiate_estop();
-
-bool is_ops_track_output_enabled();
-
-void enable_ops_track_output();
-
-void disable_track_outputs();
-
-std::string get_track_state_json();
-
-// retrive status of the track signal and current usage.
-std::string get_track_state_for_dccpp();
+DEFAULT_CONST(min_refresh_delay_us, 10000ULL);
 
 } // namespace esp32cs
