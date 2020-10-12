@@ -41,6 +41,7 @@ PrioritizedUpdateLoop::PrioritizedUpdateLoop(Service *service
                                            , dcc::PacketFlowInterface *track)
   : StateFlow<Buffer<dcc::Packet>, QList<1>>(service)
   , track_(track)
+  , exclusiveSourceIndex_(NO_EXCLUSIVE_SOURCE)
 {
 
 }
