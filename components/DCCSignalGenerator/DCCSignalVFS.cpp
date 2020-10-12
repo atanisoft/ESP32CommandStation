@@ -384,7 +384,7 @@ static void rmt_tx_callback(rmt_channel_t channel, void *ctx)
 static void init_rmt_outputs(void *param)
 {
   Notifiable *notif = static_cast<Notifiable *>(param);
-  AutoNotify n(notif);
+
   // Connect our callback into the RMT so we can queue up the next packet for
   // transmission when needed.
   rmt_register_tx_end_callback(rmt_tx_callback, nullptr);
@@ -400,6 +400,9 @@ static void init_rmt_outputs(void *param)
                      , CONFIG_PROG_DCC_PREAMBLE_BITS
                      , CONFIG_PROG_PACKET_QUEUE_SIZE, PROG_SIGNAL_Pin::pin()
                      , &progRailComDriver));
+
+  // tell the main task that the RMT drivers are ready.
+  notif->notify();
 
   // this is a one-time task, shutdown the task before returning
   vTaskDelete(nullptr);
