@@ -24,6 +24,7 @@ namespace esp32cs
 
 void EStopHandler::set_state(bool new_value)
 {
+  enabled_ = new_value;
   if (new_value)
   {
     LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");

@@ -47,6 +47,10 @@ public:
 
   openlcb::EventState get_current_state() override
   {
+    if (enabled_)
+    {
+      return openlcb::EventState::VALID;
+    }
     return openlcb::EventState::INVALID;
   }
 
@@ -63,6 +67,7 @@ private:
   openlcb::BitEventPC pc_{this};
   openlcb::Node *node_;
   std::mutex mux_;
+  bool enabled_{false};
 };
 
 } // namespace esp32cs

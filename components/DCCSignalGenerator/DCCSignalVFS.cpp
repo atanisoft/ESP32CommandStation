@@ -220,8 +220,15 @@ static void update_status_display()
 /// Triggers an estop event to be sent
 void toggle_estop()
 {
-  // TODO: add event publish
-  estop_handler->set_state(!estop_handler->get_current_state());
+  // TODO: switch to broadcasting event rather than directly setting state
+  if (estop_handler->get_current_state() == openlcb::EventState::VALID)
+  {
+    estop_handler->set_state(false);
+  }
+  else
+  {
+    estop_handler->set_state(true);
+  }
 }
 
 /// Returns true if the OPS track output is enabled
