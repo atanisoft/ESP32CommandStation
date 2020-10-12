@@ -29,7 +29,7 @@ void init_dcc(openlcb::Node *node, Service *service
 
 void shutdown_dcc_vfs();
 
-void initiate_estop();
+void toggle_estop();
 
 bool is_ops_track_output_enabled();
 

@@ -218,10 +218,10 @@ static void update_status_display()
 }
 
 /// Triggers an estop event to be sent
-void initiate_estop()
+void toggle_estop()
 {
   // TODO: add event publish
-  estop_handler->set_state(true);
+  estop_handler->set_state(!estop_handler->get_current_state());
 }
 
 /// Returns true if the OPS track output is enabled

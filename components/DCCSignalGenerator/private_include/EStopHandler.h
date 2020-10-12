@@ -20,9 +20,9 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 
 #include <dcc/PacketSource.hxx>
 #include <dcc/SimpleUpdateLoop.hxx>
+#include <mutex>
 #include <openlcb/Defs.hxx>
 #include <openlcb/EventHandlerTemplates.hxx>
-#include <utils/Atomic.hxx>
 #include <utils/logging.h>
 
 namespace esp32cs
@@ -33,14 +33,12 @@ namespace esp32cs
 // received or the state has been reset via API.
 class EStopHandler : public openlcb::BitEventInterface
                    , public dcc::NonTrainPacketSource
-                   , private Atomic
 {
 public:
   EStopHandler(openlcb::Node *node)
     : BitEventInterface(openlcb::Defs::EMERGENCY_STOP_EVENT
                       , openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT)
     , node_(node)
-    , remaining_(0)
   {
     LOG(INFO, "[eStop] Registering emergency stop handler (On: %s, Off:%s)"
       , uint64_to_string_hex(openlcb::Defs::EMERGENCY_STOP_EVENT).c_str()
@@ -64,7 +62,7 @@ public:
 private:
   openlcb::BitEventPC pc_{this};
   openlcb::Node *node_;
-  int16_t remaining_;
+  std::mutex mux_;
 };
 
 } // namespace esp32cs
