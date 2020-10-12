@@ -53,7 +53,7 @@ void *node_reboot(void *arg)
 {
   // shutdown any background refresh tasks.
   LOG(ALWAYS, "[Reboot] Shutting down DCC signal generator(s)...");
-  esp32cs::shutdown_dcc_vfs();
+  esp32cs::shutdown_dcc();
   Singleton<FreeRTOSTaskMonitor>::instance()->stop();
 #if !CONFIG_DISPLAY_TYPE_NONE
   LOG(ALWAYS, "[Reboot] Shutting down StatusDisplay...");

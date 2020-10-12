@@ -509,7 +509,7 @@ void init_dcc(openlcb::Node *node, Service *service
   update_status_display();
 }
 
-void shutdown_dcc_vfs()
+void shutdown_dcc()
 {
   // disconnect the RMT TX complete callback so that no more DCC packets will
   // be sent to the tracks.

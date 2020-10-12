@@ -27,7 +27,7 @@ void init_dcc(openlcb::Node *node, Service *service
             , const esp32cs::TrackOutputConfig &ops_cfg
             , const esp32cs::TrackOutputConfig &prog_cfg);
 
-void shutdown_dcc_vfs();
+void shutdown_dcc();
 
 void toggle_estop();
 
