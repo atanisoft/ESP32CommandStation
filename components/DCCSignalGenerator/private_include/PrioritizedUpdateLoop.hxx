@@ -71,44 +71,49 @@ public:
   Action entry() override;
 
 private:
+  /// Flag to indicate that we have no high priority packet source.
+  static constexpr size_t NO_EXCLUSIVE_SOURCE = 0x7FF;
 
   /// Tracking metrics for the update source.
-  struct RefreshSourceMetrics
+  struct Metrics
   {
     /// OS timestamp of when the last packet was sent to this source. This is
     /// used to suppress sending a packet from this packet source too quickly.
-    uint64_t lastPacketTimestamp;
+    long long lastPacketTimestamp;
 
     /// Priority of this packet source.
     unsigned priority;
   };
 
+  /// Evaluates the packet sources to find the highest priority source for the
+  /// next update cycle.
+  ///
+  /// @return highest priority packet source.
+  dcc::PacketSource *recalculate_priorities();
+
   /// Track interface to send packets to.
   dcc::PacketFlowInterface *track_;
 
   /// Packet sources to ask about refreshing data periodically.
-  std::vector<dcc::PacketSource *> refreshSources_;
+  std::vector<dcc::PacketSource *> sources_;
 
   /// Tracking metrics for each registered @ref dcc::PacketSource.
-  std::map<dcc::PacketSource *, RefreshSourceMetrics> refreshSourceMetrics_;
+  std::map<dcc::PacketSource *, Metrics> metrics_;
 
   /// Queue of packet sources that have reported an update that needs to be
   /// sent out to the track interface. This will have higher priority than all
   /// background update packet sources but lower priority than exclusive packet
   /// sources.
-  QList<1> priorityUpdateSources_;
+  QList<1> updateSources_;
 
-  /// Offset in the refreshSources_ vector for the next loco to send.
-  size_t nextRefreshIndex_{0};
+  /// Offset in the @ref sources_ vector for the next loco to send.
+  size_t nextIndex_{0};
 
-  /// Index into @ref refreshSources_ for the highest priority packet source
+  /// Index into @ref sources_ for the highest priority packet source
   /// that is generating packets.
-  size_t exclusiveSourceIndex_{0};
+  size_t exclusiveIndex_{NO_EXCLUSIVE_SOURCE};
 
-  /// Flag to indicate that we have no high priority packet source.
-  static constexpr size_t NO_EXCLUSIVE_SOURCE = 0x7FF;
-
-  /// Lock used to protect @ref refreshSources_ and @ref refreshSourceMetrics_.
+  /// Lock used to protect @ref sources_ and @ref metrics_.
   std::mutex mux_;
 };
 

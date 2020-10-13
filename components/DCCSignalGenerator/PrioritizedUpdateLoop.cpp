@@ -26,7 +26,7 @@ namespace esp32cs
 
 DECLARE_CONST(min_refresh_delay_us);
 
-struct HighPriorityUpdate
+struct UpdateRequest
 {
   void reset(dcc::PacketSource *source, unsigned code)
   {
@@ -41,189 +41,132 @@ PrioritizedUpdateLoop::PrioritizedUpdateLoop(Service *service
                                            , dcc::PacketFlowInterface *track)
   : StateFlow<Buffer<dcc::Packet>, QList<1>>(service)
   , track_(track)
-  , exclusiveSourceIndex_(NO_EXCLUSIVE_SOURCE)
 {
 
 }
 
 PrioritizedUpdateLoop::~PrioritizedUpdateLoop()
 {
-  const std::lock_guard<std::mutex> lock(mux_);
-  refreshSources_.clear();
-  refreshSourceMetrics_.clear();
+  sources_.clear();
+  metrics_.clear();
 }
 
 bool PrioritizedUpdateLoop::add_refresh_source(dcc::PacketSource *source
                                              , unsigned priority)
 {
   const std::lock_guard<std::mutex> lock(mux_);
-  bool highest_priority = true;
 
   // record the new packet source
-  refreshSources_.push_back(source);
+  sources_.push_back(source);
 
   // seed the tracking metrics
-  auto &metrics = refreshSourceMetrics_[source];
+  auto &metrics = metrics_[source];
   metrics.priority = priority;
   metrics.lastPacketTimestamp = 0;
 
-  // recalculate priorities (if needed)
-  if (priority >= dcc::UpdateLoopBase::EXCLUSIVE_MIN_PRIORITY)
-  {
-    unsigned existing_priority = 0;
-    // Check if we have an existing exclusive packet source, if so check if the
-    // new packet source has a higher priority or not.
-    if (exclusiveSourceIndex_ != NO_EXCLUSIVE_SOURCE)
-    {
-      existing_priority =
-        refreshSourceMetrics_[refreshSources_[exclusiveSourceIndex_]].priority;
-    }
-    if (priority > existing_priority)
-    {
-      // new source has a higher priority, update index
-      exclusiveSourceIndex_ = refreshSources_.size() - 1;
-    }
-    else
-    {
-      // There is a higher priority source already, inform the caller that the
-      // new source will have lower priority.
-      highest_priority = false;
-    }
-  }
-  else if (exclusiveSourceIndex_ != NO_EXCLUSIVE_SOURCE)
-  {
-    // we have an 
-    highest_priority = false;
-  }
-  return highest_priority;
+  bool is_exclusive = (recalculate_priorities() == source);
+
+  return is_exclusive;
 }
 
 void PrioritizedUpdateLoop::remove_refresh_source(dcc::PacketSource *source)
 {
   const std::lock_guard<std::mutex> lock(mux_);
-  refreshSources_.erase(
-    std::remove(refreshSources_.begin(), refreshSources_.end(), source)
-  , refreshSources_.end());
-  refreshSourceMetrics_.erase(source);
-
-  // recalculate exclusive packet source priorities for next highest
-  size_t max_priority = dcc::UpdateLoopBase::EXCLUSIVE_MIN_PRIORITY;
-  size_t max_index = NO_EXCLUSIVE_SOURCE;
-  size_t index = 0;
-  for (auto s : refreshSources_)
-  {
-    if (refreshSourceMetrics_[s].priority > max_priority)
-    {
-      max_priority = refreshSourceMetrics_[s].priority;
-      max_index = index;
-    }
-    index++;
-  }
-  exclusiveSourceIndex_ = max_index;
+  sources_.erase(
+    std::remove(sources_.begin(), sources_.end(), source), sources_.end());
+  metrics_.erase(source);
+  recalculate_priorities();
 }
 
 void PrioritizedUpdateLoop::notify_update(dcc::PacketSource* source
                                         , unsigned code)
 {
-  Buffer<HighPriorityUpdate> *buf;
+  // prepare the high priority update before we lock the queue
+  Buffer<UpdateRequest> *buf;
   mainBufferPool->alloc(&buf, nullptr);
   HASSERT(buf);
   buf->data()->reset(source, code);
 
+  // lock the queue and insert the new update packet for processing
   {
     const std::lock_guard<std::mutex> lock(mux_);
-    priorityUpdateSources_.insert(buf, 0);
+    updateSources_.insert(buf, 0);
   }
 }
 
 StateFlowBase::Action PrioritizedUpdateLoop::entry()
 {
-  dcc::PacketSource *next_source = nullptr;
-  Buffer<HighPriorityUpdate> *high_priority = nullptr;
-  
   {
-    const std::lock_guard<std::mutex> lock(mux_);
-    if (exclusiveSourceIndex_ != NO_EXCLUSIVE_SOURCE)
-    {
-      next_source = refreshSources_[exclusiveSourceIndex_];
-    }
-    else
-    {
-      high_priority =
-        static_cast<Buffer<HighPriorityUpdate>*>(priorityUpdateSources_.next().item);
-    }
-  }
-  uint64_t time_now = esp_timer_get_time();
-  unsigned code = 0;
-  // if we have a high priority update ready, send it out
-  if (high_priority)
-  {
-    code = high_priority->data()->code;
+    dcc::PacketSource *source = nullptr;
+    long long current_time = os_get_time_monotonic();
+    long long threshold = current_time - config_min_refresh_delay_us();
+    unsigned code = 0;
 
-    // check if the source has been removed
-    auto metrics = refreshSourceMetrics_.find(next_source);
-    if (metrics == refreshSourceMetrics_.end())
+    const std::lock_guard<std::mutex> lock(mux_);
+    // if we have an exclusive source use it as the source otherwise check if
+    // there is a priority update to send out.
+    if (exclusiveIndex_ != NO_EXCLUSIVE_SOURCE)
     {
-      high_priority->unref();
+      source = sources_[exclusiveIndex_];
     }
-    else if (metrics->second.lastPacketTimestamp >
-             (time_now - config_min_refresh_delay_us()))
+    else if (updateSources_.pending())
     {
-      // we sent a packet to this source within the minimum refresh window
-      // send this source back to the queue.
-      const std::lock_guard<std::mutex> lock(mux_);
-      priorityUpdateSources_.insert(high_priority, 0);
-    }
-    else
-    {
-      // all checks have been validated, we can use this high priority source
-      // for the next packet.
-      next_source = high_priority->data()->source;
-    }
-  }
-  // if we don't have a packet source already and we have at least one source
-  // to pick from, find one that hasn't been updated recently and use it.
-  if (!next_source && !refreshSources_.empty())
-  {
-    // scan all refresh sources to find which (if any) has not been recently
-    // refreshed.
-    for (size_t idx = 0; idx < refreshSources_.size(); idx++)
-    {
+      Buffer<UpdateRequest> *update =
+        static_cast<Buffer<UpdateRequest>*>(updateSources_.next().item);
+      code = update->data()->code;
+
+      auto metrics = metrics_.find(update->data()->source);
+      if (metrics == metrics_.end())
       {
-        const std::lock_guard<std::mutex> lock(mux_);
-        if (nextRefreshIndex_ > refreshSources_.size())
-        {
-            nextRefreshIndex_ = 0;
-        }
-        next_source = refreshSources_[nextRefreshIndex_++];
-        code = 0;
+        // priority update source has disappeared, discard and find another
+        // packet source.
+        update->unref();
       }
-      if (refreshSourceMetrics_[next_source].lastPacketTimestamp <
-          (time_now - config_min_refresh_delay_us()))
+      else if (metrics->second.lastPacketTimestamp > threshold)
       {
-        // enough time has passed for this packet source, we can send to it.
-        break;
+        // we sent a packet to this source within the minimum refresh window
+        // send this source back to the queue.
+        updateSources_.insert(update, 0);
       }
       else
       {
-        // insufficient time has passed, skip this source
-        next_source = nullptr;
+        // all checks have been validated, we can use this high priority source
+        // for the next packet.
+        source = update->data()->source;
       }
     }
-  }
 
-  if (next_source)
-  {
-    // we have a new source, get the next packet from the source
-    next_source->get_next_packet(code, message()->data());
+    if (source == nullptr)
+    {
+      // scan all refresh sources to find which (if any) has not been recently
+      // refreshed.
+      for (size_t idx = 0; idx < sources_.size(); idx++)
+      {
+        nextIndex_ %= sources_.size();
+        auto ref = sources_[nextIndex_++];
+        if (ref && metrics_[ref].lastPacketTimestamp < threshold)
+        {
+          // enough time has passed for this packet source, we can send to it.
+          code = 0;
+          source = ref;
+          break;
+        }
+      }
+    }
 
-    // track that we have sent a packet to this source recently
-    refreshSourceMetrics_[next_source].lastPacketTimestamp = time_now;
-  }
-  else
-  {
-    // no packet source generated a packet, convert the packet to idle.
-    message()->data()->set_dcc_idle();
+    if (source)
+    {
+      // we have a new source, get the next packet from the source
+      source->get_next_packet(code, message()->data());
+
+      // track that we have sent a packet to this source recently
+      metrics_[source].lastPacketTimestamp = current_time;
+    }
+    else
+    {
+      // no packet source generated a packet, convert the packet to idle.
+      message()->data()->set_dcc_idle();
+    }
   }
 
   // transfer the packet to the track interface
@@ -232,4 +175,24 @@ StateFlowBase::Action PrioritizedUpdateLoop::entry()
   // exit the stateflow
   return exit();
 }
+
+dcc::PacketSource *PrioritizedUpdateLoop::recalculate_priorities()
+{
+  // NOTE: external locking is required as this code accesses both the source
+  // list and metrics map.
+  dcc::PacketSource *next = nullptr;
+  size_t highest_priority = dcc::UpdateLoopBase::EXCLUSIVE_MIN_PRIORITY;
+  for (size_t index = 0; index < sources_.size(); index++)
+  {
+    auto source = sources_[index];
+    if (metrics_[source].priority > highest_priority)
+    {
+      highest_priority = metrics_[source].priority;
+      exclusiveIndex_ = index;
+      next = source;
+    }
+  }
+  return next;
+}
+
 } // namespace esp32cs
