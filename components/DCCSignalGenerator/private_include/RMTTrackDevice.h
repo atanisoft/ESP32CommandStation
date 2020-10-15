@@ -24,6 +24,8 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 #include <dcc/PacketFlowInterface.hxx>
 #include <dcc/RailCom.hxx>
 #include <dcc/RailcomHub.hxx>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 #include <freertos_drivers/arduino/DeviceBuffer.hxx>
 #include <freertos_drivers/arduino/RailcomDriver.hxx>
 #include <os/OS.hxx>
@@ -39,12 +41,14 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 namespace esp32cs
 {
 
-class RMTTrackDevice : public dcc::PacketFlowInterface
+class RMTTrackDevice
 {
 public:
   RMTTrackDevice(const char *name, const rmt_channel_t channel
                , const uint8_t dccPreambleBitCount, size_t packet_queue_len
                , gpio_num_t pin, RailcomDriver *railcomDriver);
+
+  ~RMTTrackDevice();
 
   // VFS interface helper
   ssize_t write(int, const void *, size_t);
@@ -55,9 +59,6 @@ public:
   // RMT callback for transmit completion. This will be called via the ISR
   // context but not from an IRAM restricted context.
   void rmt_transmit_complete();
-
-  // Used only for DCCProgrammer OPS track requests, TBD if this can be removed.
-  void send(Buffer<dcc::Packet> *, unsigned);
 
   const char *name() const
   {
@@ -77,14 +78,15 @@ private:
   const rmt_channel_t channel_;
   const uint8_t dccPreambleBitCount_;
   RailcomDriver *railcomDriver_;
-  Atomic packetQueueLock_;
-  DeviceBuffer<dcc::Packet> *packetQueue_;
+  StaticQueue_t packetQueue_;
+  QueueHandle_t packetQueueHandle_;
+  void *packetQueueBuf_;
   Notifiable* notifiable_{nullptr};
   int8_t pktRepeatCount_{0};
   uint32_t pktLength_{0};
   rmt_item32_t packet_[MAX_RMT_BITS];
 
-  void encode_next_packet();
+  void encode_next_packet(BaseType_t *woken);
 
   DISALLOW_COPY_AND_ASSIGN(RMTTrackDevice);
 };
