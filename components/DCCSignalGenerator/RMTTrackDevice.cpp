@@ -400,7 +400,7 @@ void RMTTrackDevice::rmt_transmit_complete()
 
   // if we need to wake up another task we can safely do it after sending the
   // packet off to be transmitted.
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
   portYIELD_FROM_ISR(woken);
 #else
   if (woken == pdTRUE)
