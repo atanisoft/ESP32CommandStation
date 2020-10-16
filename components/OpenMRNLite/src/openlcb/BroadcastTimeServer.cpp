@@ -451,7 +451,7 @@ private:
                 expires -= tm->tm_sec ? (tm->tm_sec + 2) : 2;
             }
 
-            long long real_expires;
+            long long real_expires = 0;
             bool result =
                 server_->real_nsec_until_fast_time_abs(expires, &real_expires);
             HASSERT(result);
