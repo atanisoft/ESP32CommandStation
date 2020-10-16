@@ -11,7 +11,7 @@ A more advanced ESP32 Command Station could have some/all of the following:
 Full documentation can be found [here](https://atanisoft.github.io/ESP32CommandStation/).
 
 [![Build Status](https://github.com/atanisoft/ESP32CommandStation/workflows/Build/badge.svg)](https://github.com/atanisoft/ESP32CommandStation/actions)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/952cd95ff4564b8da8ac40e5cdd59781)](https://www.codacy.com/manual/atanisoft/ESP32CommandStation?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=atanisoft/ESP32CommandStation&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/c29397e7912b4def98a7c04317258588)](https://www.codacy.com/gh/atanisoft/ESP32CommandStation/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=atanisoft/ESP32CommandStation&amp;utm_campaign=Badge_Grade)
 [![Contributors](https://img.shields.io/github/contributors/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/graphs/contributors)
 [![Stars](https://img.shields.io/github/stars/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/stargazers)
 [![License](https://img.shields.io/github/license/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/blob/master/LICENSE)

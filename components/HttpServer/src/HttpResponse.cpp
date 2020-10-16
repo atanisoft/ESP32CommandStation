@@ -39,7 +39,7 @@ namespace http
 
 extern string HTTP_BUILD_TIME;
 
-extern std::map<HttpHeader, string> well_known_http_headers;
+extern std::map<HttpHeader, const char *> well_known_http_headers;
 
 static std::map<HttpStatusCode, string> http_code_strings =
 {
@@ -130,18 +130,18 @@ string AbstractHttpResponse::to_string(bool include_body, bool keep_alive
   if (get_body_length())
   {
     LOG(CONFIG_HTTP_RESP_LOG_LEVEL, "[resp-header] %s -> %zu"
-      , well_known_http_headers[HttpHeader::CONTENT_LENGTH].c_str()
+      , well_known_http_headers[HttpHeader::CONTENT_LENGTH]
       , get_body_length());
     encoded_headers_.append(
       StringPrintf("%s: %zu%s"
-                 , well_known_http_headers[HttpHeader::CONTENT_LENGTH].c_str()
+                 , well_known_http_headers[HttpHeader::CONTENT_LENGTH]
                  , get_body_length(), HTML_EOL));
     LOG(CONFIG_HTTP_RESP_LOG_LEVEL, "[resp-header] %s -> %s"
-      , well_known_http_headers[HttpHeader::CONTENT_TYPE].c_str()
+      , well_known_http_headers[HttpHeader::CONTENT_TYPE]
       , get_body_mime_type().c_str());
     encoded_headers_.append(
       StringPrintf("%s: %s%s"
-                 , well_known_http_headers[HttpHeader::CONTENT_TYPE].c_str()
+                 , well_known_http_headers[HttpHeader::CONTENT_TYPE]
                  , get_body_mime_type().c_str(), HTML_EOL));
   }
 
@@ -150,11 +150,11 @@ string AbstractHttpResponse::to_string(bool include_body, bool keep_alive
     string connection = keep_alive ? HTTP_CONNECTION_CLOSE
                                   : HTTP_CONNECTION_KEEP_ALIVE;
     LOG(CONFIG_HTTP_RESP_LOG_LEVEL, "[resp-header] %s -> %s"
-      , well_known_http_headers[HttpHeader::CONNECTION].c_str()
+      , well_known_http_headers[HttpHeader::CONNECTION]
       , connection.c_str());
     encoded_headers_.append(
       StringPrintf("%s: %s%s"
-                 , well_known_http_headers[HttpHeader::CONNECTION].c_str()
+                 , well_known_http_headers[HttpHeader::CONNECTION]
                  , connection.c_str(), HTML_EOL));
   }
 
@@ -164,14 +164,23 @@ string AbstractHttpResponse::to_string(bool include_body, bool keep_alive
   return encoded_headers_;
 }
 
-void AbstractHttpResponse::header(const string &header, const string &value)
+void AbstractHttpResponse::header(const string &name, const string &value)
 {
-  headers_[header] = std::move(value);
+  if (headers_.size() < config_httpd_max_header_count())
+  {
+    headers_[name] = std::move(value);
+  }
+  else
+  {
+    LOG_ERROR("[HttpResp %p] Discarding header '%s' as maximum header limit "
+              "has been reached!", this, name.c_str());
+  }
 }
 
-void AbstractHttpResponse::header(const HttpHeader header, const string &value)
+void AbstractHttpResponse::header(const HttpHeader name
+                                , const string &value)
 {
-  headers_[well_known_http_headers[header]] = std::move(value);
+  header(well_known_http_headers[name], value);
 }
 
 RedirectResponse::RedirectResponse(const string &target_uri)

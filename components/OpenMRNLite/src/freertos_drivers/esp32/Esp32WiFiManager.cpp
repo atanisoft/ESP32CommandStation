@@ -113,12 +113,6 @@ void split_mdns_service_name(string *service_name, string *protocol_name);
 namespace openmrn_arduino
 {
 
-/// Priority to use for the wifi_manager_task. This is currently set to one
-/// level higher than the arduino-esp32 loopTask. The task will be in a sleep
-/// state until woken up by Esp32WiFiManager::process_wifi_event,
-/// Esp32WiFiManager::apply_configuration or shutdown via destructor.
-static constexpr UBaseType_t WIFI_TASK_PRIORITY = 2;
-
 /// Stack size for the wifi_manager_task.
 static constexpr uint32_t WIFI_TASK_STACK_SIZE = 2560L;
 
@@ -151,6 +145,10 @@ static constexpr uint8_t MAX_CONNECTION_CHECK_ATTEMPTS = 36;
 /// reserve is 48 IP addresses. Only four stations can be connected to the
 /// ESP32 SoftAP at any single time.
 static constexpr uint8_t SOFTAP_IP_RESERVATION_BLOCK_SIZE = 48;
+
+/// The esp_wifi API only allows up to 78 0.25 dBm increments, but the CDI will
+/// allow up to 79 to allow full range usage.
+static constexpr int8_t MAX_WIFI_TX_POWER_API_LIMIT = 78;
 
 /// Adapter class to load/store configuration via CDI
 class Esp32SocketParams : public DefaultSocketClientParams
@@ -822,7 +820,8 @@ void Esp32WiFiManager::start_wifi_system()
 void Esp32WiFiManager::start_wifi_task()
 {
     LOG(INFO, "[WiFi] Starting WiFi Manager task");
-    os_thread_create(&wifiTaskHandle_, "Esp32WiFiMgr", WIFI_TASK_PRIORITY,
+    os_thread_create(&wifiTaskHandle_, "Esp32WiFiMgr",
+        config_arduino_openmrn_task_priority(),
         WIFI_TASK_STACK_SIZE, wifi_manager_task, this);
 }
 
@@ -896,11 +895,7 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
             // the initial configuration of the Station or SoftAP interface.
             if (!wifi->initialConfigLoad_)
             {
-                int8_t power =
-                    CDI_READ_TRIM_DEFAULT(wifi->cfg_.tx_power, wifi->configFd_);
-                LOG(INFO, "[WiFi] Setting TX power to: %d", power);
-                ESP_ERROR_CHECK_WITHOUT_ABORT(
-                    esp_wifi_set_max_tx_power(power));
+                wifi->configure_wifi_max_tx_power();
             }
 #if defined(CONFIG_IDF_TARGET_ESP32)
             if (CDI_READ_TRIM_DEFAULT(wifi->cfg_.hub().enable, wifi->configFd_))
@@ -1183,6 +1178,23 @@ void Esp32WiFiManager::start_mdns_system()
     mdnsDeferredPublish_.clear();
 }
 
+void Esp32WiFiManager::configure_wifi_max_tx_power()
+{
+    // Read the desired TX power level from the CDI with a bounds check to
+    // ensure it is does not exceed 78 (max supported by underlying API).
+    int8_t cfg_power =
+        std::min(MAX_WIFI_TX_POWER_API_LIMIT,
+                 (int8_t)CDI_READ_TRIM_DEFAULT(cfg_.tx_power, configFd_));
+    int8_t current_power = 0;
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_get_max_tx_power(&current_power));
+    if (cfg_power != current_power)
+    {
+        LOG(INFO, "[WiFi] Adjusting maximum WiFi TX power %d -> %d.",
+            current_power, cfg_power);
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_max_tx_power(cfg_power));
+    }
+}
+
 void Esp32WiFiManager::on_station_started()
 {
     // Set the generated hostname prior to connecting to the SSID
@@ -1275,9 +1287,7 @@ void Esp32WiFiManager::on_station_started()
     }
 
     // Set the maximum transmit power before we connect to the SSID.
-    int8_t power = CDI_READ_TRIM_DEFAULT(cfg_.tx_power, configFd_);
-    LOG(INFO, "[WiFi] Setting TX power to: %d", power);
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_max_tx_power(power));
+    configure_wifi_max_tx_power();
 
     LOG(INFO,
         "[WiFi] Station started, attempting to connect to SSID: %s.", ssid_);

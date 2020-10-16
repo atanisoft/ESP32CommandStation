@@ -44,7 +44,7 @@ static constexpr const char * HTTP_METHOD_POST = "POST";
 static constexpr const char * HTTP_METHOD_PATCH = "PATCH";
 static constexpr const char * HTTP_METHOD_PUT = "PUT";
 
-std::map<HttpHeader, string> well_known_http_headers =
+std::map<HttpHeader, const char *> well_known_http_headers =
 {
   { ACCEPT, "Accept" }
 , { CACHE_CONTROL, "Cache-Control" }
@@ -118,20 +118,36 @@ void HttpRequest::uri(const string &value)
   uri_.assign(std::move(value));
 }
 
-void HttpRequest::param(const std::pair<string, string> &value)
+void HttpRequest::param(const string &name, const string &value)
 {
-  LOG(CONFIG_HTTP_REQ_LOG_LEVEL
-    , "[HttpReq %p] Adding param: %s: %s", this, value.first.c_str()
-    , value.second.c_str());
-  params_.insert(std::move(value));
+  if (params_.size() < config_httpd_max_param_count())
+  {
+    LOG(CONFIG_HTTP_REQ_LOG_LEVEL
+      , "[HttpReq %p] Adding param: %s: %s", this, name.c_str()
+      , value.c_str());
+    params_[name] = value;
+  }
+  else
+  {
+    LOG_ERROR("[HttpReq %p] Discarding parameter '%s' as max parameter count "
+              "has been reached!", this, name.c_str());
+  }
 }
 
-void HttpRequest::header(const std::pair<std::string, std::string> &value)
+void HttpRequest::header(const string &name, const string &value)
 {
-  LOG(CONFIG_HTTP_REQ_LOG_LEVEL
-    , "[HttpReq %p] Adding header: %s: %s", this, value.first.c_str()
-    , value.second.c_str());
-  headers_.insert(value);
+  if (headers_.size() < config_httpd_max_header_count())
+  {
+    LOG(CONFIG_HTTP_REQ_LOG_LEVEL
+      , "[HttpReq %p] Adding header: %s: %s", this, name.c_str()
+      , value.c_str());
+    headers_[name] = value;
+  }
+  else
+  {
+    LOG_ERROR("[HttpReq %p] Discarding header '%s' as maximum header limit "
+              "has been reached!", this, name.c_str());
+  }
 }
 
 void HttpRequest::header(HttpHeader header, std::string value)
@@ -140,14 +156,21 @@ void HttpRequest::header(HttpHeader header, std::string value)
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[HttpReq %p] Replacing header: %s: %s (old: %s)", this
-      , well_known_http_headers[header].c_str(), value.c_str()
+      , well_known_http_headers[header], value.c_str()
       , headers_[well_known_http_headers[header]].c_str());
   }
-  else
+  else if (headers_.size() < config_httpd_max_header_count())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[HttpReq %p] Adding header: %s: %s", this
-      , well_known_http_headers[header].c_str(), value.c_str());
+      , well_known_http_headers[header], value.c_str());
+  }
+  else
+  {
+    LOG_ERROR("[HttpReq %p] Discarding header '%s' as maximum header limit "
+              "has been reached!", this
+            , well_known_http_headers[header]);
+    return;
   }
   headers_[well_known_http_headers[header]] = value;
 }
@@ -240,7 +263,7 @@ size_t HttpRequest::params()
 
 string HttpRequest::param(string name)
 {
-  if (params_.count(name))
+  if (params_.find(name) != params_.end())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[Req %p] Param %s -> %s", this, name.c_str(), params_[name].c_str());
@@ -253,7 +276,7 @@ string HttpRequest::param(string name)
 
 bool HttpRequest::param(string name, bool def)
 {
-  if (params_.count(name))
+  if (params_.find(name) != params_.end())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[Req %p] Param %s -> %s", this, name.c_str(), params_[name].c_str());
@@ -266,7 +289,7 @@ bool HttpRequest::param(string name, bool def)
 
 int HttpRequest::param(string name, int def)
 {
-  if (params_.count(name))
+  if (params_.find(name) != params_.end())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[Req %p] Param %s -> %s", this, name.c_str(), params_[name].c_str());
@@ -277,7 +300,7 @@ int HttpRequest::param(string name, int def)
 
 bool HttpRequest::has_param(string name)
 {
-  return params_.count(name);
+  return params_.find(name) != params_.end();
 }
 
 string HttpRequest::to_string()
