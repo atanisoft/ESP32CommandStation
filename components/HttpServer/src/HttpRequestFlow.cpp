@@ -58,6 +58,7 @@ HttpRequestFlow::HttpRequestFlow(Httpd *server, int fd
                                , fd_(fd)
                                , remote_ip_(remote_ip)
 {
+  raw_header_.reserve(header_read_size_ + 1);
   start_flow(STATE(start_request));
   LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL, "[Httpd fd:%d] Connected.", fd_);
 }
@@ -75,10 +76,13 @@ StateFlowBase::Action HttpRequestFlow::start_request()
 {
   LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL, "[Httpd fd:%d] reading header", fd_);
   req_.reset();
-  part_boundary_.assign("");
-  part_filename_.assign("");
-  part_type_.assign("");
-  raw_header_.assign("");
+  part_boundary_.clear();
+  part_boundary_.shrink_to_fit();
+  part_filename_.clear();
+  part_filename_.shrink_to_fit();
+  part_type_.clear();
+  part_type_.shrink_to_fit();
+  raw_header_.clear();
   start_time_ = esp_timer_get_time();
   buf_.resize(header_read_size_);
   return read_repeated_with_timeout(&helper_, timeout_, fd_, buf_.data()
@@ -137,7 +141,11 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
       tokenize(part, params, "&");
       for (auto param : params)
       {
-        req_.param(break_string(param, "="));
+        auto p = break_string(param, "=");
+        // URL decode the parameter name and value
+        p.first = url_decode(p.first);
+        p.second = url_decode(p.second);
+        req_.param(p.first, p.second);
       }
     }
     // remove the first line since we processed it
@@ -186,36 +194,29 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
               (server_->captive_auth_[remote_ip_] > server_->captive_timeout_ &&
               server_->captive_timeout_ != UINT32_MAX))
           {
-            // new client or authentication expired, send the canned response
-            res_.reset(new StringResponse(server_->captive_response_
-                                        , MIME_TYPE_TEXT_HTML));
+            // new client or authentication expired
+            res_ = server_->captive_response_;
           }
           else if (req_.uri().find("_204") > 0 ||
                   req_.uri().find("status.php") > 0)
           {
             // These URIs require a generic response with code 204
-            res_.reset(
-              new AbstractHttpResponse(HttpStatusCode::STATUS_NO_CONTENT));
+            res_ = server_->captive_no_content_;
           }
           else if (req_.uri().find("ncsi.txt") > 0)
           {
             // Windows success page content
-            res_.reset(
-              new StringResponse("Microsoft NCSI", MIME_TYPE_TEXT_PLAIN));
+            res_ = server_->captive_msft_ncsi_;
           }
           else if (req_.uri().find("success.txt") > 0)
           {
             // Generic success.txt page content
-            res_.reset(
-              new StringResponse("success", MIME_TYPE_TEXT_PLAIN));
+            res_ = server_->captive_success_;
           }
           else
           {
             // iOS success page content
-            res_.reset(
-              new StringResponse("<HTML><HEAD><TITLE>Success</TITLE></HEAD>"
-                                "<BODY>Success</BODY></HTML>"
-                              , MIME_TYPE_TEXT_HTML));
+            res_ = server_->captive_success_ios_;
           }
         }
         else if (server_->captive_active_ &&
@@ -223,7 +224,7 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
         {
           server_->captive_auth_[remote_ip_] =
             esp_timer_get_time() + server_->captive_timeout_;
-          res_.reset(new AbstractHttpResponse(HttpStatusCode::STATUS_OK));
+          res_ = server_->captive_ok_;
         }
         else
         {
@@ -262,7 +263,7 @@ StateFlowBase::Action HttpRequestFlow::parse_header_data()
       h.second = url_decode(h.second);
 
       // stash the header for later retrieval
-      req_.header(h);
+      req_.header(h.first, h.second);
     }
   }
 
@@ -392,10 +393,19 @@ StateFlowBase::Action HttpRequestFlow::process_request_handler()
   else
   {
     auto handler = server_->handler(req_.method(), req_.uri());
-    auto res = handler(&req_);
-    if (res && !res_)
+    if (handler)
     {
-      res_.reset(res);
+      auto res = handler(&req_);
+      if (res && !res_)
+      {
+        res_.reset(res);
+      }
+    }
+    else
+    {
+      LOG_ERROR("[Httpd fd:%d] Unable to locate handler for URI:%s", fd_
+              , req_.uri().c_str());
+      req_.set_status(HttpStatusCode::STATUS_SERVER_ERROR);
     }
   }
 
@@ -460,7 +470,7 @@ StateFlowBase::Action HttpRequestFlow::start_multipart_processing()
   return call_immediately(STATE(read_multipart_headers));
 }
 
-extern std::map<HttpHeader, string> well_known_http_headers;
+extern std::map<HttpHeader, const char *> well_known_http_headers;
 StateFlowBase::Action HttpRequestFlow::parse_multipart_headers()
 {
   // https://tools.ietf.org/html/rfc7578
@@ -612,7 +622,7 @@ StateFlowBase::Action HttpRequestFlow::parse_multipart_headers()
         LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL
           , "[Httpd fd:%d,uri:%s] multipart/form-data segment(%d) uses %s:%s"
           , fd_, req_.uri().c_str(), part_count_
-          , well_known_http_headers[HttpHeader::CONTENT_TYPE].c_str()
+          , well_known_http_headers[HttpHeader::CONTENT_TYPE]
           , part_type_.c_str());
       }
       else if (!parts.first.compare(
@@ -825,7 +835,7 @@ StateFlowBase::Action HttpRequestFlow::parse_form_data()
     LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL
       , "param: %s, value: %s", p.first.c_str(), p.second.c_str());
     // add the parameter to the request
-    req_.param(p);
+    req_.param(p.first, p.second);
   }
 
   // If there is more body payload to read request more data before processing
@@ -967,13 +977,24 @@ StateFlowBase::Action HttpRequestFlow::request_complete()
 
 StateFlowBase::Action HttpRequestFlow::upgrade_to_websocket()
 {
-  // keep the socket open since we will reuse it as the websocket
-  close_ = false;
-  LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL
-    , "[Httpd fd:%d,uri:%s] Upgrading to WebSocket", fd_, req_.uri().c_str());
-  new WebSocketFlow(server_, fd_, remote_ip_, req_.header(HttpHeader::WS_KEY)
-                  , req_.header(HttpHeader::WS_VERSION)
-                  , server_->ws_handler(req_.uri()));
+  auto *ws_req =
+    new(std::nothrow) WebSocketFlow(server_, fd_, remote_ip_
+                                  , req_.header(HttpHeader::WS_KEY)
+                                  , req_.header(HttpHeader::WS_VERSION)
+                                  , server_->ws_handler(req_.uri()));
+  if (ws_req == nullptr)
+  {
+    LOG_ERROR("[Httpd fd:%d,uri:%s] Failed to upgrade request to websocket!"
+            , fd_, req_.uri().c_str());
+  }
+  else
+  {
+    // keep the socket open since we will reuse it as the websocket
+    close_ = false;
+    LOG(CONFIG_HTTP_REQ_FLOW_LOG_LEVEL
+      , "[Httpd fd:%d,uri:%s] Upgrading to WebSocket", fd_
+      , req_.uri().c_str());
+  }
   req_.reset();
   server_->schedule_cleanup(this);
   return exit();
