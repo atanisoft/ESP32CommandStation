@@ -95,7 +95,7 @@ void reboot()
 
 ssize_t os_get_free_heap()
 {
-  return heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  return heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
 }
 
 void delay(unsigned long ms)

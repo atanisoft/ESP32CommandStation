@@ -32,10 +32,24 @@ static constexpr const char LCC_CAN_MARKER_FILE[] = "lcc-can";
 #if ESP32_TWAI_DRIVER_SUPPORTED && \
     CONFIG_LCC_CAN_RX_PIN != -1 && \
     CONFIG_LCC_CAN_TX_PIN != -1
-Esp32Twai twai("/dev/can", CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
+Esp32Twai twai("/dev/twai", CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
 #define CAN_PERIPHERAL_AVAILABLE 1
 
 #define CAN_PERIPHERAL_SELECT 1
+
+static void twai_init_task(void *param)
+{
+  auto stack = static_cast<openlcb::SimpleCanStack *>(param);
+  LOG(INFO, "[LCC] Enabling CAN interface (rx: %d, tx: %d)"
+    , CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
+  twai.hw_init();
+#if CAN_PERIPHERAL_SELECT
+  stack->add_can_port_select("/dev/twai/twai0");
+#else
+  stack->add_can_port_async("/dev/twai/twai0");
+#endif
+  vTaskDelete(nullptr);
+}
 
 #endif // ESP32_TWAI_DRIVER_SUPPORTED
 
@@ -104,14 +118,11 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
   // TODO: move to new TWAI driver once stable since it does not require a task
   if (!fs->exists(LCC_CAN_MARKER_FILE))
   {
-    LOG(INFO, "[LCC] Enabling CAN interface (rx: %d, tx: %d)"
-      , CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
-    twai.hw_init();
-#if CAN_PERIPHERAL_SELECT
-    static_cast<openlcb::SimpleCanStack *>(stack_)->add_can_port_select("/dev/can/can0");
-#else
-    static_cast<openlcb::SimpleCanStack *>(stack_)->add_can_port_async("/dev/can/can0");
-#endif
+    // Initialize the TWAI driver from core 1 to ensure the TWAI driver is tied
+    // to the core that the OpenMRN stack is *NOT* running on.
+    xTaskCreatePinnedToCore(twai_init_task, "twai-init", 2048, stack_
+                          , config_arduino_openmrn_task_priority(), nullptr
+                          , APP_CPU_NUM);
   }
 #endif // CAN_PERIPHERAL_AVAILABLE
 #endif // CONFIG_LCC_TCP_STACK
