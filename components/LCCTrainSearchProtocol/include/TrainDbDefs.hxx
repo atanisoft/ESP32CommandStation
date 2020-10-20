@@ -166,6 +166,8 @@ enum DccMode
   DCC_DEFAULT = DCC_ANY,
   /// Force long address for DCC. If clear, uses default address type by number.
   DCC_LONG_ADDRESS = 0b00100,
+  /// Force long address for DCC with DEFAULT/ANY speed step mode.
+  DCC_DEFAULT_LONG_ADDRESS = DCC_DEFAULT | DCC_LONG_ADDRESS,
   /// Mask for the DCC speed step setting.
   DCC_SS_MASK = 0b00011,
   /// Unpecified / default speed step setting.
