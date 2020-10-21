@@ -293,7 +293,7 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::create_if_not_found(unsigned a
                                                                     , string name
                                                                     , DccMode mode)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] Searching for roster entry for address: %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
@@ -343,7 +343,7 @@ bool Esp32TrainDatabase::is_train_id_known(openlcb::NodeID train_id)
 
 void Esp32TrainDatabase::delete_entry(unsigned address)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
   {
@@ -355,7 +355,7 @@ void Esp32TrainDatabase::delete_entry(unsigned address)
 
 std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::get_entry(unsigned train_id)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] get_entry(%u) : %zu", train_id, knownTrains_.size());
   if (train_id < knownTrains_.size())
   {
@@ -373,7 +373,7 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::get_entry(unsigned train_id)
 std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::find_entry(openlcb::NodeID node_id
                                                            , unsigned hint)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] Searching for Train Node:%s, Hint:%u"
     , uint64_to_string(node_id).c_str(), hint);
   auto entry = FIND_TRAIN_HINT(node_id, hint);
@@ -391,7 +391,7 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::find_entry(openlcb::NodeID nod
 // may be changed in the future to use the loco address instead.
 unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   size_t index = 0;
   
   LOG(VERBOSE, "[TrainDB] Searching for loco %d", address);
@@ -437,7 +437,7 @@ unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
 std::set<uint16_t> Esp32TrainDatabase::get_default_train_addresses(uint16_t limit)
 {
   std::set<uint16_t> results;
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   for(auto entry : knownTrains_)
   {
     if (entry->get_data().show_on_limited_throttles)
@@ -458,7 +458,7 @@ std::set<uint16_t> Esp32TrainDatabase::get_default_train_addresses(uint16_t limi
 
 void Esp32TrainDatabase::set_train_name(unsigned address, std::string name)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] Searching for train with address %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
@@ -474,7 +474,7 @@ void Esp32TrainDatabase::set_train_name(unsigned address, std::string name)
 
 void Esp32TrainDatabase::set_train_auto_idle(unsigned address, bool idle)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] Searching for train with address %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
@@ -493,7 +493,7 @@ void Esp32TrainDatabase::set_train_auto_idle(unsigned address, bool idle)
 void Esp32TrainDatabase::set_train_show_on_limited_throttle(unsigned address
                                                           , bool show)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] Searching for train with address %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
@@ -511,7 +511,7 @@ void Esp32TrainDatabase::set_train_show_on_limited_throttle(unsigned address
 
 void Esp32TrainDatabase::set_train_function_label(unsigned address, uint8_t fn_id, Symbols label)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] Searching for train with address %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
@@ -527,7 +527,7 @@ void Esp32TrainDatabase::set_train_function_label(unsigned address, uint8_t fn_i
 
 void Esp32TrainDatabase::set_train_drive_mode(unsigned address, commandstation::DccMode mode)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] Searching for train with address %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
@@ -543,7 +543,7 @@ void Esp32TrainDatabase::set_train_drive_mode(unsigned address, commandstation::
 
 string Esp32TrainDatabase::get_all_entries_as_json()
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   string res = "[";
   for (auto entry : knownTrains_)
   {
@@ -559,7 +559,7 @@ string Esp32TrainDatabase::get_all_entries_as_json()
 
 string Esp32TrainDatabase::get_entry_as_json(unsigned address)
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   return get_entry_as_json_locked(address);
 }
 
@@ -598,7 +598,7 @@ string Esp32TrainDatabase::get_entry_as_json_locked(unsigned address)
 
 void Esp32TrainDatabase::persist()
 {
-  OSMutexLock l(&knownTrainsLock_);
+  const std::lock_guard<std::mutex> lock(knownTrainsLock_);
   LOG(VERBOSE, "[TrainDB] Checking if roster needs to be persisted...");
   auto ent = std::find_if(knownTrains_.begin(), knownTrains_.end(),
     [](const auto &train)

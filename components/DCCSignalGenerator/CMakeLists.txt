@@ -3,10 +3,12 @@ set(COMPONENT_ADD_INCLUDEDIRS "include" )
 set(COMPONENT_PRIV_INCLUDEDIRS "private_include" )
 
 set(COMPONENT_SRCS
+    "DccConstants.cpp"
     "DCCSignalVFS.cpp"
     "DuplexedTrackIf.cpp"
     "EStopHandler.cpp"
     "MonitoredHBridge.cpp"
+    "PrioritizedUpdateLoop.cpp"
     "RMTTrackDevice.cpp"
 )
 
@@ -28,6 +30,7 @@ set_source_files_properties(DuplexedTrackIf.cpp PROPERTIES COMPILE_FLAGS -Wno-ig
 set_source_files_properties(EStopHandler.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(LocalTrackIf.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(MonitoredHBridge.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
+set_source_files_properties(PrioritizedUpdateLoop.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(RMTTrackDevice.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 
 if (CONFIG_OPS_RAILCOM)

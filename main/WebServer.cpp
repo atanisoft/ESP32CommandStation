@@ -978,7 +978,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
   // command station (method) so check it first
   if (url.find("/estop") != string::npos)
   {
-    esp32cs::initiate_estop();
+    esp32cs::toggle_estop();
     request->set_status(HttpStatusCode::STATUS_OK);
   }
   else if (url.find("/roster")  != string::npos)

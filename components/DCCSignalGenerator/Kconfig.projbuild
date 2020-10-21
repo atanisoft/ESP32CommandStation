@@ -394,10 +394,6 @@ menu "DCC Signal"
             track, generally this does not need to be very large and the
             default value should be sufficient.
 
-    config DCC_ESTOP_PACKET_COUNT
-        int "Number of eStop packets to send before powering off track"
-        default 200
-
 ###############################################################################
 #
 # Log level constants from from components/OpenMRNLite/src/utils/logging.h
