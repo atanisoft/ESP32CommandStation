@@ -237,9 +237,25 @@ public:
         return allocate_and_call(iface()->global_message_write_flow(),
                                  STATE(send_response));
       }
-      auto db_entry = nodes()->get_traindb_entry(nextTrainId_);
-      if (!db_entry) return call_immediately(STATE(next_iterate));
-      if (FindProtocolDefs::match_query_to_node(eventId_, db_entry.get()))
+      return call_immediately(STATE(try_traindb_lookup));
+    }
+
+    /// This state attempts to look up the entry in the train database, and
+    /// performs asynchronous waits and re-tries according to the contract of
+    /// AllTrainNodesInterface.
+    Action try_traindb_lookup()
+    {
+      bn_.reset(this);
+      bn_.new_child();
+      auto db_entry = nodes()->get_traindb_entry(nextTrainId_, &bn_);
+      if (!bn_.abort_if_almost_done())
+      {
+        bn_.notify();
+        // Repeats this state after the notification arrives.
+        return wait();
+      }
+      if (db_entry && 
+          FindProtocolDefs::match_query_to_node(eventId_, db_entry.get()))
       {
         hasMatches_ = true;
         return allocate_and_call(iface()->global_message_write_flow(),

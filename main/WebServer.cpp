@@ -918,7 +918,7 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
                                                                        : JSON_VALUE_FORWARD
                , JSON_FUNCTIONS_NODE);
 
-  for (uint8_t funcID = 0; funcID < DCC_MAX_FN; funcID++)
+  for (size_t funcID = 0; funcID < commandstation::DCC_MAX_FN; funcID++)
   {
     if (funcID)
     {

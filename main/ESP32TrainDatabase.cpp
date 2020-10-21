@@ -582,7 +582,7 @@ string Esp32TrainDatabase::get_entry_as_json_locked(unsigned address)
         }
       }
     };
-    for (uint8_t idx = 0; idx < DCC_MAX_FN; idx++)
+    for (size_t idx = 0; idx < DCC_MAX_FN; idx++)
     {
       j["functions"].push_back(
       {

@@ -139,6 +139,22 @@ struct FindProtocolDefs {
    */
   static openlcb::EventId address_to_query(unsigned address, bool exact, DccMode mode);
 
+  /** Translates an address as punched in by a (dumb) throttle to a query to
+   * issue on the OpenLCB bus as a find protocol request. This method ensures
+   * that the allocate bit is set so that if the address (node) does not yet
+   * exist, it may be created.
+   *
+   * @param address is the numeric value that the user typed.
+   * @param exact should be true if only exact matches shall be retrieved.
+   * @param mode should be set most of the time to OLCBUSER to specify that we
+   * don't care about the address type, but can also be set to
+   * DCC_LONG_ADDRESS.
+   */
+  static openlcb::EventId address_to_allocate(unsigned address, bool exact, DccMode mode)
+  {
+    return address_to_query(address, exact, mode) | ALLOCATE;
+  }
+
   /** Translates a sequence of input digits punched in by a throttle to a query
    * to issue on the OpenLCB bus as a find protocol request.
    *
