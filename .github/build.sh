@@ -69,6 +69,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+cat "${RUN_DIR}/sdkconfig"
+
+echo "Starting build..."
+
 # build via cmake/ninja
 cd "${BUILD_DIR}" && cmake "${RUN_DIR}" -G Ninja && ninja
 
