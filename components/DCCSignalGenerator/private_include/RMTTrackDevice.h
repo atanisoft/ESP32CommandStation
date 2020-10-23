@@ -30,7 +30,6 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 #include <utils/Atomic.hxx>
 #include <utils/macros.h>
 #include <utils/Singleton.hxx>
-#include <utils/StringPrintf.hxx>
 
 #include "can_ioctl.h"
 #include "MonitoredHBridge.h"
