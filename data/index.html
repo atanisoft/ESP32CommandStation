@@ -365,7 +365,11 @@
          </div>
         </div>
         <div id="cs-cdi-uplink">
-         <div class="ui-field-contain">
+          <div class="ui-field-contain">
+           <label for="cs-lcc-can">Uplink Enabled:</label>
+           <input type="checkbox" id="cs-lcc-uplink-enabled" data-role="flipswitch"/>
+          </div>
+          <div class="ui-field-contain">
           <label for="cs-lcc-uplink-mode">LCC Uplink Mode:</label>
           <select id="cs-lcc-uplink-mode">
            <option value="0">Auto, Manual</option>
@@ -1125,6 +1129,7 @@ function csConfigUpdate(data) {
  $('#cs-lcc-uplink-manual-host').val(data.uplink.manual_host);
  $('#cs-lcc-uplink-manual-port').val(data.uplink.manual_port);
  $('#cs-lcc-uplink-mode').val(data.uplink.mode).change();
+ $('#cs-lcc-uplink-enabled').prop('checked', data.uplink.enabled).flipswitch('refresh');
  $('#cs-cdi-ops-short').val(pad_hex(data.hbridges[0].short, 16));
  $('#cs-cdi-ops-short-clear').val(pad_hex(data.hbridges[0].short_clear, 16));
  $('#cs-cdi-ops-shutdown').val(pad_hex(data.hbridges[0].shutdown, 16));
@@ -1217,7 +1222,7 @@ function setupConfig() {
   } else if (tablist[section] == "LCC") {
    url = String.format("/config?nodeid={0}&lcc-hub={1}&lcc-can={2}", $('#cs-lcc-node-id').val(), $('#cs-lcc-hub').prop('checked'), $('#cs-lcc-can').prop('checked'));
   } else if (tablist[section] == "Uplink") {
-   url = String.format("/config?uplink-mode={0}&uplink-service={1}&uplink-manual={2}&uplink-manual-port={3}&uplink-reconnect={4}", $('#cs-lcc-uplink-mode').val(), $('#cs-lcc-uplink-auto-service').val(), $('#cs-lcc-uplink-manual-host').val(), $('#cs-lcc-uplink-manual-port').val(), $('#cs-lcc-uplink-reconnect').val());
+   url = String.format("/config?uplink-enabled={0}&uplink-mode={1}&uplink-service={2}&uplink-manual={3}&uplink-manual-port={4}&uplink-reconnect={5}", $('#cs-lcc-uplink-enabled').prop('checked'), $('#cs-lcc-uplink-mode').val(), $('#cs-lcc-uplink-auto-service').val(), $('#cs-lcc-uplink-manual-host').val(), $('#cs-lcc-uplink-manual-port').val(), $('#cs-lcc-uplink-reconnect').val());
   } else if (tablist[section] == "OPS") {
    url = String.format("/config?ops-short={0}&ops-short-clear={1}&ops-shutdown={2}&ops-shutdown-clear={3}", $('#cs-cdi-ops-short').val(), $('#cs-cdi-ops-short-clear').val(), $('#cs-cdi-ops-shutdown').val(), $('#cs-cdi-ops-shutdown-clear').val());
   } else if (tablist[section] == "PROG") {
@@ -1248,6 +1253,21 @@ function setupConfig() {
   } else {
    $('#cs-wifi-sta-div').hide();
    $('#cs-wifi-connect').hide();
+  }
+ });
+ $('#cs-lcc-uplink-enabled').on('change', function() {
+  if(this.checked) {
+   $('#cs-lcc-uplink-reconnect').show();
+   $('#cs-lcc-uplink-auto-service').show();
+   $('#cs-lcc-uplink-manual-host').show();
+   $('#cs-lcc-uplink-manual-port').show();
+   $('#cs-lcc-uplink-mode').show();
+  } else {
+   $('#cs-lcc-uplink-reconnect').hide();
+   $('#cs-lcc-uplink-auto-service').hide();
+   $('#cs-lcc-uplink-manual-host').hide();
+   $('#cs-lcc-uplink-manual-port').hide();
+   $('#cs-lcc-uplink-mode').hide();
   }
  });
  $('#cs-wifi-ip-mode').on('change', function() {

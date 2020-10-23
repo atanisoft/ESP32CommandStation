@@ -257,7 +257,7 @@ void LCCStackManager::factory_reset()
   fs->store(LCC_RESET_MARKER_FILE, marker);
 }
 
-std::string LCCStackManager::get_config_json()
+string LCCStackManager::get_config_json()
 {
   auto fs = Singleton<FileSystemManager>::instance();
   return StringPrintf("\"lcc\":{\"id\":\"%s\", \"can\":%s}"
@@ -268,6 +268,14 @@ std::string LCCStackManager::get_config_json()
 void LCCStackManager::reboot_node()
 {
   stack_->executor()->add(new CallbackExecutable([](){ reboot(); }));
+}
+
+void LCCStackManager::update_config()
+{
+  stack_->executor()->add(new CallbackExecutable([&]()
+  {
+    stack_->config_service()->trigger_update();
+  }));
 }
 
 } // namespace esp32cs

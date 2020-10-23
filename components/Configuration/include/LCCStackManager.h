@@ -51,6 +51,7 @@ public:
   void factory_reset();
   std::string get_config_json();
   void reboot_node();
+  void update_config();
 private:
   const Esp32ConfigDef cfg_;
   int fd_;

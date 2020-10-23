@@ -566,12 +566,32 @@ esp_err_t Esp32WiFiManager::process_wifi_event(void *ctx, system_event_t *event)
 #endif
 
 // Set configuration flag that enables the verbose logging.
-// Note: this should be called as early as possible to ensure proper logging
+// NOTE: this should be called as early as possible to ensure proper logging
 // from all esp-wifi code paths.
 void Esp32WiFiManager::enable_verbose_logging()
 {
     verboseLogging_ = true;
     enable_esp_wifi_logging();
+}
+
+// Sets configuration flag to disable the creation of an uplink connection.
+// NOTE: this will also disconnect any currently connected uplink.
+void Esp32WiFiManager::disable_uplink()
+{
+    uplinkDisabled_ = true;
+
+    // wake up the wifi stack to process the uplink change
+    xTaskNotifyGive(wifiTaskHandle_);
+}
+
+// Sets configuration flag to disable the creation of an uplink connection.
+// NOTE: this will also disconnect any currently connected uplink.
+void Esp32WiFiManager::enable_uplink()
+{
+    uplinkDisabled_ = false;
+
+    // wake up the wifi stack to process the uplink change
+    xTaskNotifyGive(wifiTaskHandle_);
 }
 
 // Set configuration flag controlling SSID connection checking behavior.
@@ -904,8 +924,11 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
                 wifi->start_hub();
             }
 #endif // CONFIG_IDF_TARGET_ESP32
-            // Start the uplink connection process in the background.
-            wifi->start_uplink();
+            if (wifi->wifiMode_ != WIFI_MODE_AP)
+            {
+                // Start the uplink connection process in the background.
+                wifi->start_uplink();
+            }
             wifi->configReloadRequested_ = false;
             wifi->initialConfigLoad_ = false;
         }
@@ -976,6 +999,10 @@ void Esp32WiFiManager::stop_uplink()
 // the node's hub.
 void Esp32WiFiManager::start_uplink()
 {
+    if (uplinkDisabled_)
+    {
+        return;
+    }
     unique_ptr<SocketClientParams> params(
         new Esp32SocketParams(configFd_, cfg_.uplink()));
     uplink_.reset(new SocketClient(stack_->service(), stack_->executor(),
@@ -1573,16 +1600,18 @@ void Esp32WiFiManager::on_softap_start()
 
     if (wifiMode_ == WIFI_MODE_AP)
     {
-        // If we are operating in SoftAP mode only we can start the mDNS system
-        // now, otherwise we need to defer it until the station has received
-        // it's IP address to avoid reinitializing the mDNS system.
-        start_mdns_system();
-
         // Set the maximum transmit power. In the case of Station+SoftAP mode
         // this will be set as part of the station startup.
         int8_t power = CDI_READ_TRIM_DEFAULT(cfg_.tx_power, configFd_);
         LOG(INFO, "[WiFi] Setting TX power to: %d", power);
         ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_max_tx_power(power));
+
+        // If we are operating in SoftAP mode only we can start mDNS and uplink
+        // connection, otherwise defer it until the station has received it's
+        // IP address to avoid reinitializing mDNS and uplink mDNS search or
+        // connection failures.
+        start_mdns_system();
+        start_uplink();
     }
 
     // Schedule callbacks via the executor rather than call directly here.

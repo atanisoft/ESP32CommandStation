@@ -218,6 +218,22 @@ public:
     /// ESP32 serial port.
     void enable_verbose_logging();
 
+    /// In some cases it may be desireable to disable the uplink connection
+    /// entirely.
+    ///
+    /// NOTE: Calling this method will prevent a new uplink connection from
+    /// being created. The node will effectively become an island unless it is
+    /// is also using the CAN network.
+    void disable_uplink();
+
+    /// If the uplink has been disabled previously via @ref disable_uplink this
+    /// method will re-enable it and initiate an uplink connection attempt.
+    void enable_uplink();
+
+    /// @return true if the uplink connection has been disabled, false
+    /// otherwise.
+    bool is_uplink_disabled();
+
     /// Starts a scan for available SSIDs.
     ///
     /// @param n is the @ref Notifiable to notify when the SSID scan completes.
@@ -452,6 +468,9 @@ private:
     /// successfully completed and upon failure (or timeout) the esp32 will be
     /// restarted.
     bool waitForStationConnect_{true};
+
+    /// If true the esp32 will not attempt to create an uplink connection.
+    bool uplinkDisabled_{false};
 
     /// @ref GcTcpHub for this node's hub if enabled.
     std::unique_ptr<GcTcpHub> hub_;

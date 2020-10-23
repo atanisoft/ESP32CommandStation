@@ -148,25 +148,23 @@ extern const size_t ajaxLoader_size asm("ajax_loader_gif_length");
 
 // CDI Helper which sets the provided path if it is different than the value
 // passed in.
-#define CDI_COMPARE_AND_SET(PATH, fd, value, updated) \
-  {                                                   \
-    auto current = PATH().read(fd);                   \
-    if (current != value)                             \
-    {                                                 \
-      PATH().write(fd, value);                        \
-      updated = true;                                 \
-    }                                                 \
+#define CDI_COMPARE_AND_SET(name, PATH, fd, value, valuestr, updated) \
+  {                                                                   \
+    auto current = PATH().read(fd);                                   \
+    if (current != value)                                             \
+    {                                                                 \
+      LOG(INFO, "[CDI] %s set to: %s", name, valuestr);               \
+      PATH().write(fd, value);                                        \
+      updated = true;                                                 \
+    }                                                                 \
   }
 
 // Helper which will trigger a config reload event to be queued when
 // updated is true.
-#define MAYBE_TRIGGER_UPDATE(updated)                         \
-  if (updated)                                                \
-  {                                                                                                    \
-    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->add(new CallbackExecutable([&]()      \
-    {                                                         \
-      Singleton<esp32cs::LCCStackManager>::instance()->stack()->config_service()->trigger_update();             \
-    }));                                                      \
+#define MAYBE_TRIGGER_UPDATE(updated)                                 \
+  if (updated)                                                        \
+  {                                                                   \
+    Singleton<esp32cs::LCCStackManager>::instance()->update_config(); \
   }
 
 class WebConfigListener : public DefaultConfigUpdateListener
@@ -174,15 +172,42 @@ class WebConfigListener : public DefaultConfigUpdateListener
 public:
   WebConfigListener(const esp32cs::Esp32ConfigDef &cfg) : fd_(-1), cfg_(cfg)
   {
-
+    cachedConfig_.reserve(512);
   }
 
   UpdateAction apply_configuration(int fd, bool initial_load
                                  , BarrierNotifiable *done) override
   {
     AutoNotify n(done);
-    // this is a no-op simply to capture the config FD.
+
+    // cache the file descriptor for use in the update methods.
     fd_ = fd;
+
+    auto wifi = cfg_.seg().wifi_lcc();
+    auto ops = cfg_.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX);
+    auto prog = cfg_.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX);
+
+    // populate the cached config
+    cachedConfig_ =
+      StringPrintf(CONFIG_JSON_FMT
+                 , Singleton<esp32cs::LCCWiFiManager>::instance()->is_uplink_enabled() ? "true" : "false"
+                 , CDI_READ_TRIM_DEFAULT(wifi.hub().enable, fd_) ? "true" : "false"
+                 , CDI_READ_TRIM_DEFAULT(wifi.tx_power, fd_)
+                 , CDI_READ_TRIM_DEFAULT(wifi.uplink().reconnect, fd_) ? "true" : "false"
+                 , wifi.uplink().auto_address().service_name().read(fd_).c_str()
+                 , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
+                 , CDI_READ_TRIM_DEFAULT(wifi.uplink().manual_address().port, fd_)
+                 , CDI_READ_TRIM_DEFAULT(wifi.uplink().search_mode, fd_)
+                 , wifi.uplink().last_address().ip_address().read(fd_).c_str()
+                 , CDI_READ_TRIM_DEFAULT(wifi.uplink().last_address().port, fd_)
+                 , uint64_to_string_hex(ops.event_short().read(fd_)).c_str()
+                 , uint64_to_string_hex(ops.event_short_cleared().read(fd_)).c_str()
+                 , uint64_to_string_hex(ops.event_shutdown().read(fd_)).c_str()
+                 , uint64_to_string_hex(ops.event_shutdown_cleared().read(fd_)).c_str()
+                 , uint64_to_string_hex(prog.event_short().read(fd_)).c_str()
+                 , uint64_to_string_hex(prog.event_short_cleared().read(fd_)).c_str()
+                 , uint64_to_string_hex(prog.event_shutdown().read(fd_)).c_str()
+                 , uint64_to_string_hex(prog.event_shutdown_cleared().read(fd_)).c_str());
     if (initial_load)
     {
       return UpdateAction::REINIT_NEEDED;
@@ -201,14 +226,17 @@ public:
   {
     bool upd = false;
     auto hbridge = cfg_.seg().hbridge().entry(hbridge_index);
-    CDI_COMPARE_AND_SET(hbridge.event_short, fd_
-                      , string_to_uint64(short_on), upd);
-    CDI_COMPARE_AND_SET(hbridge.event_short_cleared, fd_
-                      , string_to_uint64(short_off), upd);
-    CDI_COMPARE_AND_SET(hbridge.event_shutdown, fd_
-                      , string_to_uint64(shutdown_on), upd);
-    CDI_COMPARE_AND_SET(hbridge.event_shutdown_cleared, fd_
-                      , string_to_uint64(shutdown_off), upd);
+    CDI_COMPARE_AND_SET("hbridge-short", hbridge.event_short, fd_
+                      , string_to_uint64(short_on), short_on.c_str(), upd);
+    CDI_COMPARE_AND_SET("hbridge-short-clear", hbridge.event_short_cleared, fd_
+                      , string_to_uint64(short_off), short_off.c_str(), upd);
+    CDI_COMPARE_AND_SET("hbridge-shutdown", hbridge.event_shutdown, fd_
+                      , string_to_uint64(shutdown_on), shutdown_on.c_str()
+                      , upd);
+    CDI_COMPARE_AND_SET("hbridge-shutdown-clear"
+                      , hbridge.event_shutdown_cleared, fd_
+                      , string_to_uint64(shutdown_off), shutdown_off.c_str()
+                      , upd);
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
@@ -227,14 +255,19 @@ public:
   {
     auto wifi = cfg_.seg().wifi_lcc();
     bool upd = false;
-    CDI_COMPARE_AND_SET(wifi.uplink().search_mode, fd_, mode, upd);
-    CDI_COMPARE_AND_SET(wifi.uplink().auto_address().service_name, fd_
-                      , uplink_service_name, upd);
-    CDI_COMPARE_AND_SET(wifi.uplink().manual_address().ip_address, fd_
-                      , manual_hostname, upd);
-    CDI_COMPARE_AND_SET(wifi.uplink().manual_address().port, fd_
-                      , manual_port, upd);
-    CDI_COMPARE_AND_SET(wifi.uplink().reconnect, fd_, reconnect, upd);
+    CDI_COMPARE_AND_SET("uplink-mode", wifi.uplink().search_mode, fd_, mode
+                      , integer_to_string(mode).c_str(), upd);
+    CDI_COMPARE_AND_SET("uplink-auto-addr"
+                      , wifi.uplink().auto_address().service_name, fd_
+                      , uplink_service_name, uplink_service_name.c_str(), upd);
+    CDI_COMPARE_AND_SET("uplink-manual-addr"
+                      , wifi.uplink().manual_address().ip_address, fd_
+                      , manual_hostname, manual_hostname.c_str(), upd);
+    CDI_COMPARE_AND_SET("uplink-manual-port"
+                      , wifi.uplink().manual_address().port, fd_, manual_port
+                      , integer_to_string(manual_port).c_str(), upd);
+    CDI_COMPARE_AND_SET("uplink-reconnect", wifi.uplink().reconnect, fd_
+                      , reconnect, reconnect ? "true" : "false", upd);
 
     MAYBE_TRIGGER_UPDATE(upd);
   }
@@ -242,74 +275,70 @@ public:
   void reconfigure_lcc_hub(bool enabled)
   {
     bool upd = false;
-    CDI_COMPARE_AND_SET(cfg_.seg().wifi_lcc().hub().enable, fd_, enabled, upd);
+    CDI_COMPARE_AND_SET("lcc-hub", cfg_.seg().wifi_lcc().hub().enable, fd_
+                      , enabled, enabled ? "true" : "false", upd);
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
   void reconfigure_wifi_tx_power(uint8_t value)
   {
     bool upd = false;
-    CDI_COMPARE_AND_SET(cfg_.seg().wifi_lcc().tx_power, fd_, value, upd);
+    CDI_COMPARE_AND_SET("wifi-tx-power", cfg_.seg().wifi_lcc().tx_power, fd_
+                      , value, integer_to_string(value).c_str(), upd);
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
   string get_config_json()
   {
-    auto wifi = cfg_.seg().wifi_lcc();
-    auto ops = cfg_.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX);
-    auto prog = cfg_.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX);
-    
-    string config =
-      StringPrintf("\"hub\":%s,"
-                   "\"tx_power\":%d,"
-                   "\"uplink\":{"
-                     "\"reconnect\":%s,"
-                     "\"auto_service\":\"%s\","
-                     "\"manual_host\":\"%s\","
-                     "\"manual_port\":%d,"
-                     "\"mode\":%d,"
-                     "\"last_uplink\":\"%s\","
-                     "\"last_port\":%d"
-                   "},"
-                   "\"hbridges\":["
-                     "{"
-                       "\"short\":\"%s\","
-                       "\"short_clear\":\"%s\","
-                       "\"shutdown\":\"%s\","
-                       "\"shutdown_clear\":\"%s\""
-                     "},"
-                     "{"
-                       "\"short\":\"%s\","
-                       "\"short_clear\":\"%s\","
-                       "\"shutdown\":\"%s\","
-                       "\"shutdown_clear\":\"%s\""
-                     "}"
-                   "]"
-                 , CDI_READ_TRIMMED(wifi.hub().enable, fd_) ? "true" : "false"
-                 , CDI_READ_TRIMMED(wifi.tx_power, fd_)
-                 , CDI_READ_TRIMMED(wifi.uplink().reconnect, fd_) ? "true" : "false"
-                 , wifi.uplink().auto_address().service_name().read(fd_).c_str()
-                 , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
-                 , CDI_READ_TRIMMED(wifi.uplink().manual_address().port, fd_)
-                 , CDI_READ_TRIMMED(wifi.uplink().search_mode, fd_)
-                 , wifi.uplink().last_address().ip_address().read(fd_).c_str()
-                 , CDI_READ_TRIMMED(wifi.uplink().last_address().port, fd_)
-                 , uint64_to_string_hex(ops.event_short().read(fd_)).c_str()
-                 , uint64_to_string_hex(ops.event_short_cleared().read(fd_)).c_str()
-                 , uint64_to_string_hex(ops.event_shutdown().read(fd_)).c_str()
-                 , uint64_to_string_hex(ops.event_shutdown_cleared().read(fd_)).c_str()
-                 , uint64_to_string_hex(prog.event_short().read(fd_)).c_str()
-                 , uint64_to_string_hex(prog.event_short_cleared().read(fd_)).c_str()
-                 , uint64_to_string_hex(prog.event_shutdown().read(fd_)).c_str()
-                 , uint64_to_string_hex(prog.event_shutdown_cleared().read(fd_)).c_str());
-    return config;
+    return cachedConfig_;
   }
 private:
   int fd_;
   const esp32cs::Esp32ConfigDef cfg_;
+  string cachedConfig_;
+  static constexpr const char * const CONFIG_JSON_FMT = R"!^!(
+  "hub":%s,
+  "tx_power":%d,
+  "uplink":{
+    "enabled":%s,
+    "reconnect":%s,
+    "auto_service":"%s",
+    "manual_host":"%s",
+    "manual_port:%d,
+    "mode:%d,
+    "last_uplink":"%s",
+    "last_port":%d
+  },
+  "hbridges":[
+    {
+      "short":"%s",
+      "short_clear":"%s",
+      "shutdown":"%s",
+      "shutdown_clear":"%s",
+    },
+    {
+      "short":"%s",
+      "short_clear":"%s",
+      "shutdown":"%s",
+      "shutdown_clear":"%s",
+    }
+  ])!^!";
 };
 
 std::unique_ptr<WebConfigListener> configListener;
+
+#ifndef CONFIG_GPIO_S88_FIRST_SENSOR
+#define CONFIG_GPIO_S88_FIRST_SENSOR 0
+#endif
+#ifndef CONFIG_GPIO_S88
+#define CONFIG_GPIO_S88 false
+#endif
+#ifndef CONFIG_GPIO_OUTPUTS
+#define CONFIG_GPIO_OUTPUTS false
+#endif
+#ifndef CONFIG_GPIO_SENSORS
+#define CONFIG_GPIO_SENSORS false
+#endif
 
 void init_webserver(const esp32cs::Esp32ConfigDef &cfg)
 {
@@ -347,25 +376,12 @@ void init_webserver(const esp32cs::Esp32ConfigDef &cfg)
   httpd->uri("/update", HttpMethod::POST, nullptr, process_ota);
   httpd->uri("/features", [&](HttpRequest *req)
   {
-    string features = StringPrintf("{");
-#if defined(CONFIG_GPIO_S88)
-    features += StringPrintf("\"%s\":%d,\"%s\":true", JSON_S88_SENSOR_BASE_NODE
-                          , CONFIG_GPIO_S88_FIRST_SENSOR, JSON_S88_NODE);
-#else
-    features += StringPrintf("\"%s\":%d,\"%s\":false", JSON_S88_SENSOR_BASE_NODE
-                          , 0, JSON_S88_NODE);
-#endif // CONFIG_GPIO_S88
-#if defined(CONFIG_GPIO_OUTPUTS)
-    features += StringPrintf(",\"%s\":true", JSON_OUTPUTS_NODE);
-#else
-    features += StringPrintf(",\"%s\":false", JSON_OUTPUTS_NODE);
-#endif // CONFIG_GPIO_OUTPUTS
-#if defined(CONFIG_GPIO_SENSORS)
-    features += StringPrintf(",\"%s\":true", JSON_SENSORS_NODE);
-#else
-    features += StringPrintf(",\"%s\":false", JSON_SENSORS_NODE);
-#endif // CONFIG_GPIO_SENSORS
-    features += "}";
+    string features =
+      StringPrintf("{\"%s\":%d,\"%s\":%s,\"%s\":%s,\"%s\":%s}"
+                 , JSON_S88_SENSOR_BASE_NODE, CONFIG_GPIO_S88_FIRST_SENSOR
+                 , JSON_S88_NODE, CONFIG_GPIO_S88 ? "true" : "false"
+                 , JSON_OUTPUTS_NODE, CONFIG_GPIO_OUTPUTS ? "true" : "false"
+                 , JSON_SENSORS_NODE, CONFIG_GPIO_SENSORS ? "true" : "false");
     return new JsonResponse(features);
   });
   httpd->uri("/version", [&](HttpRequest *req)
@@ -626,6 +642,17 @@ HTTP_HANDLER_IMPL(process_config, request)
     bool reconnect = request->param("uplink-reconnect", true);
     configListener->reconfigure_uplink(mode, uplink_service, manual_host
                                      , manual_port, reconnect);
+  }
+  if (request->has_param("uplink-enabled"))
+  {
+    if (request->param("uplink-enabled", true))
+    {
+      Singleton<esp32cs::LCCWiFiManager>::instance()->enable_uplink();
+    }
+    else
+    {
+      Singleton<esp32cs::LCCWiFiManager>::instance()->disable_uplink();
+    }
   }
   if (request->has_param("ops-short") &&
       request->has_param("ops-short-clear") &&
@@ -933,27 +960,21 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
 #define GET_LOCO_VIA_EXECUTOR(NAME, address)                                          \
   openlcb::TrainImpl *NAME = nullptr;                                                 \
   {                                                                                   \
-    SyncNotifiable n;                                                                 \
-    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->add(        \
-    new CallbackExecutable([&]()                                                      \
+    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->sync_run(   \
+    [&]()                                                                             \
     {                                                                                 \
       NAME = Singleton<commandstation::AllTrainNodes>::instance()->get_train_impl(    \
                                         commandstation::DccMode::DCC_128, address);   \
-      n.notify();                                                                     \
-    }));                                                                              \
-    n.wait_for_notification();                                                        \
+    });                                                                               \
   }
 
 #define REMOVE_LOCO_VIA_EXECUTOR(address)                                             \
   {                                                                                   \
-    SyncNotifiable n;                                                                 \
-    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->add(        \
-    new CallbackExecutable([&]()                                                      \
+    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->sync_run(   \
+    [&]()                                                                             \
     {                                                                                 \
-      Singleton<commandstation::AllTrainNodes>::instance()->remove_train_impl(address); \
-      n.notify();                                                                     \
-    }));                                                                              \
-    n.wait_for_notification();                                                        \
+      Singleton<commandstation::AllTrainNodes>::instance()->remove_train_impl(address);\
+    });                                                                               \
   }
 
 // method - url pattern - meaning
