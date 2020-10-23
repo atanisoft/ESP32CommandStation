@@ -190,9 +190,9 @@ public:
     // populate the cached config
     cachedConfig_ =
       StringPrintf(CONFIG_JSON_FMT
-                 , Singleton<esp32cs::LCCWiFiManager>::instance()->is_uplink_enabled() ? "true" : "false"
                  , CDI_READ_TRIM_DEFAULT(wifi.hub().enable, fd_) ? "true" : "false"
                  , CDI_READ_TRIM_DEFAULT(wifi.tx_power, fd_)
+                 , Singleton<esp32cs::LCCWiFiManager>::instance()->is_uplink_enabled() ? "true" : "false"
                  , CDI_READ_TRIM_DEFAULT(wifi.uplink().reconnect, fd_) ? "true" : "false"
                  , wifi.uplink().auto_address().service_name().read(fd_).c_str()
                  , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
