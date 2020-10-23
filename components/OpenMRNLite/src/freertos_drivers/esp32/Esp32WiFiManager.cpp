@@ -594,6 +594,12 @@ void Esp32WiFiManager::enable_uplink()
     xTaskNotifyGive(wifiTaskHandle_);
 }
 
+// Returns the internal flag indicating uplink disabled.
+bool Esp32WiFiManager::is_uplink_disabled()
+{
+    return uplinkDisabled_;
+}
+
 // Set configuration flag controlling SSID connection checking behavior.
 void Esp32WiFiManager::wait_for_ssid_connect(bool enable)
 {
