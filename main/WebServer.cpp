@@ -181,25 +181,33 @@ public:
     AutoNotify n(done);
 
     // cache the file descriptor for use in the update methods.
+    // TODO: switch to MemoryConfigClient instead.
     fd_ = fd;
 
+    cache_config();
+
+    return UpdateAction::UPDATED;
+  }
+
+  void cache_config()
+  {
     auto wifi = cfg_.seg().wifi_lcc();
     auto ops = cfg_.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX);
     auto prog = cfg_.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX);
+
+    int8_t current_power = 0;
+    esp_wifi_get_max_tx_power(&current_power);
 
     // populate the cached config
     cachedConfig_ =
       StringPrintf(CONFIG_JSON_FMT
                  , CDI_READ_TRIM_DEFAULT(wifi.hub().enable, fd_) ? "true" : "false"
                  , CDI_READ_TRIM_DEFAULT(wifi.tx_power, fd_)
+                 , current_power != 0 ? current_power : CDI_READ_TRIM_DEFAULT(wifi.tx_power, fd_)
                  , Singleton<esp32cs::LCCWiFiManager>::instance()->is_uplink_enabled() ? "true" : "false"
-                 , CDI_READ_TRIM_DEFAULT(wifi.uplink().reconnect, fd_) ? "true" : "false"
                  , wifi.uplink().auto_address().service_name().read(fd_).c_str()
                  , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
                  , CDI_READ_TRIM_DEFAULT(wifi.uplink().manual_address().port, fd_)
-                 , CDI_READ_TRIM_DEFAULT(wifi.uplink().search_mode, fd_)
-                 , wifi.uplink().last_address().ip_address().read(fd_).c_str()
-                 , CDI_READ_TRIM_DEFAULT(wifi.uplink().last_address().port, fd_)
                  , uint64_to_string_hex(ops.event_short().read(fd_)).c_str()
                  , uint64_to_string_hex(ops.event_short_cleared().read(fd_)).c_str()
                  , uint64_to_string_hex(ops.event_shutdown().read(fd_)).c_str()
@@ -208,11 +216,6 @@ public:
                  , uint64_to_string_hex(prog.event_short_cleared().read(fd_)).c_str()
                  , uint64_to_string_hex(prog.event_shutdown().read(fd_)).c_str()
                  , uint64_to_string_hex(prog.event_shutdown_cleared().read(fd_)).c_str());
-    if (initial_load)
-    {
-      return UpdateAction::REINIT_NEEDED;
-    }
-    return UpdateAction::UPDATED;
   }
 
   void factory_reset(int fd) override
@@ -247,16 +250,12 @@ public:
     MAYBE_TRIGGER_UPDATE(true);
   }
 
-  void reconfigure_uplink(SocketClientParams::SearchMode mode
-                        , string uplink_service_name
+  void reconfigure_uplink(string uplink_service_name
                         , string manual_hostname
-                        , uint16_t manual_port
-                        , bool reconnect)
+                        , uint16_t manual_port)
   {
     auto wifi = cfg_.seg().wifi_lcc();
     bool upd = false;
-    CDI_COMPARE_AND_SET("uplink-mode", wifi.uplink().search_mode, fd_, mode
-                      , integer_to_string(mode).c_str(), upd);
     CDI_COMPARE_AND_SET("uplink-auto-addr"
                       , wifi.uplink().auto_address().service_name, fd_
                       , uplink_service_name, uplink_service_name.c_str(), upd);
@@ -266,9 +265,6 @@ public:
     CDI_COMPARE_AND_SET("uplink-manual-port"
                       , wifi.uplink().manual_address().port, fd_, manual_port
                       , integer_to_string(manual_port).c_str(), upd);
-    CDI_COMPARE_AND_SET("uplink-reconnect", wifi.uplink().reconnect, fd_
-                      , reconnect, reconnect ? "true" : "false", upd);
-
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
@@ -296,31 +292,27 @@ private:
   int fd_;
   const esp32cs::Esp32ConfigDef cfg_;
   string cachedConfig_;
-  static constexpr const char * const CONFIG_JSON_FMT = R"!^!(
-  "hub":%s,
+  static constexpr const char * const CONFIG_JSON_FMT = R"!^!(  "hub":%s,
   "tx_power":%d,
+  "tx_power_inuse":%d,
   "uplink":{
     "enabled":%s,
-    "reconnect":%s,
     "auto_service":"%s",
     "manual_host":"%s",
-    "manual_port:%d,
-    "mode:%d,
-    "last_uplink":"%s",
-    "last_port":%d
+    "manual_port":%d
   },
   "hbridges":[
     {
       "short":"%s",
       "short_clear":"%s",
       "shutdown":"%s",
-      "shutdown_clear":"%s",
+      "shutdown_clear":"%s"
     },
     {
       "short":"%s",
       "short_clear":"%s",
       "shutdown":"%s",
-      "shutdown_clear":"%s",
+      "shutdown_clear":"%s"
     }
   ])!^!";
 };
@@ -625,24 +617,6 @@ HTTP_HANDLER_IMPL(process_config, request)
   {
     configListener->clear_last_uplink();
   }
-  if (request->has_param("uplink-mode") &&
-      request->has_param("uplink-service") &&
-      request->has_param("uplink-manual") &&
-      request->has_param("uplink-manual-port") &&
-      request->has_param("uplink-reconnect"))
-  {
-    // WiFi uplink settings do not require a reboot
-    SocketClientParams::SearchMode mode =
-      (SocketClientParams::SearchMode)request->param("uplink-mode"
-        , SocketClientParams::SearchMode::AUTO_MANUAL);
-    string uplink_service = request->param("uplink-service");
-    uint16_t manual_port =
-      request->param("uplink-manual-port", TcpClientDefaultParams::DEFAULT_PORT);
-    string manual_host = request->param("uplink-manual");
-    bool reconnect = request->param("uplink-reconnect", true);
-    configListener->reconfigure_uplink(mode, uplink_service, manual_host
-                                     , manual_port, reconnect);
-  }
   if (request->has_param("uplink-enabled"))
   {
     if (request->param("uplink-enabled", true))
@@ -653,6 +627,18 @@ HTTP_HANDLER_IMPL(process_config, request)
     {
       Singleton<esp32cs::LCCWiFiManager>::instance()->disable_uplink();
     }
+    configListener->cache_config();
+  }
+  if (request->has_param("uplink-service") &&
+      request->has_param("uplink-manual") &&
+      request->has_param("uplink-manual-port"))
+  {
+    // WiFi uplink settings do not require a reboot
+    string uplink_service = request->param("uplink-service");
+    uint16_t manual_port =
+      request->param("uplink-manual-port", TcpClientDefaultParams::DEFAULT_PORT);
+    string manual_host = request->param("uplink-manual");
+    configListener->reconfigure_uplink(uplink_service, manual_host, manual_port);
   }
   if (request->has_param("ops-short") &&
       request->has_param("ops-short-clear") &&
@@ -685,7 +671,7 @@ HTTP_HANDLER_IMPL(process_config, request)
   }
 
   string response =
-    StringPrintf("{%s,%s,%s}", stackManager->get_config_json().c_str()
+    StringPrintf("{%s,\n  %s,\n%s\n}", stackManager->get_config_json().c_str()
                 , wifiManager->get_config_json().c_str()
                 , configListener->get_config_json().c_str());
   return new JsonResponse(response);

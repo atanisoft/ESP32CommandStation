@@ -289,7 +289,7 @@ bool HttpRequest::param(string name, bool def)
 
 int HttpRequest::param(string name, int def)
 {
-  if (params_.find(name) != params_.end())
+  if (params_.find(name) != params_.end() && !params_[name].empty())
   {
     LOG(CONFIG_HTTP_REQ_LOG_LEVEL
       , "[Req %p] Param %s -> %s", this, name.c_str(), params_[name].c_str());

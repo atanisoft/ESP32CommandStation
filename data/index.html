@@ -369,28 +369,15 @@
            <label for="cs-lcc-can">Uplink Enabled:</label>
            <input type="checkbox" id="cs-lcc-uplink-enabled" data-role="flipswitch"/>
           </div>
-          <div class="ui-field-contain">
-          <label for="cs-lcc-uplink-mode">LCC Uplink Mode:</label>
-          <select id="cs-lcc-uplink-mode">
-           <option value="0">Auto, Manual</option>
-           <option value="1">Manual, Auto</option>
-           <option value="2">Auto Only</option>
-           <option value="3">Manual Only</option>
-          </select>
-         </div>
-         <div class="ui-field-contain" id="lcc-uplink-auto-div">
+         <div class="ui-field-contain">
           <label for="cs-lcc-uplink-auto-service">mDNS Service Name:</label>
           <input type="text" id="cs-lcc-uplink-auto-service">
          </div>
-         <div class="ui-field-contain" id="lcc-uplink-manual-div">
+         <div class="ui-field-contain">
           <label for="cs-lcc-uplink-manual-host">LCC Uplink manual host:</label>
           <input type="text" id="cs-lcc-uplink-manual-host">
           <label for="cs-lcc-uplink-manual-port">LCC Uplink manual port:</label>
           <input type="number" id="cs-lcc-uplink-manual-port">
-         </div>
-         <div class="ui-field-contain">
-          <label for="cs-lcc-uplink-reconnect">Uplink reconnect:</label>
-          <input type="checkbox" id="cs-lcc-uplink-reconnect" data-role="flipswitch"/>
          </div>
         </div>
         <div id="cs-cdi-hbridge-ops">
@@ -423,7 +410,6 @@
        <input type="button" id="cs-save-config" value="Save" class='ui-button-inline'/>
        <input type="button" id="cs-factory-reset" value="Factory Reset" class='ui-button-inline'/>
        <input type="button" id="cs-wifi-connect" value="Connect to Network" class='ui-button-inline'/>
-       <input type="button" id="cs-lcc-clear-uplink" value="Reset Uplink Address" class='ui-button-inline'/>
       </div>
      </div>
     </div>
@@ -1124,12 +1110,10 @@ function csConfigUpdate(data) {
  $('#cs-lcc-node-id').val(pad_hex(data.lcc.id, 12));
  $('#cs-lcc-can').prop('checked', data.lcc.can).flipswitch('refresh');
  $('#cs-lcc-hub').prop('checked', data.hub).flipswitch('refresh');
- $('#cs-lcc-uplink-reconnect').prop('checked', data.uplink.reconnect).flipswitch('refresh');
+ $('#cs-lcc-uplink-enabled').prop('checked', data.uplink.enabled).flipswitch('refresh');
  $('#cs-lcc-uplink-auto-service').val(data.uplink.auto_service);
  $('#cs-lcc-uplink-manual-host').val(data.uplink.manual_host);
  $('#cs-lcc-uplink-manual-port').val(data.uplink.manual_port);
- $('#cs-lcc-uplink-mode').val(data.uplink.mode).change();
- $('#cs-lcc-uplink-enabled').prop('checked', data.uplink.enabled).flipswitch('refresh');
  $('#cs-cdi-ops-short').val(pad_hex(data.hbridges[0].short, 16));
  $('#cs-cdi-ops-short-clear').val(pad_hex(data.hbridges[0].short_clear, 16));
  $('#cs-cdi-ops-shutdown').val(pad_hex(data.hbridges[0].shutdown, 16));
@@ -1157,7 +1141,6 @@ function csConfigUpdate(data) {
  } else {
   $('#cs-wifi-stat-div').hide();
  }
- $('#cs-lcc-clear-uplink').hide();
 }
 function refreshSSIDList() {
  $('#ssid-connect-confirm').hide();
@@ -1199,11 +1182,6 @@ function refreshSSIDList() {
 }
 function setupConfig() {
  $("#cs-config-tabs").on("tabsactivate", function(event, ui) {
-  if(ui.newTab.text() === 'LCC') {
-   $('#cs-lcc-clear-uplink').show();
-  } else {
-   $('#cs-lcc-clear-uplink').hide();
-  }
   if(ui.newTab.text() === "WiFi") {
    $('#cs-wifi-connect').show();
   } else {
@@ -1222,7 +1200,7 @@ function setupConfig() {
   } else if (tablist[section] == "LCC") {
    url = String.format("/config?nodeid={0}&lcc-hub={1}&lcc-can={2}", $('#cs-lcc-node-id').val(), $('#cs-lcc-hub').prop('checked'), $('#cs-lcc-can').prop('checked'));
   } else if (tablist[section] == "Uplink") {
-   url = String.format("/config?uplink-enabled={0}&uplink-mode={1}&uplink-service={2}&uplink-manual={3}&uplink-manual-port={4}&uplink-reconnect={5}", $('#cs-lcc-uplink-enabled').prop('checked'), $('#cs-lcc-uplink-mode').val(), $('#cs-lcc-uplink-auto-service').val(), $('#cs-lcc-uplink-manual-host').val(), $('#cs-lcc-uplink-manual-port').val(), $('#cs-lcc-uplink-reconnect').val());
+   url = String.format("/config?uplink-enabled={0}&uplink-service={1}&uplink-manual={2}&uplink-manual-port={3}", $('#cs-lcc-uplink-enabled').prop('checked'), $('#cs-lcc-uplink-auto-service').val(), $('#cs-lcc-uplink-manual-host').val(), $('#cs-lcc-uplink-manual-port').val());
   } else if (tablist[section] == "OPS") {
    url = String.format("/config?ops-short={0}&ops-short-clear={1}&ops-shutdown={2}&ops-shutdown-clear={3}", $('#cs-cdi-ops-short').val(), $('#cs-cdi-ops-short-clear').val(), $('#cs-cdi-ops-shutdown').val(), $('#cs-cdi-ops-shutdown-clear').val());
   } else if (tablist[section] == "PROG") {
@@ -1238,14 +1216,6 @@ function setupConfig() {
    error : function(xhr, status, error) {showErrorDialog("The command station reported a failure saving configuration data", error);}
   });
  });
- $('#cs-lcc-clear-uplink').on('vclick', function() {
-  $.ajax({method:'GET',url:'/config?uplink-clear-last=true',
-   beforeSend:function() {showSpinner(String.format('Saving {0} config...', tablist[section]));},
-   complete:hideSpinner,
-   success:function (data, status, xhr) {if(!data.hasOwnProperty('restart')) {csConfigUpdate(data);} else {showSpinner(data.restart, true);}},
-   error:function(xhr, status, error) {showErrorDialog("The command station reported a failure saving configuration data", error);}
-  });
- })
  $('#cs-wifi-mode').on('change', function() {
   if($("#cs-wifi-mode").val() === 'station' || $("#cs-wifi-mode").val() === 'softap-station') {
    $('#cs-wifi-sta-div').show();
@@ -1253,21 +1223,6 @@ function setupConfig() {
   } else {
    $('#cs-wifi-sta-div').hide();
    $('#cs-wifi-connect').hide();
-  }
- });
- $('#cs-lcc-uplink-enabled').on('change', function() {
-  if(this.checked) {
-   $('#cs-lcc-uplink-reconnect').show();
-   $('#cs-lcc-uplink-auto-service').show();
-   $('#cs-lcc-uplink-manual-host').show();
-   $('#cs-lcc-uplink-manual-port').show();
-   $('#cs-lcc-uplink-mode').show();
-  } else {
-   $('#cs-lcc-uplink-reconnect').hide();
-   $('#cs-lcc-uplink-auto-service').hide();
-   $('#cs-lcc-uplink-manual-host').hide();
-   $('#cs-lcc-uplink-manual-port').hide();
-   $('#cs-lcc-uplink-mode').hide();
   }
  });
  $('#cs-wifi-ip-mode').on('change', function() {

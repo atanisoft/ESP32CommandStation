@@ -149,7 +149,7 @@ CDI_GROUP_ENTRY(sleep, openlcb::Uint8ConfigEntry,
 /// Allows adjustment of the WiFi TX power. This can be beneficial for reducing
 /// the available range of the SoftAP. However, it can cause communication
 /// failures when connecting nodes via TCP/IP.
-CDI_GROUP_ENTRY(tx_power, openlcb::Uint8ConfigEntry,
+CDI_GROUP_ENTRY(tx_power, openlcb::Int8ConfigEntry,
     Name(Esp32WiFiConfigurationParams::WIFI_TX_POWER_NAME),
     Description(Esp32WiFiConfigurationParams::WIFI_TX_POWER_DESC), Min(8),
     Max(79), Default(78),

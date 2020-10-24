@@ -349,28 +349,31 @@ string LCCWiFiManager::wifi_scan_json(bool ignore_duplicates)
 string LCCWiFiManager::get_config_json()
 {
   auto fs = Singleton<FileSystemManager>::instance();
-  string config = StringPrintf("\"wifi\":{"
-                                "\"mode\":\"%s\""
+  string config = StringPrintf("\"wifi\":{\n"
+                                "    \"mode\":\"%s\""
                               , mode_ == WIFI_MODE_AP ? "softap"
-                              : mode_ == WIFI_MODE_APSTA ? "softap-station" : "station");
+                              : mode_ == WIFI_MODE_APSTA ? "softap-station" :
+                                                           "station");
   if (mode_ != WIFI_MODE_AP)
   {
-    config += StringPrintf(",\"station\":{\"ssid\":\"%s\",\"password\":\"%s\""
+    config += StringPrintf(",\n    \"station\":{\n      \"ssid\":\"%s\",\n"
+                           "      \"password\":\"%s\""
                          , ssid_.c_str(), password_.c_str());
     if (fs->exists(WIFI_STATION_DNS_CFG))
     {
-      config += ",\"dns\":\"" + fs->load(WIFI_STATION_DNS_CFG) + "\"";
+      config += ",\n    \"dns\":\"" + fs->load(WIFI_STATION_DNS_CFG) + "\"";
     }
     if (stationIP_.get() != nullptr)
     {
-      config += StringPrintf(",\"ip\":\"" IPSTR "\",\"gateway\":\"" IPSTR "\","
-                             "\"netmask\":\"" IPSTR "\""
+      config += StringPrintf(",\n      \"ip\":\"" IPSTR "\",\n"
+                             "      \"gateway\":\""
+                             IPSTR "\",\n      \"netmask\":\"" IPSTR "\""
                             , IP2STR(&stationIP_->ip), IP2STR(&stationIP_->gw)
                             , IP2STR(&stationIP_->netmask));
     }
-    config += "}";
+    config += "\n    }";
   }
-  config += "}";
+  config += "\n  }";
   return config;
 }
 

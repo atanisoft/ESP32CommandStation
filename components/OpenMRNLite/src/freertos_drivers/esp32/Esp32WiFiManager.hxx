@@ -478,6 +478,12 @@ private:
     /// mDNS service name being advertised by the hub, if enabled.
     std::string hubServiceName_;
 
+    /// If true the esp32 will create and advertise itself as a hub.
+    bool enableHub_{false};
+
+    /// Port to use for the hub.
+    uint16_t hubPort_;
+
     /// @ref SocketClient for this node's uplink.
     std::unique_ptr<SocketClient> uplink_;
 
@@ -520,6 +526,23 @@ private:
     /// Network interfaces that are managed by Esp32WiFiManager.
     esp_netif_t *esp_netifs[ESP_IF_MAX]{nullptr, nullptr, nullptr};
 #endif // IDF v4.1+
+
+    /// Cached copy of the manual uplink hostname.
+    std::string uplinkManualHost_;
+
+    /// Cached copy of the manual uplink port.
+    uint16_t uplinkManualPort_;
+
+    /// Cached copy of the uplink mDNS search value.
+    std::string uplinkAutoService_{
+        openlcb::TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN_TCP};
+
+    /// Cached copy of the radio sleep parameter, if true the WiFi radio will
+    /// use low power mode.
+    bool enableRadioSleep_{false};
+
+    /// Cached copy of the WiFi TX power limit.
+    int8_t wifiTXPower_{78};
 
     DISALLOW_COPY_AND_ASSIGN(Esp32WiFiManager);
 };

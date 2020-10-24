@@ -150,117 +150,6 @@ static constexpr uint8_t SOFTAP_IP_RESERVATION_BLOCK_SIZE = 48;
 /// allow up to 79 to allow full range usage.
 static constexpr int8_t MAX_WIFI_TX_POWER_API_LIMIT = 78;
 
-/// Adapter class to load/store configuration via CDI
-class Esp32SocketParams : public DefaultSocketClientParams
-{
-public:
-    Esp32SocketParams(
-        int fd, const TcpClientConfig<TcpClientDefaultParams> &cfg)
-        : configFd_(fd)
-        , cfg_(cfg)
-    {
-        mdnsService_ = cfg_.auto_address().service_name().read(configFd_);
-        staticHost_ = cfg_.manual_address().ip_address().read(configFd_);
-        staticPort_ =
-            CDI_READ_TRIM_DEFAULT(cfg_.manual_address().port, configFd_);
-    }
-
-    /// @return search mode for how to locate the server.
-    SearchMode search_mode() override
-    {
-        return (SearchMode)CDI_READ_TRIM_DEFAULT(cfg_.search_mode, configFd_);
-    }
-
-    /// @return null or empty string if any mdns server is okay to connect
-    /// to. If nonempty, then only an mdns server will be chosen that has the
-    /// specific host name.
-    string mdns_host_name() override
-    {
-        return cfg_.auto_address().host_name().read(configFd_);
-    }
-
-    /// @return true if first attempt should be to connect to
-    /// last_host_name:last_port.
-    bool enable_last() override
-    {
-        return CDI_READ_TRIM_DEFAULT(cfg_.reconnect, configFd_);
-    }
-
-    /// @return the last successfully used IP address, as dotted
-    /// decimal. Nullptr or empty if no successful connection has ever been
-    /// made.
-    string last_host_name() override
-    {
-        return cfg_.last_address().ip_address().read(configFd_);
-    }
-
-    /// @return the last successfully used port number.
-    int last_port() override
-    {
-        return CDI_READ_TRIM_DEFAULT(cfg_.last_address().port, configFd_);
-    }
-
-    /// Stores the last connection details for use when reconnect is enabled.
-    ///
-    /// @param hostname is the hostname that was connected to.
-    /// @param port is the port that was connected to.
-    void set_last(const char *hostname, int port) override
-    {
-        cfg_.last_address().ip_address().write(configFd_, hostname);
-        cfg_.last_address().port().write(configFd_, port);
-    }
-
-    void log_message(LogMessage id, const string &arg) override
-    {
-        switch (id)
-        {
-            case CONNECT_RE:
-                LOG(INFO, "[Uplink] Reconnecting to %s.", arg.c_str());
-                break;
-            case MDNS_SEARCH:
-                LOG(ESP32_WIFIMGR_SOCKETPARAMS_LOG_LEVEL,
-                    "[Uplink] Starting mDNS searching for %s.",
-                    arg.c_str());
-                break;
-            case MDNS_NOT_FOUND:
-                LOG(ESP32_WIFIMGR_SOCKETPARAMS_LOG_LEVEL,
-                    "[Uplink] mDNS search failed.");
-                break;
-            case MDNS_FOUND:
-                LOG(ESP32_WIFIMGR_SOCKETPARAMS_LOG_LEVEL,
-                    "[Uplink] mDNS search succeeded.");
-                break;
-            case CONNECT_MDNS:
-                LOG(INFO, "[Uplink] mDNS connecting to %s.", arg.c_str());
-                break;
-            case CONNECT_MANUAL:
-                LOG(INFO, "[Uplink] Connecting to %s.", arg.c_str());
-                break;
-            case CONNECT_FAILED_SELF:
-                LOG(ESP32_WIFIMGR_SOCKETPARAMS_LOG_LEVEL,
-                    "[Uplink] Rejecting attempt to connect to localhost.");
-                break;
-            case CONNECTION_LOST:
-                LOG(INFO, "[Uplink] Connection lost.");
-                break;
-            default:
-                // ignore the message
-                break;
-        }
-    }
-
-    /// @return true if we should actively skip connections that happen to
-    /// match our own IP address.
-    bool disallow_local() override
-    {
-        return true;
-    }
-
-private:
-    const int configFd_;
-    const TcpClientConfig<TcpClientDefaultParams> cfg_;
-};
-
 // With this constructor being used the Esp32WiFiManager will manage the
 // WiFi connection, mDNS system and the hostname of the ESP32.
 Esp32WiFiManager::Esp32WiFiManager(const char *ssid
@@ -380,6 +269,23 @@ ConfigUpdateListener::UpdateAction Esp32WiFiManager::apply_configuration(
     LOG(VERBOSE, "existing config CRC-32: \"%s\", new CRC-32: \"%s\"",
         integer_to_string(configCrc32_, 0).c_str(),
         integer_to_string(configCrc32, 0).c_str());
+
+    // update local cache of config settings before waking the background task.
+    uplinkManualHost_ = cfg_.uplink().manual_address().ip_address().read(fd);
+    uplinkManualPort_ =
+        CDI_READ_TRIM_DEFAULT(cfg_.uplink().manual_address().port, fd);
+    uplinkAutoService_ = cfg_.uplink().auto_address().service_name().read(fd);
+    enableRadioSleep_ = CDI_READ_TRIM_DEFAULT(cfg_.sleep, fd);
+#if defined(CONFIG_IDF_TARGET_ESP32)
+    enableHub_ = CDI_READ_TRIM_DEFAULT(cfg_.hub().enable, fd);
+    hubServiceName_ = cfg_.hub().service_name().read(fd);
+    hubPort_ = CDI_READ_TRIM_DEFAULT(cfg_.hub().port, fd);
+#endif // CONFIG_IDF_TARGET_ESP32
+    // Read the desired TX power level from the CDI with a bounds check to
+    // ensure it is does not exceed 78 (max supported by underlying API).
+    wifiTXPower_ =
+        std::min(MAX_WIFI_TX_POWER_API_LIMIT,
+                 (int8_t)CDI_READ_TRIM_DEFAULT(cfg_.tx_power, fd));
 
     // if this is not the initial loading of the CDI entry check the CRC-32
     // value and trigger a configuration reload if necessary.
@@ -899,7 +805,7 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
             wifi->stop_hub();
             wifi->stop_uplink();
 
-            if (CDI_READ_TRIM_DEFAULT(wifi->cfg_.sleep, wifi->configFd_))
+            if (wifi->enableRadioSleep_)
             {
                 // When sleep is enabled this will trigger the WiFi system to
                 // only wake up every DTIM period to receive beacon updates.
@@ -924,7 +830,7 @@ void *Esp32WiFiManager::wifi_manager_task(void *param)
                 wifi->configure_wifi_max_tx_power();
             }
 #if defined(CONFIG_IDF_TARGET_ESP32)
-            if (CDI_READ_TRIM_DEFAULT(wifi->cfg_.hub().enable, wifi->configFd_))
+            if (wifi->enableHub_)
             {
                 // Since hub mode is enabled start the hub creation process.
                 wifi->start_hub();
@@ -971,22 +877,19 @@ void Esp32WiFiManager::stop_hub()
 void Esp32WiFiManager::start_hub()
 {
 #if defined(CONFIG_IDF_TARGET_ESP32)
-    hubServiceName_ = cfg_.hub().service_name().read(configFd_);
-    uint16_t hub_port = CDI_READ_TRIM_DEFAULT(cfg_.hub().port, configFd_);
-
-    LOG(INFO, "[Hub] Starting TCP/IP listener on port %d", hub_port);
+    LOG(INFO, "[Hub] Starting TCP/IP listener on port %d", hubPort_);
     // TODO: find a better solution for this that does not require a cast and
     // will work with the TCP stack.
     openlcb::SimpleCanStackBase *canStack =
         static_cast<openlcb::SimpleCanStackBase *>(stack_);
-    hub_.reset(new GcTcpHub(canStack->can_hub(), hub_port));
+    hub_.reset(new GcTcpHub(canStack->can_hub(), hubPort_));
 
     // wait for the hub to complete it's startup tasks
     while (!hub_->is_started())
     {
         usleep(HUB_STARTUP_DELAY_USEC);
     }
-    mdns_publish(hubServiceName_, hub_port);
+    mdns_publish(hubServiceName_, hubPort_);
 #endif // CONFIG_IDF_TARGET_ESP32
 }
 
@@ -1009,12 +912,14 @@ void Esp32WiFiManager::start_uplink()
     {
         return;
     }
-    unique_ptr<SocketClientParams> params(
-        new Esp32SocketParams(configFd_, cfg_.uplink()));
-    uplink_.reset(new SocketClient(stack_->service(), stack_->executor(),
-        stack_->executor(), std::move(params),
-        std::bind(&Esp32WiFiManager::on_uplink_created, this,
-            std::placeholders::_1, std::placeholders::_2)));
+    uplink_.reset(
+        new SocketClient(
+            stack_->service(), stack_->executor(), stack_->executor(),
+            SocketClientParams::from_static_and_mdns(uplinkManualHost_,
+                                                     uplinkManualPort_,
+                                                     uplinkAutoService_),
+            std::bind(&Esp32WiFiManager::on_uplink_created, this,
+                      std::placeholders::_1, std::placeholders::_2)));
 }
 
 // Converts the passed fd into a GridConnect port and adds it to the stack.
@@ -1213,18 +1118,13 @@ void Esp32WiFiManager::start_mdns_system()
 
 void Esp32WiFiManager::configure_wifi_max_tx_power()
 {
-    // Read the desired TX power level from the CDI with a bounds check to
-    // ensure it is does not exceed 78 (max supported by underlying API).
-    int8_t cfg_power =
-        std::min(MAX_WIFI_TX_POWER_API_LIMIT,
-                 (int8_t)CDI_READ_TRIM_DEFAULT(cfg_.tx_power, configFd_));
     int8_t current_power = 0;
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_get_max_tx_power(&current_power));
-    if (cfg_power != current_power)
+    if (wifiTXPower_ != current_power)
     {
         LOG(INFO, "[WiFi] Adjusting maximum WiFi TX power %d -> %d.",
-            current_power, cfg_power);
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_max_tx_power(cfg_power));
+            current_power, wifiTXPower_);
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_max_tx_power(wifiTXPower_));
     }
 }
 
@@ -1608,9 +1508,7 @@ void Esp32WiFiManager::on_softap_start()
     {
         // Set the maximum transmit power. In the case of Station+SoftAP mode
         // this will be set as part of the station startup.
-        int8_t power = CDI_READ_TRIM_DEFAULT(cfg_.tx_power, configFd_);
-        LOG(INFO, "[WiFi] Setting TX power to: %d", power);
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_max_tx_power(power));
+        configure_wifi_max_tx_power();
 
         // If we are operating in SoftAP mode only we can start mDNS and uplink
         // connection, otherwise defer it until the station has received it's
