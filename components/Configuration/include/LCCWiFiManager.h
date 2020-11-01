@@ -58,15 +58,25 @@ public:
   }
   bool is_uplink_enabled()
   {
-    return !wifi_->is_uplink_disabled();
+    if (wifi_)
+    {
+      return !wifi_->is_uplink_disabled();
+    }
+    return true;
   }
   void disable_uplink()
   {
-    wifi_->disable_uplink();
+    if (wifi_)
+    {
+      wifi_->disable_uplink();
+    }
   }
   void enable_uplink()
   {
-    wifi_->enable_uplink();
+    if (wifi_)
+    {
+      wifi_->enable_uplink();
+    }
   }
 #if CONFIG_FASTCLOCK_REALTIME
   void real_time_clock_sync(time_t seconds);

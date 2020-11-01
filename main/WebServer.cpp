@@ -194,6 +194,12 @@ public:
     auto wifi = cfg_.seg().wifi_lcc();
     auto ops = cfg_.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX);
     auto prog = cfg_.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX);
+    bool uplink = false;
+
+    if (Singleton<esp32cs::LCCWiFiManager>::exists())
+    {
+      uplink = Singleton<esp32cs::LCCWiFiManager>::instance()->is_uplink_enabled();
+    }
 
     int8_t current_power = 0;
     esp_wifi_get_max_tx_power(&current_power);
@@ -204,7 +210,7 @@ public:
                  , CDI_READ_TRIM_DEFAULT(wifi.hub().enable, fd_) ? "true" : "false"
                  , CDI_READ_TRIM_DEFAULT(wifi.tx_power, fd_)
                  , current_power != 0 ? current_power : CDI_READ_TRIM_DEFAULT(wifi.tx_power, fd_)
-                 , Singleton<esp32cs::LCCWiFiManager>::instance()->is_uplink_enabled() ? "true" : "false"
+                 , uplink ? "true" : "false"
                  , wifi.uplink().auto_address().service_name().read(fd_).c_str()
                  , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
                  , CDI_READ_TRIM_DEFAULT(wifi.uplink().manual_address().port, fd_)
