@@ -139,6 +139,7 @@ public:
       new (&shutdownProducer_)openlcb::BitEventProducer(&shutdownBit_);
       res = REINIT_NEEDED;
     }
+    configure(initial_load);
     return res;
   }
 
@@ -184,7 +185,7 @@ private:
   uint8_t overCurrentCheckCount_{0};
   bool progEnable_{false};
 
-  void configure();
+  void configure(bool);
 };
 
 } // namespace esp32cs

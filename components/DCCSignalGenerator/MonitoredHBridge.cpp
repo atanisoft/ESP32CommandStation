@@ -51,7 +51,6 @@ HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
 {
   // set warning limit to ~75% of overcurrent limit
   warnLimit_ = ((overCurrentLimit_ << 1) + overCurrentLimit_) >> 2;
-  configure();
 }
 
 HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
@@ -80,7 +79,6 @@ HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
 {
   // set warning limit to ~75% of overcurrent limit
   warnLimit_ = ((overCurrentLimit_ << 1) + overCurrentLimit_) >> 2;
-  configure();
 }
 
 string HBridgeShortDetector::getState()
@@ -144,11 +142,19 @@ string HBridgeShortDetector::get_state_for_dccpp()
   return StringPrintf("<p0 %s>", name_.c_str());
 }
 
-void HBridgeShortDetector::configure()
+void HBridgeShortDetector::configure(bool initial_load)
 {
-  adc1_config_channel_atten(channel_, (adc_atten_t)CONFIG_ADC_ATTENUATION);
-  LOG(INFO, "[%s] Configuring H-Bridge (%s %u mA max) using ADC 1:%d"
-    , name_.c_str(), bridgeType_.c_str(), maxMilliAmps_, channel_);
+  if (initial_load)
+  {
+    adc1_config_channel_atten(channel_, (adc_atten_t)CONFIG_ADC_ATTENUATION);
+    LOG(INFO, "[%s] Configuring H-Bridge (%s %u mA max) using ADC 1:%d"
+      , name_.c_str(), bridgeType_.c_str(), maxMilliAmps_, channel_);
+    if (isProgTrack_)
+    {
+      LOG(INFO, "[%s] Prog ACK: %u/4096 (%6.2f mA)", name_.c_str()
+        , progAckLimit_, ((progAckLimit_ * maxMilliAmps_) / 4096.0f));
+    }
+  }
   LOG(INFO, "[%s] Short limit %u/4096 (%6.2f mA), events (on: %s, off: %s)"
     , name_.c_str(), overCurrentLimit_
     , ((overCurrentLimit_ * maxMilliAmps_) / 4096.0f)
@@ -159,14 +165,10 @@ void HBridgeShortDetector::configure()
     , ((shutdownLimit_ * maxMilliAmps_) / 4096.0f)
     , uint64_to_string_hex(shutdownBit_.event_on()).c_str()
     , uint64_to_string_hex(shutdownBit_.event_off()).c_str());
-  if (isProgTrack_)
-  {
-    LOG(INFO, "[%s] Prog ACK: %u/4096 (%6.2f mA)", name_.c_str(), progAckLimit_
-      , ((progAckLimit_ * maxMilliAmps_) / 4096.0f));
-  }
 }
 
-void HBridgeShortDetector::poll_33hz(openlcb::WriteHelper *helper, Notifiable *done)
+void HBridgeShortDetector::poll_33hz(openlcb::WriteHelper *helper
+                                   , Notifiable *done)
 {
   vector<int> samples;
 
