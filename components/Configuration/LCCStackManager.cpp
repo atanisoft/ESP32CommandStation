@@ -168,7 +168,7 @@ void LCCStackManager::start(bool is_sd)
   if (CDIHelper::create_config_descriptor_xml(cfg_, LCC_CDI_XML, stack_))
   {
     LOG(WARNING, "[LCC] CDI.xml updated, forcing LCC factory reset");
-    ERRNOCHECK(LCC_CONFIG_FILE, unlink(LCC_CONFIG_FILE));
+    unlink(LCC_CONFIG_FILE);
   }
 
   // Create the default internal configuration file if it doesn't already exist.
