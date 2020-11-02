@@ -96,11 +96,13 @@ public:
         "Configuration settings for an OpenLCB Hub";
 
     /// Visible name for the hub enable field.
-    static constexpr const char *HUB_ENABLE_NAME = "Enable Hub Mode";
+    static constexpr const char *HUB_ENABLE_NAME = "Enable";
 
     /// Visible description for the hub enable field.
     static constexpr const char *HUB_ENABLE_DESC =
-        "Defines this node as a hub which can accept connections";
+        "Configures this node as an OpenLCB hub which can accept connections "
+        "from other nodes.\nNOTE: This may cause some instability as the "
+        "number of connected nodes increases.";
 
     /// Visible name for the hub_listener_port field.
     static constexpr const char *HUB_LISTENER_PORT_NAME = "Hub Listener Port";
@@ -110,12 +112,20 @@ public:
         "Defines the TCP/IP listener port this node will use when operating "
         "as a hub. Most of the time this does not need to be changed.";
 
-    /// Visible name for the link_config group.
-    static constexpr const char *UPLINK_NAME = "Node Uplink Configuration";
+    /// Visible name for the uplink group.
+    static constexpr const char *UPLINK_NAME = "Uplink Configuration";
 
-    /// Visible name for the link_config group.
+    /// Visible name for the uplink group.
     static constexpr const char *UPLINK_DESC =
         "Configures how this node will connect to other nodes.";
+
+    /// Visible name for the hub enable field.
+    static constexpr const char *UPLINK_ENABLE_NAME = "Enable";
+
+    /// Visible description for the hub enable field.
+    static constexpr const char *UPLINK_ENABLE_DESC =
+        "Enables connecting to an OpenLCB Hub. In some cases it may be "
+        "desirable to disable the uplink, such as a CAN only configuration.";
 };
 
 /// CDI Configuration for an @ref Esp32WiFiManager managed hub.
@@ -136,6 +146,28 @@ CDI_GROUP_ENTRY(service_name, openlcb::StringConfigEntry<48>,
     Description(openlcb::TcpClientDefaultParams::SERVICE_DESCR));
 /// Reserved space for future expansion.
 CDI_GROUP_ENTRY(reserved, openlcb::BytesConfigEntry<6>, Hidden(true));
+CDI_GROUP_END();
+
+/// CDI Configuration for an automated uplink connection.
+CDI_GROUP(AutomaticUplinkConfiguration);
+/// Specifies the mDNS service name to search for.
+CDI_GROUP_ENTRY(service_name, openlcb::StringConfigEntry<48>,
+    Name(openlcb::TcpClientDefaultParams::SERVICE_NAME),
+    Description(openlcb::TcpClientDefaultParams::SERVICE_DESCR));
+CDI_GROUP_END();
+
+/// CDI Configuration for an @ref Esp32WiFiManager managed uplink connection.
+CDI_GROUP(UplinkConfiguration);
+/// Enables the uplink connection.
+CDI_GROUP_ENTRY(enable, openlcb::Uint8ConfigEntry,
+    Name(Esp32WiFiConfigurationParams::UPLINK_ENABLE_NAME),
+    Description(Esp32WiFiConfigurationParams::UPLINK_ENABLE_DESC), Min(0), Max(1),
+    Default(1), MapValues(Esp32WiFiConfigurationParams::BOOLEAN_MAP));
+CDI_GROUP_ENTRY(automatic, AutomaticUplinkConfiguration,
+    Name(openlcb::TcpClientDefaultParams::AUTO_ADDRESS_NAME));
+CDI_GROUP_ENTRY(manual,
+    openlcb::TcpManualAddress<openlcb::TcpClientDefaultParams>,
+    Name(openlcb::TcpClientDefaultParams::MANUAL_ADDRESS_NAME));
 CDI_GROUP_END();
 
 /// CDI Configuration for an @ref Esp32WiFiManager managed node.
@@ -162,8 +194,7 @@ CDI_GROUP_ENTRY(hub, HubConfiguration,
     Description(Esp32WiFiConfigurationParams::HUB_DESC));
 #endif // CONFIG_IDF_TARGET_ESP32
 /// CDI Configuration for this node's connection to an uplink hub.
-CDI_GROUP_ENTRY(uplink,
-    openlcb::TcpClientConfig<openlcb::TcpClientDefaultParams>,
+CDI_GROUP_ENTRY(uplink, UplinkConfiguration,
     Name(Esp32WiFiConfigurationParams::UPLINK_NAME),
     Description(Esp32WiFiConfigurationParams::UPLINK_DESC));
 CDI_GROUP_END();

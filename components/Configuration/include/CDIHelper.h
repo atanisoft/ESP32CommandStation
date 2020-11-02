@@ -41,7 +41,7 @@ public:
 /// @param filename is where the xml file can be stored on the
 /// filesystem. For example "/spiffs/cdi.xml".
 template <class ConfigDef>
-static void create_config_descriptor_xml(
+static bool create_config_descriptor_xml(
     const ConfigDef &config, const char *filename
   , openlcb::SimpleStackBase *stack = nullptr)
 {
@@ -68,13 +68,10 @@ static void create_config_descriptor_xml(
       LOG(INFO, "[CDI] File %s is not up-to-date", filename);
       need_write = true;
     }
-#if LOGLEVEL == VERBOSE
     else
     {
-      LOG(INFO, "[CDI] File %s appears up-to-date (len %u vs %u)", filename
-        , current_str.size(), cdi_string.size());
+      LOG(INFO, "[CDI] File %s appears up-to-date", filename);
     }
-#endif
   }
   if (need_write)
   {
@@ -99,6 +96,7 @@ static void create_config_descriptor_xml(
     stack->memory_config_handler()->registry()->insert(
         stack->node(), openlcb::MemoryConfigDefs::SPACE_CDI, space);
   }
+  return need_write;
 }
 };
 

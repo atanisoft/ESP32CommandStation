@@ -271,10 +271,11 @@ ConfigUpdateListener::UpdateAction Esp32WiFiManager::apply_configuration(
         integer_to_string(configCrc32, 0).c_str());
 
     // update local cache of config settings before waking the background task.
-    uplinkManualHost_ = cfg_.uplink().manual_address().ip_address().read(fd);
+    uplinkEnabled_ = CDI_READ_TRIM_DEFAULT(cfg_.uplink().enable, fd);
+    uplinkManualHost_ = cfg_.uplink().manual().ip_address().read(fd);
     uplinkManualPort_ =
-        CDI_READ_TRIM_DEFAULT(cfg_.uplink().manual_address().port, fd);
-    uplinkAutoService_ = cfg_.uplink().auto_address().service_name().read(fd);
+        CDI_READ_TRIM_DEFAULT(cfg_.uplink().manual().port, fd);
+    uplinkAutoService_ = cfg_.uplink().automatic().service_name().read(fd);
     enableRadioSleep_ = CDI_READ_TRIM_DEFAULT(cfg_.sleep, fd);
 #if defined(CONFIG_IDF_TARGET_ESP32)
     enableHub_ = CDI_READ_TRIM_DEFAULT(cfg_.hub().enable, fd);
@@ -334,24 +335,15 @@ void Esp32WiFiManager::factory_reset(int fd)
 #endif // CONFIG_IDF_TARGET_ESP32
 
     // Node link configuration settings.
-    CDI_FACTORY_RESET(cfg_.uplink().search_mode);
-    CDI_FACTORY_RESET(cfg_.uplink().reconnect);
+    CDI_FACTORY_RESET(cfg_.uplink().enable);
 
     // Node link manual configuration settings.
-    cfg_.uplink().manual_address().ip_address().write(fd, "");
-    CDI_FACTORY_RESET(cfg_.uplink().manual_address().port);
+    cfg_.uplink().manual().ip_address().write(fd, "");
+    CDI_FACTORY_RESET(cfg_.uplink().manual().port);
 
     // Node link automatic configuration settings.
-    cfg_.uplink().auto_address().service_name().write(
+    cfg_.uplink().automatic().service_name().write(
         fd, TcpDefs::MDNS_SERVICE_NAME_GRIDCONNECT_CAN_TCP);
-    cfg_.uplink().auto_address().host_name().write(fd, "");
-
-    // Node link automatic last connected node address.
-    cfg_.uplink().last_address().ip_address().write(fd, "");
-    CDI_FACTORY_RESET(cfg_.uplink().last_address().port);
-
-    // Reconnect to last connected node.
-    CDI_FACTORY_RESET(cfg_.uplink().reconnect);
 }
 
 #if defined(ESP_IDF_VERSION) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
@@ -478,32 +470,6 @@ void Esp32WiFiManager::enable_verbose_logging()
 {
     verboseLogging_ = true;
     enable_esp_wifi_logging();
-}
-
-// Sets configuration flag to disable the creation of an uplink connection.
-// NOTE: this will also disconnect any currently connected uplink.
-void Esp32WiFiManager::disable_uplink()
-{
-    uplinkDisabled_ = true;
-
-    // wake up the wifi stack to process the uplink change
-    xTaskNotifyGive(wifiTaskHandle_);
-}
-
-// Sets configuration flag to disable the creation of an uplink connection.
-// NOTE: this will also disconnect any currently connected uplink.
-void Esp32WiFiManager::enable_uplink()
-{
-    uplinkDisabled_ = false;
-
-    // wake up the wifi stack to process the uplink change
-    xTaskNotifyGive(wifiTaskHandle_);
-}
-
-// Returns the internal flag indicating uplink disabled.
-bool Esp32WiFiManager::is_uplink_disabled()
-{
-    return uplinkDisabled_;
 }
 
 // Set configuration flag controlling SSID connection checking behavior.
@@ -908,7 +874,7 @@ void Esp32WiFiManager::stop_uplink()
 // the node's hub.
 void Esp32WiFiManager::start_uplink()
 {
-    if (uplinkDisabled_)
+    if (!uplinkEnabled_)
     {
         return;
     }
