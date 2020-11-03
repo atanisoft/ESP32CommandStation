@@ -239,33 +239,73 @@ void LCCWiFiManager::shutdown()
   wifi_.reset(nullptr);
 }
 
-void LCCWiFiManager::reconfigure_mode(string mode, bool restart)
+bool LCCWiFiManager::reconfigure_mode(string mode, bool restart)
 {
+  bool updated = false;
+  wifi_mode_t desired_mode = WIFI_MODE_NULL;
+#if defined(CONFIG_WIFI_MODE_SOFTAP)
+  wifi_mode_t compiled_mode = WIFI_MODE_AP;
+#elif defined(CONFIG_WIFI_MODE_SOFTAP_STATION)
+  wifi_mode_t compiled_mode = WIFI_MODE_APSTA;
+#else
+  wifi_mode_t compiled_mode = WIFI_MODE_STA;
+#endif
   auto fs = Singleton<FileSystemManager>::instance();
   if (!mode.compare(JSON_VALUE_WIFI_MODE_SOFTAP_ONLY))
   {
-    fs->remove(WIFI_STATION_CFG);
-    string soft_ap_cfg = StringPrintf("%s\n%s", CONFIG_WIFI_SOFTAP_SSID
-                                    , CONFIG_WIFI_SOFTAP_PASSWORD);
-    fs->store(WIFI_SOFTAP_CFG, soft_ap_cfg);
+    desired_mode = WIFI_MODE_AP;
   }
   else if (!mode.compare(JSON_VALUE_WIFI_MODE_SOFTAP_STATION))
   {
-    string soft_ap_cfg = StringPrintf("%s\n%s", CONFIG_WIFI_SOFTAP_SSID
-                                    , CONFIG_WIFI_SOFTAP_PASSWORD);
-    fs->store(WIFI_SOFTAP_CFG, soft_ap_cfg);
+    desired_mode = WIFI_MODE_APSTA;
   }
   else
   {
-    fs->remove(WIFI_SOFTAP_CFG);
+    desired_mode = WIFI_MODE_STA;
   }
-  if (restart)
+
+  // if the new desired mode is not the same as our current running mode we
+  // need to process it and reconfigure the CS.
+  if (desired_mode != mode_)
+  {
+    updated = true;
+    if (desired_mode == compiled_mode)
+    {
+      // the mode being requested is the same as the pre-compiled mode, remove
+      // any overrides that were persisted.
+      fs->remove(WIFI_SOFTAP_CFG);
+      fs->remove(WIFI_STATION_CFG);
+    }
+    else if (desired_mode == WIFI_MODE_STA)
+    {
+      // override mode has been set to station so remove the SoftAP flag file
+      // (if present). The station config will be stored via the web interface
+      // sending ssid/password parameters.
+      fs->remove(WIFI_SOFTAP_CFG);
+    }
+    else
+    {
+      // if the desired mode is SoftAP only remove the station configuration
+      // file (if present).
+      if (desired_mode == WIFI_MODE_AP)
+      {
+        fs->remove(WIFI_STATION_CFG);
+      }
+      // create SoftAP configuration file using the compiled in SoftAP name and
+      // password.
+      string soft_ap_cfg = StringPrintf("%s\n%s", CONFIG_WIFI_SOFTAP_SSID
+                                      , CONFIG_WIFI_SOFTAP_PASSWORD);
+      fs->store(WIFI_SOFTAP_CFG, soft_ap_cfg);
+    }
+  }
+  if (updated && restart)
   {
     stack_->executor()->add(new CallbackExecutable([]()
     {
       reboot();
     }));
   }
+  return updated;
 }
 
 void LCCWiFiManager::reconfigure_station(string ssid, string password

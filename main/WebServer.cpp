@@ -585,9 +585,9 @@ HTTP_HANDLER_IMPL(process_config, request)
     wifiManager->reconfigure_station(request->param("ssid"), request->param("password"));
     needReboot = true;
   }
-  if (request->has_param("mode"))
+  if (request->has_param("mode") &&
+      wifiManager->reconfigure_mode(request->param("mode")))
   {
-    wifiManager->reconfigure_mode(request->param("mode"));
     needReboot = true;
   }
   if (request->has_param("nodeid") &&
