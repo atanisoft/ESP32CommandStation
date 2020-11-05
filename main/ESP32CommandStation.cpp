@@ -141,11 +141,18 @@ OVERRIDE_CONST_TRUE(gridconnect_tcp_use_select);
 #endif // CONFIG_LCC_USE_SELECT
 
 ///////////////////////////////////////////////////////////////////////////////
-// This limites the number of outbound GridConnect packets which limits the
+// This limits the number of outbound GridConnect packets which limits the
 // memory used by the BufferPort.
 ///////////////////////////////////////////////////////////////////////////////
 OVERRIDE_CONST_DEFERRED(gridconnect_bridge_max_outgoing_packets
                       , CONFIG_LCC_GC_OUTBOUND_PACKET_LIMIT);
+
+///////////////////////////////////////////////////////////////////////////////
+// This limits the number of inbound GridConnect packets which limits the
+// memory used by the BufferPort.
+///////////////////////////////////////////////////////////////////////////////
+OVERRIDE_CONST_DEFERRED(gridconnect_bridge_max_incoming_packets
+                      , CONFIG_LCC_GC_INBOUND_PACKET_LIMIT);
 
 ///////////////////////////////////////////////////////////////////////////////
 // This increases number of state flows to invoke before checking for any FDs

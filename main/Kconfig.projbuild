@@ -63,7 +63,7 @@ menu "LCC Configuration"
     config LCC_EXECUTOR_SELECT_PRESCALER
         int "StateFlows to execute between select() calls"
         range 5 300
-        default 60
+        default 5
         help
             Executors will run this many Executables (if there is anything
             scheduled) before two calls to select. This helps in reducing the
@@ -98,11 +98,20 @@ menu "LCC Configuration"
             before sending off to the lowlevel system (such as a TCP socket).
 
     config LCC_GC_OUTBOUND_PACKET_LIMIT
-        int "GridConnect packet count limit"
+        int "GridConnect outbound packet count limit"
         default 2
         depends on !LCC_TCP_STACK
         help
             Number of pending buffers (of type string) in the outgoing hub on a
+            per-connection basis. This limit ensures that we don't leak memory
+            if the output socket cannot send the data fast enough.
+
+    config LCC_GC_INBOUND_PACKET_LIMIT
+        int "GridConnect inbound packet count limit"
+        default 4
+        depends on !LCC_TCP_STACK
+        help
+            Number of pending buffers (of type string) in the incoming hub on a
             per-connection basis. This limit ensures that we don't leak memory
             if the output socket cannot send the data fast enough.
 
