@@ -348,18 +348,14 @@ StateFlowBase::Action StatusDisplay::init()
 {
 #if !CONFIG_DISPLAY_TYPE_NONE
   LOG(INFO, "[StatusDisplay] Initializing I2C driver...");
-  i2c_config_t i2c_config =
-  {
-    .mode = I2C_MODE_MASTER,
-    .sda_io_num = (gpio_num_t)CONFIG_DISPLAY_SDA,
-    .sda_pullup_en = GPIO_PULLUP_ENABLE,
-    .scl_io_num = (gpio_num_t)CONFIG_DISPLAY_SCL,
-    .scl_pullup_en = GPIO_PULLUP_ENABLE,
-    .master =
-    {
-      .clk_speed = CONFIG_DISPLAY_I2C_BUS_SPEED
-    }
-  };
+  i2c_config_t i2c_config;
+  bzero(&i2c_config, sizeof(i2c_config_t));
+  i2c_config.mode = I2C_MODE_MASTER;
+  i2c_config.sda_io_num = (gpio_num_t)CONFIG_DISPLAY_SDA;
+  i2c_config.sda_pullup_en = GPIO_PULLUP_ENABLE;
+  i2c_config.scl_io_num = (gpio_num_t)CONFIG_DISPLAY_SCL;
+  i2c_config.scl_pullup_en = GPIO_PULLUP_ENABLE;
+  i2c_config.master.clk_speed = CONFIG_DISPLAY_I2C_BUS_SPEED;
   ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &i2c_config));
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
 
