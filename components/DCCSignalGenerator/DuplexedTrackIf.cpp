@@ -43,19 +43,41 @@
 #include <dcc/Packet.hxx>
 #include <executor/Executor.hxx>
 #include <executor/StateFlow.hxx>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <utils/Buffer.hxx>
 #include <utils/Queue.hxx>
+#include <utils/StringPrintf.hxx>
 
 namespace esp32cs
 {
 
-DuplexedTrackIf::DuplexedTrackIf(Service *service, int pool_size, int ops_fd
-                               , int prog_fd)
+DuplexedTrackIf::DuplexedTrackIf(Service *service, size_t pool_size
+                               , const char *ops, const char *prog
+                               , const char *track_base_path)
     : StateFlow<Buffer<dcc::Packet>, QList<1>>(service)
-    , fd_ops_(ops_fd), fd_prog_(prog_fd)
     , pool_(sizeof(Buffer<dcc::Packet>), pool_size)
 {
+  fd_ops_ =
+    ::open(StringPrintf("%s/%s", track_base_path, ops).c_str(), O_WRONLY);
+  HASSERT(fd_ops_ > 0);
+
+  fd_prog_ =
+    ::open(StringPrintf("%s/%s", track_base_path, prog).c_str(), O_WRONLY);
+  HASSERT(fd_prog_ > 0);
+}
+
+DuplexedTrackIf::~DuplexedTrackIf()
+{
+  ::close(fd_ops_);
+  fd_ops_ = -1;
+  ::close(fd_prog_);
+  fd_prog_ = -1;
+}
+
+FixedPool *DuplexedTrackIf::pool()
+{
+  return &pool_;
 }
 
 StateFlowBase::Action DuplexedTrackIf::entry()
@@ -63,15 +85,17 @@ StateFlowBase::Action DuplexedTrackIf::entry()
   auto *p = message()->data();
   auto fd = p->packet_header.send_long_preamble ?
     fd_prog_ : fd_ops_;
-  HASSERT(fd >= 0);
-  int ret = ::write(fd, p, sizeof(*p));
-  if (ret < 0)
+  if (fd >= 0)
   {
-    HASSERT(errno == ENOSPC);
-    ::ioctl(fd, CAN_IOC_WRITE_ACTIVE, this);
-    return wait();
+    int ret = ::write(fd, p, sizeof(*p));
+    if (ret < 0)
+    {
+      HASSERT(errno == ENOSPC);
+      ::ioctl(fd, CAN_IOC_WRITE_ACTIVE, this);
+      return wait();
+    }
   }
-  return finish();
+  return release_and_exit();
 }
 
 } // namespace esp32cs

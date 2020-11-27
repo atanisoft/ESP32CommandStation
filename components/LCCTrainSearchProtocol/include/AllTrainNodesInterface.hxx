@@ -42,6 +42,8 @@
 #include <openlcb/Defs.hxx>
 #include <utils/Destructable.hxx>
 
+class Notifiable;
+
 namespace openlcb
 {
 class TrainService;
@@ -75,10 +77,17 @@ public:
   /// service. Trains are indexed 0..size().
   virtual size_t size() = 0;
 
+  /// Looks up a train DB entry by train index. This is an asynchronous call:
+  /// If the information is readily available, then done will be notified
+  /// inline. If the information is not available, the caller has to wait until
+  /// done is notified, then repeat the call to retrieve the result.
   /// @return the train database entry for a given train index, or nullptr if
-  /// the train index is not valid.
+  /// the train index is not valid or the information is not available yet.
   /// @param index 0..size() - 1.
-  virtual std::shared_ptr<TrainDbEntry> get_traindb_entry(size_t index) = 0;
+  /// @param done will be notified exactly once, either inline (if the answer
+  /// is ready) or out of line (if it is not).
+  virtual std::shared_ptr<TrainDbEntry> get_traindb_entry(size_t index
+                                                        , Notifiable* done) = 0;
 
   /// @return the openlcb train node ID for a given train index, or 0 if
   /// the train index is not valid.

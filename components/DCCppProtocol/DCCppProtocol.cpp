@@ -162,7 +162,7 @@ DECLARE_DCC_PROTOCOL_COMMAND_CLASS(EStopCommand, "estop", 0)
 DCC_PROTOCOL_COMMAND_HANDLER(EStopCommand,
 [](const vector<string> arguments)
 {
-  esp32cs::initiate_estop();
+  esp32cs::toggle_estop();
   return COMMAND_SUCCESSFUL_RESPONSE;
 })
 

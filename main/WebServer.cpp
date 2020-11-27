@@ -918,7 +918,7 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
                                                                        : JSON_VALUE_FORWARD
                , JSON_FUNCTIONS_NODE);
 
-  for (uint8_t funcID = 0; funcID < DCC_MAX_FN; funcID++)
+  for (size_t funcID = 0; funcID < commandstation::DCC_MAX_FN; funcID++)
   {
     if (funcID)
     {
@@ -978,7 +978,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
   // command station (method) so check it first
   if (url.find("/estop") != string::npos)
   {
-    esp32cs::initiate_estop();
+    esp32cs::toggle_estop();
     request->set_status(HttpStatusCode::STATUS_OK);
   }
   else if (url.find("/roster")  != string::npos)

@@ -18,6 +18,7 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 #ifndef _ESP32_TRAIN_DB_H_
 #define _ESP32_TRAIN_DB_H_
 
+#include <mutex>
 #include <vector>
 
 #include <openlcb/Defs.hxx>
@@ -270,7 +271,7 @@ namespace esp32cs
     std::string get_entry_as_json_locked(unsigned address);
     openlcb::SimpleStackBase *stack_;
     bool entryDeleted_{false};
-    OSMutex knownTrainsLock_;
+    std::mutex knownTrainsLock_;
     std::vector<std::shared_ptr<Esp32TrainDbEntry>> knownTrains_;
     std::unique_ptr<openlcb::MemorySpace> trainCdiFile_;
     std::unique_ptr<openlcb::MemorySpace> tempTrainCdiFile_;

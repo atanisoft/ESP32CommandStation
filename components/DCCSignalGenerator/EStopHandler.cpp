@@ -24,6 +24,7 @@ namespace esp32cs
 
 void EStopHandler::set_state(bool new_value)
 {
+  enabled_ = new_value;
   if (new_value)
   {
     LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");
@@ -37,22 +38,12 @@ void EStopHandler::set_state(bool new_value)
         trains->get_train_impl(node)->set_emergencystop();
       }
     }
-    {
-      AtomicHolder l(this);
-      remaining_ = CONFIG_DCC_ESTOP_PACKET_COUNT;
-      packet_processor_add_refresh_source(this
-                                        , dcc::UpdateLoopBase::ESTOP_PRIORITY);
-    }
+    packet_processor_add_refresh_source(this
+                                      , dcc::UpdateLoopBase::ESTOP_PRIORITY);
   }
   else
   {
-    AtomicHolder l(this);
-    if (remaining_)
-    {
-      LOG(INFO, "[eStop] Received eStop clear request.");
-      remaining_ = 0;
-      packet_processor_remove_refresh_source(this);
-    }
+    packet_processor_remove_refresh_source(this);
   }
 }
 
@@ -60,14 +51,6 @@ void EStopHandler::get_next_packet(unsigned code, dcc::Packet* packet)
 {
   packet->set_dcc_speed14(dcc::DccShortAddress(0), true, false
                         , dcc::Packet::EMERGENCY_STOP);
-  {
-    AtomicHolder l(this);
-    remaining_--;
-    if (remaining_ <= 0)
-    {
-      packet_processor_remove_refresh_source(this);
-    }
-  }
 }
 
 }

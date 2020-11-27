@@ -22,6 +22,10 @@ if ("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" STREQUAL "4.1")
     endif()
 endif()
 
+#if (NOT CONFIG_FREERTOS_SUPPORT_STATIC_ALLOCATION STREQUAL "y")
+#    message(FATAL_ERROR "CONFIG_FREERTOS_SUPPORT_STATIC_ALLOCATION must be enabled in sdkconfig")
+#endif()
+
 set(SUPPORTED_TARGETS esp32)
 project(ESP32CommandStation)
 

@@ -173,6 +173,19 @@ static constexpr DRAM_ATTR uint8_t PACKET_BIT_MASK[] =
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+// Maximum amount of time to wait for the packet queue to have space available
+// for another packet before giving up. Currently configured to not wait.
+///////////////////////////////////////////////////////////////////////////////
+static constexpr BaseType_t MAX_PACKET_QUEUE_WAIT_TIME = 0;
+
+///////////////////////////////////////////////////////////////////////////////
+// malloc() capabilities to use for the DCC packet queue. This is configured to
+// use internal 8-bit capable memory only.
+///////////////////////////////////////////////////////////////////////////////
+static constexpr uint32_t RMT_MALLOC_CAPS = MALLOC_CAP_INTERNAL |
+                                            MALLOC_CAP_8BIT;
+
+///////////////////////////////////////////////////////////////////////////////
 // RMTTrackDevice constructor.
 //
 // This creates a VFS interface for the packet queue which can be used by
@@ -195,8 +208,18 @@ RMTTrackDevice::RMTTrackDevice(const char *name
                              , channel_(channel)
                              , dccPreambleBitCount_(dccPreambleBitCount)
                              , railcomDriver_(railcomDriver)
-                             , packetQueue_(DeviceBuffer<dcc::Packet>::create(packet_queue_len))
 {
+  // allocate buffer space for the packet queue items.
+  packetQueueBuf_ =
+    heap_caps_calloc(packet_queue_len, sizeof(dcc::Packet), RMT_MALLOC_CAPS);
+  HASSERT(packetQueueBuf_ != nullptr);
+
+  // create the packet queue using the pre-allocated memory.
+  packetQueueHandle_ =
+    xQueueCreateStatic(packet_queue_len, sizeof(dcc::Packet)
+                     , (uint8_t*)packetQueueBuf_, &packetQueue_);
+  HASSERT(packetQueueHandle_ != NULL);
+
   // calculate the maximum number of bits that will be transmitted in a single
   // dcc packet, with the current configuration the maximum number of bits in a
   // single dcc packet is 192.
@@ -249,6 +272,26 @@ RMTTrackDevice::RMTTrackDevice(const char *name
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// RMTTrackDevice destructor.
+//
+// Frees resources allocated for this RMT track device.
+//
+///////////////////////////////////////////////////////////////////////////////
+RMTTrackDevice::~RMTTrackDevice()
+{
+  LOG(INFO, "[%s] Shutting down signal generator", name_);
+  rmt_driver_uninstall(channel_);
+  if (packetQueueHandle_ != NULL)
+  {
+    vQueueDelete(packetQueueHandle_);
+  }
+  if (packetQueueBuf_ != nullptr)
+  {
+    free(packetQueueBuf_);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // ESP VFS callback for ::write()
 //
 // This will write *ONE* dcc::Packet to either the OPS or PROG packet queue. If
@@ -273,17 +316,12 @@ ssize_t RMTTrackDevice::write(int fd, const void * data, size_t size)
     return -1;
   }
 
+  if (xQueueSendToBack(packetQueueHandle_, sourcePacket
+                     , MAX_PACKET_QUEUE_WAIT_TIME) == pdTRUE)
   {
-    AtomicHolder l(&packetQueueLock_);
-    dcc::Packet* writePacket;
-    if (packetQueue_->space() &&
-        packetQueue_->data_write_pointer(&writePacket))
-    {
-      memcpy(writePacket, data, size);
-      packetQueue_->advance(1);
-      return 1;
-    }
+    return 1;
   }
+
   // packet queue is full!
   errno = ENOSPC;
   return -1;
@@ -305,13 +343,11 @@ int RMTTrackDevice::ioctl(int fd, int cmd, va_list args)
   {
     Notifiable* n = reinterpret_cast<Notifiable*>(va_arg(args, uintptr_t));
     HASSERT(n);
+    // if there is no space available in the queue, stash the notifiable
+    // handle so we can wake it up later.
+    if (!uxQueueSpacesAvailable(packetQueueHandle_))
     {
-      AtomicHolder l(&packetQueueLock_);
-      if (!packetQueue_->space())
-      {
-        // stash the notifiable so we can call it later when there is space
-        std::swap(n, notifiable_);
-      }
+      std::swap(n, notifiable_);
     }
     if (n)
     {
@@ -336,7 +372,8 @@ int RMTTrackDevice::ioctl(int fd, int cmd, va_list args)
 ///////////////////////////////////////////////////////////////////////////////
 void RMTTrackDevice::rmt_transmit_complete()
 {
-  encode_next_packet();
+  BaseType_t woken = pdFALSE;
+  encode_next_packet(&woken);
   railcomDriver_->start_cutout();
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
@@ -360,35 +397,23 @@ void RMTTrackDevice::rmt_transmit_complete()
   RMT.conf_ch[channel_].conf1.mem_owner = RMT_MEM_OWNER_TX;
   RMT.conf_ch[channel_].conf1.tx_start = 1;
 #endif // IDF 4.2+
-}
 
-///////////////////////////////////////////////////////////////////////////////
-// Transfers a dcc::Packet to the OPS packet queue.
-//
-// NOTE: At this time Marklin packets will be actively discarded.
-///////////////////////////////////////////////////////////////////////////////
-void RMTTrackDevice::send(Buffer<dcc::Packet> *b, unsigned prio)
-{
-  // if it is not a Marklin Motorola packet put it in the queue, otherwise
-  // discard.
-  if (!b->data()->packet_header.is_marklin)
+  // if we need to wake up another task we can safely do it after sending the
+  // packet off to be transmitted.
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4,2,0)
+  portYIELD_FROM_ISR(woken);
+#else
+  if (woken == pdTRUE)
   {
-    AtomicHolder l(&packetQueueLock_);
-    dcc::Packet* writePacket;
-    if (packetQueue_->space() &&
-        packetQueue_->data_write_pointer(&writePacket))
-    {
-      memcpy(writePacket, b->data(), b->size());
-      packetQueue_->advance(1);
-    }
+    portYIELD_FROM_ISR();
   }
-  b->unref();
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Encode the next packet or reuse the existing packet.
 ///////////////////////////////////////////////////////////////////////////////
-void RMTTrackDevice::encode_next_packet()
+void RMTTrackDevice::encode_next_packet(BaseType_t *woken)
 {
   // Check if we need to encode the next packet or if we still have at least
   // one repeat left of the current packet.
@@ -399,14 +424,12 @@ void RMTTrackDevice::encode_next_packet()
   // attempt to fetch a packet from the queue or use an idle packet
   Notifiable* n = nullptr;
   dcc::Packet packet{dcc::Packet::DCC_IDLE()};
+  
+  if (xQueueReceiveFromISR(packetQueueHandle_, &packet, woken))
   {
-    AtomicHolder l(&packetQueueLock_);
-    if (packetQueue_->get(&packet, 1))
-    {
-      // since we removed a packet from the queue, check if we have a pending
-      // notifiable to wake up.
-      std::swap(n, notifiable_);
-    }
+    // since we removed a packet from the queue, swap the notifiable handle
+    // so it can be woken up if needed.
+    std::swap(n, notifiable_);
   }
   if (n)
   {
