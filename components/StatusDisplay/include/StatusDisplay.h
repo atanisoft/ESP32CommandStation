@@ -47,6 +47,7 @@ public:
 
   void node_pong(openlcb::NodeID id);
 private:
+  STATE_FLOW_STATE(resetOLED);
   STATE_FLOW_STATE(init);
   STATE_FLOW_STATE(initOLED);
   STATE_FLOW_STATE(initLCD);

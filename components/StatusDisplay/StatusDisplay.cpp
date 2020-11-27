@@ -221,8 +221,12 @@ StatusDisplay::StatusDisplay(openlcb::SimpleStackBase *stack, Service *service)
     wifi("Disconnected");
   });
 #endif // CONFIG_WIFI_MODE_DISABLED
+#if CONFIG_DISPLAY_OLED_RESET_PIN != -1
+  start_flow(STATE(resetOLED));
+#else
   start_flow(STATE(init));
-#endif
+#endif // CONFIG_DISPLAY_OLED_RESET_PIN
+#endif // !CONFIG_DISPLAY_TYPE_NONE
 }
 
 void StatusDisplay::clear()
@@ -344,9 +348,29 @@ void StatusDisplay::node_pong(openlcb::NodeID id)
 #endif
 }
 
+StateFlowBase::Action StatusDisplay::resetOLED()
+{
+#if !CONFIG_DISPLAY_TYPE_NONE
+#if CONFIG_DISPLAY_OLED_RESET_PIN != -1
+  LOG(INFO, "[StatusDisplay] Resetting OLED display");
+  gpio_pad_select_gpio((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN);
+  gpio_set_direction((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN
+                    , GPIO_MODE_OUTPUT);
+  gpio_set_level((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN, 0);
+#endif // CONFIG_DISPLAY_OLED_RESET_PIN
+  return sleep_and_call(&timer_, MSEC_TO_NSEC(50), STATE(init));
+#else
+  return exit();
+#endif // !CONFIG_DISPLAY_TYPE_NONE
+}
+
 StateFlowBase::Action StatusDisplay::init()
 {
 #if !CONFIG_DISPLAY_TYPE_NONE
+#if CONFIG_DISPLAY_OLED_RESET_PIN != -1
+  gpio_set_level((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN, 1);
+#endif // CONFIG_DISPLAY_OLED_RESET_PIN
+
   LOG(INFO, "[StatusDisplay] Initializing I2C driver...");
   i2c_config_t i2c_config =
   {
@@ -443,23 +467,6 @@ StateFlowBase::Action StatusDisplay::initOLED()
 #if CONFIG_DISPLAY_TYPE_OLED
   LOG(INFO, "[StatusDisplay] OLED display detected on address 0x%02x"
     , i2cAddr_);
-#if CONFIG_DISPLAY_OLED_RESET_PIN != -1
-  static bool resetCalled = false;
-  if(!resetCalled)
-  {
-    LOG(INFO, "[StatusDisplay] Resetting OLED display");
-    gpio_pad_select_gpio((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN);
-    gpio_set_direction((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN
-                      , GPIO_MODE_OUTPUT);
-    gpio_set_level((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN, 0);
-    resetCalled = true;
-    return sleep_and_call(&timer_, MSEC_TO_NSEC(50), STATE(initOLED));
-  }
-  else
-  {
-    gpio_set_level((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN, 1);
-  }
-#endif // CONFIG_DISPLAY_OLED_RESET_PIN
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, (i2cAddr_ << 1) | I2C_MASTER_WRITE, true);
