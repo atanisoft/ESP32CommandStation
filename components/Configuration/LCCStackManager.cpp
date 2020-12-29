@@ -28,8 +28,7 @@ static constexpr const char LCC_NODE_ID_FILE[] = "lcc-node";
 static constexpr const char LCC_RESET_MARKER_FILE[] = "lcc-rst";
 
 #if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
-Esp32HardwareTwai twai(CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN
-                     , "/dev/twai");
+Esp32HardwareTwai twai(CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
 #define CAN_PERIPHERAL_AVAILABLE 1
 #endif // ESP32_TWAI_DRIVER_SUPPORTED
 
@@ -88,7 +87,7 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
 #else
   stack_ = new openlcb::SimpleCanStack(nodeID_);
 #if CAN_PERIPHERAL_AVAILABLE
-  stack_->executor()->add(new CallbackExecutable([]
+  stack_->executor()->add(new CallbackExecutable([&]
   {
       // Initialize the TWAI driver
       twai.hw_init();
