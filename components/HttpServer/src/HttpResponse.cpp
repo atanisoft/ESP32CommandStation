@@ -197,7 +197,8 @@ StringResponse::StringResponse(const string &response, const string &mime_type)
 
 StaticResponse::StaticResponse(const uint8_t *payload, const size_t length
                              , const std::string mime_type
-                             , const std::string encoding)
+                             , const std::string encoding
+                             , bool cached)
                              : AbstractHttpResponse(STATUS_OK, mime_type)
                              , payload_(payload), length_(length)
 {
@@ -206,13 +207,21 @@ StaticResponse::StaticResponse(const uint8_t *payload, const size_t length
     header(HttpHeader::CONTENT_ENCODING, encoding);
   }
   header(HttpHeader::LAST_MODIFIED, HTTP_BUILD_TIME);
-  // update the default cache strategy to set the must-revalidate and max-age
-  header(HttpHeader::CACHE_CONTROL
-       , StringPrintf("%s, %s, %s=%d"
-                    , HTTP_CACHE_CONTROL_NO_CACHE
-                    , HTTP_CACHE_CONTROL_MUST_REVALIDATE
-                    , HTTP_CACHE_CONTROL_MAX_AGE
-                    , config_httpd_cache_max_age_sec()));
+  if (cached)
+  {
+    // set the default cache strategy to set the must-revalidate and max-age
+    header(HttpHeader::CACHE_CONTROL
+        , StringPrintf("%s, %s, %s=%d"
+                      , HTTP_CACHE_CONTROL_NO_CACHE
+                      , HTTP_CACHE_CONTROL_MUST_REVALIDATE
+                      , HTTP_CACHE_CONTROL_MAX_AGE
+                      , config_httpd_cache_max_age_sec()));
+  }
+  else
+  {
+    // set the cache control to disable caching entirely.
+    header(HttpHeader::CACHE_CONTROL, HTTP_CACHE_CONTROL_NO_STORE);
+  }
 }
 
 } // namespace http

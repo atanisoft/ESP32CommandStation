@@ -100,7 +100,9 @@ WebSocketFlow::WebSocketFlow(Httpd *server, int fd, uint32_t remote_ip
       data_ = (uint8_t *)malloc(max_frame_size_);
       if (data_)
       {
+        // prepare to send the handshake to the WS client
         start_flow(STATE(send_handshake));
+
         return;
       }
     }
@@ -128,13 +130,20 @@ WebSocketFlow::~WebSocketFlow()
   {
     free(data_);
   }
-  textToSend_.clear();
+  textFrames_.clear();
 }
 
 void WebSocketFlow::send_text(string &text)
 {
-  OSMutexLock l(&textLock_);
-  textToSend_.append(text);
+  OSMutexLock h(&textLock_);
+  if (textFrames_.size() < config_httpd_websocket_max_pending_frames())
+  {
+    textFrames_.push_back(text);
+  }
+  else
+  {
+    LOG_ERROR("[WebSocket fd:%d] Discarding text frame", fd_);
+  }
 }
 
 int WebSocketFlow::id()
@@ -374,7 +383,7 @@ StateFlowBase::Action WebSocketFlow::recv_frame_data()
                                  , STATE(recv_frame_data)
                                  , STATE(shutdown_connection));
   }
-  return yield_and_call(STATE(read_frame_header));
+  return yield_and_call(STATE(send_frame_header));
 }
 
 StateFlowBase::Action WebSocketFlow::shutdown_connection()
@@ -390,29 +399,30 @@ StateFlowBase::Action WebSocketFlow::shutdown_connection()
 StateFlowBase::Action WebSocketFlow::send_frame_header()
 {
   // TODO: add binary message sending support
-  OSMutexLock l(&textLock_);
-  if (textToSend_.empty())
+  OSMutexLock h(&textLock_);
+  if (textFrames_.empty())
   {
     return yield_and_call(STATE(read_frame_header));
   }
   bzero(data_, max_frame_size_);
   size_t send_size = 0;
-  if (textToSend_.length() < WEBSOCKET_FRAME_LEN_SINGLE)
+  if (textFrames_.front().length() < WEBSOCKET_FRAME_LEN_SINGLE)
   {
-    data_[0] = WEBSOCKET_FINAL_FRAME | OP_TEXT;
-    data_[1] = textToSend_.length();
-    memcpy(data_ + 2, textToSend_.data(), textToSend_.length());
-    data_size_ = textToSend_.length();
+    data_[0] = WEBSOCKET_FINAL_FRAME;
+    data_[1] = textFrames_.front().length();
+    memcpy(data_ + 2, textFrames_.front().data()
+         , textFrames_.front().length());
+    data_size_ = textFrames_.front().length();
     send_size = data_size_ + 2;
   }
-  else if (textToSend_.length() < max_frame_size_ - 4)
+  else if (textFrames_.front().length() < max_frame_size_ - 4)
   {
-    data_size_ = textToSend_.length();
-    data_[0] = WEBSOCKET_FINAL_FRAME | OP_TEXT;
+    data_size_ = textFrames_.front().length();
+    data_[0] = WEBSOCKET_FINAL_FRAME;
     data_[1] = WEBSOCKET_FRAME_LEN_UINT16;
     data_[2] = (data_size_ >> 8) & 0xFF;
     data_[3] = data_size_ & 0xFF;
-    memcpy(data_+ 4, textToSend_.data(), textToSend_.length());
+    memcpy(data_+ 4, textFrames_.front().data(), textFrames_.front().length());
     send_size = data_size_ + 4;
   }
   else
@@ -423,12 +433,13 @@ StateFlowBase::Action WebSocketFlow::send_frame_header()
     data_[1] = WEBSOCKET_FRAME_LEN_UINT16;
     data_[2] = (data_size_ >> 8) & 0xFF;
     data_[3] = data_size_ & 0xFF;
-    memcpy(data_+ 4, textToSend_.data(), data_size_);
+    memcpy(data_+ 4, textFrames_.front().data(), data_size_);
     send_size = data_size_ + 4;
   }
+  data_[0] |= OP_TEXT;
   LOG(CONFIG_HTTP_WS_LOG_LEVEL
     , "[WebSocket fd:%d] send:%zu, text:%zu", fd_, send_size
-    , textToSend_.length());
+    , textFrames_.front().length());
   return write_repeated(&helper_, fd_, data_, send_size, STATE(frame_sent));
 }
 
@@ -440,13 +451,24 @@ StateFlowBase::Action WebSocketFlow::frame_sent()
             , fd_, errno, strerror(errno));
     return yield_and_call(STATE(shutdown_connection));
   }
-  OSMutexLock l(&textLock_);
-  textToSend_.erase(0, data_size_);
-  if (textToSend_.empty())
+  OSMutexLock h(&textLock_);
+  textFrames_.front().erase(0, data_size_);
+
+  // check if the frame being sent has been sent completely, if so drop it from
+  // the pending frames.
+  if (textFrames_.front().empty())
   {
-    return yield_and_call(STATE(read_frame_header));
+    textFrames_.erase(textFrames_.begin());
   }
-  return yield_and_call(STATE(send_frame_header));
+
+  // if we still have frame data to send, send another frame header now.
+  if (!textFrames_.empty())
+  {
+    return yield_and_call(STATE(send_frame_header));
+  }
+
+  // out of frames to send, try and receive one.
+  return yield_and_call(STATE(read_frame_header));
 }
 
 } // namespace http
