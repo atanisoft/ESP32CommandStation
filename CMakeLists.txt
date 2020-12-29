@@ -22,10 +22,6 @@ if ("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" STREQUAL "4.1")
     endif()
 endif()
 
-#if (NOT CONFIG_FREERTOS_SUPPORT_STATIC_ALLOCATION STREQUAL "y")
-#    message(FATAL_ERROR "CONFIG_FREERTOS_SUPPORT_STATIC_ALLOCATION must be enabled in sdkconfig")
-#endif()
-
 set(SUPPORTED_TARGETS esp32)
 project(ESP32CommandStation)
 
@@ -72,36 +68,42 @@ endif()
 add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/index.html.gz"
     COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/index.html
     VERBATIM)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/index.html.gz PROPERTIES GENERATED TRUE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/data/index.html.gz")
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-lite.min.js.gz"
     COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-lite.min.js
     VERBATIM)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-Lite.min.js.gz PROPERTIES GENERATED TRUE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-lite.min.js.gz")
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js.gz"
     COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js
     VERBATIM)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js.gz PROPERTIES GENERATED TRUE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js.gz")
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js.gz"
     COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js
     VERBATIM)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js.gz PROPERTIES GENERATED TRUE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js.gz")
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css.gz"
     COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css
     VERBATIM)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css.gz PROPERTIES GENERATED TRUE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css.gz")
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js.gz"
     COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js
     VERBATIM)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js.gz PROPERTIES GENERATED TRUE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js.gz")
 
@@ -124,6 +126,10 @@ target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/da
 
 if (NOT CONFIG_FREERTOS_HZ EQUAL 1000)
     message(FATAL_ERROR "FreeRTOS tick rate (hz) is required to be 1000.")
+endif()
+
+if (NOT CONFIG_FREERTOS_SUPPORT_STATIC_ALLOCATION)
+    message(FATAL_ERROR "FreeRTOS static allocation must be enabled.")
 endif()
 
 if (NOT CONFIG_PARTITION_TABLE_FILENAME STREQUAL "ESP32CS-partitions.csv")

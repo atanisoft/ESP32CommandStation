@@ -27,14 +27,12 @@ and has been adapter for use in ESP32 COMMAND STATION.
 
 #include <algorithm>
 #include <AllTrainNodes.hxx>
-#include <LCCStackManager.h>
 #include <DCCSignalVFS.h>
 #include <esp_ota_ops.h>
 #include <esp_wifi.h>
 #include <esp_wifi_types.h>
 #include <memory>
 #include <HttpStringUtils.h>
-#include <openlcb/SimpleStack.hxx>
 #if CONFIG_GPIO_OUTPUTS
 #include <Outputs.h>
 #endif // CONFIG_GPIO_OUTPUTS

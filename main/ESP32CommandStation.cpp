@@ -72,41 +72,17 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <JmriInterface.h>
 #endif
 
-#if !CONFIG_ESP32CS_SINGLE_EXECUTOR
 ///////////////////////////////////////////////////////////////////////////////
 // Set the priority of the httpd executor to the effective value used for the
-// primary OpenMRN executor. This is necessary to ensure the executor is not
-// starved of cycles due to the CAN driver.
+// primary OpenMRN executor.
 ///////////////////////////////////////////////////////////////////////////////
-OVERRIDE_CONST_DEFERRED(httpd_server_priority, (ESP_TASK_MAIN_PRIO + 3));
-#endif // !CONFIG_ESP32CS_SINGLE_EXECUTOR
+OVERRIDE_CONST_DEFERRED(httpd_server_priority, ESP_TASK_MAIN_PRIO);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Increase the number of CAN frame queue size to reduce the number of dropped
 // frames.
 ///////////////////////////////////////////////////////////////////////////////
-OVERRIDE_CONST(can_rx_buffer_size, 128);
-
-///////////////////////////////////////////////////////////////////////////////
-// If select() is enabled and the GC delay is less than 1500 usec increase the
-// delay to 1500.
-///////////////////////////////////////////////////////////////////////////////
-#if CONFIG_LCC_USE_SELECT && CONFIG_LCC_GC_DELAY_USEC < 1500
-#undef CONFIG_LCC_GC_DELAY_USEC
-#define CONFIG_LCC_GC_DELAY_USEC 1500
-#endif
-
-///////////////////////////////////////////////////////////////////////////////
-// If compiling with IDF v4.2+ ensure that select() is enabled.
-// NOTE: This must be done after the check above since we will be lowering the
-// delay value to only 500 usec.
-///////////////////////////////////////////////////////////////////////////////
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
-#undef CONFIG_LCC_USE_SELECT
-#define CONFIG_LCC_USE_SELECT 1
-#undef CONFIG_LCC_GC_DELAY_USEC
-#define CONFIG_LCC_GC_DELAY_USEC 500
-#endif
+OVERRIDE_CONST(can_rx_buffer_size, 64);
 
 #if CONFIG_LCC_GC_NEWLINES
 ///////////////////////////////////////////////////////////////////////////////
@@ -131,16 +107,15 @@ OVERRIDE_CONST_DEFERRED(num_memory_spaces, CONFIG_LCC_MEMORY_SPACES);
 // Increase the GridConnect buffer size to improve performance by bundling more
 // than one GridConnect packet into the same send() call to the socket.
 ///////////////////////////////////////////////////////////////////////////////
-OVERRIDE_CONST_DEFERRED(gridconnect_buffer_size, (CONFIG_LWIP_TCP_MSS * 2));
+OVERRIDE_CONST_DEFERRED(gridconnect_buffer_size, CONFIG_LWIP_TCP_MSS);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Increase the time for the buffer to fill up before sending it out over the
 // socket connection.
 ///////////////////////////////////////////////////////////////////////////////
-OVERRIDE_CONST_DEFERRED(gridconnect_buffer_delay_usec
-                      , CONFIG_LCC_GC_DELAY_USEC);
+OVERRIDE_CONST_DEFERRED(gridconnect_buffer_delay_usec, 1500);
 
-#if CONFIG_LCC_USE_SELECT
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,2,0)
 ///////////////////////////////////////////////////////////////////////////////
 // Enable usage of select() for GridConnect connections.
 ///////////////////////////////////////////////////////////////////////////////
@@ -168,8 +143,6 @@ OVERRIDE_CONST_DEFERRED(executor_select_prescaler
 OVERRIDE_CONST_DEFERRED(local_nodes_count, CONFIG_LCC_LOCAL_NODE_COUNT);
 OVERRIDE_CONST_DEFERRED(local_alias_cache_size, CONFIG_LCC_LOCAL_NODE_COUNT);
 
-std::unique_ptr<openlcb::SimpleStackBase> lccStack;
-
 // Esp32ConfigDef comes from CSConfigDescriptor.h and is specific to this
 // particular device and target. It defines the layout of the configuration
 // memory space and is also used to generate the cdi.xml file. Here we
@@ -193,9 +166,6 @@ namespace openlcb
 // override LCC defaults with the ESP32 CS values.
 namespace openlcb
 {
-  // This will stop openlcb from exporting the CDI memory space upon start.
-  const char CDI_DATA[] = "";
-
   // Path to where OpenMRN should persist general configuration data.
   const char *const CONFIG_FILENAME = LCC_CONFIG_FILE;
 
@@ -205,6 +175,259 @@ namespace openlcb
   // Default to store the dynamic SNIP data is stored in the same persistant
   // data file as general configuration data.
   const char *const SNIP_DYNAMIC_FILENAME = LCC_CONFIG_FILE;
+
+  extern const char CDI_DATA[];
+  // This is a C++11 raw string.
+  const char CDI_DATA[] = R"xmlpayload(<?xml version="1.0"?>
+<cdi xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://openlcb.org/schema/cdi/1/1/cdi.xsd">
+<identification>
+<manufacturer>github.com/atanisoft (Mike Dunston)</manufacturer>
+<model>ESP32 Command Station</model>
+<hardwareVersion>ESP32-v1</hardwareVersion>
+<softwareVersion>1.5.0</softwareVersion>
+</identification>
+<acdi/>
+<segment space='251' origin='1'>
+<string size='63'>
+<name>User Name</name>
+<description>This name will appear in network browsers for the current node.</description>
+</string>
+<string size='64'>
+<name>User Description</name>
+<description>This description will appear in network browsers for the current node.</description>
+</string>
+</segment>
+<segment space='253' origin='128'>
+<group>
+<name>Internal data</name>
+<description>Do not change these settings.</description>
+<int size='2'>
+<name>Version</name>
+</int>
+<int size='2'>
+<name>Next event ID</name>
+</int>
+</group>
+<group>
+<name>WiFi Configuration</name>
+<int size='1'>
+<name>WiFi mode</name>
+<description>Configures the WiFi operating mode.</description>
+<min>0</min>
+<max>3</max>
+<default>2</default>
+<map><relation><property>0</property><value>Off</value></relation><relation><property>1</property><value>Station Only</value></relation><relation><property>2</property><value>SoftAP Only</value></relation><relation><property>3</property><value>SoftAP and Station</value></relation></map>
+</int>
+<string size='21'>
+<name>Hostname prefix</name>
+<description>Configures the hostname prefix used by the node.
+Note: the node ID will be appended to this value.</description>
+</string>
+<string size='32'>
+<name>SSID</name>
+<description>Configures the SSID that the ESP32 will connect to.</description>
+</string>
+<string size='128'>
+<name>Password</name>
+<description>Configures the SSID that the ESP32 will connect to.</description>
+</string>
+<string size='32'>
+<name>SSID</name>
+<description>Configures the SSID that the ESP32 will use for the SoftAP.</description>
+</string>
+<string size='128'>
+<name>Password</name>
+<description>Configures the SSID that the ESP32 will use for the SoftAP.</description>
+</string>
+<int size='1'>
+<name>Authentication Mode</name>
+<description>Configures the authentication mode of the SoftAP.</description>
+<min>0</min>
+<max>7</max>
+<default>3</default>
+<map><relation><property>0</property><value>Open</value></relation><relation><property>1</property><value>WEP</value></relation><relation><property>2</property><value>WPA</value></relation><relation><property>3</property><value>WPA2</value></relation><relation><property>4</property><value>WPA/WPA2</value></relation><relation><property>6</property><value>WPA3</value></relation><relation><property>7</property><value>WPA2/WPA3</value></relation></map>
+</int>
+<int size='1'>
+<name>WiFi Channel</name>
+<description>Configures the WiFi channel to use for the SoftAP.
+Note: Some channels overlap eachother and may not provide optimal performance.Recommended channels are: 1, 6, 11 since these do not overlap.</description>
+<min>1</min>
+<max>14</max>
+<default>1</default>
+</int>
+<int size='1'>
+<name>Enable SNTP</name>
+<description>Enabling this option will allow the ESP32 to poll an SNTP server at regular intervals to obtain the current time. The refresh interval roughly once per hour.</description>
+<min>0</min>
+<max>1</max>
+<default>0</default>
+<map><relation><property>0</property><value>Disabled</value></relation><relation><property>1</property><value>Enabled</value></relation></map>
+</int>
+<string size='64'>
+<name>SNTP Server</name>
+<description>Enter the SNTP Server address. Example: pool.ntp.org
+Most of the time this does not need to be changed.</description>
+</string>
+<string size='64'>
+<name>TimeZone</name>
+<description>This is the timezone that the ESP32 should use, note it must be in POSIX notation. Note: The timezone is only configured when SNTP is also enabled.
+A few common values:
+PST8PDT,M3.2.0,M11.1.0 -- UTC-8 with automatic DST adjustment
+MST7MDT,M3.2.0,M11.1.0 -- UTC-7 with automatic DST adjustment
+CST6CDT,M3.2.0,M11.1.0 -- UTC-6 with automatic DST adjustment
+EST5EDT,M3.2.0,M11.1.0 -- UTC-5 with automatic DST adjustment
+A complete list can be seen here in the second column:
+https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv</description>
+</string>
+<group>
+<name>Hub Configuration</name>
+<description>Configuration settings for an OpenLCB Hub</description>
+<int size='1'>
+<name>Enable</name>
+<description>Configures this node as an OpenLCB hub which can accept connections from other nodes.
+NOTE: This may cause some instability as the number of connected nodes increases.</description>
+<min>0</min>
+<max>1</max>
+<default>0</default>
+<map><relation><property>0</property><value>Disabled</value></relation><relation><property>1</property><value>Enabled</value></relation></map>
+</int>
+<int size='2'>
+<name>Hub Listener Port</name>
+<description>Defines the TCP/IP listener port this node will use when operating as a hub. Most of the time this does not need to be changed.</description>
+<min>1</min>
+<max>65535</max>
+<default>12021</default>
+</int>
+<string size='64'>
+<name>mDNS Service</name>
+<description>mDNS or Bonjour service name, such as _openlcb-can._tcp</description>
+</string>
+<group offset='6'/>
+</group>
+<group>
+<name>Uplink Configuration</name>
+<description>Configures how this node will connect to other nodes.</description>
+<int size='1'>
+<name>Enable</name>
+<description>Enables connecting to an OpenLCB Hub. In some cases it may be desirable to disable the uplink, such as a CAN only configuration.</description>
+<min>0</min>
+<max>1</max>
+<default>1</default>
+<map><relation><property>0</property><value>Disabled</value></relation><relation><property>1</property><value>Enabled</value></relation></map>
+</int>
+<string size='64'>
+<name>mDNS Service</name>
+<description>mDNS or Bonjour service name, such as _openlcb-can._tcp</description>
+</string>
+<string size='64'>
+<name>IP Address</name>
+<description>Enter the server IP address. Example: 192.168.0.55
+Note: This will be used as a fallback when mDNS lookup is not successful.</description>
+</string>
+<int size='2'>
+<name>Port Number</name>
+<description>TCP port number of the server. Most of the time this does not need to be changed.</description>
+<min>1</min>
+<max>65535</max>
+<default>12021</default>
+</int>
+</group>
+<int size='1'>
+<name>WiFi Power Savings Mode</name>
+<description>When enabled this allows the ESP32 WiFi radio to use power savings mode which puts the radio to sleep except to receive beacon updates from the connected SSID. This should generally not need to be enabled unless you are powering the ESP32 from a battery.</description>
+<min>0</min>
+<max>1</max>
+<default>0</default>
+<map><relation><property>0</property><value>Disabled</value></relation><relation><property>1</property><value>Enabled</value></relation></map>
+</int>
+<int size='1'>
+<name>WiFi Transmit Power</name>
+<description>WiFi Radio transmit power in dBm. This can be used to limit the WiFi range. This option generally does not need to be changed.
+NOTE: Setting this option to a very low value can cause communication failures.</description>
+<min>8</min>
+<max>78</max>
+<default>78</default>
+<map><relation><property>8</property><value>2 dBm</value></relation><relation><property>20</property><value>5 dBm</value></relation><relation><property>28</property><value>7 dBm</value></relation><relation><property>34</property><value>8 dBm</value></relation><relation><property>44</property><value>11 dBm</value></relation><relation><property>52</property><value>13 dBm</value></relation><relation><property>56</property><value>14 dBm</value></relation><relation><property>60</property><value>15 dBm</value></relation><relation><property>66</property><value>16 dBm</value></relation><relation><property>72</property><value>18 dBm</value></relation><relation><property>78</property><value>20 dBm</value></relation></map>
+</int>
+<int size='1'>
+<name>Wait for successful SSID connection</name>
+<description>Enabling this option will cause the node to restart when there is a failure (or timeout) during the SSID connection process.</description>
+<min>0</min>
+<max>1</max>
+<default>1</default>
+<map><relation><property>0</property><value>Disabled</value></relation><relation><property>1</property><value>Enabled</value></relation></map>
+</int>
+</group>
+<group replication='4'>
+<name>Input Only Pins</name>
+<repname>Input</repname>
+<string size='15'>
+<name>Description</name>
+<description>User name of this input.</description>
+</string>
+<int size='1'>
+<name>Debounce parameter</name>
+<description>Amount of time to wait for the input to stabilize before producing the event. Unit is 30 msec of time. Usually a value of 2-3 works well in a non-noisy environment. In high noise (train wheels for example) a setting between 8 -- 15 makes for a slower response time but a more stable signal.
+Formally, the parameter tells how many times of tries, each 30 msec apart, the input must have the same value in order for that value to be accepted and the event transition produced.</description>
+<default>3</default>
+</int>
+<eventid>
+<name>Event On</name>
+<description>This event will be produced when the input goes to HIGH.</description>
+</eventid>
+<eventid>
+<name>Event Off</name>
+<description>This event will be produced when the input goes to LOW.</description>
+</eventid>
+</group>
+<group replication='14'>
+<name>Input Output Pins</name>
+<repname>IO</repname>
+<int size='1'>
+<name>Configuration</name>
+<default>1</default>
+<map><relation><property>0</property><value>Output</value></relation><relation><property>1</property><value>Input</value></relation></map>
+</int>
+<int size='1'>
+<name>Debounce parameter</name>
+<description>Used for inputs only. Amount of time to wait for the input to stabilize before producing the event. Unit is 30 msec of time. Usually a value of 2-3 works well in a non-noisy environment. In high noise (train wheels for example) a setting between 8 -- 15 makes for a slower response time but a more stable signal.
+Formally, the parameter tells how many times of tries, each 30 msec apart, the input must have the same value in order for that value to be accepted and the event transition produced.</description>
+<default>3</default>
+</int>
+<group offset='1'/>
+<group>
+<string size='20'>
+<name>Description</name>
+<description>User name of this line.</description>
+</string>
+<eventid>
+<name>Event On</name>
+<description>This event ID will turn the output on / be produced when the input goes on.</description>
+</eventid>
+<eventid>
+<name>Event Off</name>
+<description>This event ID will turn the output off / be produced when the input goes off.</description>
+</eventid>
+</group>
+</group>
+</segment>
+<segment space='253'>
+<name>Version information</name>
+<int size='1'>
+<name>ACDI User Data version</name>
+<description>Set to 2 and do not change.</description>
+</int>
+</segment>
+</cdi>
+)xmlpayload";
+  extern const size_t CDI_SIZE;
+  const size_t CDI_SIZE = sizeof(CDI_DATA);
+  extern const uint16_t CDI_EVENT_OFFSETS[] =
+  {
+    828, 836, 860, 868, 892, 900, 924, 932, 963, 971, 1002, 1010, 1041, 1049,
+    1080, 1088, 1119, 1127, 1158, 1166, 1197, 1205, 1236, 1244, 1275, 1283,
+    1314, 1322, 1353, 1361, 1392, 1400, 1431, 1439, 1470, 1478, 0
+  };
 }
 
 // when the command station starts up the first time the config is blank
@@ -408,9 +631,6 @@ extern "C" void app_main()
 #if !CONFIG_DISPLAY_TYPE_NONE
   Singleton<StatusDisplay>::instance()->status("ESP32-CS Started");
 #endif // !CONFIG_DISPLAY_TYPE_NONE
-
-  // increase our task priority to higher than the CAN driver
-  vTaskPrioritySet(nullptr, ESP_TASK_MAIN_PRIO + 3);
 
   // donate our task thread to OpenMRN executor.
   stackManager.stack()->loop_executor();

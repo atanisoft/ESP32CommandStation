@@ -20,6 +20,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 
 #include <DCCppProtocol.h>
 #include <executor/StateFlow.hxx>
+#include <sys/socket.h>
 
 class JmriClientFlow : private StateFlowBase, public DCCPPProtocolConsumer
 {

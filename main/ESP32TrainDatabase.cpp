@@ -18,11 +18,11 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 #include "ESP32TrainDatabase.h"
 
 #include <AllTrainNodes.hxx>
-#include <CDIHelper.h>
 #include <FileSystemManager.h>
 #include <json.hpp>
 #include <JsonConstants.h>
 #include <TrainDbCdi.hxx>
+#include <openlcb/SimpleStack.hxx>
 #include <utils/FileUtils.hxx>
 
 namespace commandstation
@@ -211,14 +211,193 @@ void Esp32TrainDbEntry::recalcuate_max_fn()
 
 static constexpr const char * TRAIN_DB_JSON_FILE = "trains.json";
 
+const char TRAIN_CDI_DATA[] = R"xmlpayload(<?xml version="1.0"?>
+<cdi xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://openlcb.org/schema/cdi/1/1/cdi.xsd">
+<identification>
+<manufacturer>github.com/atanisoft (Mike Dunston)</manufacturer>
+<model>Virtual train node</model>
+<hardwareVersion>ESP32-v1</hardwareVersion>
+<softwareVersion>1.5.0</softwareVersion>
+</identification>
+<segment space='253'>
+<group>
+<description>Configures a single train</description>
+<int size='2'>
+<name>Address</name>
+<description>Track protocol address of the train.</description>
+<default>0</default>
+</int>
+<int size='1'>
+<name>Protocol</name>
+<description>Protocol to use on the track for driving this train.</description>
+<default>10</default>
+<map><relation><property>0</property><value>Unused</value></relation><relation><property>10</property><value>DCC 28-step</value></relation><relation><property>11</property><value>DCC 128-step</value></relation><relation><property>5</property><value>Marklin-Motorola I</value></relation><relation><property>6</property><value>Marklin-Motorola II</value></relation><relation><property>14</property><value>DCC 28-step (forced long address)</value></relation><relation><property>15</property><value>DCC 128-step (forced long address)</value></relation></map>
+</int>
+<string size='16'>
+<name>Name</name>
+<description>Identifies the train node on the LCC bus.</description>
+</string>
+<group>
+<group>
+<name>F0</name>
+<description>F0 is permanently assigned to Light.</description>
+<group offset='2'/>
+</group>
+<group replication='28'>
+<name>Functions</name>
+<description>Defines what each function button does.</description>
+<repname>Fn</repname>
+<int size='1'>
+<name>Display</name>
+<description>Defines how throttles display this function.</description>
+<default>0</default>
+<map><relation><property>0</property><value>Unavailable</value></relation><relation><property>1</property><value>Light</value></relation><relation><property>2</property><value>Beamer</value></relation><relation><property>3</property><value>Bell</value></relation><relation><property>4</property><value>Horn</value></relation><relation><property>5</property><value>Shunting mode</value></relation><relation><property>6</property><value>Pantograph</value></relation><relation><property>7</property><value>Smoke</value></relation><relation><property>8</property><value>Momentum off</value></relation><relation><property>9</property><value>Whistle</value></relation><relation><property>10</property><value>Sound</value></relation><relation><property>11</property><value>F</value></relation><relation><property>12</property><value>Announce</value></relation><relation><property>13</property><value>Engine</value></relation><relation><property>14</property><value>Light1</value></relation><relation><property>15</property><value>Light2</value></relation><relation><property>17</property><value>Uncouple</value></relation><relation><property>255</property><value>Unavailable_</value></relation></map>
+</int>
+<int size='1'>
+<name>Momentary</name>
+<description>Momentary functions are automatically turned off when you release the respective button on the throttles.</description>
+<default>0</default>
+<map><relation><property>0</property><value>Latching</value></relation><relation><property>1</property><value>Momentary</value></relation></map>
+</int>
+</group>
+</group>
+</group>
+</segment>
+<segment space='248' origin='2131755008'>
+<name>Programming track operation</name>
+<description>Use this component to read and write CVs on the programming track of the command station.</description>
+<int size='4'>
+<name>Operating mode</name>
+<map>
+<relation><property>0</property><value>Disabled</value></relation>
+<relation><property>1</property><value>Direct mode</value></relation>
+<relation><property>2</property><value>POM mode</value></relation>
+<relation><property>10</property><value>Advanced mode</value></relation>
+</map>
+</int>
+<int size='4'>
+<name>CV number</name>
+<description>Number of CV to read or write (1..1024).</description>
+<min>0</min>
+<max>1024</max>
+<default>0</default>
+</int>
+<int size='4'>
+<name>CV value</name>
+<description>Set 'Operating mode' and 'CV number' first, then: hit 'Refresh' to read the entire CV, or enter a value and hit 'Write' to set the CV.</description>
+<min>0</min>
+<max>255</max>
+<default>0</default>
+</int>
+<int size='4'>
+<name>Bit change</name>
+<description>Set 'Operating mode' and 'CV number' first, then: write 1064 to set the single bit whose value is 64, or 2064 to clear that bit. Write 100 to 107 to set bit index 0 to 7, or 200 to 207 to clear bit 0 to 7. Values outside of these two ranges do nothing.</description>
+<min>100</min>
+<max>2128</max>
+<default>1000</default>
+</int>
+<string size='24'>
+<name>Read bits decomposition</name>
+<description>Hit Refresh on this line after reading a CV value to see which bits are set.</description>
+</string>
+<group>
+<name>Advanced settings</name>
+<int size='4'>
+<name>Repeat count for verify packets</name>
+<description>How many times a direct mode bit verify packet needs to be repeated for an acknowledgement to be generated.</description>
+<min>0</min>
+<max>255</max>
+<default>3</default>
+</int>
+<int size='4'>
+<name>Repeat count for reset packets after verify</name>
+<description>How many reset packets to send after a verify.</description>
+<min>0</min>
+<max>255</max>
+<default>6</default>
+</int>
+</group>
+</segment>
+</cdi>
+)xmlpayload";
+const size_t TRAIN_CDI_DATA_SIZE = sizeof(TRAIN_CDI_DATA);
+
+const char TEMP_TRAIN_CDI_DATA[] = R"xmlpayload(<?xml version="1.0"?>
+<cdi xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://openlcb.org/schema/cdi/1/1/cdi.xsd">
+<identification>
+<manufacturer>github.com/atanisoft (Mike Dunston)</manufacturer>
+<model>Virtual train node</model>
+<hardwareVersion>ESP32-v1</hardwareVersion>
+<softwareVersion>1.5.0</softwareVersion>
+</identification>
+<segment space='253'>
+<name>Non-stored train</name>
+<description>This train is not part of the train database, thus no configuration settings can be changed on it.</description>
+</segment>
+<segment space='248' origin='2131755008'>
+<name>Programming track operation</name>
+<description>Use this component to read and write CVs on the programming track of the command station.</description>
+<int size='4'>
+<name>Operating mode</name>
+<map>
+<relation><property>0</property><value>Disabled</value></relation>
+<relation><property>1</property><value>Direct mode</value></relation>
+<relation><property>2</property><value>POM mode</value></relation>
+<relation><property>10</property><value>Advanced mode</value></relation>
+</map>
+</int>
+<int size='4'>
+<name>CV number</name>
+<description>Number of CV to read or write (1..1024).</description>
+<min>0</min>
+<max>1024</max>
+<default>0</default>
+</int>
+<int size='4'>
+<name>CV value</name>
+<description>Set 'Operating mode' and 'CV number' first, then: hit 'Refresh' to read the entire CV, or enter a value and hit 'Write' to set the CV.</description>
+<min>0</min>
+<max>255</max>
+<default>0</default>
+</int>
+<int size='4'>
+<name>Bit change</name>
+<description>Set 'Operating mode' and 'CV number' first, then: write 1064 to set the single bit whose value is 64, or 2064 to clear that bit. Write 100 to 107 to set bit index 0 to 7, or 200 to 207 to clear bit 0 to 7. Values outside of these two ranges do nothing.</description>
+<min>100</min>
+<max>2128</max>
+<default>1000</default>
+</int>
+<string size='24'>
+<name>Read bits decomposition</name>
+<description>Hit Refresh on this line after reading a CV value to see which bits are set.</description>
+</string>
+<group>
+<name>Advanced settings</name>
+<int size='4'>
+<name>Repeat count for verify packets</name>
+<description>How many times a direct mode bit verify packet needs to be repeated for an acknowledgement to be generated.</description>
+<min>0</min>
+<max>255</max>
+<default>3</default>
+</int>
+<int size='4'>
+<name>Repeat count for reset packets after verify</name>
+<description>How many reset packets to send after a verify.</description>
+<min>0</min>
+<max>255</max>
+<default>6</default>
+</int>
+</group>
+</segment>
+</cdi>
+)xmlpayload";
+const size_t TEMP_TRAIN_CDI_DATA_SIZE = sizeof(TEMP_TRAIN_CDI_DATA);
+
+
 Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
 {
-  TrainConfigDef trainCfg(0);
-  TrainTmpConfigDef tmpTrainCfg(0);
-  CDIHelper::create_config_descriptor_xml(trainCfg, TRAIN_CDI_FILE);
-  CDIHelper::create_config_descriptor_xml(tmpTrainCfg, TEMP_TRAIN_CDI_FILE);
-  trainCdiFile_.reset(new openlcb::ROFileMemorySpace(TRAIN_CDI_FILE));
-  tempTrainCdiFile_.reset(new openlcb::ROFileMemorySpace(TEMP_TRAIN_CDI_FILE));
+  trainCdiFile_.reset(new openlcb::ReadOnlyMemoryBlock(TRAIN_CDI_DATA, TRAIN_CDI_DATA_SIZE));
+  tempTrainCdiFile_.reset(new openlcb::ReadOnlyMemoryBlock(TEMP_TRAIN_CDI_DATA, TEMP_TRAIN_CDI_DATA_SIZE));
   persistFlow_.emplace(stack->service()
                      , SEC_TO_NSEC(CONFIG_ROSTER_PERSISTENCE_INTERVAL_SEC)
                      , std::bind(&Esp32TrainDatabase::persist, this));

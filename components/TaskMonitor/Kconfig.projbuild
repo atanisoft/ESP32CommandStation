@@ -7,6 +7,9 @@ menu "Task Monitor"
     config TASK_LIST_REPORT
         bool "Print FreeRTOS task list periodically"
         default n
+        select FREERTOS_VTASKLIST_INCLUDE_COREID
+        select FREERTOS_USE_TRACE_FACILITY
+        select FREERTOS_GENERATE_RUN_TIME_STATS
 
     config TASK_LIST_INTERVAL_SEC
         int "Seconds between FreeRTOS task list printing"

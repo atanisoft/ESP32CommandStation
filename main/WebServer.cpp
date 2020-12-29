@@ -67,7 +67,6 @@ using http::MIME_TYPE_IMAGE_PNG;
 using http::MIME_TYPE_IMAGE_GIF;
 using http::HTTP_ENCODING_GZIP;
 using http::WebSocketEvent;
-using openlcb::TcpClientDefaultParams;
 
 class WebSocketClient : public DCCPPProtocolConsumer
 {
@@ -212,50 +211,37 @@ public:
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
-  void clear_last_uplink()
-  {
-    auto uplink = cfg_.seg().wifi_lcc().uplink();
-    uplink.last_address().ip_address().write(fd_, "");
-    MAYBE_TRIGGER_UPDATE(true);
-  }
-
-  void reconfigure_uplink(SocketClientParams::SearchMode mode
-                        , string uplink_service_name
+  void reconfigure_uplink(bool enabled
+                        , string service_name
                         , string manual_hostname
-                        , uint16_t manual_port
-                        , bool reconnect)
+                        , uint16_t manual_port)
   {
-    auto wifi = cfg_.seg().wifi_lcc();
+    auto wifi = cfg_.seg().wifi();
     bool upd = false;
-    CDI_COMPARE_AND_SET(wifi.uplink().search_mode, fd_, mode, upd);
-    CDI_COMPARE_AND_SET(wifi.uplink().auto_address().service_name, fd_
-                      , uplink_service_name, upd);
-    CDI_COMPARE_AND_SET(wifi.uplink().manual_address().ip_address, fd_
-                      , manual_hostname, upd);
-    CDI_COMPARE_AND_SET(wifi.uplink().manual_address().port, fd_
-                      , manual_port, upd);
-    CDI_COMPARE_AND_SET(wifi.uplink().reconnect, fd_, reconnect, upd);
-
+    CDI_COMPARE_AND_SET(wifi.uplink().enable, fd_, enabled, upd);
+    CDI_COMPARE_AND_SET(wifi.uplink().service_name, fd_, service_name, upd);
+    CDI_COMPARE_AND_SET(wifi.uplink().ip_address, fd_, manual_hostname, upd);
+    CDI_COMPARE_AND_SET(wifi.uplink().port, fd_, manual_port, upd);
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
   void reconfigure_lcc_hub(bool enabled)
   {
     bool upd = false;
-    CDI_COMPARE_AND_SET(cfg_.seg().wifi_lcc().hub().enable, fd_, enabled, upd);
+    CDI_COMPARE_AND_SET(cfg_.seg().wifi().hub().enable, fd_, enabled, upd);
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
   void reconfigure_wifi_tx_power(uint8_t value)
   {
     bool upd = false;
-    CDI_COMPARE_AND_SET(cfg_.seg().wifi_lcc().tx_power, fd_, value, upd);
+    CDI_COMPARE_AND_SET(cfg_.seg().wifi().tx_power, fd_, value, upd);
     MAYBE_TRIGGER_UPDATE(upd);
   }
 
   string get_config_json()
   {
-    auto wifi = cfg_.seg().wifi_lcc();
+    auto wifi = cfg_.seg().wifi();
     auto ops = cfg_.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX);
     auto prog = cfg_.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX);
     
@@ -263,13 +249,10 @@ public:
       StringPrintf("\"hub\":%s,"
                    "\"tx_power\":%d,"
                    "\"uplink\":{"
-                     "\"reconnect\":%s,"
+                     "\"enabled\":%s,"
                      "\"auto_service\":\"%s\","
                      "\"manual_host\":\"%s\","
-                     "\"manual_port\":%d,"
-                     "\"mode\":%d,"
-                     "\"last_uplink\":\"%s\","
-                     "\"last_port\":%d"
+                     "\"manual_port\":%d"
                    "},"
                    "\"hbridges\":["
                      "{"
@@ -287,13 +270,10 @@ public:
                    "]"
                  , CDI_READ_TRIMMED(wifi.hub().enable, fd_) ? "true" : "false"
                  , CDI_READ_TRIMMED(wifi.tx_power, fd_)
-                 , CDI_READ_TRIMMED(wifi.uplink().reconnect, fd_) ? "true" : "false"
-                 , wifi.uplink().auto_address().service_name().read(fd_).c_str()
-                 , wifi.uplink().manual_address().ip_address().read(fd_).c_str()
-                 , CDI_READ_TRIMMED(wifi.uplink().manual_address().port, fd_)
-                 , CDI_READ_TRIMMED(wifi.uplink().search_mode, fd_)
-                 , wifi.uplink().last_address().ip_address().read(fd_).c_str()
-                 , CDI_READ_TRIMMED(wifi.uplink().last_address().port, fd_)
+                 , CDI_READ_TRIMMED(wifi.uplink().enable, fd_) ? "true" : "false"
+                 , wifi.uplink().service_name().read(fd_).c_str()
+                 , wifi.uplink().ip_address().read(fd_).c_str()
+                 , CDI_READ_TRIMMED(wifi.uplink().port, fd_)
                  , uint64_to_string_hex(ops.event_short().read(fd_)).c_str()
                  , uint64_to_string_hex(ops.event_short_cleared().read(fd_)).c_str()
                  , uint64_to_string_hex(ops.event_shutdown().read(fd_)).c_str()
@@ -317,13 +297,9 @@ void init_webserver(const esp32cs::Esp32ConfigDef &cfg)
 
   auto httpd = Singleton<Httpd>::instance();
   httpd->redirect_uri("/", "/index.html");
-  // if the soft AP interface is enabled, setup the captive portal
-  if (Singleton<esp32cs::LCCWiFiManager>::instance()->is_softap_enabled())
-  {
-    httpd->captive_portal(
-      StringPrintf(CAPTIVE_PORTAL_HTML
-                 , esp_ota_get_app_description()->version));
-  } 
+  httpd->captive_portal(
+    StringPrintf(CAPTIVE_PORTAL_HTML
+               , esp_ota_get_app_description()->version));
   httpd->static_uri("/index.html", indexHtmlGz, indexHtmlGz_size
                   , MIME_TYPE_TEXT_HTML, HTTP_ENCODING_GZIP);
   httpd->static_uri("/loco-32x32.png", loco32x32, loco32x32_size
@@ -579,22 +555,17 @@ HTTP_HANDLER_IMPL(process_config, request)
   }
   if (request->has_param("ssid"))
   {
-    wifiManager->reconfigure_station(request->param("ssid"), request->param("password"));
+    //wifiManager->reconfigure_station(request->param("ssid"), request->param("password"));
     needReboot = true;
   }
   if (request->has_param("mode"))
   {
-    wifiManager->reconfigure_mode(request->param("mode"));
+    //wifiManager->reconfigure_mode(request->param("mode"));
     needReboot = true;
   }
   if (request->has_param("nodeid") &&
       stackManager->set_node_id(request->param("nodeid")))
   {
-    needReboot = true;
-  }
-  if (request->has_param("lcc-can"))
-  {
-    stackManager->reconfigure_can(request->param("lcc-can", false));
     needReboot = true;
   }
   if (request->has_param("lcc-hub"))
@@ -605,27 +576,16 @@ HTTP_HANDLER_IMPL(process_config, request)
   {
     configListener->reconfigure_wifi_tx_power(request->param("tx_power", 78));
   }
-  if (request->has_param("uplink-clear-last"))
-  {
-    configListener->clear_last_uplink();
-  }
-  if (request->has_param("uplink-mode") &&
+  if (request->has_param("uplink-enabled") &&
       request->has_param("uplink-service") &&
-      request->has_param("uplink-manual") &&
-      request->has_param("uplink-manual-port") &&
-      request->has_param("uplink-reconnect"))
+      request->has_param("uplink-host") &&
+      request->has_param("uplink-port"))
   {
-    // WiFi uplink settings do not require a reboot
-    SocketClientParams::SearchMode mode =
-      (SocketClientParams::SearchMode)request->param("uplink-mode"
-        , SocketClientParams::SearchMode::AUTO_MANUAL);
-    string uplink_service = request->param("uplink-service");
-    uint16_t manual_port =
-      request->param("uplink-manual-port", TcpClientDefaultParams::DEFAULT_PORT);
-    string manual_host = request->param("uplink-manual");
-    bool reconnect = request->param("uplink-reconnect", true);
-    configListener->reconfigure_uplink(mode, uplink_service, manual_host
-                                     , manual_port, reconnect);
+    bool enabled = request->param("uplink-enabled", true);
+    string service = request->param("uplink-service");
+    string host = request->param("uplink-host");
+    uint16_t port = request->param("uplink-port", 12021);
+    configListener->reconfigure_uplink(enabled, service, host, port);
   }
   if (request->has_param("ops-short") &&
       request->has_param("ops-short-clear") &&
@@ -659,7 +619,7 @@ HTTP_HANDLER_IMPL(process_config, request)
 
   string response =
     StringPrintf("{%s,%s,%s}", stackManager->get_config_json().c_str()
-                , wifiManager->get_config_json().c_str()
+                , "" //wifiManager->get_config_json().c_str()
                 , configListener->get_config_json().c_str());
   return new JsonResponse(response);
 }

@@ -12,6 +12,8 @@ Remaining tasks for v1.5.0 release:
     -   [ ] Test RailCom detector code.
 -   [ ] Documentation tasks:
     -   [ ] Write migration guide for building, what has changed since v1.2.3, future of legacy protocols (DCC++, non-LCC JMRI)
+-   [ ] OpenLCB (LCC):
+    -   [ ] Support via JMRI / LCC using OpenMRN Bootloader.
 
 ### Completed for v1.5.0
 These tasks have been completed and integrated for v1.5.0:
@@ -47,6 +49,8 @@ These tasks have been completed and integrated for v1.5.0:
         -   [x] Basic integration is functional (loco request works for dynamic locos)
         -   [x] Persisted locos that are not active can not be requested from UWT-100.
     -   [x] Default configuration via "menuconfig" with override ability via web interface.
+    -   [x] Rewrite HW Can driver.
+    -   [x] Expose WiFi config in CDI
 -   [x] S88 Sensors:
     -   [x] Add delay in s88SensorTask so that it gives time for other tasks to execute between updates.
     -   [x] Convert to use openlcb::Polling model rather than tasks.
@@ -115,15 +119,12 @@ These entries are items being tracked for a future release, these are not listed
     -   [ ] Reimplement NeoNextion using OpenMRN StateFlow pattern with uart select() usage.
     -   [ ] Replace Routes page with a Setup page which will include route creation.
 -   [ ] OpenLCB (LCC):
-    -   [ ] Rewrite HW Can driver.
     -   [ ] Broadcast events for turnout state change.
     -   [ ] Discard turnout events when turnout already in expected state (drop duplicate events).
     -   [ ] Expose PROG track via CDI (needed for UWT-100 support).
     -   [ ] Reimplement Loco Consist leveraging LCC Traction Consist functionality.
     -   [ ] Connect Loco CDI to TrainDB.
-    -   [ ] Expose WiFi config in CDI?
 -   [ ] Over-the-air (OTA) firmware update:
-    -   [ ] Support via JMRI / LCC using OpenMRN Bootloader.
     -   [ ] Return to normal mode on Nextion when OTA fails.
 -   [ ] Web Interface:
     -   [ ] Add strict validation of input parameter data.

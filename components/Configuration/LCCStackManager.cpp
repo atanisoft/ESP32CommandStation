@@ -16,9 +16,8 @@ COPYRIGHT (c) 2020 Mike Dunston
 **********************************************************************/
 
 #include "LCCStackManager.h"
-#include "CDIHelper.h"
 #include "FileSystemManager.h"
-#include <freertos_drivers/esp32/Esp32Twai.hxx>
+#include <freertos_drivers/esp32/Esp32HardwareTwai.hxx>
 #include <openlcb/SimpleStack.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 
@@ -27,30 +26,12 @@ namespace esp32cs
 
 static constexpr const char LCC_NODE_ID_FILE[] = "lcc-node";
 static constexpr const char LCC_RESET_MARKER_FILE[] = "lcc-rst";
-static constexpr const char LCC_CAN_MARKER_FILE[] = "lcc-can";
 
-#if ESP32_TWAI_DRIVER_SUPPORTED && \
-    CONFIG_LCC_CAN_RX_PIN != -1 && \
+#if CONFIG_LCC_CAN_RX_PIN != -1 && \
     CONFIG_LCC_CAN_TX_PIN != -1
-Esp32Twai twai("/dev/twai", CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
+Esp32HardwareTwai twai("/dev/twai", CONFIG_LCC_CAN_RX_PIN
+                     , CONFIG_LCC_CAN_TX_PIN);
 #define CAN_PERIPHERAL_AVAILABLE 1
-
-#define CAN_PERIPHERAL_SELECT 1
-
-static void twai_init_task(void *param)
-{
-  auto stack = static_cast<openlcb::SimpleCanStack *>(param);
-  LOG(INFO, "[LCC] Enabling CAN interface (rx: %d, tx: %d)"
-    , CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
-  twai.hw_init();
-#if CAN_PERIPHERAL_SELECT
-  stack->add_can_port_select("/dev/twai/twai0");
-#else
-  stack->add_can_port_async("/dev/twai/twai0");
-#endif
-  vTaskDelete(nullptr);
-}
-
 #endif // ESP32_TWAI_DRIVER_SUPPORTED
 
 LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
@@ -92,11 +73,6 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
         LOG(WARNING, "[LCC] Forcing regeneration of %s", LCC_CONFIG_FILE);
         ERRNOCHECK(LCC_CONFIG_FILE, unlink(LCC_CONFIG_FILE));
     }
-    if (!stat(LCC_CDI_XML, &statbuf))
-    {
-        LOG(WARNING, "[LCC] Forcing regeneration of %s", LCC_CDI_XML);
-        ERRNOCHECK(LCC_CDI_XML, unlink(LCC_CDI_XML));
-    }
   }
 
   // if there is a node-id override load it
@@ -113,17 +89,12 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
 #else
   stack_ = new openlcb::SimpleCanStack(nodeID_);
 #if CAN_PERIPHERAL_AVAILABLE
-  // If the user has not explicitly disabled the CAN interface create it and
-  // start a background task to send/receive packets.
-  // TODO: move to new TWAI driver once stable since it does not require a task
-  if (!fs->exists(LCC_CAN_MARKER_FILE))
+  stack->executor()->add(new CallbackExecutable([]
   {
-    // Initialize the TWAI driver from core 1 to ensure the TWAI driver is tied
-    // to the core that the OpenMRN stack is *NOT* running on.
-    xTaskCreatePinnedToCore(twai_init_task, "twai-init", 2048, stack_
-                          , config_arduino_openmrn_task_priority(), nullptr
-                          , APP_CPU_NUM);
-  }
+      // Initialize the TWAI driver
+      twai.hw_init();
+      stack->add_can_port_async("/dev/twai/twai0");
+  }));
 #endif // CAN_PERIPHERAL_AVAILABLE
 #endif // CONFIG_LCC_TCP_STACK
 }
@@ -164,9 +135,6 @@ openlcb::MemoryConfigHandler *LCCStackManager::memory_config_handler()
 
 void LCCStackManager::start(bool is_sd)
 {
-  // Create the CDI.xml dynamically if it doesn't already exist.
-  CDIHelper::create_config_descriptor_xml(cfg_, LCC_CDI_XML, stack_);
-
   // Create the default internal configuration file if it doesn't already exist.
   fd_ =
     stack_->create_config_file_if_needed(cfg_.seg().internal_config()
@@ -232,23 +200,6 @@ bool LCCStackManager::set_node_id(string node_id)
   return false;
 }
 
-void LCCStackManager::reconfigure_can(bool enable)
-{
-  auto fs = Singleton<FileSystemManager>::instance();
-  if (enable)
-  {
-    LOG(INFO, "[LCC] Enabling CAN interface, reinitialization required.");
-    fs->remove(LCC_CAN_MARKER_FILE);
-  }
-  else
-  {
-    LOG(INFO, "[LCC] Disabling CAN interface, reinitialization required.");
-    string can_str = "disabled";
-    fs->store(LCC_CAN_MARKER_FILE, can_str);
-  }
-  reboot_node();
-}
-
 void LCCStackManager::factory_reset()
 {
   LOG(INFO, "[LCC] Enabling forced factory_reset.");
@@ -259,10 +210,13 @@ void LCCStackManager::factory_reset()
 
 std::string LCCStackManager::get_config_json()
 {
-  auto fs = Singleton<FileSystemManager>::instance();
   return StringPrintf("\"lcc\":{\"id\":\"%s\", \"can\":%s}"
                     , uint64_to_string_hex(nodeID_).c_str()
-                    , !fs->exists(LCC_CAN_MARKER_FILE) ? "true" : "false");
+#if CAN_PERIPHERAL_AVAILABLE
+                    , "true");
+#else
+                    , "false");
+#endif
 }
 
 void LCCStackManager::reboot_node()

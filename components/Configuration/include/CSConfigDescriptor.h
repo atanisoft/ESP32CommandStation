@@ -38,7 +38,7 @@ namespace esp32cs
     /// then optional arguments list.
     CDI_GROUP_ENTRY(internal_config, openlcb::InternalConfigData);
     /// LCC WiFi configuration.
-    CDI_GROUP_ENTRY(wifi_lcc, WiFiConfiguration, Name("LCC WiFi Configuration"));
+    CDI_GROUP_ENTRY(wifi, WiFiConfiguration, Name("WiFi Configuration"));
     /// H-Bridge configuration.
     CDI_GROUP_ENTRY(hbridge, TrackOutputs, Name("H-Bridge Configuration"),
                     RepName("H-Bridge"));

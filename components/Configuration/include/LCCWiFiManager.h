@@ -37,25 +37,7 @@ public:
   LCCWiFiManager(openlcb::SimpleStackBase *stack
                , const esp32cs::Esp32ConfigDef &cfg);
   void shutdown();
-  void reconfigure_mode(std::string mode, bool restart = true);
-  void reconfigure_station(std::string ssid, std::string password
-                         , std::string ip = "", std::string gateway = ""
-                         , std::string subnet = "", std::string dns = ""
-                         , bool restart = true);
   std::string wifi_scan_json(bool ignore_duplicates=true);
-  std::string get_config_json();
-  bool is_softap_enabled()
-  {
-    return mode_ == WIFI_MODE_AP || mode_ == WIFI_MODE_APSTA;
-  }
-  bool is_station_enabled()
-  {
-    return mode_ != WIFI_MODE_AP;
-  }
-  std::string get_ssid()
-  {
-    return ssid_;
-  }
 #if CONFIG_FASTCLOCK_REALTIME
   void real_time_clock_sync(time_t seconds);
 #endif // CONFIG_FASTCLOCK_REALTIME
@@ -63,9 +45,6 @@ private:
   openlcb::SimpleStackBase *stack_;
   const esp32cs::Esp32ConfigDef cfg_;
   std::unique_ptr<openmrn_arduino::Esp32WiFiManager> wifi_;
-  std::string ssid_{""};
-  std::string password_{""};
-  wifi_mode_t mode_{WIFI_MODE_STA};
   std::unique_ptr<openmrn_arduino::ESP32_ADAPTER_IP_INFO_TYPE> stationIP_{nullptr};
   ip_addr_t stationDNS_{ip_addr_any};
   std::unique_ptr<openlcb::BroadcastTimeServer> realTimeClock_;

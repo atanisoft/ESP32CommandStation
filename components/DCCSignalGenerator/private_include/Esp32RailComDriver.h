@@ -177,6 +177,11 @@ public:
     // ets_delay_us(0);
   }
 
+  void no_cutout() override
+  {
+    // NO OP
+  }
+
   void set_feedback_key(uint32_t key) override
   {
     railcomFeedbackKey_ = key;
