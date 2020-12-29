@@ -28,12 +28,12 @@ menu "WiFi Configuration"
 
     config WIFI_SOFTAP_SSID
         string "SoftAP SSID"
-        default "esp32cs"
+        default "esp32csap"
         depends on WIFI_MODE_SOFTAP || WIFI_MODE_SOFTAP_STATION
 
     config WIFI_SOFTAP_PASSWORD
         string "SoftAP Password"
-        default "esp32cs"
+        default "esp32csap"
         depends on WIFI_MODE_SOFTAP || WIFI_MODE_SOFTAP_STATION
 
     config WIFI_SOFTAP_CHANNEL
