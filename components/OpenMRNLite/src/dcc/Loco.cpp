@@ -110,7 +110,8 @@ void DccTrain<Payload>::get_next_packet(unsigned code, Packet *packet)
     {
         case FUNCTION0:
         {
-            packet->add_dcc_function0_4(this->p.fn_ & 0x1F);
+            packet->add_dcc_function0_4(
+                (this->p.fn_ & 0x1E) | this->get_effective_f0());
             return;
         }
         case FUNCTION5:
@@ -171,7 +172,7 @@ MMOldTrain::~MMOldTrain()
 void MMOldTrain::get_next_packet(unsigned code, Packet *packet)
 {
     packet->start_mm_packet();
-    packet->add_mm_address(MMAddress(p.address_), p.fn_ & 1);
+    packet->add_mm_address(MMAddress(p.address_), get_effective_f0());
 
     if (code == ESTOP)
     {
@@ -210,7 +211,7 @@ MMNewTrain::~MMNewTrain()
 void MMNewTrain::get_next_packet(unsigned code, Packet *packet)
 {
     packet->start_mm_packet();
-    packet->add_mm_address(MMAddress(p.address_), p.fn_ & 1);
+    packet->add_mm_address(MMAddress(p.address_), get_effective_f0());
 
     if (code == REFRESH)
     {

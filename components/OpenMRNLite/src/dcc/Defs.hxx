@@ -35,6 +35,8 @@
 #ifndef _DCC_DEFS_HXX_
 #define _DCC_DEFS_HXX_
 
+#include <stdint.h>
+
 namespace dcc {
 
 /// Which address type this legacy train node uses. These address types

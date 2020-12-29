@@ -58,6 +58,9 @@ public:
   /** Instructs the driver that the railcom cutout is over now. The driver
    *  will use this information to disable the UART receiver. */
   virtual void end_cutout() = 0;
+  /** Called instead of start/mid/end-cutout at the end of the current packet
+   * if there was no cutout requested. */
+  virtual void no_cutout() = 0;
   /** Specifies the feedback key to write into the received railcom data
    *  packets. This feedback key is used by the application layer to correlate
    *  the stream of DCC packets to the stream of Railcom packets. This method
@@ -74,6 +77,7 @@ class NoRailcomDriver : public RailcomDriver {
   void start_cutout() OVERRIDE {}
   void middle_cutout() OVERRIDE {}
   void end_cutout() OVERRIDE {}
+  void no_cutout() OVERRIDE {}
   void set_feedback_key(uint32_t key) OVERRIDE {}
 };
 

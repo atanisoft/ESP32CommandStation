@@ -174,7 +174,15 @@ class TractionThrottleInterface
     : public openlcb::TrainImpl
 {
 public:
+    /// Flips a function on<>off.
     virtual void toggle_fn(uint32_t fn) = 0;
+
+    /// Sends a query for a function to the server. The response will be
+    /// asynchronously reported by the throttle listener update callback.
+    /// @param fn function number.
+    virtual void query_fn(uint32_t fn)
+    {
+    }
 
     /// Determine if a train is currently assigned to this trottle.
     /// @return true if a train is assigned, else false
@@ -295,7 +303,15 @@ public:
         }
         set_fn(fn, fnstate);        
     }
-    
+
+    /// Sends out a function query command. The throttle listener will be
+    /// called when the response is available.
+    /// @param address function to query.
+    void query_fn(uint32_t address) override
+    {
+        send_traction_message(TractionDefs::fn_get_payload(address));
+    }
+
     uint32_t legacy_address() override
     {
         return 0;
@@ -567,7 +583,9 @@ private:
         }
     }
 
-    void pending_reply_arrived()
+    /// Notifies that a pending query during load has gotten a reply.
+    /// @return true if we were in the load state.
+    bool pending_reply_arrived()
     {
         if (pendingQueries_ > 0)
         {
@@ -575,12 +593,19 @@ private:
             {
                 timer_.trigger();
             }
+            return true;
         }
+        return false;
     }
 
     void speed_reply(Buffer<GenMessage> *msg)
     {
         AutoReleaseBuffer<GenMessage> rb(msg);
+        if (msg->data()->dstNode != node_)
+        {
+            // For a different throttle.
+            return;
+        }
         if (!iface()->matching_node(msg->data()->src, NodeHandle(dst_)))
         {
             return;
@@ -592,12 +617,15 @@ private:
         {
             case TractionDefs::RESP_QUERY_SPEED:
             {
-                pending_reply_arrived();
+                bool expected = pending_reply_arrived();
                 Velocity v;
                 if (TractionDefs::speed_get_parse_last(p, &v))
                 {
                     lastSetSpeed_ = v;
-                    /// @todo (balazs.racz): call a callback for the client.
+                    if (updateCallback_ && !expected)
+                    {
+                        updateCallback_(-1);
+                    }
 
                     /// @todo (Stuart.Baker): Do we need to do anything with
                     /// estopActive_?
@@ -606,12 +634,16 @@ private:
             }
             case TractionDefs::RESP_QUERY_FN:
             {
-                pending_reply_arrived();
+                bool expected = pending_reply_arrived();
                 uint16_t v;
                 unsigned num;
                 if (TractionDefs::fn_get_parse(p, &v, &num))
                 {
                     lastKnownFn_[num] = v;
+                    if (updateCallback_ && !expected)
+                    {
+                        updateCallback_(-1);
+                    }
                 }
             }
         }

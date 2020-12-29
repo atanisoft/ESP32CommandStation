@@ -39,6 +39,7 @@
 #include "os/Gpio.hxx"
 #include "utils/logging.h"
 #include "utils/macros.h"
+
 #include <driver/gpio.h>
 
 /// Helper macro to test if a pin has been configured for output.
@@ -58,45 +59,54 @@ template <class Defs, bool PUEN, bool PDEN> struct GpioInputPin;
 /// `SAFE_VALUE'.
 ///
 /// Do not use this class directly. Use @ref GPIO_PIN instead.
-template <gpio_num_t PIN_NUM>
+template <gpio_num_t PIN_NUM, bool INVERTED = false>
 class Esp32Gpio : public Gpio
 {
 public:
-#if defined(CONFIG_IDF_TARGET_ESP32)
-    static_assert(PIN_NUM >= 0 && PIN_NUM <= 39, "Valid pin range is 0..39.");
-    static_assert(PIN_NUM != 24, "Pin does not exist");
-    static_assert(!(PIN_NUM >= 28 && PIN_NUM <= 31), "Pin does not exist");
-    static_assert(PIN_NUM != 37, "Pin is connected to GPIO 36 via capacitor.");
-    static_assert(PIN_NUM != 38, "Pin is connected to GPIO 39 via capacitor.");
-#ifndef ESP32_PICO
-    static_assert(!(PIN_NUM >= 6 && PIN_NUM <= 11)
-                , "Pin is reserved for flash usage.");
-#if defined(BOARD_HAS_PSRAM)
-    static_assert(PIN_NUM != 16 && PIN_NUM != 17
-                , "Pin is reserved for PSRAM usage.");
-#endif
-#else
-    static_assert(!(PIN_NUM >= 6 && PIN_NUM <= 8)
-                , "Pin is reserved for flash usage.");
-    static_assert(PIN_NUM != 11 && PIN_NUM != 16 && PIN_NUM != 17
-                , "Pin is reserved for flash usage.");
-#endif
-#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+#if defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
     static_assert(PIN_NUM >= 0 && PIN_NUM <= 46, "Valid pin range is 0..46.");
     static_assert(!(PIN_NUM >= 22 && PIN_NUM <= 24)
                 , "Pin does not exist");
     static_assert(!(PIN_NUM >= 26 && PIN_NUM <= 32)
                 , "Pin is reserved for flash usage.");
-#endif // CONFIG_IDF_TARGET_ESP32
+#else
+    static_assert(PIN_NUM >= 0 && PIN_NUM <= 39, "Valid pin range is 0..39.");
+    static_assert(PIN_NUM != 24, "Pin does not exist");
+    static_assert(!(PIN_NUM >= 28 && PIN_NUM <= 31), "Pin does not exist");
+    static_assert(PIN_NUM != 37, "Pin is connected to GPIO 36 via capacitor.");
+    static_assert(PIN_NUM != 38, "Pin is connected to GPIO 39 via capacitor.");
+#if defined(ESP32_PICO)
+    static_assert(!(PIN_NUM >= 6 && PIN_NUM <= 8)
+                , "Pin is reserved for flash usage.");
+    static_assert(PIN_NUM != 11 && PIN_NUM != 16 && PIN_NUM != 17
+                , "Pin is reserved for flash usage.");
+#else
+    static_assert(!(PIN_NUM >= 6 && PIN_NUM <= 11)
+                , "Pin is reserved for flash usage.");
+#if defined(BOARD_HAS_PSRAM)
+    static_assert(PIN_NUM != 16 && PIN_NUM != 17
+                , "Pin is reserved for PSRAM usage.");
+#endif // BOARD_HAS_PSRAM
+#endif // ESP32_PICO
+#endif // CONFIG_IDF_TARGET_ESP32S2 / CONFIG_IDF_TARGET_ESP32S3
 
     /// Sets the output state of the connected GPIO pin.
     ///
     /// @param new_state State to set the GPIO pin to.
     void write(Value new_state) const override
     {
-        LOG(VERBOSE, "Esp32Gpio(%d) write %s", PIN_NUM,
-            new_state == Value::SET ? "SET" : "CLR");
-        ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, new_state));
+        if (INVERTED)
+        {
+            LOG(VERBOSE, "Esp32Gpio(%d) write %s", PIN_NUM,
+                new_state == Value::SET ? "CLR" : "SET");
+            ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, new_state == Value::CLR));
+        }
+        else
+        {
+            LOG(VERBOSE, "Esp32Gpio(%d) write %s", PIN_NUM,
+                new_state == Value::SET ? "SET" : "CLR");
+            ESP_ERROR_CHECK(gpio_set_level(PIN_NUM, new_state));
+        }
     }
 
     /// Reads the current state of the connected GPIO pin.
@@ -159,8 +169,8 @@ private:
 };
 
 /// Defines the linker symbol for the wrapped Gpio instance.
-template <gpio_num_t PIN_NUM>
-const Esp32Gpio<PIN_NUM> Esp32Gpio<PIN_NUM>::instance_;
+template <gpio_num_t PIN_NUM, bool INVERTED>
+const Esp32Gpio<PIN_NUM, INVERTED> Esp32Gpio<PIN_NUM, INVERTED>::instance_;
 
 /// Parametric GPIO output class.
 /// @param Defs is the GPIO pin's definition base class, supplied by the
@@ -173,11 +183,11 @@ struct GpioOutputPin : public Defs
 public:
     using Defs::PIN_NUM;
 // compile time sanity check that the selected pin is valid for output.
-#if defined(CONFIG_IDF_TARGET_ESP32)
-    static_assert(PIN_NUM < 34, "Pins 34 and above can not be used as output.");
-#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+#if defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
     static_assert(PIN_NUM != 46, "Pin 46 can not be used for output.");
-#endif // CONFIG_IDF_TARGET_ESP32
+#else
+    static_assert(PIN_NUM < 34, "Pins 34 and above can not be used as output.");
+#endif // CONFIG_IDF_TARGET_ESP32S2 / CONFIG_IDF_TARGET_ESP32S3
 
     /// Initializes the hardware pin.
     static void hw_init()
@@ -227,7 +237,7 @@ public:
     /// @return static Gpio object instance that controls this output pin.
     static constexpr const Gpio *instance()
     {
-        return &Esp32Gpio<PIN_NUM>::instance_;
+        return &Esp32Gpio<PIN_NUM, INVERT>::instance_;
     }
 };
 
@@ -274,7 +284,16 @@ template <class Defs, bool PUEN, bool PDEN> struct GpioInputPin : public Defs
 {
 public:
     using Defs::PIN_NUM;
-#if defined(CONFIG_IDF_TARGET_ESP32)
+#if defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32S3)
+    // GPIO 45 and 46 typically have pull-down resistors.
+    static_assert(!PUEN || (PUEN && (PIN_NUM != 45 && PIN_NUM != 46)),
+                  "GPIO 45 and 46 typically have built-in pull-down "
+                  "resistors, enabling pull-up is not possible.");
+    // GPIO 0 typically has a pull-up resistor
+    static_assert(!PDEN || (PDEN && PIN_NUM != 0),
+                  "GPIO 0 typically has a built-in pull-up resistors, "
+                  "enabling pull-down is not possible.");
+#else
     // GPIO 2, 4 and 12 typically have pull-down resistors.
     static_assert(!PUEN ||
                   (PUEN && (PIN_NUM != 2 && PIN_NUM != 4 && PIN_NUM != 12)),
@@ -285,16 +304,7 @@ public:
                   (PDEN && (PIN_NUM != 0 && PIN_NUM != 5 && PIN_NUM == 15)),
                   "GPIO 0, 5, 15 typically have built-in pull-up resistors, "
                   "enabling pull-down is not possible.");
-#elif defined(CONFIG_IDF_TARGET_ESP32S2)
-    // GPIO 45 and 46 typically have pull-down resistors.
-    static_assert(!PUEN || (PUEN && (PIN_NUM != 45 && PIN_NUM != 46)),
-                  "GPIO 45 and 46 typically have built-in pull-down "
-                  "resistors, enabling pull-up is not possible.");
-    // GPIO 0 typically has a pull-up resistor
-    static_assert(!PDEN || (PDEN && PIN_NUM != 0),
-                  "GPIO 0 typically has a built-in pull-up resistors, "
-                  "enabling pull-down is not possible.");
-#endif // CONFIG_IDF_TARGET_ESP32
+#endif // CONFIG_IDF_TARGET_ESP32S2 / CONFIG_IDF_TARGET_ESP32S3
     /// Initializes the hardware pin.
     static void hw_init()
     {

@@ -35,7 +35,11 @@
 #define _FREERTOS_CAN_IOCTL_H_
 
 #include <stdint.h>
+#ifdef ESP32
 #include "stropts.h"
+#else
+#include "freertos/stropts.h"
+#endif
 
 #if defined (__cplusplus)
 extern "C" {

@@ -40,6 +40,8 @@
 
 #include "freertos_drivers/arduino/Can.hxx"
 
+#include "utils/constants.hxx"
+
 #include <driver/can.h>
 #include <driver/gpio.h>
 #include <esp_task.h>
@@ -97,10 +99,13 @@ public:
         ESP_ERROR_CHECK(can_driver_install(
             &can_general_config, &can_timing_config, &can_filter_config));
 
-        xTaskCreate(rx_task, "CAN-RX", RX_TASK_STACK_SIZE, this,
-                    RX_TASK_PRIORITY, &rxTaskHandle_);
-        xTaskCreate(tx_task, "CAN-TX", TX_TASK_STACK_SIZE, this,
-                    TX_TASK_PRIORITY, &txTaskHandle_);
+        xTaskCreate(rx_task, "CAN RX",
+            config_arduino_openmrn_stack_size(), this,
+            config_arduino_openmrn_task_priority() - 1, &rxTaskHandle_);
+
+        xTaskCreate(tx_task, "CAN TX",
+            config_arduino_openmrn_stack_size(), this,
+            config_arduino_openmrn_task_priority() - 2, &txTaskHandle_);
     }
 
     ~Esp32HardwareCan()
@@ -110,6 +115,8 @@ public:
     /// Enables the ESP32 CAN driver
     virtual void enable()
     {
+        LOG(WARNING,
+            "Esp32HardwareCan has been deprecated, please use Esp32Twai.");
         ESP_ERROR_CHECK(can_start());
         LOG(VERBOSE, "ESP32-CAN driver enabled");
     }
@@ -153,20 +160,6 @@ private:
     /// Interval to wait between iterations when the bus is recovering, a
     /// transmit failure or there is nothing to transmit.
     static constexpr TickType_t TX_DEFAULT_DELAY = pdMS_TO_TICKS(250);
-
-    /// Stack size to allocate for the ESP32 CAN RX task.
-    static constexpr uint32_t RX_TASK_STACK_SIZE = 2048L;
-
-    /// Priority to use for the rx_task. This needs to be higher than the
-    /// tx_task and lower than @ref OPENMRN_TASK_PRIORITY.
-    static constexpr UBaseType_t RX_TASK_PRIORITY = ESP_TASK_MAIN_PRIO + 2;
-
-    /// Stack size to allocate for the ESP32 CAN TX task.
-    static constexpr uint32_t TX_TASK_STACK_SIZE = 2048L;
-
-    /// Priority to use for the tx_task. This should be lower than
-    /// @ref RX_TASK_PRIORITY and @ref OPENMRN_TASK_PRIORITY.
-    static constexpr UBaseType_t TX_TASK_PRIORITY = ESP_TASK_MAIN_PRIO + 1;
 
     /// Background task that takes care of the conversion of the @ref can_frame
     /// provided by the @ref txBuf into an ESP32 can_message_t which can be

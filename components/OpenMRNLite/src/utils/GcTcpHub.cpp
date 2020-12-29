@@ -38,17 +38,31 @@
 #include "nmranet_config.h"
 #include "utils/GridConnectHub.hxx"
 
-void GcTcpHub::OnNewConnection(int fd)
+void GcTcpHub::on_new_connection(int fd)
 {
     const bool use_select =
         (config_gridconnect_tcp_use_select() == CONSTANT_TRUE);
-    create_gc_port_for_can_hub(canHub_, fd, nullptr, use_select);
+    {
+        AtomicHolder h(this);
+        numClients_++;
+    }
+    create_gc_port_for_can_hub(canHub_, fd, this, use_select);
+}
+
+void GcTcpHub::notify()
+{
+    AtomicHolder h(this);
+    if (numClients_)
+    {
+        numClients_--;
+    }
 }
 
 GcTcpHub::GcTcpHub(CanHubFlow *can_hub, int port)
     : canHub_(can_hub)
-    , tcpListener_(port, std::bind(&GcTcpHub::OnNewConnection, this,
-                                   std::placeholders::_1), "GcTcpHub")
+    , tcpListener_(port,
+          std::bind(&GcTcpHub::on_new_connection, this, std::placeholders::_1),
+          "GcTcpHub")
 {
 }
 

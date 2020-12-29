@@ -190,7 +190,7 @@ struct TrainService::Impl
                 LOG(VERBOSE, "Traction message with no command byte.");
                 return reject_permanent();
             }
-            uint8_t cmd = payload()[0];
+            uint8_t cmd = payload()[0] & TractionDefs::REQ_MASK;
             switch (cmd)
             {
                 /** @TODO(balazs.racz) need to validate caller of mutating
@@ -213,7 +213,24 @@ struct TrainService::Impl
                     uint16_t value = payload()[4];
                     value <<= 8;
                     value |= payload()[5];
-                    train_node()->train()->set_fn(address, value);
+                    bn_.reset(this);
+                    bool should_apply =
+                        train_node()->function_policy(nmsg()->src, payload()[0],
+                            address, value, bn_.new_child());
+                    // The function_policy call may have completed inline. We
+                    // can inquire from the barrier. If it was not completed
+                    // inline, we have to wait for the notification and re-try
+                    // the call.
+                    if (!bn_.abort_if_almost_done())
+                    {
+                        // Not notified inline.
+                        bn_.notify(); // consumes our share
+                        return wait();
+                    }
+                    if (should_apply)
+                    {
+                        train_node()->train()->set_fn(address, value);
+                    }
                     nextConsistIndex_ = 0;
                     return call_immediately(STATE(maybe_forward_consist));
                 }
@@ -450,7 +467,7 @@ struct TrainService::Impl
                 ++nextConsistIndex_;
                 return again();
             }
-            uint8_t cmd = payload()[0];
+            uint8_t cmd = payload()[0] & TractionDefs::REQ_MASK;
             bool flip_speed = false;
             if (cmd == TractionDefs::REQ_SET_SPEED) {
                 if (flags & TractionDefs::CNSTFLAGS_REVERSE) {
@@ -486,6 +503,7 @@ struct TrainService::Impl
                 if (flip_speed) {
                     b->data()->payload[1] ^= 0x80;
                 }
+                b->data()->payload[0] |= TractionDefs::REQ_LISTENER;
                 iface()->addressed_message_write_flow()->send(b);
                 return exit();
             }
@@ -512,8 +530,11 @@ struct TrainService::Impl
             }
             b->data()->reset(message()->data()->mti, train_node()->node_id(),
                              NodeHandle(dst), message()->data()->payload);
-            if ((payload()[0] == TractionDefs::REQ_SET_SPEED) &&
-                (flags & TractionDefs::CNSTFLAGS_REVERSE)) {
+            b->data()->payload[0] |= TractionDefs::REQ_LISTENER;
+            if (((payload()[0] & TractionDefs::REQ_MASK) ==
+                    TractionDefs::REQ_SET_SPEED) &&
+                (flags & TractionDefs::CNSTFLAGS_REVERSE))
+            {
                 b->data()->payload[1] ^= 0x80;
             }
             iface()->addressed_message_write_flow()->send(b);
@@ -623,6 +644,7 @@ struct TrainService::Impl
         unsigned reserved_ : 1;
         TrainService *trainService_;
         Buffer<GenMessage> *response_;
+        BarrierNotifiable bn_;
     };
 
     TractionRequestFlow traction_;

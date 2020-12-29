@@ -107,6 +107,12 @@ struct TractionDefs {
         REQ_CONSIST_CONFIG = 0x30,
         REQ_TRACTION_MGMT = 0x40,
 
+        /// Mask to apply to the command byte of the requests.
+        REQ_MASK = 0x7F,
+        /// Flag bit in the command byte set when a listener command is
+        /// forwarded.
+        REQ_LISTENER = 0x80,
+
         // Byte 1 of REQ_CONTROLLER_CONFIG command
         CTRLREQ_ASSIGN_CONTROLLER = 0x01,
         CTRLREQ_RELEASE_CONTROLLER = 0x02,

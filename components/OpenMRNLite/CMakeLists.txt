@@ -1,4 +1,4 @@
-set(src_dirs
+set(SOURCE_DIRS
     "src/dcc"
     "src/executor"
     "src/freertos_drivers/esp32"
@@ -9,23 +9,32 @@ set(src_dirs
 )
 
 if(CONFIG_ENABLE_ARDUINO_DEPENDS)
-    list(APPEND src_dirs "src")
+    list(APPEND SOURCE_DIRS "src")
 endif()
 
-set(COMPONENT_SRCDIRS "${src_dirs}" )
+set(IDF_DEPS
+    "driver"
+    "heap"
+    "vfs"
+    "mdns")
 
-set(COMPONENT_ADD_INCLUDEDIRS "src" )
-
-set(COMPONENT_REQUIRES "mdns" )
-
-register_component()
+idf_component_register(SRC_DIRS "${SOURCE_DIRS}"
+                       INCLUDE_DIRS "src"
+                       REQUIRES "${IDF_DEPS}")
 
 ###############################################################################
-# Add required compilation flags for customization of OpenMRNLite
+# Add required compilation flags for OpenMRN
 ###############################################################################
 
-target_compile_options(${COMPONENT_LIB} PUBLIC -DESP32 -DLOCKED_LOGGING)
+target_compile_options(${COMPONENT_LIB} PUBLIC -DESP32)
 
+if(CONFIG_IDF_TARGET_ESP32)
+target_compile_options(${COMPONENT_LIB} PUBLIC -DLOCKED_LOGGING)
+endif()
+
+###############################################################################
+# Silence a few warnings for various files to reduce compilation noise
+###############################################################################
 set_source_files_properties(src/utils/FileUtils.cpp PROPERTIES COMPILE_FLAGS -Wno-type-limits)
 set_source_files_properties(src/dcc/Loco.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/dcc/SimpleUpdateLoop.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)

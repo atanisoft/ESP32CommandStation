@@ -43,7 +43,11 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef ESP32
+#include "bootloader_hal.h"
+#else
 #include "freertos/bootloader_hal.h"
+#endif
 #include "openlcb/Defs.hxx"
 #include "openlcb/CanDefs.hxx"
 #include "openlcb/DatagramDefs.hxx"

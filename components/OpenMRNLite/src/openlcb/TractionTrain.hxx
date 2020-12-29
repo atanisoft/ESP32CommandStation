@@ -66,6 +66,22 @@ public:
     /// this train.
     virtual TrainImpl *train() = 0;
 
+    /// Applies a policy to function change requests coming in from the OpenLCB
+    /// bus. If the policy returns false, the change will not be applied to the
+    /// TrainImpl. This is used to implement consist function behavior.
+    /// @param src source node where the request came from.
+    /// @param command_byte is the first byte of the payload (usually 0x01 or
+    /// 0x81 depending on the REQ_LISTENER bit)
+    /// @param fnum which function to set
+    /// @param value what value to set this function to
+    /// @param done must be notified inline if the policy application is
+    /// successful. If not notified inline, then the returned value is ignored
+    /// and the call is repeated after done has been invoked by the callee.
+    /// @return true if the function should be applied to the TrainImpl, false
+    /// if it should not be applied.
+    virtual bool function_policy(NodeHandle src, uint8_t command_byte,
+        uint32_t fnum, uint16_t value, Notifiable *done) = 0;
+
     /// @return the last stored controller node.
     virtual NodeHandle get_controller() = 0;
 
@@ -146,7 +162,16 @@ private:
 class TrainNodeWithConsist : public TrainNode {
 public:
     ~TrainNodeWithConsist();
-    
+
+    /// @copydoc TrainNode::function_policy()
+    /// The default function policy applies everything.
+    bool function_policy(NodeHandle src, uint8_t command_byte, uint32_t fnum,
+        uint16_t value, Notifiable *done) override
+    {
+        AutoNotify an(done);
+        return true;
+    }
+
     /** Adds a node ID to the consist targets. @return false if the node was
      * already in the target list, true if it was newly added. */
     bool add_consist(NodeID tgt, uint8_t flags) override

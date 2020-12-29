@@ -35,6 +35,7 @@
 #include "DeviceBuffer.hxx"
 
 #include "openmrn_features.h"
+
 #if OPENMRN_FEATURE_DEVTAB
 
 #include <sys/select.h>

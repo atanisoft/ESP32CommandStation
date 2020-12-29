@@ -38,9 +38,13 @@
 
 #include <Arduino.h>
 
+#include "openmrn_features.h"
+
+#include "CDIHelper.hxx"
 #include "freertos_drivers/arduino/Can.hxx"
 #include "freertos_drivers/arduino/WifiDefs.hxx"
 #include "openlcb/SimpleStack.hxx"
+#include "utils/constants.hxx"
 #include "utils/FileUtils.hxx"
 #include "utils/GridConnectHub.hxx"
 #include "utils/logging.h"
@@ -51,37 +55,16 @@
 #include <esp_task.h>
 #include <esp_task_wdt.h>
 
-namespace openmrn_arduino
-{
-
-/// Default stack size to use for all OpenMRN tasks on the ESP32 platform.
-constexpr uint32_t OPENMRN_STACK_SIZE = 4096L;
-
-/// Default thread priority for any OpenMRN owned tasks on the ESP32 platform.
-/// ESP32 hardware CAN RX and TX tasks run at lower priority (-1 and -2 
-/// respectively) of this default priority to ensure timely consumption of CAN
-/// frames from the hardware driver.
-/// Note: This is set to one priority level lower than the TCP/IP task uses on
-/// the ESP32.
-constexpr UBaseType_t OPENMRN_TASK_PRIORITY = ESP_TASK_TCPIP_PRIO - 1;
-
-} // namespace openmrn_arduino
-
 // Include the ESP-IDF based GPIO support.
 #include "freertos_drivers/esp32/Esp32Gpio.hxx"
-
-// The CAN driver is disabled in ESP-IDF on the ESP32-S2 so only include the
-// adapter for the ESP32. The CAN driver will be supported in the future on
-// the ESP32-S2.
-#ifdef CONFIG_IDF_TARGET_ESP32
 #include "freertos_drivers/esp32/Esp32HardwareCanAdapter.hxx"
-#endif // CONFIG_IDF_TARGET_ESP32
 #include "freertos_drivers/esp32/Esp32HardwareSerialAdapter.hxx"
+#include "freertos_drivers/esp32/Esp32HardwareTwai.hxx"
 #include "freertos_drivers/esp32/Esp32WiFiManager.hxx"
 
 // On the ESP32 we have persistent file system access so enable
 // dynamic CDI.xml generation support
-#define HAVE_FILESYSTEM
+#define HAVE_FILESYSTEM 1
 
 #else
 
@@ -426,19 +409,16 @@ public:
         // uses 100% cpu and it is pinned to CPU 0.
         disableCore0WDT();
 #endif // CONFIG_TASK_WDT_CHECK_IDLE_TASK_CPU0
-        xTaskCreatePinnedToCore(thread_entry          // entry point
-                              , "OpenMRN"             // task name
-                              , OPENMRN_STACK_SIZE    // stack size
-                              , this                  // entry point arg
-                              , OPENMRN_TASK_PRIORITY // priority
-                              , nullptr               // task handle
-                              , PRO_CPU_NUM);         // cpu core
+        xTaskCreatePinnedToCore(
+            thread_entry, "OpenMRN", config_arduino_openmrn_stack_size(), this,
+            config_arduino_openmrn_task_priority(), nullptr, PRO_CPU_NUM);
 #else
         stack_->executor()->start_thread(
-            "OpenMRN", OPENMRN_TASK_PRIORITY, OPENMRN_STACK_SIZE);
+            "OpenMRN", config_arduino_openmrn_task_priority(),
+            config_arduino_openmrn_stack_size());
 #endif // ESP32
     }
-#endif // !OPENMRN_FEATURE_SINGLE_THREADED  && !CONFIG_IDF_TARGET_ESP32S2
+#endif // !OPENMRN_FEATURE_SINGLE_THREADED && !CONFIG_IDF_TARGET_ESP32S2
 
     /// Adds a serial port to the stack speaking the gridconnect protocol, for
     /// example to do a USB connection to a computer. This is the protocol that
@@ -458,6 +438,25 @@ public:
         loopMembers_.push_back(
             new SerialBridge<SerialType>(port, stack()->can_hub()));
     }
+
+#ifdef OPENMRN_FEATURE_EXECUTOR_SELECT
+    /// Adds a hardware CAN port to the stack with select-based asynchronous
+    /// driver API.
+    ///
+    /// Example (ESP32):
+    /// Esp32Twai twai("/dev/twai", GPIO_NUM_5, GPIO_NUM_4);
+    /// void setup() {
+    ///   ...
+    ///   twai.hw_init();
+    ///   openmrn.begin();
+    ///   openmrn.add_can_port_select("/dev/twai/twai0");
+    /// }
+    /// @param device path to open for the CAN device.
+    void add_can_port_select(const char *device)
+    {
+        stack()->add_can_port_select(device);
+    }
+#endif // OPENMRN_FEATURE_EXECUTOR_SELECT
 
     /// Adds a hardware CAN port to the stack. If multiple ports are added,
     /// OpenMRN will be forwarding traffic frames between them: the simplest
@@ -485,50 +484,13 @@ public:
     /// @param cfg is the global configuration instance (usually called cfg).
     /// @param filename is where the xml file can be stored on the
     /// filesystem. For example "/spiffs/cdi.xml".
+    /// @returns true if the cdi.xml was updated, false otherwise.
     template <class ConfigDef>
-    void create_config_descriptor_xml(
+    bool create_config_descriptor_xml(
         const ConfigDef &config, const char *filename)
     {
-        string cdi_string;
-        ConfigDef cfg(config.offset());
-        cfg.config_renderer().render_cdi(&cdi_string);
-        
-        cdi_string += '\0';
-
-        bool need_write = false;
-        FILE *ff = fopen(filename, "rb");
-        if (!ff)
-        {
-            need_write = true;
-        }
-        else
-        {
-            fclose(ff);
-            string current_str = read_file_to_string(filename);
-            if (current_str != cdi_string)
-            {
-                need_write = true;
-            }
-        }
-        if (need_write)
-        {
-            LOG(INFO, "Updating CDI file %s (len %u)", filename,
-                cdi_string.size());
-            write_string_to_file(filename, cdi_string);
-        }
-
-        // Creates list of event IDs for factory reset.
-        auto *v = new vector<uint16_t>();
-        cfg.handle_events([v](unsigned o) { v->push_back(o); });
-        v->push_back(0);
-        stack()->set_event_offsets(v);
-        // We leak v because it has to stay alive for the entire lifetime of
-        // the stack.
-
-        // Exports the file memory space.
-        openlcb::MemorySpace *space = new openlcb::ROFileMemorySpace(filename);
-        stack()->memory_config_handler()->registry()->insert(
-            stack()->node(), openlcb::MemoryConfigDefs::SPACE_CDI, space);
+        return CDIHelper::create_config_descriptor_xml(
+            config, filename, stack());
     }
 #endif // HAVE_FILESYSTEM
 

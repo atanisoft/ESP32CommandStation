@@ -43,7 +43,7 @@ class ExecutorBase;
  * format. Any new incoming connection will be wired into the same virtual CAN
  * hub. All packets will be forwarded to every participant, without
  * loopback. */
-class GcTcpHub
+class GcTcpHub : private Notifiable, private Atomic
 {
 public:
     /// Constructor.
@@ -60,16 +60,28 @@ public:
         return tcpListener_.is_started();
     }
 
+    /// @return currently connected client count.
+    unsigned get_num_clients()
+    {
+        return numClients_;
+    }
+
 private:
     /// Callback when a new connection arrives.
     ///
     /// @param fd filedes of the freshly established incoming connection.
     ///
-    void OnNewConnection(int fd);
+    void on_new_connection(int fd);
+
+    /// Error callback from the gridconnect socket. This is invoked when a
+    /// client disconnects.
+    void notify() override;
 
     /// @param can_hub Which CAN-hub should we attach the TCP gridconnect hub
     /// onto.
     CanHubFlow *canHub_;
+    /// How many clients are connected right now.
+    unsigned numClients_ {0};
     /// Helper object representing the listening on the socket.
     SocketListener tcpListener_;
 };

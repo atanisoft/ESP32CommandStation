@@ -119,11 +119,11 @@ void buffer_to_error(const Payload &payload, uint16_t *error_code,
         error_message->clear();
     if (payload.size() >= 2 && error_code)
     {
-        *error_code = (((uint16_t)payload[0]) << 8) | payload[1];
+        *error_code = (((uint16_t)payload[0]) << 8) | (uint8_t)payload[1];
     }
     if (payload.size() >= 4 && mti)
     {
-        *mti = (((uint16_t)payload[2]) << 8) | payload[3];
+        *mti = (((uint16_t)payload[2]) << 8) | (uint8_t)payload[3];
     }
     if (payload.size() > 4 && error_message)
     {

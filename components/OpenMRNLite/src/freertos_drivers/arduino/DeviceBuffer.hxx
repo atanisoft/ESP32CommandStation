@@ -52,7 +52,7 @@
 class DeviceBufferBase
 {
 public:
-#if OPENMRN_FEATURE_DEVTAB
+#ifdef OPENMRN_FEATURE_DEVTAB
     /** Wait for blocking condition to become true.
      * @param file file to wait on
      * @param read true if this is a read operation, false for write operation
@@ -64,7 +64,7 @@ public:
      */
     void signal_condition()
     {
-#if OPENMRN_FEATURE_DEVTAB
+#ifdef OPENMRN_FEATURE_DEVTAB
         Device::select_wakeup(&selectInfo);
 #endif // OPENMRN_FEATURE_DEVTAB
     }
@@ -74,7 +74,7 @@ public:
      */
     void signal_condition_from_isr()
     {
-#if OPENMRN_FEATURE_DEVTAB
+#ifdef OPENMRN_FEATURE_DEVTAB
         int woken = 0;
         Device::select_wakeup_from_isr(&selectInfo, &woken);
 #endif // OPENMRN_FEATURE_DEVTAB
@@ -112,7 +112,7 @@ public:
      */
     void select_insert()
     {
-#if OPENMRN_FEATURE_DEVTAB
+#ifdef OPENMRN_FEATURE_DEVTAB
         return Device::select_insert(&selectInfo);
 #endif // OPENMRN_FEATURE_DEVTAB
     }
@@ -182,7 +182,7 @@ protected:
     {
     }
 
-#if OPENMRN_FEATURE_DEVTAB
+#ifdef OPENMRN_FEATURE_DEVTAB
     /** Metadata for select() logic */
     Device::SelectInfo selectInfo;
 #endif // OPENMRN_FEATURE_DEVTAB
