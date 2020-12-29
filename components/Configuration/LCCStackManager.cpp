@@ -91,7 +91,7 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
   {
       // Initialize the TWAI driver
       twai.hw_init();
-      stack_->add_can_port_async("/dev/twai/twai0");
+      ((openlcb::SimpleCanStackBase *)stack_)->add_can_port_async("/dev/twai/twai0");
   }));
 #endif // CAN_PERIPHERAL_AVAILABLE
 #endif // CONFIG_LCC_TCP_STACK
