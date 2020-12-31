@@ -189,7 +189,7 @@ endmenu
 
 config ESP32CS_CDI_VERSION
     hex
-    default 0x0150
+    default 0x0151
 
 config ESP32CS_HW_VERSION
     string

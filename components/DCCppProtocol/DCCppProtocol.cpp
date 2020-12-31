@@ -134,16 +134,16 @@ DCC_PROTOCOL_COMMAND_HANDLER(WriteCVBitOpsCommand,
   return COMMAND_SUCCESSFUL_RESPONSE;
 })
 
-string convert_loco_to_dccpp_state(openlcb::TrainImpl *impl, size_t id)
+string convert_loco_to_dccpp_state(openlcb::TrainImpl *impl, size_t id, string type, uint16_t address)
 {
   SpeedType speed(impl->get_speed());
   if (speed.mph() && !impl->get_emergencystop())
   {
-    return StringPrintf("<T %d %d %d>", id, (int)speed.mph() + 1
-                      , speed.direction() == SpeedType::FORWARD);
+    return StringPrintf("<%s %d %d %d %d>", type.c_str(), id, (int)speed.mph() + 1
+                      , speed.direction() == SpeedType::FORWARD, address);
   }
-  return StringPrintf("<T %d 0 %d>", id
-                    , speed.direction() == SpeedType::FORWARD);
+  return StringPrintf("<%s %d 0 %d %d>", type.c_str(), id
+                    , speed.direction() == SpeedType::FORWARD, address);
 }
 
 // <F> command handler, this command sends the current free heap space as response.
@@ -178,7 +178,8 @@ DCC_PROTOCOL_COMMAND_HANDLER(PowerOnCommand,
   esp32cs::enable_ops_track_output();
   // hardcoded response since enable/disable is deferred until the next
   // check interval.
-  return StringPrintf("<p1 %s>", CONFIG_OPS_TRACK_NAME);
+  return StringPrintf("<p1 %s><A %s 0.00>", CONFIG_OPS_TRACK_NAME
+                    , CONFIG_OPS_TRACK_NAME);
 })
 
 DECLARE_DCC_PROTOCOL_COMMAND_CLASS(PowerOffCommand, "0", 0)
@@ -229,7 +230,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(ThrottleCommandAdapter,
     }
     impl->set_speed(speed);
   }
-  return convert_loco_to_dccpp_state(impl, reg_num);
+  return convert_loco_to_dccpp_state(impl, reg_num, "T", loco_addr);
 });
 
 // <tex {LOCO} {SPEED} {DIRECTION}> command handler, this command
@@ -268,7 +269,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(ThrottleExCommandAdapter,
       , impl->get_speed().direction() == SpeedType::FORWARD ? "FWD" : "REV");
     impl->set_speed(speed);
   }
-  return convert_loco_to_dccpp_state(impl, 0);
+  return convert_loco_to_dccpp_state(impl, loco_addr, "Tex", loco_addr);
 })
 
 // <f {LOCO} {BYTE} [{BYTE2}]> command handler, this command converts a
@@ -657,7 +658,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(StatusCommand,
     {
       auto impl = trains->get_train_impl(nodeid);
       LOG(INFO, "[DCC++ status] idx:%zu address:%d", id, impl->legacy_address());
-      status += convert_loco_to_dccpp_state(impl, id);
+      status += convert_loco_to_dccpp_state(impl, id, "T", impl->legacy_address());
     }
   }
   status += Singleton<TurnoutManager>::instance()->get_state_for_dccpp();

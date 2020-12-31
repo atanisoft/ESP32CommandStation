@@ -134,8 +134,9 @@ string HBridgeShortDetector::get_state_for_dccpp()
     // and ESP32 CS using 12 bit (0-4095). Due to this the last reading needs
     // to be divided by four to keep it in range for JMRI to display it
     // correctly.
-    return StringPrintf("<p1 %s><a %s %d>", name_.c_str(), name_.c_str()
-                      , getLastReading() / 4);
+    return StringPrintf("<p1 %s><a %s %d><A %s %.2f>", name_.c_str()
+                      , name_.c_str(), getLastReading() / 4, name_.c_str()
+                      , getUsage());
   }
   else if (state_ == STATE_OVERCURRENT)
   {

@@ -451,7 +451,7 @@ public:
   }
 };
 
-void init_webserver(const esp32cs::Esp32ConfigDef &cfg);
+void init_webserver();
 
 extern "C" void app_main()
 {
@@ -535,7 +535,7 @@ extern "C" void app_main()
     stackManager.executor(),
 #endif
     &mDNS);
-  init_webserver(cfg);
+  init_webserver();
 #endif
 
 #if !CONFIG_DISPLAY_TYPE_NONE

@@ -1,1616 +1,924 @@
 <!DOCTYPE html>
 <html>
-<head>
- <meta charset="utf-8">
- <meta name="viewport" content="width=device-width, initial-scale=1">
- <title>ESP32 Command Station</title>
- <link rel="icon" type="image/png" href="/loco-32x32.png" sizes="32x32">
- <link rel="stylesheet" href="jquery.mobile-1.5.0-rc1.min.css">
- <script src="jquery.min.js"></script>
- <script src="jquery.mobile-1.5.0-rc1.min.js"></script>
- <script src="jquery.simple.websocket.min.js"></script>
- <script src="jqClock-lite.min.js"></script>
- <style>
-  .s88SensorOn {height:25px; width:40px; background-color:#00FF00; color:#FFFFFF;}
-  .s88SensorOff {height:25px; width:40px; background-color:#FF0000; color:#FFFFFF;}
-  .clockdate {margin:5px;}
-  .clocktime {padding:5px; margin:2px;}
-  @media (max-width: 35em) {
-   tbody tr td:first-child {border-bottom: 1px solid #cfcfcf;}
-   .s88Spacer {display:block;}
-   .s88Spacer:after {content:none;}
-  }
-  tbody tr:nth-child(odd) td, tbody tr:nth-child(odd) th {background-color: #9a9a9a;}
- </style>
-</head>
-<body>
- <div data-role="page" data-theme="b">
-  <div data-role="header">ESP32 Command Station</div>
-  <div data-role="tabs" id="tabs">
-   <div data-role="navbar">
-    <ul>
-     <li><a href="#throttlePage" data-icon="ui-icon-home">Throttle</a></li>
-     <li><a href="#baseStationPage" data-icon="ui-icon-gear">Command Station</a></li>
-    </ul>
-   </div>
-   <div id="throttlePage">
-    <div class="ui-grid-b">
-     <div class="ui-block-a"><label for="selected-loco-address">Locomotive:</label><input type="number" readonly="true" id="selected-loco-address" value="0"/></div>
-     <div class="ui-block-b"><label for="throttle-direction">Direction:</label><input type="checkbox" id="throttle-direction" data-role="flipswitch" data-off-text="FWD" data-on-text="REV" disabled="disabled"/></div>
-     <div class="ui-block-c"><button id="throttle-estop" class="ui-corner-all"><font color="RED">EMERGENCY<br>STOP</font></button></div>
-    </div>
-    <div class="ui-grid-a">
-     <div class="ui-block-a"><label for="throttle-speed">Speed:</label><input type="range" id="throttle-speed" min="0" max="126" value="0" disabled="disabled"/></div>
-     <div class="ui-block-b"><button id="throttle-acquire-loco" class="ui-corner-all">Acquire Locomotive</button><button id="throttle-release-loco" class="ui-corner-all" disabled="disabled">Release Locomotive</button></div>
-    </div>
-    <div class="ui-grid-solo">
-     <div class="ui-block-a">Functions:</div>
-    </div>
-    <div class="ui-grid-d">
-     <div class="ui-block-a"><input type="checkbox" id="funct_0" data-role="flipswitch"/></div>
-     <div class="ui-block-b"><input type="checkbox" id="funct_1" data-role="flipswitch"/></div>
-     <div class="ui-block-c"><input type="checkbox" id="funct_2" data-role="flipswitch"/></div>
-     <div class="ui-block-d"><input type="checkbox" id="funct_3" data-role="flipswitch"/></div>
-     <div class="ui-block-e"><input type="checkbox" id="funct_4" data-role="flipswitch"/></div>
-    </div>
-    <div class="ui-grid-d">
-     <div class="ui-block-a"></div>
-     <div class="ui-block-b"><input type="checkbox" id="funct_5" data-role="flipswitch"/></div>
-     <div class="ui-block-c"><input type="checkbox" id="funct_6" data-role="flipswitch"/></div>
-     <div class="ui-block-d"><input type="checkbox" id="funct_7" data-role="flipswitch"/></div>
-     <div class="ui-block-e"><input type="checkbox" id="funct_8" data-role="flipswitch"/></div>
-    </div>
-    <div data-role="collapsibleset">
-     <div data-role="collapsible">
-      <h2>F9-F28</h2>
-      <div class="ui-grid-d">
-       <div class="ui-block-a"></div>
-       <div class="ui-block-b"><input type="checkbox" id="funct_9" data-role="flipswitch"/></div>
-       <div class="ui-block-c"><input type="checkbox" id="funct_10" data-role="flipswitch"/></div>
-       <div class="ui-block-d"><input type="checkbox" id="funct_11" data-role="flipswitch"/></div>
-       <div class="ui-block-e"><input type="checkbox" id="funct_12" data-role="flipswitch"/></div>
-      </div>
-      <div class="ui-grid-d">
-       <div class="ui-block-a"></div>
-       <div class="ui-block-b"><input type="checkbox" id="funct_13" data-role="flipswitch"/></div>
-       <div class="ui-block-c"><input type="checkbox" id="funct_14" data-role="flipswitch"/></div>
-       <div class="ui-block-d"><input type="checkbox" id="funct_15" data-role="flipswitch"/></div>
-       <div class="ui-block-e"><input type="checkbox" id="funct_16" data-role="flipswitch"/></div>
-      </div>
-      <div class="ui-grid-d">
-       <div class="ui-block-a"></div>
-       <div class="ui-block-b"><input type="checkbox" id="funct_17" data-role="flipswitch"/></div>
-       <div class="ui-block-c"><input type="checkbox" id="funct_18" data-role="flipswitch"/></div>
-       <div class="ui-block-d"><input type="checkbox" id="funct_19" data-role="flipswitch"/></div>
-       <div class="ui-block-e"><input type="checkbox" id="funct_20" data-role="flipswitch"/></div>
-      </div>
-      <div class="ui-grid-d">
-       <div class="ui-block-a"></div>
-       <div class="ui-block-b"><input type="checkbox" id="funct_21" data-role="flipswitch"/></div>
-       <div class="ui-block-c"><input type="checkbox" id="funct_22" data-role="flipswitch"/></div>
-       <div class="ui-block-d"><input type="checkbox" id="funct_23" data-role="flipswitch"/></div>
-       <div class="ui-block-e"><input type="checkbox" id="funct_24" data-role="flipswitch"/></div>
-      </div>
-      <div class="ui-grid-d">
-       <div class="ui-block-a"></div>
-       <div class="ui-block-b"><input type="checkbox" id="funct_25" data-role="flipswitch"/></div>
-       <div class="ui-block-c"><input type="checkbox" id="funct_26" data-role="flipswitch"/></div>
-       <div class="ui-block-d"><input type="checkbox" id="funct_27" data-role="flipswitch"/></div>
-       <div class="ui-block-e"><input type="checkbox" id="funct_28" data-role="flipswitch"/></div>
-      </div>
-     </div>
-    </div>
-   </div>
-   <div id="baseStationPage">
-    <div data-role="accordion" id="cs-accordion" data-height-style="content" data-icons="" data-collapsible="true">
-     <h3>Status</h3>
-     <div id="cs-status">
-      <div class="ui-grid-solo">
-       <div class="ui-block-a">
-        <table id="cs-table-power" data-role="table" class="ui-responsive">
-         <caption>Power Districts</caption>
-         <thead>
-          <tr>
-           <th>District</th>
-           <th>Status</th>
-           <th>Utilization (mA)</th>
-           <th>Power</th>
-          </tr>
-         </thead>
-         <tbody>
-         </tbody>
-        </table>
-       </div>
-      </div>
-      <div class="ui-grid-solo">
-       <table data-role="table" id="cs-table-locomotives" class="ui-responsive">
-        <caption>Active Locomotives</caption>
-        <thead>
-         <tr>
-          <th>Address</th>
-          <th>Speed</th>
-          <th>Direction</th>
-          <th>Actions</th>
-         </tr>
-        </thead>
-        <tbody>
-        </tbody>
-       </table>
-      </div>
-     </div>
-     <h3>Turnouts</h3>
-     <div id="cs-turnouts">
-      <div class="ui-grid-solo">
-       <table id="cs-table-turnouts" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
-        <thead>
-         <tr>
-          <th>Address</th>
-          <th>Type</th>
-          <th>State</th>
-          <th>Actions</th>
-         </tr>
-        </thead>
-        <tbody>
-        </tbody>
-       </table>
-      </div>
-      <div class="ui-grid-solo">
-       <a href='#' id='cs-turnout-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
-       <a href='#' id='cs-turnout-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
-      </div>
-     </div>
-     <h3 id="cs-sensors-h3">Sensors</h3>
-     <div id="cs-sensors">
-      <div class="ui-grid-solo">
-       <table id="cs-table-sensors" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
-        <thead>
-         <tr>
-          <th>ID</th>
-          <th>Pin</th>
-          <th>Pullup</th>
-          <th>State</th>
-          <th>Actions</th>
-         </tr>
-        </thead>
-        <tbody>
-        </tbody>
-       </table>
-      </div>
-      <div class="ui-grid-solo">
-       <a href='#' id='cs-sensor-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
-       <a href='#' id='cs-sensor-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
-      </div>
-     </div>
-     <h3 id="cs-sensors-s88-h3">Sensors (S88)</h3>
-     <div id="cs-sensors-s88">
-      <div class="ui-grid-solo">
-       <table id="cs-table-sensors-s88" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
-        <thead>
-         <tr>
-          <th>ID</th>
-          <th>Data Pin</th>
-          <th>Sensor ID Base</th>
-          <th>Sensor Count</th>
-          <th>State</th>
-          <th>Actions</th>
-         </tr>
-        </thead>
-        <tbody>
-        </tbody>
-       </table>
-      </div>
-      <div class="ui-grid-solo">
-       <a href='#' id='cs-sensor-s88-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
-       <a href='#' id='cs-sensor-s88-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
-      </div>
-     </div>
-     <h3 id="cs-outputs-h3">Outputs</h3>
-     <div id="cs-outputs">
-      <div class="ui-grid-solo">
-       <table id="cs-table-outputs" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
-        <thead>
-         <tr>
-          <th>ID</th>
-          <th>Pin</th>
-          <th>Flags</th>
-          <th>State</th>
-          <th>Actions</th>
-         </tr>
-        </thead>
-        <tbody>
-        </tbody>
-       </table>
-      </div>
-      <div class="ui-grid-solo">
-       <a href='#' id='cs-output-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
-       <a href='#' id='cs-output-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
-      </div>
-     </div>
-     <h3>Locomotive Roster</h3>
-     <div id="cs-loco-roster">
-      <div class="ui-grid-solo">
-       <table id="cs-table-loco-roster" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
-        <thead>
-         <tr>
-          <th>Address</th>
-          <th>Name</th>
-          <th>Actions</th>
-         </tr>
-        </thead>
-        <tbody>
-        </tbody>
-       </table>
-      </div>
-      <div class="ui-grid-solo">
-       <a href='#' id='cs-loco-create' data-role='button' data-show-label='false' data-icon='ui-icon-plus' title='create' class='ui-button-inline'></a>
-       <a href='#' id='cs-loco-refresh' data-role='button' data-show-label='false' data-icon='ui-icon-refresh' title='refresh' class='ui-button-inline'></a>
-      </div>
-     </div>
-     <h3>Programmer</h3>
-     <div id="cs-prog">
-      <div class="ui-grid-a">
-       <div class="ui-block-a"><label for="cs-prog-action">Action:</label></div>
-       <div class="ui-block-b"><select id="cs-prog-action"><option value="write">Write</option><option value="read">Read</option><option value="identify">Identify Address</option></select></div>
-      </div>
-      <div class="ui-grid-a" id="cs-prog-div-target">
-       <div class="ui-block-a"><label for="cs-prog-target">Programming Mode:</label></div>
-       <div class="ui-block-b"><input type="checkbox" id="cs-prog-target" data-role="flipswitch" data-off-text="PROG" data-on-text="OPS"></div>
-      </div>
-      <div class="ui-grid-a" id="cs-prog-div-addr">
-       <div class="ui-block-a"><label for="cs-prog-addr">DCC Address:</label></div>
-       <div class="ui-block-b"><input type="number" pattern="[0-9]*" id="cs-prog-addr" value="1" min="1" max="16384"></div>
-      </div>
-      <div class="ui-grid-a" id="cs-prog-div-cv">
-       <div class="ui-block-a"><label for="cs-prog-cv">CV:</label></div>
-       <div class="ui-block-b"><input type="number" pattern="[0-9]*" id="cs-prog-cv" value="1" min="1" max="1024"></div>
-      </div>
-      <div class="ui-grid-a" id="cs-prog-div-mode">
-       <div class="ui-block-a"><label for="cs-prog-mode">Mode:</label></div>
-       <div class="ui-block-b"><input type="checkbox" id="cs-prog-mode" data-role="flipswitch" data-off-text="Byte" data-on-text="Bit"></div>
-      </div>
-      <div class="ui-grid-a" id="cs-prog-div-value">
-       <div class="ui-block-a"><label for="cs-prog-cv-value">Value:</label></div>
-       <div class="ui-block-b"><input type="number" pattern="[0-9]*" id="cs-prog-cv-value" value="1" min="1" max="255"></div>
-      </div>
-      <div class="ui-grid-b" id="cs-prog-div-bit">
-       <div class="ui-block-a"><label for="cs-prog-cv-bit">Bit:</label></div>
-       <div class="ui-block-b"><input type="number" pattern="[0-7]*" id="cs-prog-cv-bit" value="0" min="0" max="7"></div>
-       <div class="ui-block-c" id="cs-prog-div-bit-value"><input type="checkbox" id="cs-prog-cv-bit-value" data-role="flipswitch" data-off-text="Off" data-on-text="On"></div>
-      </div>
-      <div class="ui-grid-a" id="cs-prog-div-create-roster">
-       <div class="ui-block-a"><label for="cs-prog-create-roster">Create Roster entry:</label></div>
-       <div class="ui-block-b"><input type="checkbox" id="cs-prog-create-roster" data-role="flipswitch" data-off-text="No" data-on-text="Yes"></div>
-      </div>
-      <div class="ui-grid-solo">
-       <div class="ui-block-a"><button id="cs-prog-execute" class="ui-corner-all">Execute</button></div>
-      </div>
-      <div class="ui-grid-solo">
-       <div class="ui-block-a"><textarea id="cs-prog-result"></textarea></div>
-      </div>
-     </div>
-     <h3>Web Update (OTA)</h3>
-     <div id="cs-ota">
-      <form id="cs-ota-form" data-ajax="false">
-       OTA Binary (firmware.bin):<input type="file" name="cs-ota-firmware" value="" />
-       <input type="button" id="cs-ota-upload" value="Upload"/>
-      </form>
-     </div>
-     <h3>Configuration</h3>
-     <div id="cs-config">
-      <div class="ui-grid-solo">
-       <div data-role="tabs" id="cs-config-tabs">
-        <div data-role="navbar">
-         <ul>
-          <li><a href="#cs-wifi">WiFi</a></li>
-          <li><a href="#cs-lcc">LCC</a></li>
-          <li><a href="#cs-cdi-uplink">LCC WiFi Uplink</a></li>
-          <li><a href="#cs-cdi-hbridge-ops">OPS H-Bridge Events</a></li>
-          <li><a href="#cs-cdi-hbridge-prog">PROG H-Bridge Events</a></li>
-         </ul>
-        </div>
-        <div id="cs-wifi">
-         <div class="ui-field-contain">
-          <label for="cs-wifi-mode">WiFi Mode:</label>
-          <select id="cs-wifi-mode">
-           <option value="station">Station Only</option>
-           <option value="softap-station">Station and SoftAP</option>
-           <option value="softap">SoftAP Only</option>
-          </select>
-          <label for="cs-wifi-tx-power">WiFi TX Power:</label>
-          <select id="cs-wifi-tx-power">
-           <option value="8">2 dBm</option>
-           <option value="20">5 dBm</option>
-           <option value="28">7 dBm</option>
-           <option value="34">8 dBm</option>
-           <option value="44">11 dBm</option>
-           <option value="52">13 dBm</option>
-           <option value="56">14 dBm</option>
-           <option value="60">15 dBm</option>
-           <option value="66">16 dBm</option>
-           <option value="72">18 dBm</option>
-           <option value="78">20 dBm</option>
-          </select>
-         </div>
-         <div class="ui-field-contain" id="cs-wifi-sta-div">
-          <label for="cs-wifi-ssid">SSID:</label>
-          <input type="text" id="cs-wifi-ssid">
-          <div class="ui-field-contain" id="cs-wifi-ip-div">
-           <label for="cs-wifi-ip-mode">Station IP Assignment:</label>
-           <input type="checkbox" id="cs-wifi-ip-mode" data-role="flipswitch" data-off-text="DHCP" data-on-text="Static">
-          </div>
-          <div class="ui-field-contain" id="cs-wifi-static-div">
-           <label for="cs-wifi-sta-ip">IP:</label>
-           <input type="text" id="cs-wifi-sta-ip">
-           <label for="cs-wifi-sta-gateway">Gateway IP:</label>
-           <input type="text" id="cs-wifi-sta-gateway">
-           <label for="cs-wifi-sta-netmask">Subnet Mask:</label>
-           <input type="text" id="cs-wifi-sta-netmask" value="255.255.255.0">
-           <label for="cs-wifi-dns">DNS:</label>
-           <input id="cs-wifi-dns" type="text" value="8.8.8.8">
-          </div>
-         </div>
-        </div>
-        <div id="cs-lcc">
-         <div class="ui-field-contain">
-          <label for="cs-lcc-node-id">LCC Node ID (hex):</label>
-          <input type="text" id="cs-lcc-node-id">
-         </div>
-         <div class="ui-field-contain">
-          <label for="cs-lcc-can">CAN Interface:</label>
-          <input type="checkbox" id="cs-lcc-can" data-role="flipswitch"/>
-         </div>
-         <div class="ui-field-contain">
-          <label for="cs-lcc-hub">WiFi LCC Hub:</label>
-          <input type="checkbox" id="cs-lcc-hub" data-role="flipswitch"/>
-         </div>
-        </div>
-        <div id="cs-cdi-uplink">
-         <div class="ui-field-contain">
-          <label for="cs-lcc-uplink-mode">LCC Uplink Mode:</label>
-          <select id="cs-lcc-uplink-mode">
-           <option value="0">Auto, Manual</option>
-           <option value="1">Manual, Auto</option>
-           <option value="2">Auto Only</option>
-           <option value="3">Manual Only</option>
-          </select>
-         </div>
-         <div class="ui-field-contain" id="lcc-uplink-auto-div">
-          <label for="cs-lcc-uplink-auto-service">mDNS Service Name:</label>
-          <input type="text" id="cs-lcc-uplink-auto-service">
-         </div>
-         <div class="ui-field-contain" id="lcc-uplink-manual-div">
-          <label for="cs-lcc-uplink-manual-host">LCC Uplink manual host:</label>
-          <input type="text" id="cs-lcc-uplink-manual-host">
-          <label for="cs-lcc-uplink-manual-port">LCC Uplink manual port:</label>
-          <input type="number" id="cs-lcc-uplink-manual-port">
-         </div>
-         <div class="ui-field-contain">
-          <label for="cs-lcc-uplink-reconnect">Uplink reconnect:</label>
-          <input type="checkbox" id="cs-lcc-uplink-reconnect" data-role="flipswitch"/>
-         </div>
-        </div>
-        <div id="cs-cdi-hbridge-ops">
-         <div class="ui-field-contain">
-          <label for="cs-cdi-ops-short">Short (hex):</label>
-          <input type="text" id="cs-cdi-ops-short">
-          <label for="cs-cdi-ops-short-clear">Short Cleared (hex):</label>
-          <input type="text" id="cs-cdi-ops-short-clear">
-          <label for="cs-cdi-ops-shutdown">Shutdown (hex):</label>
-          <input type="text" id="cs-cdi-ops-shutdown">
-          <label for="cs-cdi-ops-shutdown-clear">Shutdown Cleared (hex):</label>
-          <input type="text" id="cs-cdi-ops-shutdown-clear">
-         </div>
-        </div>
-        <div id="cs-cdi-hbridge-prog">
-         <div class="ui-field-contain">
-          <label for="cs-cdi-prog-short">Short (hex):</label>
-          <input type="text" id="cs-cdi-prog-short">
-          <label for="cs-cdi-prog-short-clear">Short Cleared (hex):</label>
-          <input type="text" id="cs-cdi-prog-short-clear">
-          <label for="cs-cdi-prog-shutdown">Shutdown (hex):</label>
-          <input type="text" id="cs-cdi-prog-shutdown">
-          <label for="cs-cdi-prog-shutdown-clear">Shutdown Cleared (hex):</label>
-          <input type="text" id="cs-cdi-prog-shutdown-clear">
-         </div>
-        </div>
-       </div>
-      </div>
-      <div class="ui-grid-solo">
-       <input type="button" id="cs-save-config" value="Save" class='ui-button-inline'/>
-       <input type="button" id="cs-factory-reset" value="Factory Reset" class='ui-button-inline'/>
-       <input type="button" id="cs-wifi-connect" value="Connect to Network" class='ui-button-inline'/>
-       <input type="button" id="cs-lcc-clear-uplink" value="Reset Uplink Address" class='ui-button-inline'/>
-      </div>
-     </div>
-    </div>
-   </div>
-  </div>
-  <div data-role="footer"><div id="clock"></div></div>
-  <div data-role="popup" data-close-btn="none" data-dismissible="false" id="ssid-connect" class="ui-corner-all">
-   <div data-role="header">Available SSIDs</div>
-   <div data-role="main" class="ui-content">
-    <table id="ssid-list" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
-     <thead>
-      <tr>
-       <th>SSID</th>
-       <th>Strength</th>
-       <th>Auth?</th>
-       <th>Actions</th>
-      </tr>
-     </thead>
-     <tbody>
-     </tbody>
-    </table>
-    <div id="ssid-manual-entry">
-     <label for="ssid-manual-ssid">SSID:</label>
-     <input type="text" id="ssid-manual-ssid">
-     <label for="ssid-manual-password">Password:</label>
-     <input type="password" id="ssid-manual-password">
-    </div>
-   </div>
-   <div role="footer">
-    <div data-role="navbar">
-    <ul>
-      <li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
-      <li><a href="#" id="ssid-connect-manual" data-icon="ui-icon-plus" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Manual</a></li>
-      <li><a href="#" id="ssid-connect-rescan" data-icon="ui-icon-recycle" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Rescan</a></li>
-      <li><a href="#baseStationPage" id="ssid-connect-confirm" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
-    </ul>
-    </div>
-   </div>
-  </div>
-  <div data-role="popup" data-close-btn="none" data-dismissible="false" id="throttle-loco-select" class="ui-corner-all">
-   <div data-role="header">Select Locomotive</div>
-   <div data-role="main" class="ui-content">
-    <table id="throttle-loco-list" data-role="table" class="ui-body-d ui-shadow table-stripe ui-responsive">
-     <thead>
-      <tr>
-       <th>Address</th>
-       <th>Type</th>
-       <th>Description</th>
-      </tr>
-     </thead>
-     <tbody>
-     </tbody>
-    </table>
-    <div id="throttle-loco-select-manual">
-     <label for="">Address:</label>
-     <input type="number" pattern="[0-9]*" id="throttle-loco-select-manual-address" value="1" min="1" max="16384">
-    </div>
-   </div>
-   <div role="footer">
-    <div data-role="navbar">
-     <ul>
-      <li><a href="#throttlePage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
-      <li id="throttle-loco-select-add-li"><a href="#" id="throttle-loco-select-add" data-icon="ui-icon-plus" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Manual</a></li>
-      <li id="throttle-loco-select-confirm-li"><a href="#throttlePage" id="throttle-loco-select-confirm" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
-     </ul>
-    </div>
-   </div>
-  </div>
-  <div data-role="popup" data-close-btn="none" data-dismissible="false" id="cs-turnout-editor" class="ui-corner-all">
-   <div data-role="header">Turnout Editor</div>
-   <div data-role="main" class="ui-content">
-    <div class="ui-field-contain">
-     <label for="cs-turnout-address">Address:</label>
-     <input type="number" pattern="[0-9]*" id="cs-turnout-address" value="1" min="1" max="2044">
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-turnout-type">Type:</label>
-     <select id="cs-turnout-type"><option value="0">Left</option><option value="1">Right</option><option value="2">Wye</option><option value="3">Multi (threeway/etc)</option></select>
-    </div>
-   </div>
-   <div role="footer">
-    <div data-role="navbar">
-     <ul>
-      <li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
-      <li><a href="#baseStationPage" id="cs-turnout-dialog-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
-     </ul>
-    </div>
-   </div>
-  </div>
-  <div data-role="popup" data-close-btn="none" data-dismissible="false" id="cs-sensor-editor" class="ui-corner-all">
-   <div data-role="header">Sensor Editor</div>
-   <div data-role="main" class="ui-content">
-    <div class="ui-field-contain">
-     <label for="cs-sensor-id">Sensor ID:</label>
-     <input type="number" pattern="[0-9]*" id="cs-sensor-id" value="1" min="1" max="32767">
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-sensor-pin">Pin:</label>
-     <input type="number" pattern="[0-9]*" id="cs-sensor-pin" value="1" min="1" max="40">
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-sensor-pullup">Pull Up:</label>
-     <input type="checkbox" id="cs-sensor-pullup" data-role="flipswitch" data-off-text="Off" data-on-text="On" />
-    </div>
-   </div>
-   <div role="footer">
-    <div data-role="navbar">
-     <ul>
-      <li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
-      <li><a href="#baseStationPage" id="cs-sensor-dialog-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
-     </ul>
-    </div>
-   </div>
-  </div>
-  <div data-role="popup" data-close-btn="none" data-dismissible="false" id="cs-sensor-s88-editor" class="ui-corner-all">
-   <div data-role="header">S88 Sensor Bus Editor</div>
-   <div data-role="main" class="ui-content">
-    <div class="ui-field-contain">
-     <label for="cs-sensor-s88-id">Sensor Bus ID:</label>
-     <input type="number" pattern="[0-9]*" id="cs-sensor-s88-id" value="0" min="0" max="10">
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-sensor-s88-sensor-id">First sensor ID:</label>
-     <input type="number" id="cs-sensor-s88-sensor-id" value="512" readonly="true">
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-sensor-s88-pin">Data Pin:</label>
-     <input type="number" pattern="[0-9]*" id="cs-sensor-s88-pin" value="0" min="0" max="40">
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-sensor-s88-count">Sensor Count:</label>
-     <input type="number" pattern="[0-9]*" id="cs-sensor-s88-count" value="8" min="8" max="511">
-    </div>
-   </div>
-   <div role="footer">
-    <div data-role="navbar">
-     <ul>
-      <li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
-      <li><a href="#baseStationPage" id="cs-sensor-s88-dialog-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
-     </ul>
-    </div>
-   </div>
-  </div>
-  <div data-role="popup" data-close-btn="none" data-dismissible="false" id="cs-output-editor" class="ui-corner-all">
-   <div data-role="header">Output Editor</div>
-   <div data-role="main" class="ui-content">
-    <div class="ui-field-contain">
-     <label for="cs-output-id">ID:</label>
-     <input type="number" pattern="[0-9]*" id="cs-output-id" value="1" min="1" max="32767">
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-output-pin">Pin:</label>
-     <input type="number" pattern="[0-9]*" id="cs-output-pin" value="1" min="1" max="40">
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-output-logic">Logic:</label>
-     <input type="checkbox" id="cs-output-logic" data-role="flipswitch" data-off-text="Normal" data-on-text="Inverted" />
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-output-startup-state">Startup State:</label>
-     <input type="checkbox" id="cs-output-startup-state" data-role="flipswitch" data-off-text="Last State" data-on-text="Forced" />
-    </div>
-    <div class="ui-field-contain" id="cs-output-default-state-div">
-     <label for="cs-output-default-state">Default State:</label>
-     <input type="checkbox" id="cs-output-default-state" data-role="flipswitch" data-off-text="Off" data-on-text="On" />
-    </div>
-   </div>
-   <div role="footer">
-    <div data-role="navbar">
-     <ul>
-      <li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
-      <li><a href="#baseStationPage" id="cs-output-dialog-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
-     </ul>
-    </div>
-   </div>
-  </div>
-  <div data-role="popup" data-close-btn="none" data-dismissible="false" id="cs-loco-editor" class="ui-corner-all">
-   <div data-role="header">Locomotive Editor</div>
-   <div data-role="main" class="ui-content">
-    <div class="ui-field-contain">
-     <label for="cs-loco-addr">Address:</label>
-     <input type="number" pattern="[0-9]*" id="cs-loco-addr" value="1" min="1" max="16384" />
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-loco-name">Name:</label>
-     <input type="text" id="cs-loco-name" value="" />
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-loco-idle">Automatically add this locomotive to the "Active Locomotives" list on Command Station startup?</label>
-     <input type="checkbox" id="cs-loco-idle" data-role="flipswitch" data-off-text="No" data-on-text="Yes" />
-    </div>
-    <div class="ui-field-contain">
-     <label for="cs-loco-default">Include this locomotive in the Throttle locomotive list?</label>
-     <input type="checkbox" id="cs-loco-default" data-role="flipswitch" data-off-text="No" data-on-text="Yes" />
-    </div>
-   </div>
-   <div role="footer">
-    <div data-role="navbar">
-     <ul>
-      <li><a href="#baseStationPage" data-rel="back" data-icon="ui-icon-back" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Cancel</a></li>
-      <li><a href="#baseStationPage" id="cs-loco-save" data-icon="ui-icon-check" class="ui-btn ui-shadow ui-corner-all ui-btn-icon-notext">Confirm</a></li>
-     </ul>
-    </div>
-   </div>
-  </div>
- </div>
- <script type="text/javascript">
-var fireLocoEvents = true;
-var firePowerEvents = true;
-var online = true;
-var webSocket;
-var bsTabRefreshInterval = null;
-var s88SensorIDBase = 512;
-function showSpinner(text, refresh) {
- refresh = typeof refresh !== 'undefined' ? refresh : false;
- setTimeout(function () { $.mobile.loading('show', {text: text,textVisible: true,textonly: false});}, 2);
- if(refresh) {setTimeout(function() {location.reload();}, 25000);}
-}
-function hideSpinner() {
- setTimeout(function () { $.mobile.loading('hide'); }, 1);
-}
-function showErrorDialog(text, error) {
-  error = typeof error !== 'undefined' ? error : "";
- setTimeout(function() {alert(text);console.log(text, error);}, 500);
-}
-function connectWebSocket() {
- var socketUrl = $.mobile.path.getDocumentBase().replace("http", "ws");
- if(socketUrl.indexOf('#') > 0) {
-  socketUrl = socketUrl.substring(0, socketUrl.lastIndexOf('/') + 1);
- }
- if(socketUrl.endsWith('/index.html') > 0) {
-  socketUrl = socketUrl.substring(0, socketUrl.lastIndexOf('/') + 1);
- }
- if(socketUrl.endsWith('/')) {
-  socketUrl = socketUrl + 'ws';
- } else {
-  socketUrl = socketUrl + '/ws';
- }
- console.log('Websocket url:', socketUrl);
- webSocket = $.simpleWebSocket({url: socketUrl, dataType: 'text'});
- webSocket.listen(function(msg) {
-  console.log('WS:', msg);
- });
- webSocket.connect();
-}
-function sendCommand(cmd) {
- console.log(cmd);
- if(!webSocket) {
-  connectWebSocket();
- }
- webSocket.send(cmd);
-}
-function createButton({type, id, title='',}= {}) {
- if(title === '') {
-  if(type === 'delete') {
-   title = 'Delete';
-  } else if(type === 'edit') {
-   title = 'Edit';
-  } else if(type === 'stop') {
-   title = 'Stop';
-  }
- }
- return String.format("<a href='#' data-role='button' data-show-label='false' class='ui-button-inline' data-icon='ui-icon-{0}' data-iconpos='notext' title='{1}' id='{2}'>{1}</a>", type, title, id);
-}
-$(function() {
- registerStringFormat();
- initPage();
-});
-function registerStringFormat() {
- if (!String.format) {
-  String.format = function(format) {
-   var args = Array.prototype.slice.call(arguments, 1);
-   return format.replace(/{(\d+)}/g, function(match, number) { 
-   return typeof args[number] != 'undefined'
-    ? args[number] 
-    : match
-   ;
-   });
-  };
- }
-}
-function initPage() {
- if(!$.mobile.path.getDocumentBase().startsWith("file://")) {
-  $.ajax({
-   url: '/features',
-   beforeSend: function() { showSpinner('Connecting to Command Station...');},
-   complete: hideSpinner,
-   success : function (data, status, xhr) {
-    connectWebSocket();
-    if(data.sensors === false) {
-     $('[id^=cs-sensors]').hide();
-    }
-    if(data.outputs === false) {
-     $('[id^=cs-outputs]').hide();
-    }
-    if(data.s88 === false) {
-     $('[id^=cs-sensors-s88]').hide();
-    } else {
-     s88SensorIDBase = data.sensorIDBase;
-    }
-   }
-  });
- } else {
-  online=false;
- }
- $('#clock').clock({"timeFormat":"H:i:s"});
- setupThrottle();
- setupBaseStation();
- $.ajaxSetup({timeout:5000});
-}
-function enableTrackPower() {
- sendCommand('<1>');
-}
-function setupThrottle() {
- $("#throttle-speed").on("slidestop", function(event, ui) {
-  if(fireLocoEvents) {
-   var selectedLoco = $("#selected-loco-address").val();
-   var speed = $("#throttle-speed").val();
-   sendCommand(String.format('<tex {0} {1} -1>', selectedLoco, speed));
-  }
- });
- $("#throttle-estop").on("vclick", function(event, ui) {
-  $("#throttle-speed").val(0).slider("refresh");
-  sendCommand('<estop>');
- });
- $("#throttle-direction").on('change', function(event, ui) {
-  if(fireLocoEvents) {
-   var selectedLoco = $("#selected-loco-address").val();
-   var dir = '1';
-   if(this.checked) {
-    dir = '0';
-   }
-   sendCommand(String.format('<tex {0} -1 {1}>', selectedLoco, dir));
-  }
- });
- $('#throttle-acquire-loco').on('vclick', function(event, ui) {
-  refreshTable({
-   table:'#throttle-loco-list',
-   url:'/locomotive/roster',
-   fields: ['address', 'type', 'description'],
-   filter : function(record) {
-    return record.defaultOnThrottles === "true";
-   },
-   failureHandler: function(jqxhr, status, error) {
-    console.log('Failed to retrieve locomotive list from command station, switching to manual:', error);
-    $("#throttle-loco-list").hide();
-    $("#throttle-loco-select-manual").show();
-    $("#throttle-loco-select").popup("open");
-   },
-   refreshCallback: function() {
-    $("#throttle-loco-list tr").on("vclick", function(event, ui) {
-     changeLocomotive($(event.target).parent().children(":eq(0)").text().substr(7));
-     $("#throttle-loco-select").popup("close");
-    });
-    if($("#throttle-loco-list tr td").children().length == 0) {
-      $("#throttle-loco-list").hide();
-      $("#throttle-loco-select-add-li").hide();
-      $("#throttle-loco-select-manual").show();
-      $("#throttle-loco-select-confirm-li").show();
-    } else {
-      $("#throttle-loco-list").show();
-      $("#throttle-loco-select-add-li").show();
-      $("#throttle-loco-select-manual").hide();
-      $("#throttle-loco-select-confirm-li").hide();
-    }
-    $("#throttle-loco-select").popup("open");
-   }});
- });
- $('#throttle-release-loco').on('vclick', function(event, ui) {
-  var selectedLoco = $("#selected-loco-address").val();
-  if(selectedLoco > 0) {
-   $("#throttle-speed").val(0).slider("refresh");
-   $("#throttle-direction").prop('checked', false).flipswitch('refresh');
-   $.ajax({url: '/locomotive?address=' + selectedLoco, method: 'DELETE'});
-   disableLocomotiveInputs();
-  }
- });
- if(online) {
-  $("#throttle-loco-select-manual").hide();
-  $("#throttle-loco-select-add").on("vclick", function(event, ui) {
-   $("#throttle-loco-select-add-li").hide();
-   $("#throttle-loco-list").hide();
-   $("#throttle-loco-select-manual").show();
-   $("#throttle-loco-select-confirm-li").show();
-  });
- } else {
-  $("#throttle-loco-list").hide();
-  $("#throttle-loco-select-manual").show();
-  $("#throttle-loco-select-add-li").hide();
- }
- $("#throttle-loco-select-confirm").on("vclick", function(event, ui) {
-   changeLocomotive($("#throttle-loco-select-manual-address").val());
-   $("#throttle-loco-select").popup("close");
-  });
- $('[id^=funct_]').each(function() {
-  var functionID = $(this).prop('id').substr(6);
-  var label=functionID;
-  if(functionID === '0') {
-   label = 'FL';
-  }
-  $(this).flipswitch({
-   offText:label,
-   onText:label,
-   disabled:true
-  });
-  $(this).on('change', function(event, ui) {
-   if(fireLocoEvents) {
-    var selectedLoco = $("#selected-loco-address").val();
-    var state = '0';
-    if(this.checked) {
-     state = '1';
-    }
-    sendCommand(String.format('<fex {0} {1} {2}>', selectedLoco, functionID, state));
-   }
-  });
- });
-}
-function disableLocomotiveInputs() {
- $('[id^=funct_]').flipswitch('disable');
- $('#throttle-direction').flipswitch('disable');
- $('#throttle-speed').slider('disable');
- $('#throttle-release-loco').button('disable');
-}
-function enableLocomotiveInputs() {
- $('[id^=funct_]').flipswitch('enable');
- $('#throttle-direction').flipswitch('enable');
- $('#throttle-speed').slider('enable');
- $('#throttle-release-loco').button('enable');
-}
-const CSSections = ["Status", "Turnouts", "Sensors", "Sensors (S88)", "Outputs", "Locomotive Roster", "Programmer", "OTA", "Configuration"];
-const CSAutoRefSections = ["Status", "Turnouts", "Sensors", "Sensors (S88)", "Outputs"];
-function setupBaseStation() {
- $("#cs-accordion").on("accordionactivate", function(event, ui) {
-  var section = $("#cs-accordion").accordion("option", "active");
-  BSTabRefresh(CSSections[section]);
- });
- $("#tabs").on("tabsactivate", function(event, ui) {
-  if(ui.newTab.text() == "Command Station") {
-   var section = $("#cs-accordion").accordion("option", "active");
-   BSTabRefresh(CSSections[section]);
-   console.log('enabling auto-refresh of CS tabs every 30s');
-   bsTabRefreshInterval = setInterval(function() {
-    var section = $("#cs-accordion").accordion("option", "active");
-    if(CSAutoRefSections[section] !== undefined) {
-     BSTabRefresh(CSSections[section]);
-    }
-   }, 30000);
-  } else {
-   if(bsTabRefreshInterval !== null) {
-    console.log('disabling auto-refresh of CS tabs');
-    clearInterval(bsTabRefreshInterval);
-    bsTabRefreshInterval = null;
-   }
-  }
- });
- setupBSStatus();
- setupBSTurnout();
- setupBSSensor();
- setupBSS88Sensors();
- setupBSOutput();
- setupBSRoster();
- setupProgrammer();
- setupConfig();
 
- $('#cs-ota-upload').on('vclick', function(event, ui) {
-  if($('#cs-ota-firmware').val() != '') {
-   var data = new FormData($('#cs-ota-form')[0]);
-   $.ajax({url: '/update',enctype: 'multipart/form-data',type: 'POST',data: data,cache: false,processData: false,contentType: false,timeout: 120000,
-    beforeSend: function() {showSpinner('Firmware upload in progress...');},
-    complete: hideSpinner,
-    success: function() {showSpinner('Firmware upload Successful! Command Station restarting...', true);},
-    error: function(req, status) {showErrorDialog('Firmware update failed: ' + req.responseText);}
-   })
-  } else {
-   alert('Firmware image not provided!');
-  }
- });
-}
-function setupBSStatus() {
-}
-function setupBSTurnout() {
- // default to dcc addressing only.
- $('#cs-turnout-dialog-save').on('vclick', function(event, ui) {
-  if($('#cs-turnout-address').val() < 1 || $('#cs-turnout-address').val() > 2044){
-   alert(String.format('{0} is not a valid address for an accessory decoder', $('#cs-turnout-address').val()));
-   return;
-  }
-  console.log('Creating/Updating turnout using address', $('#cs-turnout-address').val(), 'and type', $('#cs-turnout-type').val());
-  $.post('/turnouts', {
-   'address' : $('#cs-turnout-address').val(),
-   'type' : $('#cs-turnout-type').val()
-  });
-  BSTabRefresh('Turnouts');
- });
- $('#cs-turnout-create').on('vclick', function(event, ui) {
-  $('#cs-turnout-address').val(1);
-  $('#cs-turnout-type').val(0).change();
-  $('#cs-turnout-editor').popup('open', {positionTo:'window'});
- });
- $('#cs-turnout-refresh').on('vclick', function(event, ui) {
-  BSTabRefresh('Turnouts');
- });
-}
-function setupBSSensor() {
- $('#cs-sensor-dialog-save').on('vclick', function(event, ui) {
-  $.post('/sensors', {
-   'id': $('#cs-sensor-id').val(),
-   'pin' : $('#cs-sensor-pin').val(),
-   'pullUp' : $('#cs-sensor-pullup').prop('checked')
-  });
-  BSTabRefresh('Sensors');
- });
- $('#cs-sensor-create').on('vclick', function(event, ui) {
-  $('#cs-sensor-id').val($('#cs-table-sensors tbody tr').length + 1);
-  $('#cs-sensor-pin').val(1);
-  $('#cs-sensor-pullUp').prop('checked', false).flipswitch('refresh');
-  $('#cs-sensor-editor').popup('open', {positionTo:'window'});
- });
- $('#cs-sensor-refresh').on('vclick', function(event, ui) {
-  BSTabRefresh('Sensors');
- });
-}
-function setupBSS88Sensors() {
- $('#cs-sensor-s88-dialog-save').on('vclick', function() {
-  $.post('/s88sensors', {
-   'id': $('#cs-sensor-s88-id').val(),
-   'pin' : $('#cs-sensor-s88-pin').val(),
-   'count' : $('#cs-sensor-s88-count').val()
-  });
-  BSTabRefresh('Sensors (S88)');
- });
- $('#cs-sensor-s88-create').on('vclick', function() {
-  $('#cs-sensor-s88-id').val($('#cs-table-sensors-s88 tbody tr').length);
-  $('#cs-sensor-s88-sensor-id').val(s88SensorIDBase + ($('#cs-sensor-s88-id').val() * 512));
-  $('#cs-sensor-s88-pin').val(1);
-  $('#cs-sensor-s88-count').val(8);
-  $('#cs-sensor-s88-editor').popup('open', {positionTo:'window'});
- });
- $('#cs-sensor-s88-id').on('change', function() {
-  $('#cs-sensor-s88-sensor-id').val(s88SensorIDBase + ($('#cs-sensor-s88-id').val() * 512));
- });
- $('#cs-sensor-s88-refresh').on('vclick', function() {
-  BSTabRefresh('Sensors (S88)');
- });
-}
-function setupBSOutput() {
- $('#cs-output-dialog-save').on('vclick', function() {
-  console.log('Creating output', $('#cs-output-id').val(), 'with pin',
-   $('#cs-output-pin').val(), 'logicInverted:', $('#cs-output-logic').prop('checked'),
-   'forceState:', $('#cs-output-startup-state').prop('checked'),
-   'defaultState:',$('#cs-output-default-state').prop('checked'));
-  $.post('/outputs', {
-   'id': $('#cs-output-id').val(),
-   'pin' : $('#cs-output-pin').val(),
-   'inverted' : $('#cs-output-logic').prop('checked'),
-   'forceState' : $('#cs-output-startup-state').prop('checked'),
-   'defaultState' : $('#cs-output-default-state').prop('checked')
-  });
-  BSTabRefresh('Outputs');
- });
- $('#cs-output-create').on('vclick', function() {
-  $('#cs-output-id').val($('#cs-table-outputs tbody tr').length + 1);
-  $('#cs-output-pin').val(1);
-  $('#cs-output-logic').prop('checked', false).flipswitch('refresh');
-  $('#cs-output-startup-state').prop('checked', false).flipswitch('refresh');
-  $('#cs-output-default-state').prop('checked', false).flipswitch('refresh');
-  $('#cs-output-editor').popup('open', {positionTo:'window'});
- });
- $('#cs-output-refresh').on('vclick', function() {
-  BSTabRefresh('Outputs');
- });
- $('#cs-output-startup-state').on('change', function() {
-  if(this.checked) {
-   $('#cs-output-default-state-div').show();
-  } else {
-   $('#cs-output-default-state-div').hide();
-  }
- });
- $('#cs-output-default-state-div').hide();
-}
-function setupBSRoster() {
- $('#cs-loco-save').on('vclick', function() {
-  console.log('Creating roster entry:', $('#cs-loco-addr').val(),
-   'name:', $('#cs-loco-name').val(),
-   'idle:', $('#cs-loco-idle').prop('checked'),
-   'default:',$('#cs-loco-default').prop('checked'));
-  $.post('/locomotive/roster', {
-   'address': $('#cs-loco-addr').val(),
-   'name' : $('#cs-loco-name').val(),
-   'idleOnStartup' : $('#cs-loco-idle').prop('checked'),
-   'defaultOnThrottles' : $('#cs-loco-default').prop('checked')
-  });
-  BSTabRefresh('Locomotive Roster');
- });
- $('#cs-loco-create').on('vclick', function() {
-  $('#cs-loco-addr').val(1);
-  $('#cs-loco-name').val("");
-  $('#cs-loco-idle').prop('checked', false).flipswitch('refresh');
-  $('#cs-loco-default').prop('checked', true).flipswitch('refresh');
-  $('#cs-loco-editor').popup('open', {positionTo:'window'});
- });
- $('#cs-loco-refresh').on('vclick', function() {
-  BSTabRefresh('Locomotive Roster');
- });
-}
-function setupProgrammer() {
- $('#cs-prog-target').on('change', function() {
-  if(this.checked) {
-   $('#cs-prog-div-addr').show();
-  } else {
-   $('#cs-prog-div-addr').hide();
-  }
- });
- $('#cs-prog-mode').on('change', function() {
-  if(this.checked) {
-   $('#cs-prog-div-value').hide();
-   if($('#cs-prog-action').val() === 'write') {
-    $('#cs-prog-div-bit-value').show();
-   } else {
-    $('#cs-prog-div-bit-value').hide();
-   }
-   $('#cs-prog-div-bit').show();
-  } else {
-   if($('#cs-prog-action').val() === 'write') {
-    $('#cs-prog-div-value').show();
-   }
-   $('#cs-prog-div-bit').hide();
-  }
- });
- $('#cs-prog-action').on('change', function() {
-  if($(this).val() === 'read') {
-   $('#cs-prog-target').val(0);
-   $('#cs-prog-target').flipswitch('disable');
-   $('#cs-prog-div-addr').hide();
-   $('#cs-prog-div-value').hide();
-  } else if($(this).val() === 'write') {
-   $('#cs-prog-target').flipswitch('enable');
-   $('#cs-prog-div-value').show();
-  }
-  if($(this).val() === 'identify') {
-   $('#cs-prog-div-create-roster').show();
-   $('#cs-prog-div-target').hide();
-   $('#cs-prog-div-addr').hide();
-   $('#cs-prog-div-cv').hide();
-   $('#cs-prog-div-mode').hide();
-   $('#cs-prog-div-value').hide();
-  } else {
-   $('#cs-prog-div-target').show();
-   $('#cs-prog-div-cv').show();
-   $('#cs-prog-div-mode').show();
-   $('#cs-prog-div-create-roster').hide();
-  }
- })
- $('#cs-prog-execute').on('vclick', function() {
-  $('#cs-prog-result').val('pending...');
-  if($('#cs-prog-action').val() === 'read') {
-   $.ajax({url: '/programmer',timeout:15000,dataType:'json',
-    data: {'pom':'false','cv': $('#cs-prog-cv').val()},
-    beforeSend: function() {showSpinner(String.format('Retrieving CV {0}...', $('#cs-prog-cv').val()));},
-    complete: hideSpinner,
-    success: function(data, status, xhr) {$('#cs-prog-result').val(String.format('CV {0} has value {1}', data['cv'], data['value']));},
-    error: function() {$('#cs-prog-result').val(String.format('CV {0} read was not successful', $('#cs-prog-cv').val()));}
-   });
-  } else if($('#cs-prog-action').val() === 'write') {
-   if($('#cs-prog-mode').prop('checked')) {
-    $.ajax({method:'POST',url: '/programmer',timeout:15000,dataType:'json',
-     data: {'cv':$('#cs-prog-cv').val(),'pom':$('#cs-prog-target').prop('checked'),'address':$('#cs-prog-addr').val(),'bit':$('#cs-prog-cv-bit').val(),'value':$('#cs-prog-cv-bit-value').prop('checked')},
-     beforeSend: function() {showSpinner(String.format('Writing CV {0}...', $('#cs-prog-cv').val()));},
-     complete: hideSpinner,
-     success: function(data, status, xhr) {$('#cs-prog-result').val(String.format('CV {0} bit {1} written successfully', $('#cs-prog-cv').val(), $('#cs-prog-cv-bit').val()));},
-     error: function() {$('#cs-prog-result').val(String.format('CV {0} bit {1} was not written successfully', $('#cs-prog-cv').val(), $('#cs-prog-cv-bit').val()));}
-    });
-   } else {
-    $.ajax({method:'POST',url: '/programmer',timeout:15000,dataType:'json',
-     data: {'cv':$('#cs-prog-cv').val(),'pom':$('#cs-prog-target').prop('checked'),'address':$('#cs-prog-addr').val(),'value':$('#cs-prog-cv-value').val()},
-     beforeSend: function() {showSpinner(String.format('Writing CV {0}...', $('#cs-prog-cv').val()));},
-     complete: hideSpinner,
-     success: function() {$('#cs-prog-result').val(String.format('CV {0} written successfully', $('#cs-prog-cv').val()));},
-     error: function() {$('#cs-prog-result').val(String.format('CV {0} was not written successfully', $('#cs-prog-cv').val()));}
-    });
-   }
-  } else {
-   $.ajax({url:'/programmer',timeout:15000,dataType:'json',
-    data: {'pom':'false','identify':'true','create':$('#cs-prog-create-roster').prop('checked')},
-    beforeSend: function() {showSpinner('Identifying decoder');},
-    complete: hideSpinner,
-    success: function(data, status, xhr) {if(data.hasOwnProperty('loco')) {$('#cs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), speed table {2}.\nRoster entry has been created for the {3}',data.address, data.addressMode, data.speedTable, data.loco.type));} else {$('#cs-prog-result').val(String.format('Identified the decoder as having address {0} ({1}), speed table {2}',data.address, data.addressMode, data.speedTable));}},
-    error: function() {$('#cs-prog-result').val('Unable to identify the decoder');}
-   });
-  }
- });
- $('#cs-prog-div-addr').hide();
- $('#cs-prog-div-bit').hide();
- $('#cs-prog-div-create-roster').hide();
-}
-function pad_hex(str, length) {var hex = new Array(length + 1).join('0') + str;return hex.substr(-length).match(/.{1,2}/g).join('.');}
-function csConfigUpdate(data) {
- $('#cs-lcc-node-id').val(pad_hex(data.lcc.id, 12));
- $('#cs-lcc-can').prop('checked', data.lcc.can).flipswitch('refresh');
- $('#cs-lcc-hub').prop('checked', data.hub).flipswitch('refresh');
- $('#cs-lcc-uplink-reconnect').prop('checked', data.uplink.reconnect).flipswitch('refresh');
- $('#cs-lcc-uplink-auto-service').val(data.uplink.auto_service);
- $('#cs-lcc-uplink-manual-host').val(data.uplink.manual_host);
- $('#cs-lcc-uplink-manual-port').val(data.uplink.manual_port);
- $('#cs-lcc-uplink-mode').val(data.uplink.mode).change();
- $('#cs-cdi-ops-short').val(pad_hex(data.hbridges[0].short, 16));
- $('#cs-cdi-ops-short-clear').val(pad_hex(data.hbridges[0].short_clear, 16));
- $('#cs-cdi-ops-shutdown').val(pad_hex(data.hbridges[0].shutdown, 16));
- $('#cs-cdi-ops-shutdown-clear').val(pad_hex(data.hbridges[0].shutdown_clear, 16));
- $('#cs-cdi-prog-short').val(pad_hex(data.hbridges[1].short, 16));
- $('#cs-cdi-prog-short-clear').val(pad_hex(data.hbridges[1].short_clear, 16));
- $('#cs-cdi-prog-shutdown').val(pad_hex(data.hbridges[1].shutdown, 16));
- $('#cs-cdi-prog-shutdown-clear').val(pad_hex(data.hbridges[1].shutdown_clear, 16));
- $('#cs-wifi-sta-div').hide();
- $('#cs-wifi-connect').hide();
- $('#cs-wifi-mode').val(data.wifi.mode).change();
- $('#cs-wifi-tx-power').val(data.tx_power).change();
- if(data.wifi.mode !== 'softap') {
-  $('#cs-wifi-sta-div').show();
-  $('#cs-wifi-connect').show();
-  $('#cs-wifi-ssid').val(data.wifi.station.ssid);
-  $('#cs-wifi-ip-mode').prop('checked', data.wifi.station.mode === 'static').flipswitch('refresh');
-  if(data.wifi.station.mode === 'static') {
-   $('#cs-wifi-static-div').show();
-   $('#cs-wifi-sta-ip').val(data.wifi.station.ip);
-   $('#cs-wifi-sta-gateway').val(data.wifi.station.gateway);
-   $('#cs-wifi-sta-netmask').val(data.wifi.station.netmask);
-   $('#cs-wifi-sta-dns').val(data.wifi.dns);
-  }
- } else {
-  $('#cs-wifi-stat-div').hide();
- }
- $('#cs-lcc-clear-uplink').hide();
-}
-function refreshSSIDList() {
- $('#ssid-connect-confirm').hide();
- $('#ssid-manual-entry').hide();
- $('#ssid-connect-rescan').show();
- refreshTable({table: '#ssid-list', url: '/config?scan=true',
- fields: ['ssid','rssi',
-  function(record) {var values=['None','WEP','WPA','WPA2','WPA/WPA2','WPA2 Enterprise'];if(record.auth > 5) {return 'Unknown';}return values[record.auth];},
-  function(record) {return createButton({type:'gear', id:String.format("cs-ssid-{0}-{1}", record.ssid, record.auth), title:'Connect'});}
-  ],
-  refreshCallback:function() {
-   $('#ssid-list tr td [id^=cs-ssid-]').button();
-   $('#ssid-list tr td [id^=cs-ssid-]').on('vclick', function(event, ui) {
-    var idParts = $(this).attr('id').split('-');
-    if(idParts[3] !== 0) {
-     $('#ssid-manual-ssid').val(idParts[2]);
-     $('#ssid-manual-password').val('');
-     $('#ssid-list').hide();
-     $('#ssid-manual-entry').show();
-     $('#ssid-connect-manual').hide();
-     $('#ssid-connect-confirm').show();
-     $('#ssid-connect-rescan').hide();
-     $('#ssid-connect').popup('reposition', {positionTo:'window'});
-    } else {
-     $('#ssid-connect').popup('close');
-     $.ajax({method: 'POST',
-      url:String.format('/config?ssid={0}&pass={1}', idParts[3], $('#ssid-manual-password').val()),
-      beforeSend: function() {showSpinner('Saving Configuration...');},
-      complete: hideSpinner,
-      success : function (data, status, xhr) {if(!data.hasOwnProperty('restart')) {csConfigUpdate(data);} else {showSpinner(data.state, true);}},
-      error : function(xhr, status, error) {showErrorDialog("The command station reported a failure saving configuration data", error);}
-     });
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 Command Station</title>
+  <link rel="icon" type="image/png" href="loco-32x32.png" sizes="32x32">
+  <link rel="stylesheet" href="spectre.min.css">
+  <script src="cash.min.js"></script>
+  <style>
+    .s88SensorOn {
+      height: 25px;
+      width: 40px;
+      background-color: #00FF00;
+      color: #FFFFFF;
     }
-   });
-   $('#ssid-list').show();
-   $('#ssid-connect').popup('reposition', {positionTo:'window'});
-  }
- })
-}
-function setupConfig() {
- $("#cs-config-tabs").on("tabsactivate", function(event, ui) {
-  if(ui.newTab.text() === 'LCC') {
-   $('#cs-lcc-clear-uplink').show();
-  } else {
-   $('#cs-lcc-clear-uplink').hide();
-  }
-  if(ui.newTab.text() === "WiFi") {
-   $('#cs-wifi-connect').show();
-  } else {
-   $('#cs-wifi-connect').hide();
-  }
- });
- $('#cs-factory-reset').on("vclick", function() {
-  $.ajax({url: '/config?reset',method: 'POST',beforeSend: function() {showSpinner('Initiating Factory Reset...', true);},});
- });
- $("#cs-save-config").on("vclick", function() {
-  var tablist = ["WiFi", "LCC", "Uplink", "OPS", "PROG"];
-  var section = $("#cs-config-tabs").tabs("option", "active");
-  var url = "";
-  if (tablist[section] == "WiFi") {
-   url = String.format("/config?mode={0}&tx_power={1}", $('#cs-wifi-mode').val(), $('#cs-wifi-tx-power').val());
-  } else if (tablist[section] == "LCC") {
-   url = String.format("/config?nodeid={0}&lcc-hub={1}&lcc-can={2}", $('#cs-lcc-node-id').val(), $('#cs-lcc-hub').prop('checked'), $('#cs-lcc-can').prop('checked'));
-  } else if (tablist[section] == "Uplink") {
-   url = String.format("/config?uplink-mode={0}&uplink-service={1}&uplink-manual={2}&uplink-manual-port={3}&uplink-reconnect={4}", $('#cs-lcc-uplink-mode').val(), $('#cs-lcc-uplink-auto-service').val(), $('#cs-lcc-uplink-manual-host').val(), $('#cs-lcc-uplink-manual-port').val(), $('#cs-lcc-uplink-reconnect').val());
-  } else if (tablist[section] == "OPS") {
-   url = String.format("/config?ops-short={0}&ops-short-clear={1}&ops-shutdown={2}&ops-shutdown-clear={3}", $('#cs-cdi-ops-short').val(), $('#cs-cdi-ops-short-clear').val(), $('#cs-cdi-ops-shutdown').val(), $('#cs-cdi-ops-shutdown-clear').val());
-  } else if (tablist[section] == "PROG") {
-   url = String.format("/config?prog-short={0}&prog-short-clear={1}&prog-shutdown={2}&prog-shutdown-clear={3}", $('#cs-cdi-prog-short').val(), $('#cs-cdi-prog-short-clear').val(), $('#cs-cdi-prog-shutdown').val(), $('#cs-cdi-prog-shutdown-clear').val());
-  } else {
-   console.log('Unknown configuration tab:', section, ', ignoring');
-   return;
-  }
-  $.ajax({method: 'POST',url: url,
-   beforeSend: function() {showSpinner(String.format('Saving {0} config...', tablist[section]));},
-   complete: hideSpinner,
-   success : function (data, status, xhr) {if(!data.hasOwnProperty('restart')) {csConfigUpdate(data);} else {showSpinner(data.restart, true);}},
-   error : function(xhr, status, error) {showErrorDialog("The command station reported a failure saving configuration data", error);}
-  });
- });
- $('#cs-lcc-clear-uplink').on('vclick', function() {
-  $.ajax({method:'GET',url:'/config?uplink-clear-last=true',
-   beforeSend:function() {showSpinner(String.format('Saving {0} config...', tablist[section]));},
-   complete:hideSpinner,
-   success:function (data, status, xhr) {if(!data.hasOwnProperty('restart')) {csConfigUpdate(data);} else {showSpinner(data.restart, true);}},
-   error:function(xhr, status, error) {showErrorDialog("The command station reported a failure saving configuration data", error);}
-  });
- })
- $('#cs-wifi-mode').on('change', function() {
-  if($("#cs-wifi-mode").val() === 'station' || $("#cs-wifi-mode").val() === 'softap-station') {
-   $('#cs-wifi-sta-div').show();
-   $('#cs-wifi-connect').show();
-  } else {
-   $('#cs-wifi-sta-div').hide();
-   $('#cs-wifi-connect').hide();
-  }
- });
- $('#cs-wifi-ip-mode').on('change', function() {
-  if(this.checked) {
-   $("#cs-wifi-static-div").show();
-  } else {
-   $("#cs-wifi-static-div").hide();
-  }
- });
- $("#cs-wifi-static-div").hide();
- $('#cs-wifi-station-div').hide();
- $('#ssid-connect-confirm').hide();
- $('#cs-wifi-connect').on('vclick', function() {
-  $('#ssid-connect-rescan').show();
-  $('#ssid-manual-entry').hide();
-  $('#ssid-list tbody').empty();
-  $('#ssid-connect').popup('open', {positionTo:'window'});
-  refreshSSIDList();
- });
- $('#ssid-connect-manual').on('vclick', function() {
-  $('#ssid-manual-ssid').val('');
-  $('#ssid-manual-password').val('');
-  $('#ssid-list').hide();
-  $('#ssid-manual-entry').show();
-  $('#ssid-connect-confirm').show();
-  $('#ssid-connect-rescan').hide();
- })
- $('#ssid-connect-rescan').on('vclick', function() {
-  refreshSSIDList();
- })
- $('#ssid-connect-confirm').on('vclick', function() {
-  $('#ssid-connect').popup('close');
-  $.ajax({method:'POST', url:String.format('/config?ssid={0}&password={1}', $('#ssid-manual-ssid').val(), $('#ssid-manual-password').val())});
- })
-}
-function BSTabRefresh(section) {
- console.log("refreshing: " + section);
- if(section === 'Status') {
-  refreshTable({table: '#cs-table-power', url: '/power',
-   fields: ['name', 'state', 'usage', function(record) {
-    if(record.prog) {
-     return '';
-    } else if(record.state === 'Off') {
-     return createButton({type:'power', id:String.format("cs-power-{0}-true", record.name), title:'Enable'});
-    } else {
-     return createButton({type:'power', id:String.format("cs-power-{0}-false", record.name), title:'Disable'});
+
+    .s88SensorOff {
+      height: 25px;
+      width: 40px;
+      background-color: #FF0000;
+      color: #FFFFFF;
     }
-   }],
-   refreshCallback:function() {
-    $('#cs-table-power tr td [id^=cs-power-]').button();
-    $('#cs-table-power tr td [id^=cs-power-]').on('vclick', function(event, ui) {
-     var idParts = $(this).attr('id').split('-');
-     $.ajax({method:'PUT',url:String.format('/power?name={0}&state={1}',idParts[2],idParts[3]),
-      dataType:'text',
-      complete:function(){BSTabRefresh('Status');}});
-    });
-   }
-  });
-  refreshTable({table: '#cs-table-locomotives', url: '/locomotive',
-   fields: ['address', 'speed', 'dir', function(record) {
-    var buttons = '';
-    buttons += createButton({type:'delete', id:String.format("loco-{0}-delete", record.address)});
-    buttons += createButton({type:'stop', id:String.format("loco-{0}-stop", record.address)});
-    return buttons;
-   }],
-   refreshCallback: function() {
-    $('#cs-table-locomotives tr td [id^=loco-]').button();
-    $('#cs-table-locomotives tr td [id^=loco-]').on('vclick', function(event, ui) {
-     var idParts = $(this).attr('id').split('-');
-     if(idParts[2] === 'delete') {
-      $.ajax({method:'DELETE',url:String.format('/locomotive?address={0}',idParts[1]),
-       dataType:'text',
-       beforeSend:function(){showSpinner(String.format("Deleting locomotive {0}",idParts[1]));},
-       complete:function(){hideSpinner();BSTabRefresh('Status');}});
-     } else if(idParts[2] === 'stop') {
-      sendCommand(String.format('<tex {0} 0 -1>', idParts[1]));
-      BSTabRefresh('Status');
-     }
-    });
-   }
-  });
- } else if(section === 'Turnouts') {
-  refreshTable({table: '#cs-table-turnouts', url: '/turnouts',
-   fields: ['address',
-    function(record) { // convert type
-     var typeStrings = ["Left", "Right", "Wye", "Multi"];
-     return typeStrings[record.type];
-    }, 'state', function(record) {
-    var buttons = '';
-    buttons += createButton({type:'delete', id:String.format("turnout-{0}-delete", record.address)});
-    buttons += createButton({type:'edit', id:String.format("turnout-{0}-edit", record.address)});
-    if(record.state) {
-     buttons += createButton({type:'action', id:String.format("turnout-{0}-throw", record.address), title:'Throw'});
-    } else {
-     buttons += createButton({type:'action', id:String.format("turnout-{0}-close", record.address), title:'Close'});
+
+    fieldset {
+      border-style: solid;
+      border-width: 0.1rem;
+      border-color: #606c76;
+      border-radius: 0.5rem;
     }
-    return buttons;
-   }],
-   refreshCallback: function() {
-    $('#cs-table-turnouts tr td [id^=turnout-]').button();
-    $('#cs-table-turnouts tr td [id^=turnout-]').on('vclick', function(event, ui) {
-     var idParts = $(this).attr('id').split('-');
-     if(idParts[2] === 'delete') {
-      $.ajax({method:'DELETE',url:String.format('/turnouts?address={0}',idParts[1]),
-       dataType:'text',
-       beforeSend:function(){showSpinner(String.format("Deleting Turnout {0}",idParts[1]));},
-       complete:function() {hideSpinner();BSTabRefresh('Turnouts');}});
-     } else if(idParts[2] === 'edit') {
-      $.ajax({url: String.format('/turnouts?address={0}', idParts[1]),
-       success:function(data, status, jqxhr) {
-        console.log('Edit turnout', data);
-        $('#cs-turnout-address').val(data.address);
-        $('#cs-turnout-type').val(data.type).change();
-        $('#cs-turnout-editor').popup('open', {positionTo:'window'});
-       },
-       error:function(req, status) {showErrorDialog(String.format('Unable to edit turnout {0}', idParts[1]), status);}
-      });
-     } else {
-      $.ajax({method:'PUT',url:String.format('/turnouts?address={0}',idParts[1]),
-       dataType:'text',
-       beforeSend:function(){showSpinner(String.format("Toggling Turnout {0}",idParts[1]));},
-       complete:function() {hideSpinner();BSTabRefresh('Turnouts');}});
-     }
-    });
-   }
-  });
- } else if(section === 'Sensors') {
-  refreshTable({table: '#cs-table-sensors', url: '/sensors',
-   fields: ['id', 'pin', 'pullUp', 'state', function(record) {
-    var buttons = '';
-    if(record.pin > 0) {
-     buttons += createButton({type:'delete', id:String.format("sensor-{0}-delete", record.id)});
-     buttons += createButton({type:'edit', id:String.format("sensor-{0}-edit", record.id)});
+
+    #ws-status.flash {
+      animation-name: colorflash;
+      animation-duration: 1s;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
     }
-    return buttons;
-   }],
-   refreshCallback: function() {
-    $('#cs-table-sensors tr td [id^=sensor-]').button();
-    $('#cs-table-sensors tr td [id^=sensor-]').on('vclick', function(event, ui) {
-     var idParts = $(this).attr('id').split('-');
-     if(idParts[2] === 'delete') {
-      $.ajax({method:'DELETE',url:String.format('/sensors?id={0}',idParts[1]),
-       dataType:'text',
-       beforeSend:function(){showSpinner(String.format("Deleting Sensor {0}",idParts[1]));},
-       complete:function() {hideSpinner();BSTabRefresh('Sensors');}});
-     } else if(idParts[2] === 'edit') {
-      $.ajax({url:String.format('/sensors?id={0}',idParts[1]),
-       success:function(data, status, jqxhr) {
-        console.log('Edit sensor', data);
-        $('#cs-sensor-id').val(data.id);
-        $('#cs-sensor-pin').val(data.pin);
-        $('#cs-sensor-pullUp').prop('checked', data.pullUp).flipswitch('refresh');
-        $('#cs-sensor-editor').popup('open', {positionTo:'window'});
-       },
-       error:function(req, status) {showErrorDialog(String.format('Unable to edit sensor {0}', idParts[1]), status);}
-      });
-     }
-    });
-   }
-  });
- } else if(section === 'Sensors (S88)') {
-  refreshTable({table: '#cs-table-sensors-s88', url: '/s88sensors',
-   fields: ['id', 'pin', 'sensorIDBase', 'count', function(record) {
-    var state = '';
-    var dataSplit = record.state.split("");
-    var count = 0;
-    for(index in dataSplit) {
-     count++;
-     if(dataSplit[index] === '0') {
-      state += "<span class='s88SensorOff'>OFF</span>&nbsp;";
-     } else {
-      state += "<span class='s88SensorOn'>ON&nbsp;</span>&nbsp;";
-     }
-     if(count % 8 === 0) {
-      state += "<br/>";
-     }
-    }
-    return state;
-   }, function(record) {
-    var buttons = '';
-    buttons += createButton({type:'delete', id:String.format("s88sensor-{0}-delete", record.id)});
-    buttons += createButton({type:'edit', id:String.format("s88sensor-{0}-edit", record.id)});
-    return buttons;
-   }],
-   refreshCallback: function() {
-    $('#cs-table-sensors-s88 tr td [id^=s88sensor-]').button();
-    $('#cs-table-sensors-s88 tr td [id^=s88sensor-]').on('vclick', function(event, ui) {
-     var idParts = $(this).attr('id').split('-');
-     if(idParts[2] === 'delete') {
-      $.ajax({method:'DELETE',url:String.format('/s88sensors?id={0}',idParts[1]),
-       dataType:'text',
-       beforeSend:function(){showSpinner(String.format("Deleting S88 Bus {0}",idParts[1]));},
-       complete:function(){hideSpinner();BSTabRefresh('Sensors (S88)');}});
-     } else if(idParts[2] === 'edit') {
-      $.ajax({url: String.format('/s88sensors?id={0}', idParts[1]),
-       success:function(data, status, jqxhr) {
-        console.log('Edit s88 sensor', data);
-        $('#cs-sensor-s88-id').val(data.id);
-        $('#cs-sensor-s88-sensor-id').val(s88SensorIDBase + (data.id * 512));
-        $('#cs-sensor-s88-pin').val(data.dataPin);
-        $('#cs-sensor-s88-count').val(data.count);
-        $('#cs-sensor-s88-editor').popup('open', {positionTo:'window'});
-       },
-       error:function(req, status) {showErrorDialog(String.format('Unable to edit sensor {0}', idParts[1]), status);}
-      });
-     }
-    });
-   }
-  });
- } else if(section === 'Outputs') {
-  refreshTable({table: '#cs-table-outputs', url: '/outputs',
-   fields: ['id', 'pin', 'flags', 'state', function(record) {
-    var buttons = '';
-    buttons += createButton({type:'delete', id:String.format("output-{0}-delete", record.id)});
-    buttons += createButton({type:'edit', id:String.format("output-{0}-edit", record.id)});
-    if(record.state === 'Off') {
-     buttons += createButton({type:'power', id:String.format("output-{0}-toggle", record.id), title:'Enable'});
-    } else {
-     buttons += createButton({type:'power', id:String.format("output-{0}-toggle", record.id), title:'Disable'});
-    }
-    return buttons;
-   }],
-   refreshCallback: function() {
-    $('#cs-table-outputs tr td [id^=output-]').button();
-    $('#cs-table-outputs tr td [id^=output-]').on('vclick', function(event, ui) {
-     var idParts = $(this).attr('id').split('-');
-     if(idParts[2] === 'delete') {
-      $.ajax({method: 'DELETE',url: String.format('/outputs?id={0}', idParts[1]),
-       dataType:'text',
-       beforeSend:function(){showSpinner(String.format("Deleting Output {0}", idParts[1]));},
-       complete:function(){hideSpinner();BSTabRefresh('Outputs');}});
-     } else if(idParts[2] === 'edit') {
-      $.ajax({url: String.format('/outputs?id={0}', idParts[1]),
-       success:function(data, status, jqxhr) {
-        console.log('Edit output', data);
-        $('#cs-output-id').val(data.id);
-        $('#cs-output-pin').val(data.pin);
-        $('#cs-output-logic').prop('checked', data.flags.includes('activeLow')).flipswitch('refresh');
-        $('#cs-output-startup-state').prop('checked', data.flags.includes('force')).flipswitch('refresh');
-        $('#cs-output-default-state').prop('checked', data.flags.includes('force(on)')).flipswitch('refresh');
-        $('#cs-output-editor').popup('open', {positionTo:'window'});
-       },
-       error:function(req, status) {showErrorDialog(String.format('Unable to edit output {0}', idParts[1]), status);}
-      });
-     } else {
-      sendCommand(String.format('<Zex {0}>', idParts[1]));
-      BSTabRefresh('Outputs');
-     }
-    });
-   }
-  });
- } else if(section === 'Locomotive Roster') {
-  refreshTable({table: '#cs-table-loco-roster', url: '/locomotive/roster',
-   fields: ['address', 'name', function(record) {
-    var buttons = '';
-    buttons += createButton({type:'delete', id:String.format("roster-{0}-delete", record.address)});
-    buttons += createButton({type:'edit', id:String.format("roster-{0}-edit", record.address)});
-    if(record.idleOnStartup === true) {
-     buttons += createButton({type:'power', id:String.format("roster-{0}-idle-off", record.address), title:'Disable Idle'});
-    } else {
-     buttons += createButton({type:'power', id:String.format("roster-{0}-idle-on", record.address), title:'Enable Idle'});
-    }
-    if(record.defaultOnThrottles === true) {
-     buttons += createButton({type:'action', id:String.format("roster-{0}-default-off", record.address), title:'Disable default on Throttles'});
-    } else {
-     buttons += createButton({type:'action', id:String.format("roster-{0}-default-on", record.address), title:'Enable default on Throttles'});
-    }
-    return buttons;
-   }],
-   refreshCallback: function() {
-    $('#cs-table-loco-roster tr td [id^=roster-]').button();
-    $('#cs-table-loco-roster tr td [id^=roster-]').on('vclick', function(event, ui) {
-     var idParts = $(this).attr('id').split('-');
-     if(idParts[2] === 'delete') {
-      $.ajax({method: 'DELETE',url: String.format('/locomotive/roster?address={0}', idParts[1]),
-       dataType:'text',
-       beforeSend:function(){showSpinner(String.format("Deleting locomotive {0}", idParts[1]));},
-       complete:function(){hideSpinner();BSTabRefresh('Locomotive Roster');}});
-     } else if(idParts[2] === 'edit') {
-      $.ajax({url: String.format('/locomotive/roster?address={0}', idParts[1]),
-       success:function(data, status, jqxhr) {
-        console.log('Edit roster entry', data);
-        $('#cs-loco-addr').val(data.address);
-        $('#cs-loco-name').val(data.name);
-        $('#cs-loco-idle').prop('checked', data.idleOnStartup).flipswitch('refresh');
-        $('#cs-loco-default').prop('checked', data.defaultOnThrottles).flipswitch('refresh');
-        $('#cs-loco-editor').popup('open', {positionTo:'window'});
-       },
-       error:function(req, status) {showErrorDialog(String.format('Unable to edit roster entry {0}', idParts[1]), status);}
-      });
-     } else if(idParts[2] === 'idle') {
-      $.ajax({method: 'PUT',url: String.format('/locomotive/roster?address={0}&idleOnStartup={1}', idParts[1], idParts[3] === 'on'),
-       success:function() {BSTabRefresh('Locomotive Roster');},
-       error: function(req, status) {showErrorDialog(String.format('Failed to update loco {0}', idPArts[1]), status);}
-      });
-     } else if(idParts[2] === 'default') {
-      $.ajax({method: 'PUT',url: String.format('/locomotive/roster?address={0}&defaultOnThrottles={1}', idParts[1], idParts[3] === 'on'),
-       dataType:'text',
-       success:function() {BSTabRefresh('Locomotive Roster');},
-       error: function(req, status){showErrorDialog(String.format('Failed to update loco {0}', idPArts[1]), status);}
-      });
-     }
-    });
-   }
-  });
- } else if(section === 'Configuration') {
-  $.ajax({url: '/config',timeout: 5000,
-   beforeSend: function() {showSpinner('Loading Configuration...');},
-   complete: hideSpinner,
-   success : function (data, status, xhr) {csConfigUpdate(data);},
-   error : function(xhr, status, error) {showErrorDialog('The command station reported a failure retrieving configuration data', error);}
-  });
- }
-}
-function changeLocomotive(newAddress) {
- if(newAddress !== "") {
-  console.log("selected loco:", newAddress);
-  $.ajax({url: '/locomotive?address=' + newAddress,
-   beforeSend:function(){showSpinner(String.format("Loading locomotive {0}", newAddress));},
-   complete:hideSpinner,
-   success:function(data, status, xhr){
-    console.log(data);
-    fireLocoEvents = false;
-    $("#selected-loco-address").val(newAddress);
-    $("#throttle-speed").val(data.speed).slider("refresh");
-    $("#throttle-direction").prop("checked", data.dir === 'REV').flipswitch("refresh");
-    $.each(data.functions, function(index, item) {
-     $(String.format("#funct_{0}", item.id)).prop('checked', item.state).flipswitch("refresh");
-    });
-    enableLocomotiveInputs();
-    fireLocoEvents = true;
-    enableTrackPower();
-   },
-   error:function(xhr, status, error) {showErrorDialog(String.format('Unable to acquire locomotive: {0}', newAddress), error);}
-  });
- }
-}
-function refreshTable({table, url, fields, filter=function() {return true;}, failureHandler=function(xhr, status) {showErrorDialog(String.format('Failed to load url:{0}', url), status);}, refreshCallback=function() {}} = {}) {
- console.log('refreshing table:', table, 'using url:', url, 'and fields:', fields)
- $.ajax({url: url, dataType:'json',error: failureHandler, complete: hideSpinner,
-  beforeSend:function(){showSpinner('Refreshing data');$(table + ' tbody').empty();},
-  success:function(data, status, jqxhr) {
-   var tableBody = $(table + ' tbody');
-   $.each(data, function(id, record) {
-    if (filter(record)) {
-     var row = '<tr>';
-     $.each(fields, function(id, field) {
-      row += '<td>';
-      if(typeof field === 'string') {
-       row += record[field];
-      } else {
-       row += field(record);
+
+    @keyframes colorflash {
+      0% {
+        filter: invert(0.8) sepia(1) saturate(3);
       }
-      row += '</td>';
-     })
-     tableBody.append(row);
+
+      50% {
+        filter: invert(0.5);
+      }
+
+      100% {
+        filter: invert(0.8) sepia(1) saturate(3);
+      }
     }
-   });
-   $(table).table('refresh');
-   refreshCallback();
-  }
- });
-}
- </script>
+  </style>
+</head>
+
+<body class="bg-dark">
+  <div class="hero hero-sm">
+    <div class="hero-body">
+      <h1>ESP32 Command Station
+        <div class="btn-group float-right">
+          <div class="tooltip tooltip-left" data-tooltip="Connection status to command station"><i id="ws-status"
+              class="icon icon-wifi text-dark"></i></div>
+          <div class="tooltip tooltip-left" data-tooltip="Send eStop to all locomotives"><i
+              class="icon icon-stop text-error" onclick="ws('<estop>');"></i></div>
+          <div class="tooltip tooltip-left" data-tooltip="OPS track status"><i class="icon icon-shutdown text-error"
+              id="ops_track_power"></i><small id="ops_usage"></small></div>
+          <div class="tooltip tooltip-left" data-tooltip="Show active locomotives">
+            <img class="icon"
+              src="data:image/svg+xml,%3Csvg version='1.1' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 470 470' xmlns:xlink='http://www.w3.org/1999/xlink' enable-background='new 0 0 470 470'%3E%3Cg%3E%3Cpath style='fill:%23FFFFFF;' d='m404.791,457.196l-29.997-29.997c-0.005-0.005-28.072-28.072-28.072-28.072l36.805-5.254c4.018-0.573 6.851-4.239 6.392-8.272l-10.526-92.555c-0.431-3.79-3.638-6.652-7.452-6.652h-13.553v-24.788c13.911-3.38 24.273-15.934 24.273-30.87s-10.362-27.49-24.273-30.87v-55.694c0-4.143-3.358-7.5-7.5-7.5h-22.143c-2.519-31.78-20.901-59.163-47.208-74.211v-54.961c0-4.143-3.358-7.5-7.5-7.5h-78.115c-4.142,0-7.5,3.357-7.5,7.5v54.96c-26.307,15.048-44.689,42.431-47.208,74.211h-22.1c-4.142,0-7.5,3.357-7.5,7.5v55.694c-13.911,3.38-24.273,15.934-24.273,30.87s10.362,27.49 24.273,30.87v24.788h-13.554c-3.814,0-7.021,2.862-7.452,6.652l-10.526,92.555c-0.458,4.033 2.374,7.699 6.392,8.272l36.805,5.254-28.069,28.07c-0.001,0.001-30,30-30,30-2.145,2.146-2.787,5.371-1.626,8.174 1.161,2.803 3.896,4.63 6.929,4.63h328.975c3.034,0 5.768-1.827 6.929-4.63 1.16-2.803 0.519-6.028-1.626-8.174zm-37.131-226.461c0,9.248-7.524,16.772-16.773,16.772s-16.772-7.524-16.772-16.772 7.524-16.772 16.772-16.772 16.773,7.524 16.773,16.772zm-24.273-30.87c-13.911,3.38-24.272,15.934-24.272,30.87s10.362,27.49 24.272,30.87v24.788h-58.803v-62.337c24.67-15.375 41.739-41.849 44.16-72.386h14.643v48.195zm-143.013,86.529v-54.754c10.716,4.255 22.392,6.596 34.605,6.596 12.213,0 23.889-2.341 34.605-6.596v54.754h-69.21zm3.047-271.394h63.115v40.558c-9.869-3.525-20.492-5.452-31.558-5.452s-21.688,1.927-31.558,5.452v-40.558zm31.559,50.106c43.596,0 79.064,35.468 79.064,79.064s-35.468,79.064-79.064,79.064-79.064-35.468-79.064-79.064 35.467-79.064 79.064-79.064zm-132.639,165.629c0-9.248 7.524-16.772 16.773-16.772s16.772,7.524 16.772,16.772-7.524,16.772-16.772,16.772-16.773-7.524-16.773-16.772zm24.273,30.871c13.911-3.38 24.272-15.934 24.272-30.87s-10.362-27.49-24.272-30.87v-48.194h14.6c2.421,30.537 19.49,57.011 44.16,72.386v62.337h-58.761v-24.789zm-21.857,39.788h53.701l-3.913,64.934c-0.249,4.135 2.9,7.688 7.035,7.938 0.154,0.01 0.306,0.014 0.458,0.014 3.936,0 7.24-3.068 7.479-7.049l3.967-65.836h53.997l.01,75.804c0,4.143 3.359,7.5 7.501,7.499s7.5-3.358 7.499-7.501l-.01-75.802h53.946l3.513,65.862c0.213,4.001 3.523,7.101 7.483,7.101 0.134,0 0.27-0.003 0.406-0.011 4.136-0.221 7.311-3.753 7.09-7.889l-3.471-65.063h53.798l8.946,78.66-139.19,19.87-139.191-19.871 8.946-78.66zm129.185,113.532c0.352,0.05 0.706,0.075 1.06,0.075s0.708-0.025 1.06-0.075l92.097-13.148 23.223,23.222h-232.76l23.223-23.222 92.097,13.148zm-145.32,40.074l15-15h262.76l15,15h-292.76z'/%3E%3Cpath style='fill:%23FFFFFF;' d='m234.979,185.604c22.846,0 41.433-18.587 41.433-41.433s-18.586-41.433-41.433-41.433-41.433,18.587-41.433,41.433 18.586,41.433 41.433,41.433zm0-67.866c14.575,0 26.433,11.857 26.433,26.433s-11.857,26.433-26.433,26.433-26.433-11.857-26.433-26.433 11.857-26.433 26.433-26.433z'/%3E%3C/g%3E%3C/svg%3E"
+              onclick="showActiveLocos(this);"></div>
+        </div>
+      </h1>
+    </div>
+  </div>
+  <header class="navbar">
+    <section class="navbar-section btn-group">
+      <button class="btn btn-primary" onclick="showTab('#tab-throttle', this);">Throttle</button>
+      <button class="btn btn-primary" onclick="showTab('#tab-turnouts', this);">Turnouts</button>
+      <button class="btn btn-primary" onclick="showTab('#tab-roster', this);">Locomotive Roster</button>
+      <button class="btn btn-primary" onclick="showTab('#tab-prog', this);">Programmer</button>
+      <button class="btn btn-primary" onclick="showTab('#tab-olcbconfig', this);">OpenLCB (LCC)
+        Configuration</button>
+      <button class="btn btn-primary" onclick="showTab('#tab-ota', this);">Firmware Update</button>
+    </section>
+  </header>
+  <div class="container">
+    <div class="container" id="tab-throttle">
+      <div class="columns">
+        <div class="column col-3"><label>Locomotive:<input class="form-input" type="number" readonly="true"
+              id="loco-address" value="0" /></label></div>
+        <div class="column col-3"><label for="loco-dir">Direction:</label>
+          <button id="loco-dir" class="btn btn-primary"><span class="icon icon-forward"></span></button>
+        </div>
+        <div class="column col-3">
+          <button class="btn btn-primary" onclick="toggleModal('#loco-select');">Change
+            Locomotive</button>
+        </div>
+      </div>
+      <div class="columns">
+        <div class="column"><label for="loco-speed">Speed:</label><input class="bar bar-slider" type="range"
+            id="loco-speed" min="0" max="126" value="0" /></div>
+      </div>
+      <div class="columns">
+        <div class="column">Functions:</div>
+      </div>
+      <div class="columns">
+        <div class="column"><button class="btn btn-primary" id="funct_0">FL<span class="icon"
+              id="funct_0_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_1">F1</span><span class="icon"
+              id="funct_1_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_2">F2<span class="icon"
+              id="funct_2_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_3">F3<span class="icon"
+              id="funct_3_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_4">F4<span class="icon"
+              id="funct_4_icon"></span></button></div>
+      </div>
+      <div class="columns">
+        <div class="column"></div>
+        <div class="column"><button class="btn btn-primary" id="funct_5">F5<span class="icon"
+              id="funct_5_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_6">F6<span class="icon"
+              id="funct_6_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_7">F7<span class="icon"
+              id="funct_7_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_8">F8<span class="icon"
+              id="funct_8_icon"></span></button></div>
+      </div>
+      <details class="accordion" id="ext_funcs">
+        <summary class="accordion-header c-hand"><button id="btn-ext_funcs" class="btn btn-primary">F9-F28<span
+              class="icon icon-arrow-down"></span></button></summary>
+        <div class="accordion-body">
+          <div class="columns">
+            <div class="column"></div>
+            <div class="column"><button class="btn btn-primary" id="funct_9">F9<span class="icon"
+                  id="funct_9_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_10">F10<span class="icon"
+                  id="funct_10_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_11">F11<span class="icon"
+                  id="funct_11_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_12">F12<span class="icon"
+                  id="funct_12_icon"></span></button></div>
+          </div>
+          <div class="columns">
+            <div class="column"></div>
+            <div class="column"><button class="btn btn-primary" id="funct_13">F13<span class="icon"
+                  id="funct_13_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_14">F14<span class="icon"
+                  id="funct_14_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_15">F15<span class="icon"
+                  id="funct_15_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_16">F16<span class="icon"
+                  id="funct_16_icon"></span></button></div>
+          </div>
+          <div class="columns">
+            <div class="column"></div>
+            <div class="column"><button class="btn btn-primary" id="funct_17">F17<span class="icon"
+                  id="funct_17_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_18">F18<span class="icon"
+                  id="funct_18_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_19">F19<span class="icon"
+                  id="funct_19_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_20">F20<span class="icon"
+                  id="funct_20_icon"></span></button></div>
+          </div>
+          <div class="columns">
+            <div class="column"></div>
+            <div class="column"><button class="btn btn-primary" id="funct_21">F21<span class="icon"
+                  id="funct_21_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_22">F22<span class="icon"
+                  id="funct_22_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_23">F23<span class="icon"
+                  id="funct_23_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_24">F24<span class="icon"
+                  id="funct_24_icon"></span></button></div>
+          </div>
+          <div class="columns">
+            <div class="column"></div>
+            <div class="column"><button class="btn btn-primary" id="funct_25">F25<span class="icon"
+                  id="funct_25_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_26">F26<span class="icon"
+                  id="funct_26_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_27">F27<span class="icon"
+                  id="funct_27_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_28">F28<span class="icon"
+                  id="funct_28_icon"></span></button></div>
+          </div>
+        </div>
+      </details>
+      <div class="modal" id="loco-select">
+        <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#loco-select');"></a>
+        <div class="modal-container">
+          <div class="modal-header">
+            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#loco-select');"><span
+                class="icon icon-cross"></span></button>
+            <div class="modal-title h5">Select Locomotive</div>
+          </div>
+          <div class="modal-body">
+            <table id="loco-list">
+              <thead>
+                <tr>
+                  <th>Address</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+            <div id="loco-manual">
+              <label class="form-label text-dark" for="loco-manual-address">Address</label>
+              <input class="form-input" type="number" pattern="[0-9]*" id="loco-manual-address" value="1" min="1"
+                max="16384">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="loco-select-add" class="btn btn-primary" title="Manual"><span
+                class="icon icon-plus"></span></button>
+            <button id="loco-select-select" class="btn btn-primary" title="Select"><span
+                class="icon icon-check"></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container" style="display:none;" id="tab-turnouts">
+      <div class="empty bg-dark" id="turnouts-empty">
+        <div class="empty-title">No turnouts have been defined yet</div>
+        <div class="empty-subtitle">Click the add button below to define a turnout.</div>
+      </div>
+      <div class="container">
+        <table id="turnouts-table" style="display:none;">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Type</th>
+              <th>State</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+      <div class="container">
+        <button id='turnout-create' title='Create' class='btn btn-lg btn-action btn-primary'><span
+            class="icon icon-plus"></span></button>
+        <button id='turnout-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'><span
+            class="icon icon-refresh"></span></button>
+      </div>
+      <div id="turnout-editor" class="modal modal-sm">
+        <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#turnout-editor');"></a>
+        <div class="modal-container">
+          <div class="modal-header">
+            <div class="modal-title h5">Turnout Editor</div>
+          </div>
+          <div class="modal-body">
+            <label class="form-label text-dark" for="turnout-address">Address:</label>
+            <input type="number" pattern="[0-9]*" id="turnout-address" value="1" min="1" max="2044">
+            <label class="form-label text-dark" for="turnout-type">Type:</label>
+            <select id="turnout-type">
+              <option value="0">Left</option>
+              <option value="1">Right</option>
+              <option value="2">Wye</option>
+              <option value="3">Multi (threeway/etc)</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#turnout-editor');"><span
+                class="icon icon-cross"></span></button>
+            <button id="turnout-save" class="btn btn-primary" title="Save"><span
+                class="icon icon-check"></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container" style="display:none;" id="tab-roster">
+      <div class="empty bg-dark" id="roster-empty">
+        <div class="empty-title">No locomotives have been created yet</div>
+        <div class="empty-subtitle">Click the add button below to create a locomotive.</div>
+      </div>
+      <div class="container">
+        <table id="roster-table" style="display:none;">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Name</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+      <div class="container">
+        <button id='roster-create' title='Create' class='btn btn-lg btn-action btn-primary'
+          onclick="toggleModal('#roster-editor');"><span class="icon icon-plus"></span></button>
+        <button id='roster-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'><span
+            class="icon icon-refresh"></span></button>
+      </div>
+      <div id="roster-editor" class="modal">
+        <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#roster-editor');"></a>
+        <div class="modal-container">
+          <div class="modal-header">
+            <div class="modal-title h5">Locomotive Editor</div>
+          </div>
+          <div class="modal-body">
+            <label class="form-label text-dark" for="roster-addr">Address:</label>
+            <input type="number" pattern="[0-9]*" id="roster-addr" value="1" min="1" max="16384" />
+            <label class="form-label text-dark" for="roster-name">Name:</label>
+            <input type="text" id="roster-name" value="" />
+            <label class="form-switch">
+              <input type="checkbox" id="roster-idle">
+              <i class="form-icon"></i><span class="text-dark">Automatically add this locomotive to the "Active
+                Locomotives" list on Command Station startup?</span>
+            </label>
+            <label class="form-switch">
+              <input type="checkbox" id="roster-default">
+              <i class="form-icon"></i><span class="text-dark">Include this locomotive in the Throttle locomotive
+                list?</span>
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#roster-editor');"><span
+                class="icon icon-cross"></span></button>
+            <button id="roster-save" class="btn btn-primary" title="Save"><span class="icon icon-check"></span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container" style="display:none;" id="tab-prog">
+      <div class="columns">
+        <div class="column"><label for="cs-prog-action">Action:</label></div>
+        <div class="column"><select id="cs-prog-action">
+            <option value="write">Write</option>
+            <option value="read">Read</option>
+            <option value="identify">Identify Address</option>
+          </select>
+        </div>
+      </div>
+      <div class="columns" id="cs-prog-div-target">
+        <div class="column"><label for="cs-prog-target">Programming Mode:</label></div>
+        <div class="column"><select id="cs-prog-target">
+          <option value="prog">PROG</option>
+          <option value="ops">OPS</option>
+        </select></div>
+      </div>
+      <div class="columns" id="cs-prog-div-addr">
+        <div class="column"><label for="cs-prog-addr">DCC Address:</label></div>
+        <div class="column"><input type="number" pattern="[0-9]*" id="cs-prog-addr" value="1" min="1" max="16384">
+        </div>
+      </div>
+      <div class="columns" id="cs-prog-div-cv">
+        <div class="column"><label for="cs-prog-cv">CV:</label></div>
+        <div class="column"><input type="number" pattern="[0-9]*" id="cs-prog-cv" value="1" min="1" max="1024">
+        </div>
+      </div>
+      <div class="columns" id="cs-prog-div-mode">
+        <div class="column"><label for="cs-prog-mode">Mode:</label></div>
+        <div class="column"><select id="cs-prog-mode">
+          <option value="byte">Byte</option>
+          <option value="bit">Bit</option>
+        </select></div>
+      </div>
+      <div class="columns" id="cs-prog-div-value" style="display:none;">
+        <div class="column"><label for="cs-prog-cv-value">Value:</label></div>
+        <div class="column"><input type="number" pattern="[0-9]*" id="cs-prog-cv-value" value="1" min="1" max="255">
+        </div>
+      </div>
+      <div class="columns" id="cs-prog-div-bit" style="display:none;">
+        <div class="column"><label for="cs-prog-cv-bit">Bit:</label></div>
+        <div class="column"><input type="number" pattern="[0-7]*" id="cs-prog-cv-bit" value="0" min="0" max="7">
+        </div>
+        <div class="column" id="cs-prog-div-bit-value"><input type="checkbox" id="cs-prog-cv-bit-value"
+            data-role="flipswitch" data-off-text="Off" data-on-text="On"></div>
+      </div>
+      <div class="columns" id="cs-prog-div-create-roster" style="display:none;">
+        <div class="column"><label class="form-switch">
+            <input type="checkbox" id="cs-prog-create-roster">
+            <i class="form-icon"></i>Create Roster entry?
+          </label></div>
+      </div>
+      <div class="columns">
+        <div class="column"><button class="btn btn-primary" id="cs-prog-execute">Execute</button></div>
+      </div>
+      <div class="columns">
+        <div class="column column-12"><textarea id="cs-prog-result"></textarea></div>
+      </div>
+    </div>
+    <div class="container" style="display:none;" id="tab-olcbconfig">
+    </div>
+    <div class="container" style="display:none;" id="tab-ota">
+      <div class="columns">
+        <form id="cs-ota-form" class="form-horizontal">
+          <div class="input-group">
+            <span class="input-group-addon addon-lg text-light bg-dark">Firmware:</span>
+            <input class="form-input input-lg" type="file" name="cs-ota-firmware"
+              placeholder="ESP32CommandStation.bin" />
+            <button class="btn btn-primary input-group-btn btn-lg" id="cs-ota-upload">Upload</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="modal" id="active-locos">
+      <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#active-locos');"></a>
+      <div class="modal-container">
+        <div class="modal-header">
+          <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#active-locos');"><span
+              class="icon icon-cross"></span></button>
+          <div class="modal-title h5">Active Locomotives</div>
+        </div>
+        <div class="modal-body">
+          <div class="empty" id="active-locos-empty">
+            <div class="empty-title h5">There are no active locomotives</div>
+          </div>
+          <table class="table table-stripped text-dark" id="active-locos-table">
+            <thead>
+              <tr>
+                <th>Address</th>
+                <th>Speed</th>
+                <th>Direction</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="text/javascript">
+    var sendLocoEvents = true;
+    var firePowerEvents = true;
+    var webSocket = null;
+    var ws_pending_send = [];
+    var s88SensorIDBase = 512;
+    var cdi_loaded = true;
+    function showTab(target, button) {
+      $('[id^=tab-]').hide();
+      $(button).parent().children().removeClass('active');
+      $(button).parent().children().addClass('inactive');
+      $(button).toggleClass('active');
+      $(button).toggleClass('inactive');
+      if (target === '#tab-olcbconfig' && !cdi_loaded) {
+        $(button).toggleClass('loading');
+      } else {
+        $(target).show();
+      }
+    }
+    function toggleModal(target) {
+      $(target).toggleClass('active');
+    }
+    function updateTrackPowerStatus(trackStatus, overcurrent = false) {
+      $('#ops_track_power').removeClass('loading');
+      $('#ops_track_power').removeClass('text-success');
+      $('#ops_track_power').removeClass('text-error');
+      if (trackStatus) {
+        if (overcurrent) {
+          $('#ops_track_power').addClass('text-warning');
+        } else {
+          $('#ops_track_power').addClass('text-success');
+        }
+      } else {
+        $('#ops_track_power').addClass('text-error');
+      }
+    }
+    function showActiveLocos(button) {
+      if (window.location.host.length) {
+        $(button).toggleClass('loading');
+        fetch('/locomotive').then(res => res.json()).then(data => {
+          $(button).toggleClass('loading');
+          console.log(data);
+          if (data.length) {
+            var tbody = $('#active-locos-table tbody');
+            tbody.children().remove();
+            for (var idx in data) {
+              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].address, data[idx].speed, data[idx].dir));
+            }
+            $('#active-locos-empty').hide();
+            $('#active-locos-table').show();
+          } else {
+            $('#active-locos-empty').show();
+            $('#active-locos-table').hide();
+          }
+          toggleModal('#active-locos');
+        });
+      } else {
+        $('#active-locos-empty').show();
+        $('#active-locos-table').hide();
+        toggleModal('#active-locos');
+      }
+    }
+    function showErrorDialog(text, error) {
+      error = typeof error !== 'undefined' ? error : "";
+      setTimeout(function () { alert(text); console.log(text, error); }, 500);
+    }
+    function connectWebSocket() {
+      if (!window.location.host.length) {
+        while (ws_pending_send.length) {
+          console.log(ws_pending_send.pop());
+        }
+        return;
+      }
+      $('#ws-status').toggleClass('flash');
+      var socketUrl = String.format('ws://{0}:{1}/ws', window.location.host, window.location.port);
+      webSocket = new WebSocket(socketUrl);
+      webSocket.addEventListener('open', (event) => {
+        $('#ws-status').toggleClass('flash');
+        while (ws_pending_send.length) {
+          webSocket.send(ws_pending_send.pop());
+        }
+        $('#ws-status').removeClass('text-dark');
+        $('#ws-status').addClass('text-success');
+      });
+      webSocket.addEventListener('message', (event) => {
+        var messages = event.data.split(/[<>]+/);
+        $(messages).each(idx => {
+          var msg = messages[idx];
+          if (msg !== "") {
+            console.log('WS-RX:', msg);
+            var msg_parts = msg.split(' ');
+            switch (msg_parts[0]) {
+              case 'A': // track utilization
+                if (msg_parts[1] === 'OPS') {
+                  $('#ops_usage').text(String.format('{0} mA', msg_parts[2]));
+                  $('#ops_usage').show();
+                  $('#ops_track_power').removeClass('loading');
+                }
+                break;
+              case 'p0': // track off
+                if (msg_parts[1] === 'OPS') {
+                  updateTrackPowerStatus(false);
+                  $('#ops_usage').hide();
+                }
+                break;
+              case 'p1': // track on
+                if (msg_parts[1] === 'OPS') {
+                  updateTrackPowerStatus(true);
+                }
+                break;
+              case 'p2': // track overcurrent
+                if (msg_parts[1] === 'OPS') {
+                  updateTrackPowerStatus(true, true);
+                }
+                break;
+              case 'T': // active loco
+                break;
+              case 'Tex': // loco update
+                $("#loco-address").val(msg_parts[1]);
+                $("#loco-speed").val(msg_parts[2]);
+                $('#loco-dir span').removeClass('icon-back');
+                $('#loco-dir span').removeClass('icon-forward');
+                if (msg_parts[3] === '1') {
+                  $('#loco-dir span').addClass('icon-back');
+                } else {
+                  $('#loco-dir span').addClass('icon-forward');
+                }
+              default:
+              // do nothing
+            }
+          }
+        });
+      });
+      webSocket.addEventListener('error', (event) => {
+        console.error('WS-EVT:', event);
+        $('#ws-status').addClass('text-dark');
+        $('#ws-status').removeClass('text-success');
+      });
+      webSocket.addEventListener('close', (event) => {
+        console.warn('WS-EVT:', event);
+        $('#ws-status').addClass('text-dark');
+        $('#ws-status').removeClass('text-success');
+      });
+    }
+    function ws(cmd) {
+      // if the socket is not in an open state, defer the send until we have connected
+      if (!webSocket || webSocket.readyState != WebSocket.OPEN) {
+        ws_pending_send.push(cmd);
+        // if we are not already trying to connect try and connect now
+        if (!webSocket || webSocket.readyState != WebSocket.CONNECTING) {
+          connectWebSocket();
+        }
+        return;
+      }
+      console.log('WS-TX:', cmd);
+      webSocket.send(cmd);
+    }
+    $(function () {
+      if (!String.format) {
+        String.format = function (format) {
+          var args = Array.prototype.slice.call(arguments, 1);
+          return format.replace(/{(\d+)}/g, function (match, number) {
+            return typeof args[number] != 'undefined'
+              ? args[number]
+              : match
+              ;
+          });
+        };
+      }
+      if (window.location.host.length) {
+        fetch('/config?features').then(res => res.json()).then(data => {
+          connectWebSocket();
+          if (data.sensors === false) {
+            $('[id^=cs-sensors]').hide();
+          }
+          if (data.outputs === false) {
+            $('[id^=cs-outputs]').hide();
+          }
+          if (data.s88 === false) {
+            $('[id^=cs-sensors-s88]').hide();
+          } else {
+            s88SensorIDBase = data.sensorIDBase;
+          }
+          // setup 25sec timer for requesting status
+          setInterval(function () { ws('<s>'); }, 25000);
+        });
+      }
+      setupThrottle();
+      setupTurnouts();
+    });
+    function setupThrottle() {
+      $('#btn-ext_funcs').on('click', function () {
+        var icon = $('#ext_funcs').contents().find('span').first();
+        if ($('#ext_funcs').attr('open')) {
+          $('#ext_funcs').removeAttr('open');
+        } else {
+          $('#ext_funcs').attr('open', 'open');
+        }
+        $(icon).toggleClass('icon-arrow-down');
+        $(icon).toggleClass('icon-arrow-up');
+      });
+      $("#loco-speed").on("change", function (event, ui) {
+        var selectedLoco = $("#loco-address").val();
+        var speed = $("#loco-speed").val();
+        var cmd = String.format('<tex {0} {1} -1>', selectedLoco, speed);
+        if (sendLocoEvents) {
+          ws(cmd);
+        }
+      });
+      $('#loco-select-select').on('click', function () {
+        toggleModal('#loco-select');
+        changeLocomotive($('#loco-manual-address').val());
+      })
+      $("#loco-dir").on('click', function () {
+        var selectedLoco = $("#loco-address").val();
+        var icon = $('#loco-dir').contents().first();
+        var dir = $(icon).hasClass('icon-forward');
+        $(icon).toggleClass('icon-back');
+        $(icon).toggleClass('icon-forward');
+        var cmd = String.format('<tex {0} -1 {1}>', selectedLoco, dir ? '1' : '0');
+        if (sendLocoEvents) {
+          ws(cmd);
+        }
+      });
+      if (window.location.host.length) {
+        $("#loco-manual").hide();
+        $("#loco-select-add").on("click", function () {
+          $("#loco-list").hide();
+          $("#loco-manual").show();
+        });
+      } else {
+        $("#loco-list").hide();
+        $("#loco-manual").show();
+        $("#loco-select-add").hide();
+      }
+      $('[id^=funct_]').on('click', function (event) {
+        var id = $(event.target).prop('id').match(/.*(\d+).*/)[1];
+        var loco = $("#loco-address").val();
+        var icon = String.format('#funct_{0}_icon', id);
+        var state = $(icon).hasClass('icon-circle-check');
+        $(icon).toggleClass('icon-circle-check');
+        var cmd = String.format('<fex {0} {1} {2}>', loco, id, state ? '1' : '0');
+        if (sendLocoEvents) {
+          ws(cmd);
+        }
+      });
+      $('#ops_track_power').on('click', function (event) {
+        if ($(this).hasClass('text-error')) {
+          ws('<1>');
+        } else {
+          ws('<0>');
+        }
+        $('this').toggleClass('loading');
+      });
+    }
+    function setupTurnouts() {
+      $('#turnout-create').on('click', function () {
+        $('#turnout-address').val(1);
+        $('#turnout-type').val(0);
+        toggleModal('#turnout-editor');
+      });
+      $('#turnout-save').on('click', function () {
+        toggleModal('#turnout-editor');
+      });
+    }
+    function enableDisableLocoInputs() {
+      $('[id^=funct_]').toggleClass('disabled');
+      $('#loco-dir').toggleClass('disabled');
+      $('#loco-speed').toggleClass('disabled');
+      $('#throttle-release-loco').toggleClass('disabled');
+    }
+    function changeLocomotive(newAddress) {
+      if (newAddress !== "") {
+        console.log("selected loco:", newAddress);
+        ws(String.format('<tex {0} 0 0>', newAddress));
+      }
+    }
+    function save_cdi_field(field) {
+
+    }
+    function refresh_cdi_field(field) {
+
+    }
+    function enable_button(field) {
+      console.debug('enabling:', '#btn-' + field);
+      $('#btn-' + field).removeAttr('disabled');
+    }
+    function disable_button(field) {
+      console.debug('disabling:', '#btn-' + field);
+      $('#btn-' + field).attr('disabled', true);
+    }
+    function process_group(group) {
+      var groupsize = 0;
+      if (group.nodeName == 'int' || group.nodeName == 'string') {
+        groupsize += parseInt($(group).attr('size'));
+      } else if (group.nodeName == 'eventid') {
+        groupsize += 8;
+      } else if (group.nodeName == 'group') {
+        if ($.isNumeric($(group).attr('offset'))) {
+          groupsize += parseInt($(group).attr('offset'));
+        }
+        $(group).children().each(function (i, c) {
+          groupsize += process_group(c);
+        });
+      }
+      return groupsize;
+    }
+    function calculate_offsets(cdi, space) {
+      var offsets = {};
+      var segment = $(cdi).find('segment').filter(
+        function (i, e) {
+          return parseInt($(e).attr('space')) === space && parseInt($(e).attr('origin')) > 0;
+        });
+      var offs = parseInt($(segment).attr('origin'));
+      $(segment).children().each(function (i, e) {
+        var group_name = 'unknown';
+        if (space === 251) {
+          group_name = 'node_info';
+        } else {
+          $(e.children).each(function (i, e) {
+            if (e.nodeName === 'name') {
+              group_name = $(e).text();
+            }
+          });
+        }
+        var replica_count = 1;
+        if ($(e).attr('replication')) {
+          replica_count = parseInt($(e).attr('replication'));
+        }
+        var groupsize = 0;
+        $(e.children).each(function (i, c) {
+          groupsize += process_group(c);
+        });
+        offsets[group_name] = { size: groupsize, replicas: replica_count, offset: offs };
+        offs += (groupsize * replica_count);
+      });
+      return offsets;
+    }
+    function generate_cdi_dynamic_content(space, group, offset) {
+      var size = 0;
+      // these nodes can be safely dropped from rendering
+      if (group.nodeName === 'name' || group.nodeName === 'description' || group.nodeName === 'repname') {
+        return ['', 0];
+      }
+      var content = '';
+      var node_data_type = group.nodeName;
+      var node_name = '';
+      var is_mapped = false;
+      var mapped = undefined;
+      var node_description = '';
+      var node_alias = String.format('cdi_{0}', Math.random()).replace(/\./g, '_');
+      for (child = 0; child < group.children.length; child++) {
+        if (group.children[child].nodeName === 'name') {
+          node_name = $(group.children[child]).text();
+        } else if (group.children[child].nodeName === 'map') {
+          is_mapped = true;
+          mapped = group.children[child];
+        } else if (group.children[child].nodeName === 'description') {
+          node_description = $(group.children[child]).text().replace(/\n/g, '<br/>');
+        }
+      };
+      if (is_mapped) {
+        size = parseInt($(group).attr('size'));
+        console.groupCollapsed('Mapped:', node_name, 'offset:', offset, 'size:', size, 'description:', node_description);
+        content += '<div class="columns">';
+        content += String.format('<div class="column"><label for="{0}">{1}:</label></div>', node_alias, node_name);
+        content += String.format('<div class="column column-6"><select id="{0}" data-offset="{1}" data-type="{2}" data-size="{3}" oninput="enable_button(\'save-{0}\')">', node_alias, offset, node_data_type, size);
+        $(mapped.children).each(function (i, e) {
+          console.log($(e).find('value').text(), '=>', $(e).find('property').text());
+          content += String.format('<option value="{0}">{1}</option>', $(e).find('property').text(), $(e).find('value').text());
+        });
+        content += '</select></div>';
+        content += String.format('<div class="column"><div class="btn-group"><button class="btn btn-primary btn-sm" id="btn-save-{0}" disabled onclick="save_cdi_field(this);">Save</button>', node_alias);
+        content += String.format('<button class="btn btn-primary btn-sm" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
+        content += '</div></div>';
+        content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
+        cdi_loaders.push(async () => {
+          const response = await fetch(String.format(ip + '/cdi?offs={0}&size={1}&type={2}', offset, size, node_data_type));
+          if (response.headers.has('Content-Length')) {
+            $('#' + node_alias).val(await response.text());
+          } else {
+            $('#' + node_alias).val(0);
+          }
+        });
+        console.groupEnd();
+      } else if (node_data_type === 'group') {
+        if ($.isNumeric(parseInt($(group).attr('offset'))) && node_name === '') {
+          size = parseInt($(group).attr('offset'));
+          node_name = 'hidden'
+        }
+        if (group.children.length > 0) {
+          if (node_name != '') {
+            content += String.format('<fieldset><legend>{0}:</legend>', node_name);
+            console.groupCollapsed(node_name);
+          } else {
+            console.groupCollapsed('unnamed group');
+          }
+          content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
+          $(group.children).each(function (i, e) {
+            var res = generate_cdi_dynamic_content(space, e, offset + size);
+            content += res[0];
+            size += res[1];
+          });
+          console.groupEnd();
+          if (node_name != '') {
+            content += '</fieldset>';
+          }
+        }
+      } else if (node_name !== '') {
+        if (node_data_type === 'eventid') {
+          size = 8; // events are always 8 bytes
+        } else {
+          size = parseInt($(group).attr('size'));
+        }
+        console.log('Entry:', node_name, 'offset:', offset, 'size:', size, 'datatype:', node_data_type, 'description:', node_description);
+        content += '<div class="columns">';
+        content += String.format('<div class="column"><label class="form-label" for="{0}">{1}:</label></div>', node_alias, node_name);
+        content += String.format('<div class="column column-6"><input class="form-input" type="text" id="{0}" data-offset="{1}" data-type="{2}" data-size="{3}" oninput="enable_button(\'save-{0}\')"></div>', node_alias, offset, node_data_type, size);
+        content += String.format('<div class="column"><div class="btn-group"><button class="btn btn-primary btn-sm" id="btn-save-{0}" disabled onclick="save_cdi_field(this);">Save</button>', node_alias);
+        content += String.format('<button class="btn btn-primary btn-sm" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
+        content += '</div></div>';
+        content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description)
+        cdi_loaders.push(async () => {
+          const response = await fetch(String.format(ip + '/cdi?offs={0}&size={1}&type={2}', offset, size, node_data_type));
+          if (response.headers.has('Content-Length')) {
+            var value = await response.text();
+            if (node_data_type === 'eventid') {
+              value = pad_hex(value, 16);
+            }
+            $('#' + node_alias).val(value);
+          } else {
+            $('#' + node_alias).val('');
+          }
+        });
+      }
+      return [content, size];
+    }
+    function cdi_dynamic_group(cdi, space, group, target_selector, offsets, xpath = String.format("//segment[@space='{0}']/group[name[text()='{1}']]", space, group)) {
+      var nodes = cdi.evaluate(xpath, cdi);
+      var node = nodes.iterateNext();
+      var offs = offsets[group].offset;
+      var group_name = 'unnamed';
+      $(node.children).each(function (i, e) {
+        if (e.nodeName === 'name') {
+          group_name = $(e).text();
+        }
+      });
+      console.groupCollapsed(group_name, 'segment:', space);
+      if (offsets[group].replicas === 1) {
+        $(node.children).each(function (i, e) {
+          var rendered = generate_cdi_dynamic_content(space, e, offs);
+          $(target_selector).append(rendered[0]);
+          offs += rendered[1];
+        });
+      } else {
+        var group_tabs = '<div class="row tabs">';
+        var group_content = '';
+        var alias = $(node).find('repname').text();
+        var group_id = group.replace(/ /g, '_');
+        for (replica = 1; replica <= offsets[group].replicas; replica++) {
+          console.groupCollapsed(alias, replica);
+          group_tabs += String.format('<a href="#" class="button" id="{0}-{1}">{2} {1}</a>', group_id, replica, alias);
+          group_content += String.format('<div class="well" id="rep-{0}-{1}" style="display: {3};"><fieldset><legend>{2} {1}</legend>', group_id, replica, alias, replica > 1 ? 'none' : 'block');
+          $(node).children().each(function (i, e) {
+            var rendered = generate_cdi_dynamic_content(space, e, offs);
+            group_content += rendered[0];
+            offs += rendered[1];
+          });
+          group_content += '</fieldset></div>';
+          console.groupEnd();
+        }
+        $(target_selector).append(group_tabs);
+        $(target_selector).append(group_content);
+        $(String.format('[id^={0}-]', group_id)).on('click', function (evt) {
+          var selected_tab = $(evt.target).attr('id');
+          var tab_group = selected_tab.substring(0, selected_tab.lastIndexOf('-'));
+          $(String.format('[id^=rep-{0}', tab_group)).filter(function (i, e) { return $(e).attr('id') != $(evt.target).attr('id'); }).each(function (i, other_tab) {
+            $('#' + $(other_tab).attr('id')).hide();
+            $(other_tab).removeClass('active');
+            $(other_tab).addClass('inactive');
+            return true;
+          });
+          var tab_content = String.format('#rep-{0}', selected_tab);
+          $(tab_content).show();
+          $(evt.target).addClass('active');
+          $(evt.target).removeClass('inactive');
+        });
+      }
+      console.groupEnd();
+    }
+  </script>
 </body>
+
 </html>

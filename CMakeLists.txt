@@ -72,52 +72,27 @@ set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/index.html.gz PROPE
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/data/index.html.gz")
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-lite.min.js.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-lite.min.js
+add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/cash.min.js.gz"
+    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/cash.min.js
     VERBATIM)
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-Lite.min.js.gz PROPERTIES GENERATED TRUE)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/cash.min.js.gz PROPERTIES GENERATED TRUE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-lite.min.js.gz")
+    "${CMAKE_CURRENT_SOURCE_DIR}/data/cash.min.js.gz")
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js
+add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/spectre.min.css.gz"
+    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/spectre.min.css
     VERBATIM)
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js.gz PROPERTIES GENERATED TRUE)
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/spectre.min.css.gz PROPERTIES GENERATED TRUE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js.gz")
-
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js
-    VERBATIM)
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js.gz PROPERTIES GENERATED TRUE)
-set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js.gz")
-
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css
-    VERBATIM)
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css.gz PROPERTIES GENERATED TRUE)
-set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css.gz")
-
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js
-    VERBATIM)
-set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js.gz PROPERTIES GENERATED TRUE)
-set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js.gz")
+    "${CMAKE_CURRENT_SOURCE_DIR}/data/spectre.min.css.gz")
 
 ###############################################################################
 # Add web content to the binary
 ###############################################################################
 
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/index.html.gz" BINARY)
-target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/jqClock-lite.min.js.gz" BINARY)
-target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.min.js.gz" BINARY)
-target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.js.gz" BINARY)
-target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.mobile-1.5.0-rc1.min.css.gz" BINARY)
-target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/jquery.simple.websocket.min.js.gz" BINARY)
-target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/ajax-loader.gif" BINARY)
+target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/cash.min.js.gz" BINARY)
+target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/spectre.min.css.gz" BINARY)
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/data/loco-32x32.png" BINARY)
 
 ###############################################################################
@@ -156,7 +131,13 @@ endif()
 # Ensure SSID and PASSWORD are provided.
 ###############################################################################
 if (CONFIG_WIFI_MODE_STATION OR CONFIG_WIFI_MODE_SOFTAP_STATION)
-    if (NOT CONFIG_WIFI_SSID OR NOT CONFIG_WIFI_PASSWORD)
+    if (NOT CONFIG_WIFI_STATION_SSID OR NOT CONFIG_WIFI_STATION_PASSWORD)
+        message(FATAL_ERROR "WiFi SSID & Password are required when WiFi mode is STATION or STATION+SoftAP.")
+    endif()
+endif()
+
+if (CONFIG_WIFI_MODE_SOFTAP OR CONFIG_WIFI_MODE_SOFTAP_STATION)
+    if (NOT CONFIG_WIFI_SOFTAP_SSID OR NOT CONFIG_WIFI_SOFTAP_PASSWORD)
         message(FATAL_ERROR "WiFi SSID & Password are required when WiFi mode is STATION or STATION+SoftAP.")
     endif()
 endif()
