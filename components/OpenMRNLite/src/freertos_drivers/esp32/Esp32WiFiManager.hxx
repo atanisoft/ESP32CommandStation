@@ -418,7 +418,7 @@ private:
     openlcb::SimpleStackBase *stack_;
 
     /// WiFi connection status indicator LED.
-    const Gpio *wifiStatusLed_;
+    const Gpio *wifiStatusLed_{nullptr};
 
     /// WiFi operating mode.
     wifi_mode_t wifiMode_;

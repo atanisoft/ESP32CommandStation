@@ -378,11 +378,11 @@ ConfigUpdateListener::UpdateAction Esp32WiFiManager::apply_configuration(
             if (stationSsid_.length() > MAX_SSID_LENGTH)
             {
                 LOG(WARNING,
-                    "[WiFi] Station SSID: %s is too long and will be truncated",
+                    "[WiFi] Station SSID:%s is too long and will be truncated",
                     stationSsid_.c_str());
                 stationSsid_.resize(MAX_SSID_LENGTH);
             }
-            mode_desc += StringPrintf("Station: %s", stationSsid_.c_str());
+            mode_desc += StringPrintf("Station:%s", stationSsid_.c_str());
         }
         if (wifiMode_ == WIFI_MODE_AP || wifiMode_ == WIFI_MODE_APSTA)
         {
@@ -395,7 +395,7 @@ ConfigUpdateListener::UpdateAction Esp32WiFiManager::apply_configuration(
             if (softAPName_.length() > MAX_SSID_LENGTH)
             {
                 LOG(WARNING,
-                    "[WiFi] SoftAP SSID: %s is too long and will be truncated",
+                    "[WiFi] SoftAP SSID:%s is too long and will be truncated",
                     softAPName_.c_str());
                 softAPName_.resize(MAX_SSID_LENGTH);
             }
@@ -403,7 +403,7 @@ ConfigUpdateListener::UpdateAction Esp32WiFiManager::apply_configuration(
             {
                 mode_desc += ", ";
             }
-            mode_desc += StringPrintf("SoftAP: %s (auth:%s, channel:%d)",
+            mode_desc += StringPrintf("SoftAP:%s (auth:%s, channel:%d)",
                 softAPName_.c_str(), WIFI_AUTH_MODE_MAP[softAPAuthMode_],
                 softAPChannel_);
         }
@@ -843,7 +843,7 @@ void Esp32WiFiManager::start_wifi_system()
             conf.sta.password[MAX_PASSWORD_LENGTH] = 0;
         }
 
-        LOG(INFO, "[WiFi] Configuring Station (SSID: %s)", conf.sta.ssid);
+        LOG(INFO, "[WiFi] Configuring Station (SSID:%s)", conf.sta.ssid);
         if (verboseLogging_)
         {
             ESP_LOG_BUFFER_HEXDUMP("WiFi", &conf, sizeof(wifi_config_t),
@@ -905,7 +905,7 @@ void Esp32WiFiManager::start_wifi_system()
         // Check if we successfully connected or not. If not, force a reboot.
         if ((bits & WIFI_CONNECTED_BIT) != WIFI_CONNECTED_BIT)
         {
-            LOG(FATAL, "[WiFi] Failed to connect to SSID: %s.",
+            LOG(FATAL, "[WiFi] Failed to connect to SSID:%s.",
                 stationSsid_.c_str());
         }
 
@@ -1342,7 +1342,7 @@ void Esp32WiFiManager::on_station_started()
     }
 
     LOG(INFO,
-        "[WiFi] Station started, attempting to connect to SSID: %s.",
+        "[WiFi] Station started, attempting to connect to SSID:%s.",
         stationSsid_.c_str());
     // Start the SSID connection process.
     esp_wifi_connect();
@@ -1362,7 +1362,7 @@ void Esp32WiFiManager::on_station_started()
 
 void Esp32WiFiManager::on_station_connected()
 {
-    LOG(INFO, "[WiFi] Connected to SSID: %s", stationSsid_.c_str());
+    LOG(INFO, "[WiFi] Connected to SSID:%s", stationSsid_.c_str());
     // Set the flag that indictes we are connected to the SSID.
     xEventGroupSetBits(wifiStatusEventGroup_, WIFI_CONNECTED_BIT);
 }
@@ -1380,7 +1380,7 @@ void Esp32WiFiManager::on_station_disconnected(uint8_t reason)
         // track that we were connected previously.
         was_previously_connected = true;
 
-        LOG(INFO, "[WiFi] Lost connection to SSID: %s (reason:%d)",
+        LOG(INFO, "[WiFi] Lost connection to SSID:%s (reason:%d)",
             stationSsid_.c_str(), reason);
         // Clear the flag that indicates we are connected to the SSID.
         xEventGroupClearBits(wifiStatusEventGroup_, WIFI_CONNECTED_BIT);
@@ -1396,13 +1396,13 @@ void Esp32WiFiManager::on_station_disconnected(uint8_t reason)
     // trigger the reconnection process at this point.
     if (was_previously_connected)
     {
-        LOG(INFO, "[WiFi] Attempting to reconnect to SSID: %s.",
+        LOG(INFO, "[WiFi] Attempting to reconnect to SSID:%s.",
             stationSsid_.c_str());
     }
     else
     {
         LOG(INFO,
-            "[WiFi] Connection failed, reconnecting to SSID: %s (reason:%d).",
+            "[WiFi] Connection failed, reconnecting to SSID:%s (reason:%d).",
             stationSsid_.c_str(), reason);
     }
     esp_wifi_connect();
@@ -1720,7 +1720,7 @@ void Esp32WiFiManager::on_wifi_scan_completed(wifi_event_sta_scan_done_t scan_in
 #if LOGLEVEL >= VERBOSE
         for (int i = 0; i < num_found; i++)
         {
-            LOG(VERBOSE, "SSID: %s, RSSI: %d, channel: %d"
+            LOG(VERBOSE, "SSID:%s, RSSI:%d, channel:%d"
                 , ssidScanResults_[i].ssid
                 , ssidScanResults_[i].rssi, ssidScanResults_[i].primary);
         }
