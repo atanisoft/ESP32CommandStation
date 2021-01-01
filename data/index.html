@@ -524,7 +524,9 @@
           if (msg !== "") {
             var msg_parts = msg.split(' ');
             switch (msg_parts[0]) {
-              case 'A': // track utilization
+              case 'a': // track utilization (0-1023 variant)
+                break;
+              case 'A': // track utilization (mA variant)
                 if (msg_parts[1] === 'OPS') {
                   $('#ops_usage').text(String.format('{0} mA', msg_parts[2]));
                   $('#ops_usage').show();
