@@ -657,7 +657,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(StatusCommand,
     if (nodeid)
     {
       auto impl = trains->get_train_impl(nodeid);
-      LOG(INFO, "[DCC++ status] idx:%zu address:%d", id, impl->legacy_address());
+      LOG(VERBOSE, "[DCC++ status] idx:%zu address:%d", id, impl->legacy_address());
       status += convert_loco_to_dccpp_state(impl, id, "T", impl->legacy_address());
     }
   }
