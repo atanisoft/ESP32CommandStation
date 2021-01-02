@@ -99,9 +99,9 @@
       </div>
       <div class="columns">
         <div class="column">
-          <label for="loco-speed">Speed</label><input class="bar bar-slider" type="range"
-            id="loco-speed" min="0" max="126" value="0" />
-          </div>
+          <label for="loco-speed">Speed</label><input class="bar bar-slider" type="range" id="loco-speed" min="0"
+            max="126" value="0" />
+        </div>
       </div>
       <div class="columns">
         <div class="column">Functions</div>
@@ -230,7 +230,7 @@
         <div class="empty-subtitle">Click the add button below to define a turnout.</div>
       </div>
       <div class="container">
-        <table id="turnouts-table" style="display:none;">
+        <table class="table table-stripped" id="turnouts-table">
           <thead>
             <tr>
               <th>Address</th>
@@ -246,7 +246,8 @@
       <div class="container">
         <button id='turnout-create' title='Create' class='btn btn-lg btn-action btn-primary'><span
             class="icon icon-plus"></span></button>
-        <button id='turnout-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'><span
+        <button id='turnout-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'
+          onclick="$(this).toggleClass('loading');refreshTurnouts(this);"><span
             class="icon icon-refresh"></span></button>
       </div>
       <div id="turnout-editor" class="modal modal-sm">
@@ -281,7 +282,7 @@
         <div class="empty-subtitle">Click the add button below to create a locomotive.</div>
       </div>
       <div class="container">
-        <table id="roster-table" style="display:none;">
+        <table class="table table-stripped" id="roster-table">
           <thead>
             <tr>
               <th>Address</th>
@@ -295,9 +296,9 @@
       </div>
       <div class="container">
         <button id='roster-create' title='Create' class='btn btn-lg btn-action btn-primary'
-          onclick="toggleModal('#roster-editor');"><span class="icon icon-plus"></span></button>
-        <button id='roster-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'><span
-            class="icon icon-refresh"></span></button>
+          onclick="clearRosterEditor();toggleModal('#roster-editor');"><span class="icon icon-plus"></span></button>
+        <button id='roster-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'
+          onclick="$(this).toggleClass('loading');refreshRoster(this);"><span class="icon icon-refresh"></span></button>
       </div>
       <div id="roster-editor" class="modal">
         <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#roster-editor');"></a>
@@ -324,7 +325,8 @@
           <div class="modal-footer">
             <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#roster-editor');"><span
                 class="icon icon-cross"></span></button>
-            <button id="roster-save" class="btn btn-primary" title="Save"><span class="icon icon-check"></span></button>
+            <button id="roster-save" class="btn btn-primary" title="Save" onclick="saveLoco();"><span
+                class="icon icon-check"></span></button>
           </div>
         </div>
       </div>
@@ -342,9 +344,9 @@
       <div class="columns" id="cs-prog-div-target">
         <div class="column"><label for="cs-prog-target">Programming Mode:</label></div>
         <div class="column"><select id="cs-prog-target">
-          <option value="prog">PROG</option>
-          <option value="ops">OPS</option>
-        </select></div>
+            <option value="prog">PROG</option>
+            <option value="ops">OPS</option>
+          </select></div>
       </div>
       <div class="columns" id="cs-prog-div-addr">
         <div class="column"><label for="cs-prog-addr">DCC Address:</label></div>
@@ -359,9 +361,9 @@
       <div class="columns" id="cs-prog-div-mode">
         <div class="column"><label for="cs-prog-mode">Mode:</label></div>
         <div class="column"><select id="cs-prog-mode">
-          <option value="byte">Byte</option>
-          <option value="bit">Bit</option>
-        </select></div>
+            <option value="byte">Byte</option>
+            <option value="bit">Bit</option>
+          </select></div>
       </div>
       <div class="columns" id="cs-prog-div-value" style="display:none;">
         <div class="column"><label for="cs-prog-cv-value">Value:</label></div>
@@ -437,6 +439,10 @@
     var ws_pending_send = [];
     var s88SensorIDBase = 512;
     var cdi_loaded = true;
+    function checkFetchResponse(response) {
+      if (!response.ok) throw Error(response.statusText);
+      return response;
+    }
     function showTab(target, button) {
       $('[id^=tab-]').hide();
       $(button).parent().children().removeClass('active');
@@ -445,6 +451,12 @@
       $(button).toggleClass('inactive');
       if (target === '#tab-olcbconfig' && !cdi_loaded) {
         $(button).toggleClass('loading');
+      } else if (target === '#tab-turnouts') {
+        $(button).toggleClass('loading');
+        refreshTurnouts(button);
+      } else if (target === '#tab-roster') {
+        $(button).toggleClass('loading');
+        refreshRoster(button);
       } else {
         $(target).show();
       }
@@ -467,7 +479,7 @@
     function showActiveLocos(button) {
       if (window.location.host.length) {
         $(button).toggleClass('loading');
-        fetch('/locomotive').then(res => res.json()).then(data => {
+        fetch('/locomotive').then(checkFetchResponse).then(res => res.json()).then(data => {
           $(button).toggleClass('loading');
           if (data.length) {
             var tbody = $('#active-locos-table tbody');
@@ -482,8 +494,8 @@
             $('#active-locos-table').hide();
           }
           toggleModal('#active-locos');
-        }).catch(function() {
-          console.error('Failed to retrieve active locomotive list');
+        }).catch(function (error) {
+          showErrorDialog('Failed to retrieve active locomotive list', error);
           $('#active-locos-empty').show();
           $('#active-locos-table').hide();
           toggleModal('#active-locos');
@@ -498,6 +510,69 @@
       error = typeof error !== 'undefined' ? error : "";
       setTimeout(function () { alert(text); console.log(text, error); }, 500);
     }
+    function ws_rx(event) {
+      var messages = event.data.split(/[<>]+/);
+      $(messages).each(idx => {
+        var msg = messages[idx];
+        if (msg !== "") {
+          var msg_parts = msg.split(' ');
+          switch (msg_parts[0]) {
+            case 'a': // track utilization (0-1023 variant)
+              break;
+            case 'A': // track utilization (mA variant)
+              if (msg_parts[1] === 'OPS') {
+                $('#ops_usage').text(String.format('{0} mA', msg_parts[2]));
+                $('#ops_usage').show();
+                $('#ops_track_power').removeClass('loading');
+              }
+              break;
+            case 'H': // turnout definition
+              break;
+            case 'p0': // track off
+              if (msg_parts[1] === 'OPS') {
+                updateTrackPowerStatus(false);
+                $('#ops_usage').hide();
+              }
+              break;
+            case 'p1': // track on
+              if (msg_parts[1] === 'OPS') {
+                updateTrackPowerStatus(true);
+              }
+              break;
+            case 'p2': // track overcurrent
+              if (msg_parts[1] === 'OPS') {
+                updateTrackPowerStatus(true, true);
+              }
+              break;
+            case 'T': // active loco
+              break;
+            case 'Tex': // loco update
+              $("#loco-address").val(msg_parts[1]);
+              $("#loco-speed").val(msg_parts[2]);
+              $('#loco-dir span').removeClass('icon-back icon-forward');
+              if (msg_parts[3] === '1') {
+                $('#loco-dir span').addClass('icon-forward');
+              } else {
+                $('#loco-dir span').addClass('icon-back');
+              }
+            case 'N1:': // interface details
+              break;
+            case 'X': // command failed or no data
+              break;
+            case 'O': // command succeeded
+              break;
+            case 'iDCC++': // CS info line
+              if ($('#cs-version').text().length === 0) {
+                $('#cs-version').text(msg_parts[4].substring(2));
+              }
+              break;
+            default:
+              console.log('WS-RX:', msg);
+            // do nothing
+          }
+        }
+      });
+    }
     function connectWebSocket() {
       if (!window.location.host.length) {
         while (ws_pending_send.length) {
@@ -505,11 +580,11 @@
         }
         return;
       }
-      $('#ws-status').toggleClass('flash');
+      $('#ws-status').addClass('flash');
       var socketUrl = String.format('ws://{0}:{1}/ws', window.location.host, window.location.port);
       webSocket = new WebSocket(socketUrl);
       webSocket.addEventListener('open', (event) => {
-        $('#ws-status').toggleClass('flash');
+        $('#ws-status').removeClass('flash');
         while (ws_pending_send.length) {
           webSocket.send(ws_pending_send.pop());
         }
@@ -517,67 +592,7 @@
         $('#ws-status').removeClass('text-dark');
         $('#ws-status').addClass('text-success');
       });
-      webSocket.addEventListener('message', (event) => {
-        var messages = event.data.split(/[<>]+/);
-        $(messages).each(idx => {
-          var msg = messages[idx];
-          if (msg !== "") {
-            var msg_parts = msg.split(' ');
-            switch (msg_parts[0]) {
-              case 'a': // track utilization (0-1023 variant)
-                break;
-              case 'A': // track utilization (mA variant)
-                if (msg_parts[1] === 'OPS') {
-                  $('#ops_usage').text(String.format('{0} mA', msg_parts[2]));
-                  $('#ops_usage').show();
-                  $('#ops_track_power').removeClass('loading');
-                }
-                break;
-              case 'p0': // track off
-                if (msg_parts[1] === 'OPS') {
-                  updateTrackPowerStatus(false);
-                  $('#ops_usage').hide();
-                }
-                break;
-              case 'p1': // track on
-                if (msg_parts[1] === 'OPS') {
-                  updateTrackPowerStatus(true);
-                }
-                break;
-              case 'p2': // track overcurrent
-                if (msg_parts[1] === 'OPS') {
-                  updateTrackPowerStatus(true, true);
-                }
-                break;
-              case 'T': // active loco
-                break;
-              case 'Tex': // loco update
-                $("#loco-address").val(msg_parts[1]);
-                $("#loco-speed").val(msg_parts[2]);
-                $('#loco-dir span').removeClass('icon-back icon-forward');
-                if (msg_parts[3] === '1') {
-                  $('#loco-dir span').addClass('icon-forward');
-                } else {
-                  $('#loco-dir span').addClass('icon-back');
-                }
-              case 'N1:': // interface details
-                break;
-              case 'X': // command failed or no data
-                break;
-              case 'O': // command succeeded
-                break;
-              case 'iDCC++': // CS info line
-                if ($('#cs-version').text().length === 0) {
-                  $('#cs-version').text(msg_parts[4].substring(2));
-                }
-                break;
-              default:
-                console.log('WS-RX:', msg);
-              // do nothing
-            }
-          }
-        });
-      });
+      webSocket.addEventListener('message', ws_rx);
       webSocket.addEventListener('error', (event) => {
         console.error('WS-ERROR:', event);
         $('#ws-status').addClass('text-dark');
@@ -615,7 +630,7 @@
         };
       }
       if (window.location.host.length) {
-        fetch('/config?features').then(res => res.json()).then(data => {
+        fetch('/config?features').then(checkFetchResponse).then(res => res.json()).then(data => {
           connectWebSocket();
           if (data.sensors === false) {
             $('[id^=cs-sensors]').hide();
@@ -630,12 +645,15 @@
           }
           // setup 25sec timer for requesting status
           setInterval(function () { ws('<s>'); }, 25000);
+        }).catch(function (error) {
+          showErrorDialog('Failed to retrieve command station configuration', error);
         });
       }
       setupThrottle();
       setupTurnouts();
     });
     function setupThrottle() {
+      disableLocoInputs();
       $('#btn-ext_funcs').on('click', function () {
         var icon = $('#ext_funcs').contents().find('span').first();
         if ($('#ext_funcs').attr('open')) {
@@ -697,14 +715,14 @@
       if (window.location.host.length) {
         $("#loco-manual").hide();
         $(button).toggleClass('loading');
-        fetch('/locomotive/roster').then(res => res.json()).then(data => {
+        fetch('/locomotive/roster').then(checkFetchResponse).then(res => res.json()).then(data => {
           $(button).toggleClass('loading');
           if (data.length) {
             var tbody = $('#loco-list tbody');
             tbody.children().remove();
             for (var idx in data) {
               if (data[idx].defaultOnThrottles) {
-                $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({0});"><td>{0}</td><td>{1}</td></tr>', data[idx].name, data[idx].address));
+                $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({1});"><td>{0}</td><td>{1}</td></tr>', data[idx].name, data[idx].address));
               }
             }
             $("#loco-list").show();
@@ -715,8 +733,8 @@
             $("#loco-select-add").hide();
           }
           toggleModal('#loco-select');
-        }).catch(function() {
-          console.error('Failed to retrieve locomotive roster');
+        }).catch(function (error) {
+          showErrorDialog('Failed to retrieve locomotive roster', error);
           $("#loco-list").hide();
           $("#loco-manual").show();
           $("#loco-select-add").hide();
@@ -736,19 +754,161 @@
         toggleModal('#turnout-editor');
       });
       $('#turnout-save').on('click', function () {
+        ws(String.format("<Tex {0} {1}>", $('#turnout-address').val(), $('#turnout-type').val()));
         toggleModal('#turnout-editor');
       });
     }
-    function enableDisableLocoInputs() {
-      $('[id^=funct_]').toggleClass('disabled');
-      $('#loco-dir').toggleClass('disabled');
-      $('#loco-speed').toggleClass('disabled');
-      $('#throttle-release-loco').toggleClass('disabled');
+    function refreshTurnouts(button) {
+      if (window.location.host.length) {
+        fetch('/turnouts').then(checkFetchResponse).then(res => res.json()).then(data => {
+          $(button).toggleClass('loading');
+          if (data.length) {
+            var tbody = $('#turnouts-table tbody');
+            tbody.children().remove();
+            const turnout_types = ["Left", "Right", "Wye", "Multi"];
+            const turnout_states = ["Closed", "Thrown"];
+            const turnout_states_tooltip = ["Throw", "Close"];
+            const turnout_icons = [
+              "icon-arrow-right", "icon-arrow-left", // left
+              "icon-arrow-left", "icon-arrow-right", // right
+              "icon-arrow-right", "icon-arrow-left", // wye
+              "icon-arrow-right", "icon-arrow-left", // multi
+            ];
+            for (var idx in data) {
+              var actions = String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editTurnout({0});"><i class="icon icon-edit"></i></button>',
+                data[idx].address);
+              actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteTurnout({0});"><i class="icon icon-delete"></i></button>',
+                data[idx].id);
+              actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="{2}" onclick="toggleTurnout({0},this);"><i class="icon {1}"></i></button>',
+                data[idx].address, turnout_icons[(data[idx].type * 2) + data[idx].state], turnout_states_tooltip[data[idx].state]);
+              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>',
+                data[idx].address, turnout_types[data[idx].type], turnout_states[data[idx].state], actions));
+            }
+            $("#turnouts-empty").hide();
+            $("#turnouts-table").show();
+          } else {
+            $("#turnouts-table").hide();
+            $("#turnouts-empty").show();
+          }
+          $('#tab-turnouts').show();
+        }).catch(function (error) {
+          showErrorDialog('Failed to retrieve turnout list', error);
+          $("#turnouts-table").hide();
+          $("#turnouts-empty").show();
+          $('#tab-turnouts').show();
+        });
+      } else {
+        $(button).toggleClass('loading');
+        $("#turnouts-table").hide();
+        $("#turnouts-empty").show();
+        $('#tab-turnouts').show();
+      }
     }
-    function changeLocomotive(newAddress, hideModal = false) {
+    function editTurnout(address) {
+      fetch(String.format('/turnouts?address={0}', address)).then(checkFetchResponse).then(res => res.json()).then(data => {
+        $('#turnout-address').val(data.address);
+        $('#turnout-type').val(data.type);
+        toggleModal('#turnout-editor');
+      }).catch(function (error) {
+        showErrorDialog('Failed to retrieve turnout details', error);
+      });
+    }
+    function deleteTurnout(id) {
+      ws(String.format('<T {0}>', id));
+    }
+    function toggleTurnout(address, button) {
+      $(button).toggleClass('loading');
+      ws(String.format('<Tex {0}>', address));
+      refreshTurnouts(button);
+    }
+    function refreshRoster(button) {
+      if (window.location.host.length) {
+        fetch('/locomotive/roster').then(checkFetchResponse).then(res => res.json()).then(data => {
+          if (button) {
+            $(button).toggleClass('loading');
+          }
+          if (data.length) {
+            var tbody = $('#roster-table tbody');
+            tbody.children().remove();
+            for (var idx in data) {
+              var actions = String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editLoco({0});"><i class="icon icon-edit"></i></button>',
+                data[idx].address);
+              actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteLoco({0});"><i class="icon icon-delete"></i></button>',
+                data[idx].address);
+              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].name, data[idx].address, actions));
+            }
+            $("#roster-empty").hide();
+            $("#roster-table").show();
+          } else {
+            $("#roster-table").hide();
+            $("#roster-empty").show();
+          }
+          $('#tab-roster').show();
+        }).catch(function (error) {
+          showErrorDialog('Failed to retrieve turnout list', error);
+          $("#roster-table").hide();
+          $("#roster-empty").show();
+          $('#tab-roster').show();
+        });
+      } else {
+        if (button) {
+          $(button).toggleClass('loading');
+        }
+        $("#roster-table").hide();
+        $("#roster-empty").show();
+        $('#tab-roster').show();
+      }
+    }
+    function clearRosterEditor() {
+      $('#roster-name').val("");
+      $('#roster-addr').val(1);
+      $('#roster-idle').prop('checked', false);
+      $('#roster-default').prop('checked', false);
+    }
+    function editLoco(address) {
+      if (window.location.host.length) {
+        fetch(String.format('/locomotive/roster?address={0}', address)).then(checkFetchResponse).then(res => res.json()).then(data => {
+          $('#roster-name').val(data.name);
+          $('#roster-addr').val(data.address);
+          $('#roster-idle').prop('checked', data.idleOnStartup);
+          $('#roster-default').prop('checked', data.defaultOnThrottles);
+          toggleModal('#roster-editor');
+        }).catch(function (error) {
+          showErrorDialog('Failed to retrieve roster entry', error);
+        });
+      }
+    }
+    function deleteLoco(address) {
+      if (window.location.host.length) {
+        fetch(String.format('/locomotive/roster?address={0}', address), { method: 'DELETE' }).then(checkFetchResponse).then(res => refreshRoster(null)).catch(function (error) {
+          showErrorDialog('Failed to delete roster entry', error);
+        });
+      }
+    }
+    function saveLoco() {
+      if (window.location.host.length) {
+        toggleModal('#roster-editor');
+        fetch(String.format('/locomotive/roster?address={0}&name={1}&idleOnStartup={2}&defaultOnThrottles={3}',
+          $('#roster-addr').val(), $('#roster-name').val(), $('#roster-idle').prop('checked'), $('#roster-default').prop('checked'))).then(checkFetchResponse).then(res => refreshRoster(null)).catch(function (error) {
+            showErrorDialog('Failed to save roster entry', error);
+          });
+      }
+    }
+    function enableLocoInputs() {
+      $('[id^=funct_]').removeClass('disabled');
+      $('#loco-dir').removeClass('disabled');
+      $('#loco-speed').removeClass('disabled');
+    }
+    function disableLocoInputs() {
+      $('[id^=funct_]').addClass('disabled');
+      $('#loco-dir').addClass('disabled');
+      $('#loco-speed').addClass('disabled');
+    }
+    function changeLocomotive(newAddress) {
       if (newAddress !== "") {
         ws(String.format('<tex {0} 0 1>', newAddress));
         $('#loco-select').removeClass('active');
+        enableLocoInputs();
       }
     }
     function save_cdi_field(field) {
