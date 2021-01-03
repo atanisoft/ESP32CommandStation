@@ -32,11 +32,6 @@ COPYRIGHT (c) 2020 Mike Dunston
 namespace esp32cs
 {
 
-static constexpr const char WIFI_STATION_CFG[] = "wifi-sta";
-static constexpr const char WIFI_STATION_DNS_CFG[] = "wifi-dns";
-static constexpr const char WIFI_STATION_IP_CFG[] = "wifi-ip";
-static constexpr const char WIFI_SOFTAP_CFG[] = "wifi-ap";
-
 #ifndef CONFIG_WIFI_STATIC_IP_ADDRESS
 #define CONFIG_WIFI_STATIC_IP_ADDRESS ""
 #endif
@@ -54,11 +49,15 @@ static constexpr const char WIFI_SOFTAP_CFG[] = "wifi-ap";
 #endif
 
 #ifndef CONFIG_WIFI_SOFTAP_SSID
-#define CONFIG_WIFI_SOFTAP_SSID "esp32cs"
+#define CONFIG_WIFI_SOFTAP_SSID "esp32csap"
 #endif
 
 #ifndef CONFIG_WIFI_SOFTAP_PASSWORD
-#define CONFIG_WIFI_SOFTAP_PASSWORD "esp32cs"
+#define CONFIG_WIFI_SOFTAP_PASSWORD "esp32csap"
+#endif
+
+#ifndef CONFIG_WIFI_SOFTAP_CHANNEL
+#define CONFIG_WIFI_SOFTAP_CHANNEL 1
 #endif
 
 #ifndef CONFIG_WIFI_STATION_SSID
@@ -76,41 +75,6 @@ static constexpr const char WIFI_SOFTAP_CFG[] = "wifi-ap";
 #ifndef CONFIG_TIMEZONE
 #define CONFIG_TIMEZONE "UTC0"
 #endif
-
-#if CONFIG_SNTP
-
-static bool sntp_callback_called_previously = false;
-static void sntp_received(struct timeval *tv)
-{
-  // if this is the first time we have been called, check if the modification
-  // timestamp on the LCC_CDI_XML is older than 2020-01-01 and if so reset the
-  // modification/access timestamp to current.
-  if (!sntp_callback_called_previously)
-  {
-    struct stat statbuf;
-    stat(LCC_CDI_XML, &statbuf);
-    time_t mod = statbuf.st_mtime;
-    struct tm timeinfo;
-    localtime_r(&mod, &timeinfo);
-    // check if the timestamp on LCC_CDI_XML is prior to 2020 and if so, force
-    // the access/modified timestamps to the current time.
-    if (timeinfo.tm_year < (2020 - 1900))
-    {
-      LOG(INFO, "[SNTP] Updating timestamps on CDI XML files");
-      utime(LCC_CDI_XML, NULL);
-      utime("/cfg/LCC/train.xml", NULL);
-      utime("/cfg/LCC/tmptrain.xml", NULL);
-    }
-    sntp_callback_called_previously = true;
-  }
-  time_t new_time = tv->tv_sec;
-  LOG(INFO, "[SNTP] Received time update, new localtime: %s", ctime(&new_time));
-
-#if CONFIG_FASTCLOCK_REALTIME
-  Singleton<LCCWiFiManager>::instance()->real_time_clock_sync(new_time);
-#endif // CONFIG_FASTCLOCK_REALTIME
-}
-#endif // CONFIG_SNTP
 
 LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
                              , const esp32cs::Esp32ConfigDef &cfg)
@@ -160,6 +124,9 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
     new openlcb::BroadcastTimeServer(stack_->node()
                                   , UINT64_C(CONFIG_FASTCLOCK_REALTIME_ID)));
   realTimeClock_->set_rate_quarters(4);
+  wifi_->register_network_time_callback(
+    std::bind(&LCCWiFiManager::real_time_clock_sync, this
+            , std::placeholders::_1));
 #endif // CONFIG_FASTCLOCK_REALTIME
 }
 

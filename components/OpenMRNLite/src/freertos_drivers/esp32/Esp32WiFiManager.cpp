@@ -668,6 +668,27 @@ void Esp32WiFiManager::register_network_init_callback(
     networkInitCallbacks_.push_back(callback);
 }
 
+// Adds a callback which will be called when SNTP events occur.
+void Esp32WiFiManager::register_network_time_callback(
+    esp32_network_time_callback_t callback)
+{
+    const std::lock_guard<std::mutex> lock(networkCallbacksLock_);
+    networkTimeCallbacks_.push_back(callback);
+}
+
+// SNTP callback hook to schedule callbacks.
+void Esp32WiFiManager::sync_time(time_t now)
+{
+    const std::lock_guard<std::mutex> lock(networkCallbacksLock_);
+    for (esp32_network_time_callback_t cb : networkTimeCallbacks_)
+    {
+        stack_->executor()->add(new CallbackExecutable([cb,now]
+        {
+            cb(now);
+        }));
+    }
+}
+
 // If the Esp32WiFiManager is setup to manage the WiFi system, the following
 // steps are executed:
 // 1) Start the TCP/IP adapter.
@@ -1739,6 +1760,7 @@ static void sntp_update_received(struct timeval *tv)
     time_t new_time = tv->tv_sec;
     LOG(INFO, "[SNTP] Received time update, new localtime: %s"
       , ctime(&new_time));
+    Singleton<Esp32WiFiManager>::instance()->sync_time(new_time);
 }
 #endif // IDF v3.3+
 

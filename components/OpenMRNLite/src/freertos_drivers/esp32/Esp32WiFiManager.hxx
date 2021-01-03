@@ -110,7 +110,7 @@ typedef std::function<void(esp_interface_t
 
 /// Callback function definition for the network down events.
 ///
-/// The first parameter is the interface that is down.
+/// The parameter is the interface that is down.
 ///
 /// NOTE: The callback will be invoked for ESP_IF_WIFI_AP (SoftAP) when the
 /// interface is stopped, for ESP_IF_WIFI_STA (station) it will be called when
@@ -119,11 +119,16 @@ typedef std::function<void(esp_interface_t)> esp32_network_down_callback_t;
 
 /// Callback function definition for the network is initializing.
 ///
-/// The first parameter is the interface that is initializing.
+/// The parameter is the interface that is initializing.
 ///
 /// NOTE: This will be called for ESP_IF_WIFI_STA only. It will be called for
 /// initial startup and reconnect events.
 typedef std::function<void(esp_interface_t)> esp32_network_init_callback_t;
+
+/// Callback function definition for network time synchronization.
+///
+/// The parameter is the standard time_t structure containing the new time.
+typedef std::function<void(time_t)> esp32_network_time_callback_t;
 
 /// This class provides a simple way for ESP32 nodes to manage the WiFi and
 /// mDNS systems of the ESP32, the node being a hub and connecting to an
@@ -302,6 +307,19 @@ public:
     /// events raised between enabling the interface and when it is ready.
     void register_network_init_callback(
         esp32_network_init_callback_t callback);
+
+    /// Registers a callback for SNTP synchronization events.
+    ///
+    /// @param callback the callback to invoke when SNTP sync occurs.
+    void register_network_time_callback(
+        esp32_network_time_callback_t callback);
+
+    /// Time synchronization callback for SNTP.
+    ///
+    /// @param now is the current time.
+    ///
+    /// NOTE: This is not intended to be called by the user.
+    void sync_time(time_t now);
 private:
     /// Default constructor.
     Esp32WiFiManager();
@@ -548,6 +566,9 @@ private:
 
     /// Holder for callbacks to invoke when the WiFi subsystem has started.
     std::vector<esp32_network_init_callback_t> networkInitCallbacks_;
+
+    /// Holder for callbacks to invoke when network time synchronizes.
+    std::vector<esp32_network_time_callback_t> networkTimeCallbacks_;
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,1,0)
     /// Network interfaces that are managed by Esp32WiFiManager.
