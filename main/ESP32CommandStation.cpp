@@ -531,6 +531,12 @@ extern "C" void app_main()
                                             , (adc1_channel_t)CONFIG_THERMALMONITOR_ADC);
 #endif // CONFIG_THERMALMONITOR
 
+#if !CONFIG_DISPLAY_TYPE_NONE
+  // Initialize the status display module (dependency of WiFi)
+  StatusDisplay statusDisplay(stackManager.stack()
+                            , stackManager.service());
+#endif // !CONFIG_DISPLAY_TYPE_NONE
+
   // Initialize the DCC VFS adapter, this will also initialize the DCC signal
   // generation code.
   esp32cs::init_dcc(stackManager.node(), stackManager.service()
@@ -547,12 +553,6 @@ extern "C" void app_main()
     &mDNS);
   init_webserver();
 #endif
-
-#if !CONFIG_DISPLAY_TYPE_NONE
-  // Initialize the status display module (dependency of WiFi)
-  StatusDisplay statusDisplay(stackManager.stack()
-                            , stackManager.service());
-#endif // !CONFIG_DISPLAY_TYPE_NONE
 
 #if CONFIG_NEXTION
   // Initialize the Nextion module (dependency of WiFi)
