@@ -527,6 +527,12 @@ extern "C" void app_main()
                                             , (adc1_channel_t)CONFIG_THERMALMONITOR_ADC);
 #endif // CONFIG_THERMALMONITOR
 
+  // Initialize the DCC VFS adapter, this will also initialize the DCC signal
+  // generation code.
+  esp32cs::init_dcc(stackManager.node(), stackManager.service()
+                  , cfg.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX)
+                  , cfg.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX));
+
 #if !defined(CONFIG_WIFI_MODE_DISABLED)
   // Initialize the Http server and mDNS instance
   MDNS mDNS;
@@ -594,12 +600,6 @@ extern "C" void app_main()
 
   // Initialize the factory reset helper for the CS.
   FactoryResetHelper resetHelper;
-
-  // Initialize the DCC VFS adapter, this will also initialize the DCC signal
-  // generation code.
-  esp32cs::init_dcc(stackManager.node(), stackManager.service()
-                  , cfg.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX)
-                  , cfg.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX));
 
   // Starts the OpenMRN stack, this needs to be done *AFTER* all other LCC
   // dependent components as it will initiate configuration load and factory
