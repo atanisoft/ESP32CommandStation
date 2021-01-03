@@ -177,7 +177,6 @@ namespace openlcb
   const char *const SNIP_DYNAMIC_FILENAME = LCC_CONFIG_FILE;
 
   extern const char CDI_DATA[];
-  // This is a C++11 raw string.
   const char CDI_DATA[] = R"xmlpayload(<?xml version="1.0"?>
 <cdi xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://openlcb.org/schema/cdi/1/1/cdi.xsd">
 <identification>
@@ -358,57 +357,64 @@ NOTE: Setting this option to a very low value can cause communication failures.<
 <map><relation><property>0</property><value>Disabled</value></relation><relation><property>1</property><value>Enabled</value></relation></map>
 </int>
 </group>
-<group replication='4'>
-<name>Input Only Pins</name>
-<repname>Input</repname>
+<group replication='2'>
+<name>H-Bridge Configuration</name>
+<repname>H-Bridge</repname>
 <string size='15'>
 <name>Description</name>
-<description>User name of this input.</description>
+<description>Track output description.</description>
 </string>
-<int size='1'>
-<name>Debounce parameter</name>
-<description>Amount of time to wait for the input to stabilize before producing the event. Unit is 30 msec of time. Usually a value of 2-3 works well in a non-noisy environment. In high noise (train wheels for example) a setting between 8 -- 15 makes for a slower response time but a more stable signal.
-Formally, the parameter tells how many times of tries, each 30 msec apart, the input must have the same value in order for that value to be accepted and the event transition produced.</description>
-<default>3</default>
-</int>
 <eventid>
-<name>Event On</name>
-<description>This event will be produced when the input goes to HIGH.</description>
+<name>Short Detected</name>
+<description>This event will be produced when a short has been detected on the track output.</description>
 </eventid>
 <eventid>
-<name>Event Off</name>
-<description>This event will be produced when the input goes to LOW.</description>
+<name>Short Cleared</name>
+<description>This event will be produced when a short has been cleared on the track output.</description>
+</eventid>
+<eventid>
+<name>H-Bridge Shutdown</name>
+<description>This event will be produced when the track output power has exceeded the safety threshold of the H-Bridge.</description>
+</eventid>
+<eventid>
+<name>H-Bridge Shutdown Cleared</name>
+<description>This event will be produced when the track output power has returned to safe levels.</description>
 </eventid>
 </group>
-<group replication='14'>
-<name>Input Output Pins</name>
-<repname>IO</repname>
-<int size='1'>
-<name>Configuration</name>
-<default>1</default>
-<map><relation><property>0</property><value>Output</value></relation><relation><property>1</property><value>Input</value></relation></map>
-</int>
-<int size='1'>
-<name>Debounce parameter</name>
-<description>Used for inputs only. Amount of time to wait for the input to stabilize before producing the event. Unit is 30 msec of time. Usually a value of 2-3 works well in a non-noisy environment. In high noise (train wheels for example) a setting between 8 -- 15 makes for a slower response time but a more stable signal.
-Formally, the parameter tells how many times of tries, each 30 msec apart, the input must have the same value in order for that value to be accepted and the event transition produced.</description>
-<default>3</default>
-</int>
-<group offset='1'/>
 <group>
-<string size='20'>
-<name>Description</name>
-<description>User name of this line.</description>
-</string>
+<name>Thermal Configuration</name>
+<int size='1'>
+<name>Warning Temperature</name>
+<description>Temperature (in celsius) to use for thermal warning.</description>
+<min>0</min>
+<max>125</max>
+<default>50</default>
+</int>
+<int size='1'>
+<name>Shutdown Temperature</name>
+<description>Temperature (in celsius) at which to shutdown active monitoring and switch to low-power mode until temperatures return to below the shutdown level.</description>
+<min>0</min>
+<max>125</max>
+<default>80</default>
+</int>
 <eventid>
-<name>Event On</name>
-<description>This event ID will turn the output on / be produced when the input goes on.</description>
+<name>Warning Temperature Exceeded</name>
+<description>This event will be produced when the temperature has exceeded the warning temperature but is below the shutdown temperature.</description>
 </eventid>
 <eventid>
-<name>Event Off</name>
-<description>This event ID will turn the output off / be produced when the input goes off.</description>
+<name>Warning Temperature (cleared)</name>
+<description>This event will be produced when the temperature has dropped below the warning temperature.
+Note: This event will not be generated if the warning temperature has not been exceeded previously.</description>
 </eventid>
-</group>
+<eventid>
+<name>Shutdown Temperature Exceeded</name>
+<description>This event will be produced when the temperature has exceeded the shutdown temperature or there is a failure in reading the temperature.</description>
+</eventid>
+<eventid>
+<name>Shutdown (Cleared)</name>
+<description>This event will be produced when the temperature has dropped below the shutdown temperature.
+Note: This event will not be generated if the shutdown temperature has not been exceeded previously.</description>
+</eventid>
 </group>
 </segment>
 <segment space='253'>
@@ -424,9 +430,7 @@ Formally, the parameter tells how many times of tries, each 30 msec apart, the i
   const size_t CDI_SIZE = sizeof(CDI_DATA);
   extern const uint16_t CDI_EVENT_OFFSETS[] =
   {
-    828, 836, 860, 868, 892, 900, 924, 932, 963, 971, 1002, 1010, 1041, 1049,
-    1080, 1088, 1119, 1127, 1158, 1166, 1197, 1205, 1236, 1244, 1275, 1283,
-    1314, 1322, 1353, 1361, 1392, 1400, 1431, 1439, 1470, 1478, 0
+    827, 835, 843, 851, 874, 882, 890, 898, 908, 916, 924, 932, 0
   };
 }
 
