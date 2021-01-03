@@ -320,6 +320,9 @@ public:
     ///
     /// NOTE: This is not intended to be called by the user.
     void sync_time(time_t now);
+
+    /// @return the configured SoftAP name.
+    std::string get_softap_ssid();
 private:
     /// Default constructor.
     Esp32WiFiManager();

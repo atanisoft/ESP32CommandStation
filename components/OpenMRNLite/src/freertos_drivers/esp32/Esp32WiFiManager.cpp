@@ -689,6 +689,12 @@ void Esp32WiFiManager::sync_time(time_t now)
     }
 }
 
+// return the configured SoftAP name.
+string Esp32WiFiManager::get_softap_ssid()
+{
+    return softAPName_;
+}
+
 // If the Esp32WiFiManager is setup to manage the WiFi system, the following
 // steps are executed:
 // 1) Start the TCP/IP adapter.

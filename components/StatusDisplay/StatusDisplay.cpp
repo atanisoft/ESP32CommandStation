@@ -212,7 +212,7 @@ StatusDisplay::StatusDisplay(openlcb::SimpleStackBase *stack, Service *service)
     else if (interface == ESP_IF_WIFI_AP)
     {
       wifi("SSID: %s"
-         , Singleton<esp32cs::LCCWiFiManager>::instance()->get_ssid().c_str());
+         , Singleton<Esp32WiFiManager>::instance()->get_softap_ssid().c_str());
     }
   });
   Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
