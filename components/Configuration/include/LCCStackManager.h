@@ -24,6 +24,7 @@ namespace openlcb
   class SimpleStackBase;
   class Node;
   class SimpleInfoFlow;
+  class MemoryConfigClient;
   class MemoryConfigHandler;
 }
 
@@ -43,6 +44,7 @@ public:
   Service *service();
   openlcb::Node *node();
   openlcb::SimpleInfoFlow *info_flow();
+  openlcb::MemoryConfigClient *memory_config_client();
   openlcb::MemoryConfigHandler *memory_config_handler();
   void start(bool is_sd);
   void shutdown();
@@ -56,6 +58,7 @@ private:
   int fd_;
   uint64_t nodeID_{UINT64_C(CONFIG_LCC_NODE_ID)};
   openlcb::SimpleStackBase *stack_;
+  openlcb::MemoryConfigClient *memory_client_;
   AutoSyncFileFlow *configAutoSync_;
 };
 

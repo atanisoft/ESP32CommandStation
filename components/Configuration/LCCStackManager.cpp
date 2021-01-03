@@ -18,6 +18,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include "LCCStackManager.h"
 #include "FileSystemManager.h"
 #include <freertos_drivers/esp32/Esp32HardwareTwai.hxx>
+#include <openlcb/MemoryConfigClient.hxx>
 #include <openlcb/SimpleStack.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 
@@ -95,6 +96,8 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
   }));
 #endif // CAN_PERIPHERAL_AVAILABLE
 #endif // CONFIG_LCC_TCP_STACK
+  memory_client_ =
+    new openlcb::MemoryConfigClient(node(), memory_config_handler());
 }
 
 openlcb::SimpleStackBase *LCCStackManager::stack()
@@ -120,6 +123,11 @@ openlcb::Node *LCCStackManager::node()
 openlcb::SimpleInfoFlow *LCCStackManager::info_flow()
 {
   return stack_->info_flow();
+}
+
+openlcb::MemoryConfigClient *LCCStackManager::memory_config_client()
+{
+  return memory_client_;
 }
 
 openlcb::MemoryConfigHandler *LCCStackManager::memory_config_handler()

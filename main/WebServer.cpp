@@ -32,6 +32,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <JsonConstants.h>
 #include <LCCStackManager.h>
 #include <LCCWiFiManager.h>
+#include <openlcb/MemoryConfigClient.hxx>
 #include <mutex>
 #include <Turnouts.h>
 #include <utils/FileUtils.hxx>
@@ -158,8 +159,7 @@ void init_webserver()
   httpd->static_uri("/spectre.min.css", spectreCssGz, spectreCssGz_size
                   , MIME_TYPE_TEXT_CSS, HTTP_ENCODING_GZIP);
   httpd->static_uri("/cdi.xml", (const uint8_t *)openlcb::CDI_DATA
-                  , openlcb::CDI_SIZE, MIME_TYPE_TEXT_XML, HTTP_ENCODING_NONE
-                  , false);
+                  , openlcb::CDI_SIZE - 1, MIME_TYPE_TEXT_XML);
   httpd->websocket_uri("/ws", process_websocket_event);
   httpd->uri("/update", HttpMethod::POST, nullptr, process_ota);
   httpd->uri("/version", [&](HttpRequest *req)
@@ -384,6 +384,134 @@ HTTP_HANDLER_IMPL(process_power, request)
 #define GPIO_SENSORS_CONFIG "false"
 #endif
 
+HTTP_HANDLER_IMPL(process_cdi, request)
+{
+  http::AbstractHttpResponse *response = nullptr;
+  size_t offs = request->param("offs", 0);
+  std::string param_type = request->param("type");
+  if (request->method() == http::HttpMethod::GET)
+  {
+    size_t size = request->param("size", 0);
+    openlcb::NodeHandle handle(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id());
+    auto b =
+      invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
+                , openlcb::MemoryConfigClientRequest::READ_PART
+                , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, size);
+    if (param_type == "string")
+    {
+      response = new http::StringResponse(string(b->data()->payload.c_str()), http::MIME_TYPE_TEXT_PLAIN);
+    }
+    else if (param_type == "int")
+    {
+      uint32_t data = b->data()->payload.data()[0];
+      if (size == 2)
+      {
+        uint16_t data16 = 0;
+        memcpy(&data16, b->data()->payload.data(), sizeof(uint16_t));
+        data = be16toh(data16);
+      }
+      else if (size == 4)
+      {
+        uint32_t data32 = 0;
+        memcpy(&data32, b->data()->payload.data(), sizeof(uint32_t));
+        data = be32toh(data32);
+      }
+      response = new http::StringResponse(integer_to_string(data), http::MIME_TYPE_TEXT_PLAIN);
+    }
+    else if (param_type == "eventid")
+    {
+      uint64_t event_id = 0;
+      memcpy(&event_id, b->data()->payload.data(), sizeof(uint64_t));
+      response = new http::StringResponse(uint64_to_string_hex(be64toh(event_id)), http::MIME_TYPE_TEXT_PLAIN);
+    }
+    else
+    {
+        LOG_ERROR("[Web] Bad request:\n%s", request->to_string().c_str());
+        request->set_status(http::HttpStatusCode::STATUS_BAD_REQUEST);
+        return nullptr;
+    }
+  }
+  else if (request->method() == http::HttpMethod::PUT)
+  {
+    string value = request->param("value");
+    size_t size = request->param("size", 0);
+    openlcb::NodeHandle handle(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id());
+    if (param_type == "string")
+    {
+      // make sure value is null terminated
+      value += '\0';
+      invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
+                , openlcb::MemoryConfigClientRequest::WRITE
+                , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
+    }
+    else if (param_type == "int")
+    {
+      if (size == 1)
+      {
+        uint8_t data8 = std::stoi(value);
+        value.clear();
+        value.push_back(data8);
+        invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
+                  , openlcb::MemoryConfigClientRequest::WRITE
+                  , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
+      }
+      else if (size == 2)
+      {
+        uint16_t data16 = std::stoi(value);
+        value.clear();
+        value.push_back((data16 >> 8) & 0xFF);
+        value.push_back(data16 & 0xFF);
+        invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
+                  , openlcb::MemoryConfigClientRequest::WRITE
+                  , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
+      }
+      else
+      {
+        uint32_t data32 = std::stoul(value);
+        value.clear();
+        value.push_back((data32 >> 24) & 0xFF);
+        value.push_back((data32 >> 16) & 0xFF);
+        value.push_back((data32 >> 8) & 0xFF);
+        value.push_back(data32 & 0xFF);
+        invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
+                  , openlcb::MemoryConfigClientRequest::WRITE
+                  , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
+      }
+    }
+    else if (param_type == "eventid")
+    {
+      LOG(VERBOSE, "[Web] CDI EVENT WRITE offs:%d, value: %s", offs
+        , value.c_str());
+      uint64_t data = string_to_uint64(value);
+      value.clear();
+      value.push_back((data >> 56) & 0xFF);
+      value.push_back((data >> 48) & 0xFF);
+      value.push_back((data >> 40) & 0xFF);
+      value.push_back((data >> 32) & 0xFF);
+      value.push_back((data >> 24) & 0xFF);
+      value.push_back((data >> 16) & 0xFF);
+      value.push_back((data >> 8) & 0xFF);
+      value.push_back(data & 0xFF);
+      invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
+                , openlcb::MemoryConfigClientRequest::WRITE
+                , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
+    }
+    else
+    {
+        LOG_ERROR("[Web] Bad request:\n%s", request->to_string().c_str());
+        request->set_status(http::HttpStatusCode::STATUS_BAD_REQUEST);
+        return nullptr;
+    }
+    request->set_status(http::HttpStatusCode::STATUS_ACCEPTED);
+  }
+  else
+  {
+      LOG_ERROR("[Web] Bad request:\n%s", request->to_string().c_str());
+      request->set_status(http::HttpStatusCode::STATUS_BAD_REQUEST);
+  }
+  return response;
+}
+
 HTTP_HANDLER_IMPL(process_config, request)
 {
   auto stackManager = Singleton<esp32cs::LCCStackManager>::instance();
@@ -398,16 +526,39 @@ HTTP_HANDLER_IMPL(process_config, request)
                  , JSON_OUTPUTS_NODE, GPIO_OUTPUTS_CONFIG
                  , JSON_SENSORS_NODE, GPIO_SENSORS_CONFIG);
   }
-  else if (request->has_param("reset"))
+  else if (request->has_param("factory_reset"))
   {
     // this will wipe all persistent config
     Singleton<FileSystemManager>::instance()->force_factory_reset();
     needReboot = true;
   }
+  else if (request->has_param("reset_events"))
+  {
+    /*Singleton<FileSystemManager>::instance()->force_factory_reset();
+    needReboot = true;*/
+  }
   else if (request->has_param("nodeid") &&
            stackManager->set_node_id(request->param("nodeid")))
   {
     needReboot = true;
+  }
+  else if (request->has_param("info"))
+  {
+    response =
+      StringPrintf("{\"snip_hw\":\"%s\",\"snip_sw\":\"%s\",\"node_id\":\"%s\"}"
+                 , openlcb::SNIP_STATIC_DATA.hardware_version
+                 , openlcb::SNIP_STATIC_DATA.software_version
+                 , uint64_to_string_hex(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id()).c_str());
+  }
+  else if (request->has_param("offs") && request->has_param("type"))
+  {
+    return process_cdi(request);
+  }
+  else if (request->has_param("update_complete"))
+  {
+    openlcb::NodeHandle handle(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id());
+    invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
+              , openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE, handle);
   }
 
   if (needReboot)
