@@ -132,13 +132,13 @@ endif()
 ###############################################################################
 if (CONFIG_WIFI_MODE_STATION OR CONFIG_WIFI_MODE_SOFTAP_STATION)
     if (NOT CONFIG_WIFI_STATION_SSID OR NOT CONFIG_WIFI_STATION_PASSWORD)
-        message(FATAL_ERROR "WiFi SSID & Password are required when WiFi mode is STATION or STATION+SoftAP.")
+        message(FATAL_ERROR "WiFi STATION SSID & Password are required when WiFi mode is STATION or STATION+SoftAP.")
     endif()
 endif()
 
 if (CONFIG_WIFI_MODE_SOFTAP OR CONFIG_WIFI_MODE_SOFTAP_STATION)
     if (NOT CONFIG_WIFI_SOFTAP_SSID OR NOT CONFIG_WIFI_SOFTAP_PASSWORD)
-        message(FATAL_ERROR "WiFi SSID & Password are required when WiFi mode is STATION or STATION+SoftAP.")
+        message(FATAL_ERROR "WiFi SoftAP SSID & Password are required when WiFi mode is SoftAP or STATION+SoftAP.")
     endif()
 endif()
 
