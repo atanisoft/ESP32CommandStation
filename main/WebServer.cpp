@@ -32,6 +32,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <JsonConstants.h>
 #include <LCCStackManager.h>
 #include <LCCWiFiManager.h>
+#include <mutex>
 #include <Turnouts.h>
 #include <utils/FileUtils.hxx>
 #include <utils/SocketClientParams.hxx>
@@ -108,7 +109,7 @@ static constexpr const char * const CAPTIVE_PORTAL_HTML = R"!^!(
  </body>
 </html>)!^!";
 
-OSMutex webSocketLock;
+std::mutex webSocketLock;
 std::vector<std::unique_ptr<WebSocketClient>> webSocketClients;
 WEBSOCKET_STREAM_HANDLER(process_websocket_event);
 HTTP_STREAM_HANDLER(process_ota);
@@ -239,14 +240,16 @@ void init_webserver()
 WEBSOCKET_STREAM_HANDLER_IMPL(process_websocket_event, client, event, data
                             , data_len)
 {
-  OSMutexLock h(&webSocketLock);
+  LOG(VERBOSE, "[WS %p/%d] handler invoked: %d, %p, %zu", client, client->id(), event, data, data_len);
   if (event == WebSocketEvent::WS_EVENT_CONNECT)
   {
+    const std::lock_guard<std::mutex> lock(webSocketLock);
     webSocketClients.push_back(
       std::make_unique<WebSocketClient>(client->id(), client->ip()));
   }
   else if (event == WebSocketEvent::WS_EVENT_DISCONNECT)
   {
+    const std::lock_guard<std::mutex> lock(webSocketLock);
     webSocketClients.erase(std::remove_if(webSocketClients.begin()
                                         , webSocketClients.end()
     , [client](const auto &inst) -> bool
@@ -264,11 +267,18 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_websocket_event, client, event, data
     );
     if (ent != webSocketClients.end())
     {
+      LOG(VERBOSE, "[WS %p/%d] feeding the DCC++ code", client, client->id());
       // TODO: remove cast that drops const
       auto res = (*ent)->feed((uint8_t *)data, data_len);
       if (res.length())
       {
+        LOG(VERBOSE, "[WS %p/%d] sending %zu bytes as response", client, client->id(), res.length());
         client->send_text(res);
+        LOG(VERBOSE, "[WS %p/%d] sent", client, client->id());
+      }
+      else
+      {
+        LOG(VERBOSE, "[WS %p/%d] no response to send", client, client->id());
       }
     }
   }
