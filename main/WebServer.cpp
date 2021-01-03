@@ -198,7 +198,7 @@ void init_webserver()
     return nullptr;
   });
   httpd->uri("/power", HttpMethod::GET | HttpMethod::PUT, process_power);
-  httpd->uri("/config", HttpMethod::GET | HttpMethod::POST, process_config);
+  httpd->uri("/config", HttpMethod::GET | HttpMethod::PUT, process_config);
   httpd->uri("/programmer", HttpMethod::GET | HttpMethod::POST, process_prog);
   httpd->uri("/turnouts"
            , HttpMethod::GET | HttpMethod::POST |
@@ -502,7 +502,7 @@ HTTP_HANDLER_IMPL(process_cdi, request)
         request->set_status(http::HttpStatusCode::STATUS_BAD_REQUEST);
         return nullptr;
     }
-    request->set_status(http::HttpStatusCode::STATUS_ACCEPTED);
+    request->set_status(http::HttpStatusCode::STATUS_OK);
   }
   else
   {

@@ -407,16 +407,16 @@
     <div class="container" style="display:none;" id="tab-olcbconfig">
       <ul class="tab tab-block">
         <li class="tab-item">
-          <a href="#" onclick="showCDI('node_info',this);">Node Info</a>
+          <a href="#" onclick="showCDISection('node_info',this);">Node Info</a>
         </li>
         <li class="tab-item">
-          <a href="#" onclick="showCDI('wifi',this);">WiFi Configuration</a>
+          <a href="#" onclick="showCDISection('wifi',this);">WiFi Configuration</a>
         </li>
         <li class="tab-item">
-          <a href="#" onclick="showCDI('hbridge',this);">H-Bridge Configuration</a>
+          <a href="#" onclick="showCDISection('hbridge',this);">H-Bridge Configuration</a>
         </li>
         <li class="tab-item">
-          <a href="#" onclick="showCDI('thermal',this);">Thermal Configuration</a>
+          <a href="#" onclick="showCDISection('thermal',this);">Thermal Configuration</a>
         </li>
       </ul>
       <div id="cdi_tab_node_info">
@@ -980,11 +980,27 @@
       }
     }
     function refresh_all_cdi_fields() {
-      $('[id^=cdi_]').each(function (i, e) {
-        refresh_field($(e).attr('id'));
+      cdi_loaders.splice(0, cdi_loaders.length);
+      $('[id^=btn-refresh-]').each(function (i, e) {
+        var target = '#' + $(e).attr('id').substr(12);
+        cdi_loaders.push(async () => {
+          const response = await fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}', $(target).data('offset'), $(target).data('size'), $(target).data('type')));
+          if (response.headers.has('Content-Length')) {
+            var value = await response.text();
+            if ($(target).data('type') === 'eventid') {
+              value = pad_hex(value, 16);
+            }
+            $(target).val(value);
+          } else if ($(target).data('type') === 'int') {
+            $(target).val(0);
+          } else {
+            $(target).val('');
+          }
+        });
       });
+      cdi_loaders.reduce(async (prev, cur) => { await prev; return cur(); }, Promise.resolve(null));
     }
-    function showCDI(section) {
+    function showCDISection(section) {
       $('[id^=cdi_tab_]').hide();
       $(String.format('#cdi_tab_{0}', section)).show();
     }
@@ -992,7 +1008,7 @@
       if(!cdi_loaded) {
         fetchWithTimeout("/cdi.xml").then(res => res.text()).then(cdi => build_cdi_dom(cdi, button));
       } else {
-        refresh_all_cdi();
+        refresh_all_cdi_fields();
         $(button).toggleClass('loading');
         $('#tab-olcbconfig').show();
       }
@@ -1013,7 +1029,6 @@
           });
     }
     function build_cdi_dom(cdi, button) {
-      // clear the loaders array
       cdi_loaders.splice(0, cdi_loaders.length);
       var parser = new window.DOMParser();
       var doc = parser.parseFromString(cdi, "text/xml");
@@ -1030,23 +1045,32 @@
         $(button).toggleClass('loading');
         $('#tab-olcbconfig').show();
       });
-      // kick off the data loading in sequence rather than parallel since the S2
-      // will crash if too many requests are sent concurrently.
       cdi_loaders.reduce(async (prev, cur) => { await prev; return cur(); }, Promise.resolve(null));
+      cdi_loaded = true;
     }
     function save_cdi_field(field) {
+      var target = '#' + $(field).attr('id').substr(9);
       $(field).toggleClass('loading');
+      fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}&value={3}', $(target).data('offset'), $(target).data('size'), $(target).data('type'),$(target).val()), {method:'PUT'})
+        .then(() => {
+          disable_button('save-' + target);
+          $(field).toggleClass('loading');
+        });
     }
     function refresh_cdi_field(field) {
+      var target = '#' + $(field).attr('id').substr(12);
       $(field).toggleClass('loading');
-      var offset = parseInt($(field).attr('data-offset'));
-      var size = parseInt($(field).attr('data-size'));
-      var type = $(field).attr('data-type');
-      fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}', offset, size, type)).then(res => res.text()).then(text =>{
-        console.log(field);
-        $(field).val(text);
-        disable_button('save-' + field);
-      });
+      
+      fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}', $(target).data('offset'), $(target).data('size'), $(target).data('type')))
+        .then(res => res.text())
+        .then(value => {
+          if ($(target).data('type') === 'eventid') {
+            value = pad_hex(value, 16);
+          }
+          $(target).val(value);
+          disable_button('save-' + target);
+          $(field).toggleClass('loading');
+        });
     }
     function factory_reset() {
       if (confirm('Are you sure you want to perform a Factory Reset?')) {
