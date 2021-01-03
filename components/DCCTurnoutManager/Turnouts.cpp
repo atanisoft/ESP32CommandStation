@@ -45,7 +45,7 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
               , std::bind(&TurnoutManager::persist, this))
   , dirty_(false)
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   LOG(INFO, "[Turnout] Initializing DCC Turnout database");
   json root = json::parse(
     Singleton<FileSystemManager>::instance()->load(TURNOUTS_JSON_FILE));
@@ -66,7 +66,7 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
 
 void TurnoutManager::clear()
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   for (auto & turnout : turnouts_)
   {
     turnout.reset(nullptr);
@@ -93,7 +93,7 @@ void TurnoutManager::clear()
 
 string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT(address);
   if (elem != turnouts_.end())
   {
@@ -112,15 +112,19 @@ string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
 
 string TurnoutManager::toggle(uint16_t address)
 {
-  OSMutexLock h(&mux_);
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "request to toggle turnout address %d"
+    , address);
+  const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT(address);
   if (elem != turnouts_.end())
   {
+    LOG(CONFIG_TURNOUT_LOG_LEVEL, "turnout found, toggling");
     elem->get()->toggle();
     dirty_ = true;
     return StringPrintf("<H %d %d>", elem->get()->getID()
                       , elem->get()->isThrown());
   }
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "turnout not found, creating and toggling");
 
   // we didn't find it, create it and throw it
   turnouts_.push_back(std::make_unique<Turnout>(address, address));
@@ -131,13 +135,13 @@ string TurnoutManager::toggle(uint16_t address)
 
 string TurnoutManager::getStateAsJson(bool readable)
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   return get_state_as_json(readable);
 }
 
 string TurnoutManager::get_state_for_dccpp()
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   if (turnouts_.empty())
   {
     return COMMAND_FAILED_RESPONSE;
@@ -158,7 +162,7 @@ Turnout *TurnoutManager::createOrUpdate(const uint16_t address
                                       , const TurnoutType type
                                       , const int16_t id)
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   if (id != -1)
   {
     auto const &elem = FIND_TURNOUT_BY_ID(id);
@@ -190,7 +194,7 @@ Turnout *TurnoutManager::createOrUpdate(const uint16_t address
 
 bool TurnoutManager::remove(const uint16_t address)
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT(address);
   if (elem != turnouts_.end())
   {
@@ -205,7 +209,7 @@ bool TurnoutManager::remove(const uint16_t address)
 
 Turnout *TurnoutManager::getByID(const uint16_t id)
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT_BY_ID(id);
   if (elem != turnouts_.end())
   {
@@ -217,7 +221,7 @@ Turnout *TurnoutManager::getByID(const uint16_t id)
 
 Turnout *TurnoutManager::get(const uint16_t address)
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT(address);
   if (elem != turnouts_.end())
   {
@@ -229,7 +233,6 @@ Turnout *TurnoutManager::get(const uint16_t address)
 
 uint16_t TurnoutManager::count()
 {
-  OSMutexLock h(&mux_);
   return turnouts_.size();
 }
 
@@ -290,7 +293,7 @@ string TurnoutManager::get_state_as_json(bool readableStrings)
 
 void TurnoutManager::persist()
 {
-  OSMutexLock h(&mux_);
+  const std::lock_guard<std::mutex> lock(mux_);
   bool dirtyFlag = dirty_;
   dirty_ = false;
   // Check if we have any changes to persist, if not exit early.
@@ -329,6 +332,7 @@ Turnout::Turnout(uint16_t address, int16_t id, bool thrown, TurnoutType type)
   LOG(INFO, "[Turnout %d (%d)] Registered as type %s and initial state of %s"
     , _id, _address, TURNOUT_TYPE_STRINGS[_type]
     , _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
+  packet_processor_add_refresh_source(this);
 }
 
 void Turnout::update(uint16_t address, TurnoutType type, int16_t id)
@@ -367,7 +371,7 @@ void Turnout::set(bool thrown, bool sendDCCPacket)
   _thrown = thrown;
   if (sendDCCPacket)
   {
-    packet_processor_add_refresh_source(this);
+    packet_processor_notify_update(this, 1);
   }
   LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Set to %s", _id, _address
     , _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
@@ -375,6 +379,11 @@ void Turnout::set(bool thrown, bool sendDCCPacket)
 
 void Turnout::get_next_packet(unsigned code, dcc::Packet* packet)
 {
+  if (!code)
+  {
+    packet->set_dcc_idle();
+    return;
+  }
   // shift address by one to account for the output pair state bit (thrown).
   // decrement the address prior to shift to bring it into the 0-2047 range.
   uint16_t addr = (((_address - 1) << 1) | _thrown);
@@ -384,7 +393,4 @@ void Turnout::get_next_packet(unsigned code, dcc::Packet* packet)
 
   LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Packet: %s", _id, _address
     , packet_to_string(*packet, true).c_str());
-
-  // remove ourselves as turnouts are single fire sources
-  packet_processor_remove_refresh_source(this);
 }

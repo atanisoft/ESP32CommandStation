@@ -22,6 +22,7 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <dcc/PacketFlowInterface.hxx>
 #include <dcc/PacketSource.hxx>
 #include <DCCppProtocol.h>
+#include <mutex>
 #include <openlcb/DccAccyConsumer.hxx>
 #include <utils/Singleton.hxx>
 
@@ -108,7 +109,7 @@ private:
   openlcb::DccAccyConsumer turnoutEventConsumer_;
   AutoPersistFlow persistFlow_;
   bool dirty_;
-  OSMutex mux_;
+  std::mutex mux_;
 };
 
 #endif // TURNOUTS_H_
