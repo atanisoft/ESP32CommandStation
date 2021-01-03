@@ -359,11 +359,16 @@ StateFlowBase::Action WebSocketFlow::recv_frame_data()
     }
     if (opcode_ == OP_PING)
     {
-      // send PONG
+      // TODO: send PONG
+      LOG(CONFIG_HTTP_WS_LOG_LEVEL, "[WebSocket fd:%d] received PING", fd_);
     }
     else if (opcode_ == OP_TEXT)
     {
+      LOG(CONFIG_HTTP_WS_LOG_LEVEL
+        , "[WebSocket fd:%d] invoking handler for WS_EVENT_TEXT (%zu bytes)"
+        , fd_, received_len);
       handler_(this, WebSocketEvent::WS_EVENT_TEXT, data_, received_len);
+      LOG(CONFIG_HTTP_WS_LOG_LEVEL, "[WebSocket fd:%d] handler returned", fd_);
     }
     else if (opcode_ == OP_BINARY)
     {
@@ -378,6 +383,9 @@ StateFlowBase::Action WebSocketFlow::recv_frame_data()
   if (frameLength_)
   {
     data_size_ = std::min(frameLength_, max_frame_size_);
+    LOG(CONFIG_HTTP_WS_LOG_LEVEL
+      , "[WebSocket fd:%d] %zu (%d) bytes remain to receive"
+      , fd_, data_size_, (uint32_t)frameLength_);
     return read_fully_with_timeout(data_, data_size_
                                  , config_httpd_websocket_max_read_attempts()
                                  , STATE(recv_frame_data)
@@ -452,21 +460,29 @@ StateFlowBase::Action WebSocketFlow::frame_sent()
     return yield_and_call(STATE(shutdown_connection));
   }
   OSMutexLock h(&textLock_);
+  LOG(CONFIG_HTTP_WS_LOG_LEVEL, "[WebSocket fd:%d] TX %zu bytes (%d rem)", fd_
+    , data_size_, helper_.remaining_);
   textFrames_.front().erase(0, data_size_);
 
   // check if the frame being sent has been sent completely, if so drop it from
   // the pending frames.
   if (textFrames_.front().empty())
   {
+    LOG(CONFIG_HTTP_WS_LOG_LEVEL
+      , "[WebSocket fd:%d] TX complete, dropping frame", fd_);
     textFrames_.erase(textFrames_.begin());
   }
 
   // if we still have frame data to send, send another frame header now.
   if (!textFrames_.empty())
   {
+    LOG(CONFIG_HTTP_WS_LOG_LEVEL, "[WebSocket fd:%d] starting next frame TX"
+      , fd_);
     return yield_and_call(STATE(send_frame_header));
   }
 
+  LOG(CONFIG_HTTP_WS_LOG_LEVEL
+    , "[WebSocket fd:%d] no frames to TX, try receiving one", fd_);
   // out of frames to send, try and receive one.
   return yield_and_call(STATE(read_frame_header));
 }
