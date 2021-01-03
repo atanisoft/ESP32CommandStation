@@ -302,8 +302,7 @@ void TurnoutManager::persist()
     LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout] No entries require persistence.");
     return;
   }
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout] Persisting %zu turnouts"
-    , turnouts_.size());
+  LOG(INFO, "[Turnout] Persisting %zu turnouts", turnouts_.size());
   Singleton<FileSystemManager>::instance()->store(TURNOUTS_JSON_FILE
                                                    , get_state_as_json(false));
 }
