@@ -60,11 +60,11 @@
         <div class="btn-group float-right">
           <div class="tooltip tooltip-left" data-tooltip="Connection status"><i id="ws-status"
               class="icon icon-wifi text-dark"></i></div>
-          <div class="tooltip tooltip-left" data-tooltip="Emergency stop all locomotives"><i
-              class="icon icon-stop text-error" onclick="send_estop(this);"></i></div>
-          <div class="tooltip tooltip-left" data-tooltip="OPS track status"><i class="icon icon-shutdown text-error"
-              id="ops_track_power"></i><small id="ops_usage"></small></div>
-          <div class="tooltip tooltip-left" data-tooltip="Active locomotives">
+          <div class="tooltip tooltip-left" data-tooltip="Click/tap to send emergency
+stop to all active locomotives"><i class="icon icon-stop text-error" onclick="send_estop(this);"></i></div>
+          <div class="tooltip tooltip-left" data-tooltip="Click/tap to turn on/off track power"><i class="icon icon-shutdown text-error" id="ops_track_power"></i><small
+              id="ops_usage"></small></div>
+          <div class="tooltip tooltip-left" data-tooltip="Click/tap to view currently active locomotives">
             <svg class="icon text-light" fill="currentColor" version='1.1' xmlns='http://www.w3.org/2000/svg'
               viewBox='0 0 470 470' xmlns:xlink='http://www.w3.org/1999/xlink' enable-background='new 0 0 470 470'
               onclick="showActiveLocos(this);">
@@ -422,8 +422,10 @@
       <div id="cdi_tab_node_info">
         <div class="columns">
           <div class="column"><label class="form-label" for="node_id">Node ID:</label></div>
-          <div class="column column-6"><input class="form-input" id="node_id" oninput="enable_button('save_node_id');"></div>
-          <div class="column"><button class="btn btn-primary btn-sm" id="btn-save_node_id" disabled onclick="save_node_id(this);">Save</button></div>
+          <div class="column column-6"><input class="form-input" id="node_id" oninput="enable_button('save_node_id');">
+          </div>
+          <div class="column"><button class="btn btn-primary btn-sm" id="btn-save_node_id" disabled
+              onclick="save_node_id(this);">Save</button></div>
         </div>
         <div class="columns">
           <div class="column"><label class="form-label" for="sw_version">Software Version:</label></div>
@@ -439,9 +441,11 @@
       <div id="cdi_tab_hbridge" style="display:none;"></div>
       <div id="cdi_tab_thermal" style="display:none;"></div>
       <div class="columns">
-        <div class="column"><button class="btn btn-primary btn-sm" onclick="factory_reset();">Factory Reset</button></div>
+        <div class="column"><button class="btn btn-primary btn-sm" onclick="factory_reset();">Factory Reset</button>
+        </div>
         <div class="column"><button class="btn btn-primary btn-sm" onclick="reset_events();">Reset Events</button></div>
-        <div class="column"><button class="btn btn-primary btn-sm" onclick="update_complete();">Update Complete</button></div>
+        <div class="column"><button class="btn btn-primary btn-sm" onclick="update_complete();">Update Complete</button>
+        </div>
         <!--div class="column"><button class="btn btn-primary btn-sm" onclick="enter_bootloader();">Enter Bootloader</button></div-->
       </div>
     </div>
@@ -654,8 +658,8 @@
       $(String.format('#btn-save-{0}', target)).removeClass('loading');
     }
     function reset_buttons(target) {
-      enable_button('refresh-'+ target);
-      disable_button('save-'+ target);
+      enable_button('refresh-' + target);
+      disable_button('save-' + target);
     }
     function connectWebSocket() {
       if (!window.location.host.length) {
@@ -734,7 +738,7 @@
         var selectedLoco = $("#loco-address").val();
         var speed = $("#loco-speed").val();
         if (sendLocoEvents) {
-          ws_send(JSON.stringify({req:'loco-speed', address:selectedLoco, speed:speed}));
+          ws_send(JSON.stringify({ req: 'loco-speed', address: selectedLoco, speed: speed }));
         }
       });
       $('#loco-select-select').on('click', function () {
@@ -752,7 +756,7 @@
         $(icon).toggleClass('icon-back');
         $(icon).toggleClass('icon-forward');
         if (sendLocoEvents) {
-          ws_send(JSON.stringify({req:'loco-dir', address:selectedLoco, dir:dir ? '1' : '0'}));
+          ws_send(JSON.stringify({ req: 'loco-dir', address: selectedLoco, dir: dir ? '1' : '0' }));
         }
       });
       $('[id^=funct_]').on('click', function (event) {
@@ -762,20 +766,20 @@
         var state = $(icon).hasClass('icon-circle-check');
         $(icon).toggleClass('icon-circle-check');
         if (sendLocoEvents) {
-          ws_send(JSON.stringify({req:'function', address:loco, function:id, state:state ? '1' : '0'}));
+          ws_send(JSON.stringify({ req: 'function', address: loco, function: id, state: state ? '1' : '0' }));
         }
       });
       $('#ops_track_power').on('click', function (event) {
         if ($(this).hasClass('text-error')) {
-          ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FE'}));
+          ws_send(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FE' }));
         } else {
-          ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FF'}));
+          ws_send(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FF' }));
         }
         $('this').toggleClass('loading');
       });
     }
     function send_estop(button) {
-      ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FD'}));
+      ws_send(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FD' }));
       // TODO: add ability to clear e-stop?
       // ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FC'}));
     }
@@ -822,10 +826,12 @@
         toggleModal('#turnout-editor');
       });
       $('#turnout-save').on('click', function () {
-        ws_send(JSON.stringify({req:'turnout',
-                                action:"save",
-                                address:parseInt($('#turnout-address').val()),
-                                type:parseInt($('#turnout-type').val())}));
+        ws_send(JSON.stringify({
+          req: 'turnout',
+          action: "save",
+          address: parseInt($('#turnout-address').val()),
+          type: parseInt($('#turnout-type').val())
+        }));
         toggleModal('#turnout-editor');
         refreshTurnouts(null);
       });
@@ -897,10 +903,12 @@
     function toggleTurnout(address, button) {
       var target = $(button).attr('id');
       $(button).toggleClass('loading');
-      ws_send(JSON.stringify({req:'turnout',
-                              address:parseInt(address),
-                              action:"toggle",
-                              target:target}));
+      ws_send(JSON.stringify({
+        req: 'turnout',
+        address: parseInt(address),
+        action: "toggle",
+        target: target
+      }));
     }
     function refreshRoster(button) {
       if (window.location.host.length) {
@@ -987,7 +995,7 @@
     }
     function changeLocomotive(newAddress) {
       if (newAddress !== "") {
-        ws_send(JSON.stringify({req:'loco-speed', address:selectedLoco, speed:0}));
+        ws_send(JSON.stringify({ req: 'loco-speed', address: selectedLoco, speed: 0 }));
         $('#loco-select').removeClass('active');
         enableLocoInputs();
       }
@@ -1002,7 +1010,7 @@
       $(String.format('#cdi_tab_{0}', section)).show();
     }
     function refreshCDI(button) {
-      if(!cdi_loaded) {
+      if (!cdi_loaded) {
         fetchWithTimeout("/cdi.xml").then(res => res.text()).then(cdi => build_cdi_dom(cdi, button));
       } else {
         refresh_all_cdi_fields();
@@ -1013,7 +1021,7 @@
     function save_node_id(button) {
       $(button).addClass('loading');
       disable_button('save_node_id');
-      ws_send(JSON.stringify({req:'nodeid', value:$('#node_id').val()}));
+      ws_send(JSON.stringify({ req: 'nodeid', value: $('#node_id').val() }));
     }
     function build_cdi_dom(cdi, button) {
       cdi_loaders.splice(0, cdi_loaders.length);
@@ -1034,29 +1042,33 @@
     function save_cdi_field(field) {
       var target = $(field).attr('id').substr(9);
       $(field).toggleClass('loading');
-      ws_send(JSON.stringify({req:'cdi-set', offs:parseInt($('#' + target).data('offset')),
-        size:parseInt($('#' + target).data('size')), type:$('#' + target).data('type'),
-        target:target, value:$('#' + target).val()}));
+      ws_send(JSON.stringify({
+        req: 'cdi-set', offs: parseInt($('#' + target).data('offset')),
+        size: parseInt($('#' + target).data('size')), type: $('#' + target).data('type'),
+        target: target, value: $('#' + target).val()
+      }));
     }
     function refresh_cdi_field(field) {
       var target = $(field).attr('id').substr(12);
       $(field).toggleClass('loading');
-      ws_send(JSON.stringify({req:'cdi-get', offs:$('#' + target).data('offset'),
-        size:$('#' + target).data('size'), type:$('#' + target).data('type'),
-        target:target}));
+      ws_send(JSON.stringify({
+        req: 'cdi-get', offs: $('#' + target).data('offset'),
+        size: $('#' + target).data('size'), type: $('#' + target).data('type'),
+        target: target
+      }));
     }
     function factory_reset() {
       if (confirm('Are you sure you want to perform a Factory Reset?')) {
-        ws_send(JSON.stringify({req:'factory-reset'}));
+        ws_send(JSON.stringify({ req: 'factory-reset' }));
       }
     }
     function reset_events() {
       if (confirm('Are you sure you want to reset all event IDs?')) {
-        ws_send(JSON.stringify({req:'reset-events'}));
+        ws_send(JSON.stringify({ req: 'reset-events' }));
       }
     }
     function update_complete() {
-      ws_send(JSON.stringify({req:'update-complete'}));
+      ws_send(JSON.stringify({ req: 'update-complete' }));
     }
     function pad_hex(str, length) {
       var hex = new Array(length + 1).join('0') + str;
@@ -1152,10 +1164,10 @@
         });
         content += '</select></div>';
         content += String.format('<div class="column"><div class="btn-group"><button class="btn btn-primary btn-sm" id="btn-save-{0}" disabled onclick="save_cdi_field(this);">Save</button>', node_alias);
-        content += String.format('<button class="btn btn-primary btn-sm" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
+        content += String.format('<button class="btn btn-primary btn-sm loading" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
         content += '</div></div>';
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
-        cdi_loaders.push(JSON.stringify({req:'cdi-get', offs:offset, size:size, type:node_data_type, target:node_alias}));
+        cdi_loaders.push(JSON.stringify({ req: 'cdi-get', offs: offset, size: size, type: node_data_type, target: node_alias }));
         console.groupEnd();
       } else if (node_data_type === 'group') {
         if ($.isNumeric(parseInt($(group).attr('offset'))) && node_name === '') {
@@ -1191,10 +1203,10 @@
         content += String.format('<div class="column"><label class="form-label" for="{0}">{1}:</label></div>', node_alias, node_name);
         content += String.format('<div class="column column-6"><input class="form-input" type="text" id="{0}" data-offset="{1}" data-type="{2}" data-size="{3}" oninput="enable_button(\'save-{0}\')"></div>', node_alias, offset, node_data_type, size);
         content += String.format('<div class="column"><div class="btn-group"><button class="btn btn-primary btn-sm" id="btn-save-{0}" disabled onclick="save_cdi_field(this);">Save</button>', node_alias);
-        content += String.format('<button class="btn btn-primary btn-sm" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
+        content += String.format('<button class="btn btn-primary btn-sm loading" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
         content += '</div></div>';
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description)
-        cdi_loaders.push(JSON.stringify({req:'cdi-get', offs:offset, size:size, type:node_data_type, target:node_alias}));
+        cdi_loaders.push(JSON.stringify({ req: 'cdi-get', offs: offset, size: size, type: node_data_type, target: node_alias }));
       }
       return [content, size];
     }
