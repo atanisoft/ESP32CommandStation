@@ -209,11 +209,14 @@ static std::unique_ptr<dcc::RailcomPrintfFlow> railcom_dumper;
 static void update_status_display()
 {
 #if !CONFIG_DISPLAY_TYPE_NONE
-  auto status = Singleton<StatusDisplay>::instance();
-  status->track_power("%s:%s %s:%s", CONFIG_OPS_TRACK_NAME
-                    , OPS_ENABLE_Pin::instance()->is_set() ? "On" : "Off"
-                    , CONFIG_PROG_TRACK_NAME
-                    , PROG_ENABLE_Pin::instance()->is_set() ? "On" : "Off");
+  if (Singleton<StatusDisplay>::exists())
+  {
+    auto status = Singleton<StatusDisplay>::instance();
+    status->track_power("%s:%s %s:%s", CONFIG_OPS_TRACK_NAME
+                      , OPS_ENABLE_Pin::instance()->is_set() ? "On" : "Off"
+                      , CONFIG_PROG_TRACK_NAME
+                      , PROG_ENABLE_Pin::instance()->is_set() ? "On" : "Off");
+  }
 #endif
 }
 
