@@ -546,11 +546,7 @@ extern "C" void app_main()
 #if !defined(CONFIG_WIFI_MODE_DISABLED)
   // Initialize the Http server and mDNS instance
   MDNS mDNS;
-  http::Httpd httpd(
-#if CONFIG_ESP32CS_SINGLE_EXECUTOR
-    stackManager.executor(),
-#endif
-    &mDNS);
+  http::Httpd httpd(&mDNS);
   init_webserver();
 #endif
 

@@ -264,11 +264,4 @@ menu "Advanced Configuration Settings"
             When this pin is held LOW during startup all persistent
             configuration will be cleared and defaults will be restored. Note
             this will also clear the LCC configuration data.
-
-    config ESP32CS_SINGLE_EXECUTOR
-        bool "Use one Executor for OpenMRN and Httpd"
-        default n
-        help
-            Enabling this option may improve performance but does have the
-            potential to slow the LCC stack if the httpd is under load.
 endmenu
