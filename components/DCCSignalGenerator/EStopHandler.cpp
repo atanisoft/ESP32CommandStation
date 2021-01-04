@@ -32,7 +32,7 @@ void EStopHandler::set_state(bool new_value)
     auto  trains = Singleton<commandstation::AllTrainNodes>::instance();
     for (size_t id = 0; id < trains->size(); id++)
     {
-      auto node = trains->get_train_node_id(id);
+      auto node = trains->get_train_node_id_ext(id, false);
       if (node)
       {
         trains->get_train_impl(node)->set_emergencystop();
