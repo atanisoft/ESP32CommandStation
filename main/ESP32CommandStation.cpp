@@ -143,6 +143,12 @@ OVERRIDE_CONST_DEFERRED(executor_select_prescaler
 OVERRIDE_CONST_DEFERRED(local_nodes_count, CONFIG_LCC_LOCAL_NODE_COUNT);
 OVERRIDE_CONST_DEFERRED(local_alias_cache_size, CONFIG_LCC_LOCAL_NODE_COUNT);
 
+///////////////////////////////////////////////////////////////////////////////
+// Increase the WebSocket URI count since the CS offers both DCC++ (/ws) and
+// JSON (/wsjson) based WebSockets.
+///////////////////////////////////////////////////////////////////////////////
+OVERRIDE_CONST(httpd_websocket_max_uris, 2);
+
 // Esp32ConfigDef comes from CSConfigDescriptor.h and is specific to this
 // particular device and target. It defines the layout of the configuration
 // memory space and is also used to generate the cdi.xml file. Here we

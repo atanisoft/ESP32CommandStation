@@ -19,7 +19,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include "ESP32TrainDatabase.h"
 
 #include <AllTrainNodes.hxx>
-#include <FileSystemManager.h>
+#include <cJSON.h>
 #include <DCCppProtocol.h>
 #include <DCCProgrammer.h>
 #include <dcc/Loco.hxx>
@@ -27,6 +27,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <DCCSignalVFS.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
+#include <FileSystemManager.h>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <Httpd.h>
 #include <JsonConstants.h>
@@ -52,6 +53,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #endif // CONFIG_GPIO_S88
 #endif // CONFIG_GPIO_SENSORS
 
+using dcc::SpeedType;
 using http::Httpd;
 using http::HttpMethod;
 using http::HttpRequest;
@@ -70,6 +72,7 @@ using http::MIME_TYPE_IMAGE_GIF;
 using http::HTTP_ENCODING_GZIP;
 using http::HTTP_ENCODING_NONE;
 using http::WebSocketEvent;
+using commandstation::AllTrainNodes;
 
 class WebSocketClient : public DCCPPProtocolConsumer
 {
@@ -112,7 +115,8 @@ static constexpr const char * const CAPTIVE_PORTAL_HTML = R"!^!(
 
 std::mutex webSocketLock;
 std::vector<std::unique_ptr<WebSocketClient>> webSocketClients;
-WEBSOCKET_STREAM_HANDLER(process_websocket_event);
+WEBSOCKET_STREAM_HANDLER(process_ws);
+WEBSOCKET_STREAM_HANDLER(process_wsjson);
 HTTP_STREAM_HANDLER(process_ota);
 HTTP_HANDLER(process_power);
 HTTP_HANDLER(process_config);
@@ -144,6 +148,147 @@ namespace openlcb
   extern const size_t CDI_SIZE;
 }
 
+class CDIRequestProcessor : public StateFlowBase
+{
+public:
+  CDIRequestProcessor(http::WebSocketFlow *socket, uint64_t node_id
+                    , size_t offs, size_t size, string target, string type
+                    , string value = "")
+                    : StateFlowBase(Singleton<Httpd>::instance()), socket_(socket)
+                    , client_(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client())
+                    , nodeHandle_(node_id), offs_(offs), size_(size)
+                    , target_(target), type_(type), value_(value)
+  {
+    start_flow(STATE(send_request));
+  }
+
+private:
+  uint8_t attempts_{3};
+  http::WebSocketFlow *socket_;
+  openlcb::MemoryConfigClient *client_;
+  openlcb::NodeHandle nodeHandle_;
+  size_t offs_;
+  size_t size_;
+  string target_;
+  string type_;
+  string value_;
+
+  Action send_request()
+  {
+    if (!value_.empty())
+    {
+      LOG(VERBOSE, "[CDI:%s] Writing %zu bytes from offset %zu"
+        , target_.c_str(), size_, offs_);
+      return invoke_subflow_and_wait(client_, STATE(response_received)
+                                   , openlcb::MemoryConfigClientRequest::WRITE
+                                   , nodeHandle_
+                                   , openlcb::MemoryConfigDefs::SPACE_CONFIG
+                                   , offs_, value_);
+    }
+    LOG(VERBOSE, "[CDI:%s] Requesting %zu bytes from offset %zu"
+      , target_.c_str(), size_, offs_);
+    return invoke_subflow_and_wait(client_, STATE(response_received)
+                                 , openlcb::MemoryConfigClientRequest::READ_PART
+                                 , nodeHandle_
+                                 , openlcb::MemoryConfigDefs::SPACE_CONFIG
+                                 , offs_, size_);
+  }
+
+  Action response_received()
+  {
+    auto b = get_buffer_deleter(full_allocation_result(client_));
+    string response;
+    if (b->data()->resultCode)
+    {
+      --attempts_;
+      if (attempts_ > 0)
+      {
+        LOG_ERROR("[CDI:%s] Failed to execute request: %d (%d "
+                  "attempts remaining)"
+                , target_.c_str(), b->data()->resultCode, attempts_);
+        return yield_and_call(STATE(send_request));
+      }
+      response =
+          StringPrintf(
+              R"!^!({"res":"error","error":"Request failed: %d"})!^!"
+            , b->data()->resultCode);
+    }
+    else if (value_.empty())
+    {
+      LOG(VERBOSE, "[CDI:%s] Received %zu bytes from offset %zu"
+        , target_.c_str(), size_, offs_);
+      if (type_ == "string")
+      {
+        response =
+            StringPrintf(
+                R"!^!({"res":"field","target":"%s","value":"%s","type":"string"})!^!"
+              , target_.c_str(), b->data()->payload.c_str());
+      }
+      else if (type_ == "int")
+      {
+        uint32_t data = b->data()->payload.data()[0];
+        if (size_ == 2)
+        {
+          uint16_t data16 = 0;
+          memcpy(&data16, b->data()->payload.data(), sizeof(uint16_t));
+          data = be16toh(data16);
+        }
+        else if (size_ == 4)
+        {
+          uint32_t data32 = 0;
+          memcpy(&data32, b->data()->payload.data(), sizeof(uint32_t));
+          data = be32toh(data32);
+        }
+        response =
+            StringPrintf(
+                R"!^!({"res":"field","target":"%s","value":"%d","type":"int"})!^!"
+            , target_.c_str(), data);
+      }
+      else if (type_ == "eventid")
+      {
+        uint64_t event_id = 0;
+        memcpy(&event_id, b->data()->payload.data(), sizeof(uint64_t));
+        response =
+            StringPrintf(
+                R"!^!({"res":"field","target":"%s","value":"%s","type":"eventid"})!^!"
+            , target_.c_str()
+            , uint64_to_string_hex(be64toh(event_id)).c_str());
+      }
+    }
+    else
+    {
+      response =
+        StringPrintf(R"!^!({"res":"saved","target":"%s"})!^!"
+                    , target_.c_str());
+    }
+    response += "\n";
+    socket_->send_text(response);
+
+    return yield_and_call(STATE(cleanup_request));
+  }
+
+  Action cleanup_request()
+  {
+    return delete_this();
+  }
+};
+
+#define GET_LOCO_VIA_EXECUTOR(NAME, address)                                        \
+  openlcb::TrainImpl *NAME = nullptr;                                               \
+  Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->sync_run(   \
+  ([&]()                                                                            \
+  {                                                                                 \
+    NAME = Singleton<commandstation::AllTrainNodes>::instance()->get_train_impl(    \
+                                      commandstation::DccMode::DCC_128, address);   \
+  }));
+
+#define REMOVE_LOCO_VIA_EXECUTOR(addr)                                              \
+  Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->sync_run(   \
+  ([&]()                                                                            \
+  {                                                                                 \
+    Singleton<commandstation::AllTrainNodes>::instance()->remove_train_impl(addr);  \
+  }));
+
 void init_webserver()
 {
   auto httpd = Singleton<Httpd>::instance();
@@ -160,7 +305,8 @@ void init_webserver()
                   , MIME_TYPE_TEXT_CSS, HTTP_ENCODING_GZIP);
   httpd->static_uri("/cdi.xml", (const uint8_t *)openlcb::CDI_DATA
                   , openlcb::CDI_SIZE - 1, MIME_TYPE_TEXT_XML);
-  httpd->websocket_uri("/ws", process_websocket_event);
+  httpd->websocket_uri("/ws", process_ws);
+  httpd->websocket_uri("/wsjson", process_wsjson);
   httpd->uri("/update", HttpMethod::POST, nullptr, process_ota);
   httpd->uri("/version", [&](HttpRequest *req)
   {
@@ -198,7 +344,6 @@ void init_webserver()
     return nullptr;
   });
   httpd->uri("/power", HttpMethod::GET | HttpMethod::PUT, process_power);
-  httpd->uri("/config", HttpMethod::GET | HttpMethod::PUT, process_config);
   httpd->uri("/programmer", HttpMethod::GET | HttpMethod::POST, process_prog);
   httpd->uri("/turnouts"
            , HttpMethod::GET | HttpMethod::POST |
@@ -237,7 +382,7 @@ void init_webserver()
 #endif // CONFIG_GPIO_SENSORS
 }
 
-WEBSOCKET_STREAM_HANDLER_IMPL(process_websocket_event, client, event, data
+WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, client, event, data
                             , data_len)
 {
   LOG(VERBOSE, "[WS %p/%d] handler invoked: %d, %p, %zu", client, client->id(), event, data, data_len);
@@ -281,6 +426,244 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_websocket_event, client, event, data
         LOG(VERBOSE, "[WS %p/%d] no response to send", client, client->id());
       }
     }
+  }
+}
+
+#ifdef CONFIG_GPIO_S88
+#define GPIO_S88_CONFIG "true"
+#define GPIO_S88_BASE CONFIG_GPIO_S88_FIRST_SENSOR
+#else
+#define GPIO_S88_CFG "false"
+#define GPIO_S88_BASE 0
+#endif
+
+#ifdef CONFIG_GPIO_OUTPUTS
+#define GPIO_OUTPUTS_CFG "true"
+#else
+#define GPIO_OUTPUTS_CFG "false"
+#endif
+
+#ifdef CONFIG_GPIO_SENSORS
+#define GPIO_SENSORS_CFG "true"
+#else
+#define GPIO_SENSORS_CFG "false"
+#endif
+
+WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
+{
+  if (event == http::WebSocketEvent::WS_EVENT_TEXT)
+  {
+    uint64_t node_id =
+      Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id();
+    string response = R"!^!({"res":"error","error":"Request not understood"})!^!";
+    string req = string((char *)data, len);
+    cJSON *root = cJSON_Parse(req.c_str());
+    cJSON *req_type = cJSON_GetObjectItem(root, "req");
+    if (req_type == NULL)
+    {
+      // NO OP, the websocket is outbound only to trigger events on the client side.
+      LOG(INFO, "[Web] Failed to parse:%s", req.c_str());
+    }
+    else if (!strcmp(req_type->valuestring, "nodeid"))
+    {
+      std::string value = cJSON_GetObjectItem(root, "value")->valuestring;
+      if (Singleton<esp32cs::LCCStackManager>::instance()->set_node_id(value))
+      {
+        LOG(INFO, "[Web] Node ID updated to: %s, reboot pending"
+          , value.c_str());
+        response = R"!^!({"res":"nodeid"})!^!";
+      }
+      else
+      {
+        response = R"!^!({"res":"error","error":"Failed to update node-id"})!^!";
+      }
+    }
+    else if (!strcmp(req_type->valuestring, "info"))
+    {
+      const esp_app_desc_t *app_data = esp_ota_get_app_description();
+      const esp_partition_t *partition = esp_ota_get_running_partition();
+      response =
+        StringPrintf(R"!^!({"res":"info","build":"%s","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","s88":%s,"sensorIDBase":%d,"outputs":%s,"sensors":%s})!^!",
+            app_data->version, app_data->date
+          , app_data->time, partition->label
+          , openlcb::SNIP_STATIC_DATA.model_name
+          , openlcb::SNIP_STATIC_DATA.hardware_version
+          , openlcb::SNIP_STATIC_DATA.software_version
+          , uint64_to_string_hex(node_id).c_str()
+          , GPIO_S88_CFG, GPIO_S88_BASE, GPIO_OUTPUTS_CFG, GPIO_SENSORS_CFG);
+    }
+    else if (!strcmp(req_type->valuestring, "cdi-get"))
+    {
+      new CDIRequestProcessor(socket, node_id
+                            , cJSON_GetObjectItem(root, "offs")->valueint
+                            , cJSON_GetObjectItem(root, "size")->valueint
+                            , cJSON_GetObjectItem(root, "target")->valuestring
+                            , cJSON_GetObjectItem(root, "type")->valuestring);
+      cJSON_Delete(root);
+      return;
+    }
+    else if (!strcmp(req_type->valuestring, "update-complete"))
+    {
+      auto b = invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
+                         , openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE
+                         , openlcb::NodeHandle(node_id));
+      response =
+          StringPrintf(R"!^!({"res":"update-complete","code":%d})!^!"
+                     , b->data()->resultCode);
+    }
+    else if (!strcmp(req_type->valuestring, "cdi-set"))
+    {
+      size_t offs = cJSON_GetObjectItem(root, "offs")->valueint;
+      std::string param_type =
+          cJSON_GetObjectItem(root, "type")->valuestring;
+      size_t size = cJSON_GetObjectItem(root, "size")->valueint;
+      string value = cJSON_GetObjectItem(root, "value")->valuestring;
+      string target = cJSON_GetObjectItem(root, "target")->valuestring;
+      if (param_type == "string")
+      {
+        // make sure value is null terminated
+        value += '\0';
+        new CDIRequestProcessor(socket, node_id, offs, size, target
+                              , param_type, value);
+      }
+      else if (param_type == "int")
+      {
+        if (size == 1)
+        {
+          uint8_t data8 = std::stoi(value);
+          value.clear();
+          value.push_back(data8);
+          new CDIRequestProcessor(socket, node_id, offs, size, target
+                                , param_type, value);
+        }
+        else if (size == 2)
+        {
+          uint16_t data16 = std::stoi(value);
+          value.clear();
+          value.push_back((data16 >> 8) & 0xFF);
+          value.push_back(data16 & 0xFF);
+          new CDIRequestProcessor(socket, node_id, offs, size, target
+                                , param_type, value);
+        }
+        else
+        {
+          uint32_t data32 = std::stoul(value);
+          value.clear();
+          value.push_back((data32 >> 24) & 0xFF);
+          value.push_back((data32 >> 16) & 0xFF);
+          value.push_back((data32 >> 8) & 0xFF);
+          value.push_back(data32 & 0xFF);
+          new CDIRequestProcessor(socket, node_id, offs, size, target
+                                , param_type, value);
+        }
+      }
+      else if (param_type == "eventid")
+      {
+        LOG(VERBOSE, "[Web] CDI EVENT WRITE offs:%d, value: %s", offs
+          , value.c_str());
+        uint64_t data = string_to_uint64(value);
+        value.clear();
+        value.push_back((data >> 56) & 0xFF);
+        value.push_back((data >> 48) & 0xFF);
+        value.push_back((data >> 40) & 0xFF);
+        value.push_back((data >> 32) & 0xFF);
+        value.push_back((data >> 24) & 0xFF);
+        value.push_back((data >> 16) & 0xFF);
+        value.push_back((data >> 8) & 0xFF);
+        value.push_back(data & 0xFF);
+        new CDIRequestProcessor(socket, node_id, offs, size, target
+                              , param_type, value);
+      }
+      cJSON_Delete(root);
+      return;
+    }
+    else if (!strcmp(req_type->valuestring, "factory-reset"))
+    {
+      Singleton<esp32cs::LCCStackManager>::instance()->factory_reset();
+      Singleton<esp32cs::LCCStackManager>::instance()->reboot_node();
+      response = R"!^!({"res":"factory-reset"})!^!";
+    }
+    else if (!strcmp(req_type->valuestring, "reset-events"))
+    {
+      //Singleton<esp32cs::LCCStackManager>::instance()->reset_events();
+      response = R"!^!({"res":"reset-events"})!^!";
+    }
+    else if (!strcmp(req_type->valuestring, "event"))
+    {
+      string value = cJSON_GetObjectItem(root, "value")->valuestring;
+      uint64_t eventID = string_to_uint64(value);
+      Singleton<esp32cs::LCCStackManager>::instance()->stack()->send_event(eventID);
+      response = StringPrintf(R"!^!({"res":"event","event":"%s"})!^!", value.c_str());
+    }
+    else if (!strcmp(req_type->valuestring, "function"))
+    {
+      uint16_t address = cJSON_GetObjectItem(root, "address")->valueint;
+      uint8_t function = cJSON_GetObjectItem(root, "function")->valueint;
+      uint8_t state = cJSON_GetObjectItem(root, "state")->valueint;
+      GET_LOCO_VIA_EXECUTOR(train, address);
+      train->set_fn(function, state);
+      response = R"!^!({"res":"function"})!^!";
+    }
+    else if (!strcmp(req_type->valuestring, "loco-dir"))
+    {
+      // TODO: combine this with loco-speed
+      uint16_t address = cJSON_GetObjectItem(root, "address")->valueint;
+      uint8_t direction = cJSON_GetObjectItem(root, "dir")->valueint;
+      GET_LOCO_VIA_EXECUTOR(train, address);
+      auto cur_speed = train->get_speed();
+      cur_speed.set_direction(direction ? SpeedType::FORWARD : SpeedType::REVERSE);
+      train->set_speed(cur_speed);
+      response =
+        StringPrintf(R"!^!({"res":"loco-speed","address":%d,"speed":%d,"dir":%d})!^!"
+                   , address, (int)cur_speed.mph() + 1
+                   , cur_speed.direction() == SpeedType::FORWARD);
+    }
+    else if (!strcmp(req_type->valuestring, "loco-speed"))
+    {
+      uint16_t address = cJSON_GetObjectItem(root, "address")->valueint;
+      uint8_t speed = cJSON_GetObjectItem(root, "speed")->valueint;
+      GET_LOCO_VIA_EXECUTOR(train, address);
+      auto cur_speed = train->get_speed();
+      cur_speed.set_mph(speed);
+      train->set_speed(cur_speed);
+      response =
+        StringPrintf(R"!^!({"res":"loco-speed","address":%d,"speed":%d,"dir":%d})!^!"
+                   , address, (int)cur_speed.mph() + 1
+                   , cur_speed.direction() == SpeedType::FORWARD);
+    }
+    else if (!strcmp(req_type->valuestring, "turnout"))
+    {
+      uint16_t address = cJSON_GetObjectItem(root, "address")->valueint;
+      string action = cJSON_GetObjectItem(root, "action")->valuestring;
+      string target = cJSON_HasObjectItem(root, "target") ?
+          cJSON_GetObjectItem(root, "target")->valuestring : "";
+      TurnoutType type = cJSON_HasObjectItem(root, "type") ?
+          (TurnoutType)cJSON_GetObjectItem(root, "type")->valueint :
+          TurnoutType::NO_CHANGE;
+      if (action == "save")
+      {
+        Singleton<TurnoutManager>::instance()->createOrUpdate(address, type);
+      }
+      else if (action == "toggle")
+      {
+        Singleton<TurnoutManager>::instance()->toggle(address);
+      }
+      else if (action == "delete")
+      {
+        Singleton<TurnoutManager>::instance()->remove(address);
+      }
+      response =
+        StringPrintf(R"!^!({"res":"turnout","action":"%s","address":%d,"target":"%s"})!^!"
+                   , action.c_str(), address, target.c_str());
+    }
+    else
+    {
+      LOG_ERROR("Unrecognized request: %s", req.c_str());
+    }
+    cJSON_Delete(root);
+    LOG(VERBOSE, "[Web] WS: %s -> %s", req.c_str(), response.c_str());
+    response += "\n";
+    socket->send_text(response);
   }
 }
 
@@ -361,213 +744,6 @@ HTTP_HANDLER_IMPL(process_power, request)
       esp32cs::disable_track_outputs();
     }
   }
-  return new JsonResponse(response);
-}
-
-#ifdef CONFIG_GPIO_S88
-#define GPIO_S88_CONFIG "true"
-#define GPIO_S88_BASE CONFIG_GPIO_S88_FIRST_SENSOR
-#else
-#define GPIO_S88_CONFIG "false"
-#define GPIO_S88_BASE 0
-#endif
-
-#ifdef CONFIG_GPIO_OUTPUTS
-#define GPIO_OUTPUTS_CONFIG "true"
-#else
-#define GPIO_OUTPUTS_CONFIG "false"
-#endif
-
-#ifdef CONFIG_GPIO_SENSORS
-#define GPIO_SENSORS_CONFIG "true"
-#else
-#define GPIO_SENSORS_CONFIG "false"
-#endif
-
-HTTP_HANDLER_IMPL(process_cdi, request)
-{
-  http::AbstractHttpResponse *response = nullptr;
-  size_t offs = request->param("offs", 0);
-  std::string param_type = request->param("type");
-  if (request->method() == http::HttpMethod::GET)
-  {
-    size_t size = request->param("size", 0);
-    openlcb::NodeHandle handle(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id());
-    auto b =
-      invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
-                , openlcb::MemoryConfigClientRequest::READ_PART
-                , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, size);
-    if (param_type == "string")
-    {
-      response = new http::StringResponse(string(b->data()->payload.c_str()), http::MIME_TYPE_TEXT_PLAIN);
-    }
-    else if (param_type == "int")
-    {
-      uint32_t data = b->data()->payload.data()[0];
-      if (size == 2)
-      {
-        uint16_t data16 = 0;
-        memcpy(&data16, b->data()->payload.data(), sizeof(uint16_t));
-        data = be16toh(data16);
-      }
-      else if (size == 4)
-      {
-        uint32_t data32 = 0;
-        memcpy(&data32, b->data()->payload.data(), sizeof(uint32_t));
-        data = be32toh(data32);
-      }
-      response = new http::StringResponse(integer_to_string(data), http::MIME_TYPE_TEXT_PLAIN);
-    }
-    else if (param_type == "eventid")
-    {
-      uint64_t event_id = 0;
-      memcpy(&event_id, b->data()->payload.data(), sizeof(uint64_t));
-      response = new http::StringResponse(uint64_to_string_hex(be64toh(event_id)), http::MIME_TYPE_TEXT_PLAIN);
-    }
-    else
-    {
-        LOG_ERROR("[Web] Bad request:\n%s", request->to_string().c_str());
-        request->set_status(http::HttpStatusCode::STATUS_BAD_REQUEST);
-        return nullptr;
-    }
-  }
-  else if (request->method() == http::HttpMethod::PUT)
-  {
-    string value = request->param("value");
-    size_t size = request->param("size", 0);
-    openlcb::NodeHandle handle(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id());
-    if (param_type == "string")
-    {
-      // make sure value is null terminated
-      value += '\0';
-      invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
-                , openlcb::MemoryConfigClientRequest::WRITE
-                , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
-    }
-    else if (param_type == "int")
-    {
-      if (size == 1)
-      {
-        uint8_t data8 = std::stoi(value);
-        value.clear();
-        value.push_back(data8);
-        invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
-                  , openlcb::MemoryConfigClientRequest::WRITE
-                  , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
-      }
-      else if (size == 2)
-      {
-        uint16_t data16 = std::stoi(value);
-        value.clear();
-        value.push_back((data16 >> 8) & 0xFF);
-        value.push_back(data16 & 0xFF);
-        invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
-                  , openlcb::MemoryConfigClientRequest::WRITE
-                  , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
-      }
-      else
-      {
-        uint32_t data32 = std::stoul(value);
-        value.clear();
-        value.push_back((data32 >> 24) & 0xFF);
-        value.push_back((data32 >> 16) & 0xFF);
-        value.push_back((data32 >> 8) & 0xFF);
-        value.push_back(data32 & 0xFF);
-        invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
-                  , openlcb::MemoryConfigClientRequest::WRITE
-                  , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
-      }
-    }
-    else if (param_type == "eventid")
-    {
-      LOG(VERBOSE, "[Web] CDI EVENT WRITE offs:%d, value: %s", offs
-        , value.c_str());
-      uint64_t data = string_to_uint64(value);
-      value.clear();
-      value.push_back((data >> 56) & 0xFF);
-      value.push_back((data >> 48) & 0xFF);
-      value.push_back((data >> 40) & 0xFF);
-      value.push_back((data >> 32) & 0xFF);
-      value.push_back((data >> 24) & 0xFF);
-      value.push_back((data >> 16) & 0xFF);
-      value.push_back((data >> 8) & 0xFF);
-      value.push_back(data & 0xFF);
-      invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
-                , openlcb::MemoryConfigClientRequest::WRITE
-                , handle, openlcb::MemoryConfigDefs::SPACE_CONFIG, offs, value);
-    }
-    else
-    {
-        LOG_ERROR("[Web] Bad request:\n%s", request->to_string().c_str());
-        request->set_status(http::HttpStatusCode::STATUS_BAD_REQUEST);
-        return nullptr;
-    }
-    request->set_status(http::HttpStatusCode::STATUS_OK);
-  }
-  else
-  {
-      LOG_ERROR("[Web] Bad request:\n%s", request->to_string().c_str());
-      request->set_status(http::HttpStatusCode::STATUS_BAD_REQUEST);
-  }
-  return response;
-}
-
-HTTP_HANDLER_IMPL(process_config, request)
-{
-  auto stackManager = Singleton<esp32cs::LCCStackManager>::instance();
-  bool needReboot = false;
-  string response = "{\"resp-type\":\"OK\"}";
-
-  if (request->has_param("features"))
-  {
-    response =
-      StringPrintf("{\"resp-type\":\"OK\",\"%s\":%s,\"%s\":%d,\"%s\":%s,\"%s\":%s}"
-                 , JSON_S88_NODE, GPIO_S88_CONFIG, JSON_S88_SENSOR_BASE_NODE, GPIO_S88_BASE
-                 , JSON_OUTPUTS_NODE, GPIO_OUTPUTS_CONFIG
-                 , JSON_SENSORS_NODE, GPIO_SENSORS_CONFIG);
-  }
-  else if (request->has_param("factory_reset"))
-  {
-    // this will wipe all persistent config
-    Singleton<FileSystemManager>::instance()->force_factory_reset();
-    needReboot = true;
-  }
-  else if (request->has_param("reset_events"))
-  {
-    /*Singleton<FileSystemManager>::instance()->force_factory_reset();
-    needReboot = true;*/
-  }
-  else if (request->has_param("nodeid") &&
-           stackManager->set_node_id(request->param("nodeid")))
-  {
-    needReboot = true;
-  }
-  else if (request->has_param("info"))
-  {
-    response =
-      StringPrintf("{\"snip_hw\":\"%s\",\"snip_sw\":\"%s\",\"node_id\":\"%s\"}"
-                 , openlcb::SNIP_STATIC_DATA.hardware_version
-                 , openlcb::SNIP_STATIC_DATA.software_version
-                 , uint64_to_string_hex(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id()).c_str());
-  }
-  else if (request->has_param("offs") && request->has_param("type"))
-  {
-    return process_cdi(request);
-  }
-  else if (request->has_param("update_complete"))
-  {
-    openlcb::NodeHandle handle(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id());
-    invoke_flow(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client()
-              , openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE, handle);
-  }
-
-  if (needReboot)
-  {
-    // send a string back to the client rather than SEND_GENERIC_RESPONSE
-    // so we don't return prior to calling reboot.
-    response = "{\"resp-type\":\"OK\",\"restart\":\"ESP32CommandStation Restarting!\"}";
-  }
-
   return new JsonResponse(response);
 }
 
@@ -836,32 +1012,6 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
   res += "]}";
   return res;
 }
-
-#define GET_LOCO_VIA_EXECUTOR(NAME, address)                                          \
-  openlcb::TrainImpl *NAME = nullptr;                                                 \
-  {                                                                                   \
-    SyncNotifiable n;                                                                 \
-    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->add(        \
-    new CallbackExecutable([&]()                                                      \
-    {                                                                                 \
-      NAME = Singleton<commandstation::AllTrainNodes>::instance()->get_train_impl(    \
-                                        commandstation::DccMode::DCC_128, address);   \
-      n.notify();                                                                     \
-    }));                                                                              \
-    n.wait_for_notification();                                                        \
-  }
-
-#define REMOVE_LOCO_VIA_EXECUTOR(address)                                             \
-  {                                                                                   \
-    SyncNotifiable n;                                                                 \
-    Singleton<esp32cs::LCCStackManager>::instance()->stack()->executor()->add(        \
-    new CallbackExecutable([&]()                                                      \
-    {                                                                                 \
-      Singleton<commandstation::AllTrainNodes>::instance()->remove_train_impl(address); \
-      n.notify();                                                                     \
-    }));                                                                              \
-    n.wait_for_notification();                                                        \
-  }
 
 // method - url pattern - meaning
 // ANY /locomotive/estop - send emergency stop to all locomotives

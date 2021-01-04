@@ -1,4 +1,5 @@
 set(esp_idf_deps
+    "json"
     "driver"
     "efuse"
     "soc"

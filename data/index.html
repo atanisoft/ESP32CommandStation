@@ -61,7 +61,7 @@
           <div class="tooltip tooltip-left" data-tooltip="Connection status"><i id="ws-status"
               class="icon icon-wifi text-dark"></i></div>
           <div class="tooltip tooltip-left" data-tooltip="Emergency stop all locomotives"><i
-              class="icon icon-stop text-error" onclick="ws('<estop>');"></i></div>
+              class="icon icon-stop text-error" onclick="send_estop(this);"></i></div>
           <div class="tooltip tooltip-left" data-tooltip="OPS track status"><i class="icon icon-shutdown text-error"
               id="ops_track_power"></i><small id="ops_usage"></small></div>
           <div class="tooltip tooltip-left" data-tooltip="Active locomotives">
@@ -434,15 +434,16 @@
           <div class="column column-6" id="hw_version"></div>
         </div>
         <div class="container" id="node_info_dynamic"></div>
-        <div class="columns">
-          <div class="column"><button class="btn btn-primary btn-sm" onclick="factory_reset();">Factory Reset</button></div>
-          <div class="column"><button class="btn btn-primary btn-sm" onclick="reset_events();">Reset Events</button></div>
-          <!--div class="column"><button class="btn btn-primary btn-sm" onclick="enter_bootloader();">Enter Bootloader</button></div-->
-        </div>
       </div>
       <div id="cdi_tab_wifi" style="display:none;"></div>
       <div id="cdi_tab_hbridge" style="display:none;"></div>
       <div id="cdi_tab_thermal" style="display:none;"></div>
+      <div class="columns">
+        <div class="column"><button class="btn btn-primary btn-sm" onclick="factory_reset();">Factory Reset</button></div>
+        <div class="column"><button class="btn btn-primary btn-sm" onclick="reset_events();">Reset Events</button></div>
+        <div class="column"><button class="btn btn-primary btn-sm" onclick="update_complete();">Update Complete</button></div>
+        <!--div class="column"><button class="btn btn-primary btn-sm" onclick="enter_bootloader();">Enter Bootloader</button></div-->
+      </div>
     </div>
     <div class="container" style="display:none;" id="tab-ota">
       <div class="columns">
@@ -573,70 +574,88 @@
     }
     function showErrorDialog(text, error) {
       error = typeof error !== 'undefined' ? error : "";
-      setTimeout(function () { alert(text); console.log(text, error); }, 500);
+      console.error(text, error);
+      alert(text);
     }
     function ws_rx(event) {
-      var messages = event.data.split(/[<>]+/);
-      $(messages).each(idx => {
-        var msg = messages[idx];
-        if (msg !== "") {
-          var msg_parts = msg.split(' ');
-          switch (msg_parts[0]) {
-            case 'a': // track utilization (0-1023 variant)
-              break;
-            case 'A': // track utilization (mA variant)
-              if (msg_parts[1] === 'OPS') {
-                $('#ops_usage').text(String.format('{0} mA', msg_parts[2]));
-                $('#ops_usage').show();
-                $('#ops_track_power').removeClass('loading');
-              }
-              break;
-            case 'H': // turnout definition
-              break;
-            case 'p0': // track off
-              if (msg_parts[1] === 'OPS') {
-                updateTrackPowerStatus(false);
-                $('#ops_usage').hide();
-              }
-              break;
-            case 'p1': // track on
-              if (msg_parts[1] === 'OPS') {
-                updateTrackPowerStatus(true);
-              }
-              break;
-            case 'p2': // track overcurrent
-              if (msg_parts[1] === 'OPS') {
-                updateTrackPowerStatus(true, true);
-              }
-              break;
-            case 'T': // active loco
-              break;
-            case 'Tex': // loco update
-              $("#loco-address").val(msg_parts[1]);
-              $("#loco-speed").val(msg_parts[2]);
-              $('#loco-dir span').removeClass('icon-back icon-forward');
-              if (msg_parts[3] === '1') {
-                $('#loco-dir span').addClass('icon-forward');
-              } else {
-                $('#loco-dir span').addClass('icon-back');
-              }
-            case 'N1:': // interface details
-              break;
-            case 'X': // command failed or no data
-              break;
-            case 'O': // command succeeded
-              break;
-            case 'iDCC++': // CS info line
-              if ($('#cs-version').text().length === 0) {
-                $('#cs-version').text(msg_parts[4].substring(2));
-              }
-              break;
-            default:
-              console.log('WS-RX:', msg);
-            // do nothing
+      var messages = event.data.split(/[\r\n]+/);
+      messages.forEach(msg => {
+        if (msg.length > 0) {
+          var json = JSON.parse(msg);
+          if (!json.hasOwnProperty('res')) {
+            console.error('Invalid JSON payload (missing res tag):', msg);
+          } else if (json.res === 'error') {
+            showErrorDialog(json.error);
+          } else if (json.res === 'info') {
+            $('#node_id').val(pad_hex(json.node_id, 12));
+            $('#sw_version').text(json.snip_sw);
+            $('#hw_version').text(json.snip_hw);
+            $('#btn-save_node_id').removeClass('loading');
+            if (json.sensors === false) {
+              $('[id^=cs-sensors]').hide();
+            }
+            if (json.outputs === false) {
+              $('[id^=cs-outputs]').hide();
+            }
+            if (json.s88 === false) {
+              $('[id^=cs-sensors-s88]').hide();
+            } else {
+              s88SensorIDBase = json.sensorIDBase;
+            }
+          } else if (json.res === 'saved') {
+            hide_spinner(json.target);
+            reset_buttons(json.target);
+          } else if (json.res === 'field') {
+            if (json.type === 'eventid') {
+              $('#' + json.target).val(pad_hex(json.value, 16));
+            } else {
+              $('#' + json.target).val(json.value);
+            }
+            hide_spinner(json.target);
+            reset_buttons(json.target);
+          } else if (json.res === 'nodeid') {
+            setTimeout(function () { location.reload(); }, 7500);
+          } else if (json.res === 'factory-reset') {
+            setTimeout(function () { location.reload(); }, 7500);
+          } else if (json.res === 'reset-events') {
+            refresh_all_fields();
+          } else if (json.res === 'loco-speed') {
+            $("#loco-address").val(json.address);
+            $("#loco-speed").val(json.speed);
+            $('#loco-dir span').removeClass('icon-back icon-forward');
+            if (json.dir) {
+              $('#loco-dir span').addClass('icon-forward');
+            } else {
+              $('#loco-dir span').addClass('icon-back');
+            }
+          } else if (json.res === 'loco-dir') {
+            $('#loco-dir span').removeClass('icon-back icon-forward');
+            if (json.dir) {
+              $('#loco-dir span').addClass('icon-forward');
+            } else {
+              $('#loco-dir span').addClass('icon-back');
+            }
+          } else if (json.res === 'turnout') {
+            if (json.hasOwnProperty('target')) {
+              $('#' + json.target).removeClass('loading');
+            }
+          } else if (json.res === 'event') {
+            if (json.event === '01.00.00.00.00.00.FF.FE') {
+              updateTrackPowerStatus(true, false);
+            } else if (json.event === '01.00.00.00.00.00.FF.FF') {
+              updateTrackPowerStatus(false, false);
+            }
           }
         }
       });
+    }
+    function hide_spinner(target) {
+      $(String.format('#btn-refresh-{0}', target)).removeClass('loading');
+      $(String.format('#btn-save-{0}', target)).removeClass('loading');
+    }
+    function reset_buttons(target) {
+      enable_button('refresh-'+ target);
+      disable_button('save-'+ target);
     }
     function connectWebSocket() {
       if (!window.location.host.length) {
@@ -646,14 +665,13 @@
         return;
       }
       $('#ws-status').addClass('flash');
-      var socketUrl = String.format('ws://{0}:{1}/ws', window.location.host, window.location.port);
+      var socketUrl = String.format('ws://{0}:{1}/wsjson', window.location.host, window.location.port);
       webSocket = new WebSocket(socketUrl);
       webSocket.addEventListener('open', (event) => {
         $('#ws-status').removeClass('flash');
         while (ws_pending_send.length) {
           webSocket.send(ws_pending_send.pop());
         }
-        webSocket.send('<s>');
         $('#ws-status').removeClass('text-dark');
         $('#ws-status').addClass('text-success');
       });
@@ -669,7 +687,7 @@
         $('#ws-status').removeClass('text-success');
       });
     }
-    function ws(cmd) {
+    function ws_send(cmd) {
       // if the socket is not in an open state, defer the send until we have connected
       if (!webSocket || webSocket.readyState != WebSocket.OPEN) {
         ws_pending_send.push(cmd);
@@ -679,7 +697,7 @@
         }
         return;
       }
-      console.log('WS-TX:', cmd);
+      console.debug('WS-TX:', cmd);
       webSocket.send(cmd);
     }
     $(function () {
@@ -695,24 +713,7 @@
         };
       }
       if (window.location.host.length) {
-        fetchWithTimeout('/config?features').then(res => res.json()).then(data => {
-          connectWebSocket();
-          if (data.sensors === false) {
-            $('[id^=cs-sensors]').hide();
-          }
-          if (data.outputs === false) {
-            $('[id^=cs-outputs]').hide();
-          }
-          if (data.s88 === false) {
-            $('[id^=cs-sensors-s88]').hide();
-          } else {
-            s88SensorIDBase = data.sensorIDBase;
-          }
-          // setup 25sec timer for requesting status
-          setInterval(function () { ws('<s>'); }, 25000);
-        }).catch(function (error) {
-          showErrorDialog('Failed to retrieve command station configuration', error);
-        });
+        ws_send('{"req":"info"}');
       }
       setupThrottle();
       setupTurnouts();
@@ -732,9 +733,8 @@
       $("#loco-speed").on("change", function (event, ui) {
         var selectedLoco = $("#loco-address").val();
         var speed = $("#loco-speed").val();
-        var cmd = String.format('<tex {0} {1} -1>', selectedLoco, speed);
         if (sendLocoEvents) {
-          ws(cmd);
+          ws_send(JSON.stringify({req:'loco-speed', address:selectedLoco, speed:speed}));
         }
       });
       $('#loco-select-select').on('click', function () {
@@ -751,9 +751,8 @@
         var dir = $(icon).hasClass('icon-forward');
         $(icon).toggleClass('icon-back');
         $(icon).toggleClass('icon-forward');
-        var cmd = String.format('<tex {0} -1 {1}>', selectedLoco, dir ? '1' : '0');
         if (sendLocoEvents) {
-          ws(cmd);
+          ws_send(JSON.stringify({req:'loco-dir', address:selectedLoco, dir:dir ? '1' : '0'}));
         }
       });
       $('[id^=funct_]').on('click', function (event) {
@@ -762,19 +761,23 @@
         var icon = String.format('#funct_{0}_icon', id);
         var state = $(icon).hasClass('icon-circle-check');
         $(icon).toggleClass('icon-circle-check');
-        var cmd = String.format('<fex {0} {1} {2}>', loco, id, state ? '1' : '0');
         if (sendLocoEvents) {
-          ws(cmd);
+          ws_send(JSON.stringify({req:'function', address:loco, function:id, state:state ? '1' : '0'}));
         }
       });
       $('#ops_track_power').on('click', function (event) {
         if ($(this).hasClass('text-error')) {
-          ws('<1>');
+          ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FE'}));
         } else {
-          ws('<0>');
+          ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FF'}));
         }
         $('this').toggleClass('loading');
       });
+    }
+    function send_estop(button) {
+      ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FD'}));
+      // TODO: add ability to clear e-stop?
+      // ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FC'}));
     }
     function showLocoSelect(button) {
       if (window.location.host.length) {
@@ -819,7 +822,10 @@
         toggleModal('#turnout-editor');
       });
       $('#turnout-save').on('click', function () {
-        ws(String.format("<Tex {0} {1}>", $('#turnout-address').val(), $('#turnout-type').val()));
+        ws_send(JSON.stringify({req:'turnout',
+                                action:"save",
+                                address:parseInt($('#turnout-address').val()),
+                                type:parseInt($('#turnout-type').val())}));
         toggleModal('#turnout-editor');
         refreshTurnouts(null);
       });
@@ -843,11 +849,11 @@
               "icon-arrow-right", "icon-arrow-left", // multi
             ];
             for (var idx in data) {
-              var actions = String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editTurnout({0});"><i class="icon icon-edit"></i></button>',
+              var actions = String.format('<button id="edit-turnout-{0}" class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editTurnout({0});"><i class="icon icon-edit"></i></button>',
                 data[idx].address);
-              actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteTurnout({0});"><i class="icon icon-delete"></i></button>',
-                data[idx].id);
-              actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="{2}" onclick="toggleTurnout({0},this);"><i class="icon {1}"></i></button>',
+              actions += String.format('<button id="delete-turnout-{0}"class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteTurnout({0});"><i class="icon icon-delete"></i></button>',
+                data[idx].address);
+              actions += String.format('<button id="toggle-turnout-{0}"class="btn btn-primary btn-sm tooltip" data-tooltip="{2}" onclick="toggleTurnout({0},this);"><i class="icon {1}"></i></button>',
                 data[idx].address, turnout_icons[(data[idx].type * 2) + data[idx].state], turnout_states_tooltip[data[idx].state]);
               $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>',
                 data[idx].address, turnout_types[data[idx].type], turnout_states[data[idx].state], actions));
@@ -881,13 +887,20 @@
         showErrorDialog('Failed to retrieve turnout details', error);
       });
     }
-    function deleteTurnout(id) {
-      ws(String.format('<T {0}>', id));
+    function deleteTurnout(address) {
+      if (window.location.host.length) {
+        fetchWithTimeout(String.format('/turnouts?address={0}', address), { method: 'DELETE' }).then(res => refreshTurnouts(null)).catch(function (error) {
+          showErrorDialog('Failed to delete turnout', error);
+        });
+      }
     }
     function toggleTurnout(address, button) {
+      var target = $(button).attr('id');
       $(button).toggleClass('loading');
-      ws(String.format('<Tex {0}>', address));
-      refreshTurnouts(button);
+      ws_send(JSON.stringify({req:'turnout',
+                              address:parseInt(address),
+                              action:"toggle",
+                              target:target}));
     }
     function refreshRoster(button) {
       if (window.location.host.length) {
@@ -974,31 +987,15 @@
     }
     function changeLocomotive(newAddress) {
       if (newAddress !== "") {
-        ws(String.format('<tex {0} 0 1>', newAddress));
+        ws_send(JSON.stringify({req:'loco-speed', address:selectedLoco, speed:0}));
         $('#loco-select').removeClass('active');
         enableLocoInputs();
       }
     }
     function refresh_all_cdi_fields() {
-      cdi_loaders.splice(0, cdi_loaders.length);
       $('[id^=btn-refresh-]').each(function (i, e) {
-        var target = '#' + $(e).attr('id').substr(12);
-        cdi_loaders.push(async () => {
-          const response = await fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}', $(target).data('offset'), $(target).data('size'), $(target).data('type')));
-          if (response.headers.has('Content-Length')) {
-            var value = await response.text();
-            if ($(target).data('type') === 'eventid') {
-              value = pad_hex(value, 16);
-            }
-            $(target).val(value);
-          } else if ($(target).data('type') === 'int') {
-            $(target).val(0);
-          } else {
-            $(target).val('');
-          }
-        });
+        refresh_cdi_field(e);
       });
-      cdi_loaders.reduce(async (prev, cur) => { await prev; return cur(); }, Promise.resolve(null));
     }
     function showCDISection(section) {
       $('[id^=cdi_tab_]').hide();
@@ -1016,17 +1013,7 @@
     function save_node_id(button) {
       $(button).addClass('loading');
       disable_button('save_node_id');
-      var url = String.format("/config?nodeid={0}", $('#node_id').val());
-      fetchWithTimeout(url, { method: 'POST', body: ' ', headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
-          .then(res => {
-            $(button).removeClass('loading');
-            showErrorDialog('Node ID updated, node rebooting', error);
-            setTimeout(function () { location.reload(); }, 15000);
-          })
-          .catch((error) => {
-            showErrorDialog('Failed to update Node ID', error);
-            enable_button('node_id');
-          });
+      ws_send(JSON.stringify({req:'nodeid', value:$('#node_id').val()}));
     }
     function build_cdi_dom(cdi, button) {
       cdi_loaders.splice(0, cdi_loaders.length);
@@ -1038,49 +1025,38 @@
       cdi_dynamic_group(doc, 253, 'WiFi Configuration', '#cdi_tab_wifi', offsets_253);
       cdi_dynamic_group(doc, 253, 'H-Bridge Configuration', '#cdi_tab_hbridge', offsets_253);
       cdi_dynamic_group(doc, 253, 'Thermal Configuration', '#cdi_tab_thermal', offsets_253);
-      cdi_loaders.push(async () => {
-        const response = await fetch('/config?info');
-        var json = await response.json();
-        $('#node_id').val(pad_hex(json.node_id, 12));
-        $(button).toggleClass('loading');
-        $('#tab-olcbconfig').show();
-      });
-      cdi_loaders.reduce(async (prev, cur) => { await prev; return cur(); }, Promise.resolve(null));
+      cdi_loaders.forEach(elem => ws_send(elem));
+      cdi_loaders.splice(0, cdi_loaders.length);
+      $('#tab-olcbconfig').show();
+      $(button).toggleClass('loading');
       cdi_loaded = true;
     }
     function save_cdi_field(field) {
-      var target = '#' + $(field).attr('id').substr(9);
+      var target = $(field).attr('id').substr(9);
       $(field).toggleClass('loading');
-      fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}&value={3}', $(target).data('offset'), $(target).data('size'), $(target).data('type'),$(target).val()), {method:'PUT'})
-        .then(() => {
-          disable_button('save-' + target);
-          $(field).toggleClass('loading');
-        });
+      ws_send(JSON.stringify({req:'cdi-set', offs:parseInt($('#' + target).data('offset')),
+        size:parseInt($('#' + target).data('size')), type:$('#' + target).data('type'),
+        target:target, value:$('#' + target).val()}));
     }
     function refresh_cdi_field(field) {
-      var target = '#' + $(field).attr('id').substr(12);
+      var target = $(field).attr('id').substr(12);
       $(field).toggleClass('loading');
-      
-      fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}', $(target).data('offset'), $(target).data('size'), $(target).data('type')))
-        .then(res => res.text())
-        .then(value => {
-          if ($(target).data('type') === 'eventid') {
-            value = pad_hex(value, 16);
-          }
-          $(target).val(value);
-          disable_button('save-' + target);
-          $(field).toggleClass('loading');
-        });
+      ws_send(JSON.stringify({req:'cdi-get', offs:$('#' + target).data('offset'),
+        size:$('#' + target).data('size'), type:$('#' + target).data('type'),
+        target:target}));
     }
     function factory_reset() {
       if (confirm('Are you sure you want to perform a Factory Reset?')) {
-        fetchWithTimeout('/config?factory_reset');
+        ws_send(JSON.stringify({req:'factory-reset'}));
       }
     }
     function reset_events() {
       if (confirm('Are you sure you want to reset all event IDs?')) {
-        fetchWithTimeout('/config?reset_events');
+        ws_send(JSON.stringify({req:'reset-events'}));
       }
+    }
+    function update_complete() {
+      ws_send(JSON.stringify({req:'update-complete'}));
     }
     function pad_hex(str, length) {
       var hex = new Array(length + 1).join('0') + str;
@@ -1179,14 +1155,7 @@
         content += String.format('<button class="btn btn-primary btn-sm" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
         content += '</div></div>';
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
-        cdi_loaders.push(async () => {
-          const response = await fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}', offset, size, node_data_type));
-          if (response.headers.has('Content-Length')) {
-            $('#' + node_alias).val(await response.text());
-          } else {
-            $('#' + node_alias).val(0);
-          }
-        });
+        cdi_loaders.push(JSON.stringify({req:'cdi-get', offs:offset, size:size, type:node_data_type, target:node_alias}));
         console.groupEnd();
       } else if (node_data_type === 'group') {
         if ($.isNumeric(parseInt($(group).attr('offset'))) && node_name === '') {
@@ -1225,18 +1194,7 @@
         content += String.format('<button class="btn btn-primary btn-sm" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
         content += '</div></div>';
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description)
-        cdi_loaders.push(async () => {
-          const response = await fetchWithTimeout(String.format('/config?offs={0}&size={1}&type={2}', offset, size, node_data_type));
-          if (response.headers.has('Content-Length')) {
-            var value = await response.text();
-            if (node_data_type === 'eventid') {
-              value = pad_hex(value, 16);
-            }
-            $('#' + node_alias).val(value);
-          } else {
-            $('#' + node_alias).val('');
-          }
-        });
+        cdi_loaders.push(JSON.stringify({req:'cdi-get', offs:offset, size:size, type:node_data_type, target:node_alias}));
       }
       return [content, size];
     }
