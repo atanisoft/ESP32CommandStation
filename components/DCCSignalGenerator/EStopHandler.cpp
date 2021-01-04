@@ -24,6 +24,11 @@ namespace esp32cs
 
 void EStopHandler::set_state(bool new_value)
 {
+  if (new_value == enabled_)
+  {
+    return;
+  }
+
   enabled_ = new_value;
   if (new_value)
   {
@@ -43,6 +48,7 @@ void EStopHandler::set_state(bool new_value)
   }
   else
   {
+    LOG(INFO, "[eStop] Received eStop clear request.");
     packet_processor_remove_refresh_source(this);
   }
 }
