@@ -52,6 +52,10 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
   for (auto turnout : root)
   {
     uint16_t address = turnout[JSON_ADDRESS_NODE].get<int>();
+    if (address < 1 || address > 2044)
+    {
+      continue;
+    }
     uint16_t id = address;
     if (turnout.contains(JSON_ID_NODE))
     {
@@ -198,7 +202,7 @@ bool TurnoutManager::remove(const uint16_t address)
   auto const &elem = FIND_TURNOUT(address);
   if (elem != turnouts_.end())
   {
-    LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d] Deleted", address);
+    LOG(INFO, "[Turnout %d] Deleted", address);
     turnouts_.erase(elem);
     dirty_ = true;
     return true;
