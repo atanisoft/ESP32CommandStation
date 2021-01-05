@@ -62,8 +62,8 @@
               class="icon icon-wifi text-dark"></i></div>
           <div class="tooltip tooltip-left" data-tooltip="Click/tap to send emergency
 stop to all active locomotives"><i class="icon icon-stop text-error" onclick="send_estop(this);"></i></div>
-          <div class="tooltip tooltip-left" data-tooltip="Click/tap to turn on/off track power"><i class="icon icon-shutdown text-error" id="ops_track_power"></i><small
-              id="ops_usage"></small></div>
+          <div class="tooltip tooltip-left" data-tooltip="Click/tap to turn on/off track power"><i
+              class="icon icon-shutdown text-error" id="ops_track_power"></i><small id="ops_usage"></small></div>
           <div class="tooltip tooltip-left" data-tooltip="Click/tap to view currently active locomotives">
             <svg class="icon text-light" fill="currentColor" version='1.1' xmlns='http://www.w3.org/2000/svg'
               viewBox='0 0 470 470' xmlns:xlink='http://www.w3.org/1999/xlink' enable-background='new 0 0 470 470'
@@ -104,7 +104,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         <div class="column col-3"><label>Locomotive Address<input class="form-input" type="number" readonly="true"
               id="loco-address" value="0" /></label></div>
         <div class="column col-3"><label for="loco-dir">Direction</label>
-          <button id="loco-dir" class="btn btn-primary"><span class="icon icon-forward"></span></button>
+          <button id="loco-dir" class="btn btn-primary"><i class="icon icon-forward"></i></button>
         </div>
         <div class="column">
           <button class="btn btn-primary" onclick="showLocoSelect(this);">Change
@@ -121,27 +121,18 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         <div class="column">Functions</div>
       </div>
       <div class="columns">
-        <div class="column"><button class="btn btn-primary" id="funct_0">FL<span class="icon"
-              id="funct_0_icon"></span></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_1">F1</span><span class="icon"
-              id="funct_1_icon"></span></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_2">F2<span class="icon"
-              id="funct_2_icon"></span></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_3">F3<span class="icon"
-              id="funct_3_icon"></span></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_4">F4<span class="icon"
-              id="funct_4_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_0">FL<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_1">F1<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_2">F2<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_3">F3<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_4">F4<i class="icon"></i></button></div>
       </div>
       <div class="columns">
         <div class="column"></div>
-        <div class="column"><button class="btn btn-primary" id="funct_5">F5<span class="icon"
-              id="funct_5_icon"></span></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_6">F6<span class="icon"
-              id="funct_6_icon"></span></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_7">F7<span class="icon"
-              id="funct_7_icon"></span></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_8">F8<span class="icon"
-              id="funct_8_icon"></span></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_5">F5<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_6">F6<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_7">F7<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary" id="funct_8">F8<i class="icon"></i></button></div>
       </div>
       <details class="accordion" id="ext_funcs">
         <summary class="accordion-header c-hand"><button id="btn-ext_funcs" class="btn btn-primary">F9-F28<span
@@ -149,58 +140,38 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         <div class="accordion-body">
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_9">F9<span class="icon"
-                  id="funct_9_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_10">F10<span class="icon"
-                  id="funct_10_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_11">F11<span class="icon"
-                  id="funct_11_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_12">F12<span class="icon"
-                  id="funct_12_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_9">F9<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_10">F10<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_11">F11<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_12">F12<i class="icon"></i></button></div>
           </div>
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_13">F13<span class="icon"
-                  id="funct_13_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_14">F14<span class="icon"
-                  id="funct_14_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_15">F15<span class="icon"
-                  id="funct_15_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_16">F16<span class="icon"
-                  id="funct_16_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_13">F13<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_14">F14<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_15">F15<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_16">F16<i class="icon"></i></button></div>
           </div>
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_17">F17<span class="icon"
-                  id="funct_17_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_18">F18<span class="icon"
-                  id="funct_18_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_19">F19<span class="icon"
-                  id="funct_19_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_20">F20<span class="icon"
-                  id="funct_20_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_17">F17<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_18">F18<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_19">F19<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_20">F20<i class="icon"></i></button></div>
           </div>
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_21">F21<span class="icon"
-                  id="funct_21_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_22">F22<span class="icon"
-                  id="funct_22_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_23">F23<span class="icon"
-                  id="funct_23_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_24">F24<span class="icon"
-                  id="funct_24_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_21">F21<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_22">F22<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_23">F23<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_24">F24<i class="icon"></i></button></div>
           </div>
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_25">F25<span class="icon"
-                  id="funct_25_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_26">F26<span class="icon"
-                  id="funct_26_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_27">F27<span class="icon"
-                  id="funct_27_icon"></span></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_28">F28<span class="icon"
-                  id="funct_28_icon"></span></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_25">F25<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_26">F26<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_27">F27<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary" id="funct_28">F28<i class="icon"></i></button></div>
           </div>
         </div>
       </details>
@@ -490,17 +461,28 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     </div>
   </div>
   <script type="text/javascript">
-    var sendLocoEvents = true;
-    var firePowerEvents = true;
-    var webSocket = null;
+    const ws_retry_connection_timeout_ms = 500;
+    const ws_ping_timeout_ms = 2000;
+    const ws_ping_interval_ms = 5000;
+    const page_reload_delay_ms = 7500;
+    const fetch_timeout_ms = 10000;
+
+    var send_loco_events = true;
+    var ws = null;
     var ws_pending_send = [];
+    var ws_req_id = 0;
     var s88SensorIDBase = 512;
     var cdi_loaded = false;
     var cdi_loaders = [];
+    var ws_ping_timer_id = 0;
+
+    function get_ws_msg_id() {
+      ws_req_id++;
+      return ws_req_id;
+    }
     async function fetchWithTimeout(resource, options) {
-      const timeout = 10000;
       const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
+      const id = setTimeout(() => controller.abort(), fetch_timeout_ms);
       const response = await fetch(resource, {
         ...options,
         signal: controller.signal
@@ -581,10 +563,34 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       console.error(text, error);
       alert(text);
     }
+    function reload_page() {
+      setTimeout(function () { location.reload(); }, page_reload_delay_ms);
+    }
+    function ws_cleanup() {
+      if (ws) {
+        ws.removeEventListener('open', ws_opened);
+        ws.removeEventListener('message', ws_rx);
+        ws.removeEventListener('error', ws_closed);
+        ws.removeEventListener('close', ws_closed);
+        clearTimeout(ws_ping_timer_id);
+        ws.close();
+      }
+    }
+    function ws_dead() {
+      if (ws) {
+        ws.close();
+      }
+      connectWebSocket();
+    }
+    function ws_ping() {
+      ws_ping_timer_id = setTimeout(ws_dead, ws_ping_timeout_ms);
+      ws_tx(JSON.stringify({ req: 'ping', id: get_ws_msg_id() }));
+    }
     function ws_rx(event) {
       var messages = event.data.split(/[\r\n]+/);
       messages.forEach(msg => {
         if (msg.length > 0) {
+          console.debug('WS-RX:', msg);
           var json = JSON.parse(msg);
           if (!json.hasOwnProperty('res')) {
             console.error('Invalid JSON payload (missing res tag):', msg);
@@ -606,38 +612,36 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             } else {
               s88SensorIDBase = json.sensorIDBase;
             }
+            setInterval(ws_ping, ws_ping_interval_ms);
           } else if (json.res === 'saved') {
-            hide_spinner(json.target);
-            reset_buttons(json.target);
+            reset_cdi_buttons(json.target);
           } else if (json.res === 'field') {
             if (json.type === 'eventid') {
               $('#' + json.target).val(pad_hex(json.value, 16));
             } else {
               $('#' + json.target).val(json.value);
             }
-            hide_spinner(json.target);
-            reset_buttons(json.target);
-          } else if (json.res === 'nodeid') {
-            setTimeout(function () { location.reload(); }, 7500);
-          } else if (json.res === 'factory-reset') {
-            setTimeout(function () { location.reload(); }, 7500);
+            reset_cdi_buttons(json.target);
+          } else if (json.res === 'nodeid' || json.res === 'factory-reset') {
+            reload_page();
           } else if (json.res === 'reset-events') {
             refresh_all_fields();
-          } else if (json.res === 'loco-speed') {
+          } else if (json.res === 'loco') {
+            send_loco_events = false;
             $("#loco-address").val(json.address);
             $("#loco-speed").val(json.speed);
-            $('#loco-dir span').removeClass('icon-back icon-forward');
+            $('#loco-dir i').removeClass('icon-back icon-forward');
             if (json.dir) {
-              $('#loco-dir span').addClass('icon-forward');
+              $('#loco-dir i').addClass('icon-back');
             } else {
-              $('#loco-dir span').addClass('icon-back');
+              $('#loco-dir i').addClass('icon-forward');
             }
-          } else if (json.res === 'loco-dir') {
-            $('#loco-dir span').removeClass('icon-back icon-forward');
-            if (json.dir) {
-              $('#loco-dir span').addClass('icon-forward');
+            send_loco_events = true;
+          } else if (json.res === 'function') {
+            if (json.state) {
+              $(String.format('#funct_{0} i', json.function)).addClass('icon-circle-check');
             } else {
-              $('#loco-dir span').addClass('icon-back');
+              $(String.format('#funct_{0} i', json.function)).removeClass('icon-circle-check');
             }
           } else if (json.res === 'turnout') {
             if (json.hasOwnProperty('target')) {
@@ -649,17 +653,37 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             } else if (json.event === '01.00.00.00.00.00.FF.FF') {
               updateTrackPowerStatus(false, false);
             }
+          } else if (json.res === 'pong') {
+            clearTimeout(ws_ping_timer_id);
           }
         }
       });
     }
-    function hide_spinner(target) {
-      $(String.format('#btn-refresh-{0}', target)).removeClass('loading');
-      $(String.format('#btn-save-{0}', target)).removeClass('loading');
+    function ws_tx(msg) {
+      // if the socket is not in an open state, defer the send until we have connected
+      if (!ws || ws.readyState != WebSocket.OPEN) {
+        ws_pending_send.push(msg);
+        // if we are not already trying to connect try and connect now
+        if (!ws || ws.readyState != WebSocket.CONNECTING) {
+          connectWebSocket();
+        }
+        return;
+      }
+      console.debug('WS-TX:', msg);
+      ws.send(msg);
     }
-    function reset_buttons(target) {
-      enable_button('refresh-' + target);
-      disable_button('save-' + target);
+    function ws_opened(event) {
+      $('#ws-status').removeClass('flash text-dark');
+      $('#ws-status').addClass('text-success');
+      while (ws_pending_send.length) {
+        ws.send(ws_pending_send.pop());
+      }
+    }
+    function ws_closed(event) {
+      console.warn('WS closed, reconnecting. Reason:', event.reason);
+      $('#ws-status').addClass('text-dark');
+      $('#ws-status').removeClass('text-success');
+      setTimeout(connectWebSocket, ws_retry_connection_timeout_ms);
     }
     function connectWebSocket() {
       if (!window.location.host.length) {
@@ -670,39 +694,18 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       }
       $('#ws-status').addClass('flash');
       var socketUrl = String.format('ws://{0}:{1}/wsjson', window.location.host, window.location.port);
-      webSocket = new WebSocket(socketUrl);
-      webSocket.addEventListener('open', (event) => {
-        $('#ws-status').removeClass('flash');
-        while (ws_pending_send.length) {
-          webSocket.send(ws_pending_send.pop());
-        }
-        $('#ws-status').removeClass('text-dark');
-        $('#ws-status').addClass('text-success');
-      });
-      webSocket.addEventListener('message', ws_rx);
-      webSocket.addEventListener('error', (event) => {
-        console.error('WS-ERROR:', event);
+      try {
+        ws = new WebSocket(socketUrl);
+        ws.addEventListener('open', ws_opened);
+        ws.addEventListener('message', ws_rx);
+        ws.addEventListener('error', ws_closed);
+        ws.addEventListener('close', ws_closed);
+      } catch (e) {
+        console.error('Failed to connect to the command station, will retry');
         $('#ws-status').addClass('text-dark');
-        $('#ws-status').removeClass('text-success');
-      });
-      webSocket.addEventListener('close', (event) => {
-        console.warn('WS-CLOSE:', event);
-        $('#ws-status').addClass('text-dark');
-        $('#ws-status').removeClass('text-success');
-      });
-    }
-    function ws_send(cmd) {
-      // if the socket is not in an open state, defer the send until we have connected
-      if (!webSocket || webSocket.readyState != WebSocket.OPEN) {
-        ws_pending_send.push(cmd);
-        // if we are not already trying to connect try and connect now
-        if (!webSocket || webSocket.readyState != WebSocket.CONNECTING) {
-          connectWebSocket();
-        }
-        return;
+        $('#ws-status').removeClass('flash text-success');
+        setTimeout(connectWebSocket, ws_retry_connection_timeout_ms);
       }
-      console.debug('WS-TX:', cmd);
-      webSocket.send(cmd);
     }
     $(function () {
       if (!String.format) {
@@ -717,7 +720,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         };
       }
       if (window.location.host.length) {
-        ws_send('{"req":"info"}');
+        ws_tx(JSON.stringify({ req: 'info', id: get_ws_msg_id() }));
+        window.addEventListener('beforeunload', ws_cleanup);
       }
       setupThrottle();
       setupTurnouts();
@@ -735,10 +739,12 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         $(icon).toggleClass('icon-arrow-up');
       });
       $("#loco-speed").on("change", function (event, ui) {
-        var selectedLoco = $("#loco-address").val();
-        var speed = $("#loco-speed").val();
-        if (sendLocoEvents) {
-          ws_send(JSON.stringify({ req: 'loco-speed', address: selectedLoco, speed: speed }));
+        if (send_loco_events) {
+          ws_tx(JSON.stringify({
+            req: 'loco', address: parseInt($("#loco-address").val()),
+            speed: parseInt($("#loco-speed").val()),
+            id: get_ws_msg_id()
+          }));
         }
       });
       $('#loco-select-select').on('click', function () {
@@ -750,38 +756,43 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         $("#loco-manual").show();
       });
       $("#loco-dir").on('click', function () {
-        var selectedLoco = $("#loco-address").val();
-        var icon = $('#loco-dir').contents().first();
-        var dir = $(icon).hasClass('icon-forward');
-        $(icon).toggleClass('icon-back');
-        $(icon).toggleClass('icon-forward');
-        if (sendLocoEvents) {
-          ws_send(JSON.stringify({ req: 'loco-dir', address: selectedLoco, dir: dir ? '1' : '0' }));
+        if (send_loco_events) {
+          ws_tx(JSON.stringify({
+            req: 'loco', address: parseInt($("#loco-address").val()),
+            dir: $('#loco-dir i').hasClass('icon-forward'),
+            id: get_ws_msg_id()
+          }));
         }
       });
       $('[id^=funct_]').on('click', function (event) {
-        var id = $(event.target).prop('id').match(/.*(\d+).*/)[1];
-        var loco = $("#loco-address").val();
-        var icon = String.format('#funct_{0}_icon', id);
-        var state = $(icon).hasClass('icon-circle-check');
-        $(icon).toggleClass('icon-circle-check');
-        if (sendLocoEvents) {
-          ws_send(JSON.stringify({ req: 'function', address: loco, function: id, state: state ? '1' : '0' }));
+        var target = event.target;
+        if ($(target).hasClass('icon')) {
+          target = $(target).parent();
+        }
+        var id = $(target).prop('id').match(/.*(\d+).*/)[1];
+        if (send_loco_events) {
+          ws_tx(JSON.stringify({
+            req: 'function',
+            address: parseInt($("#loco-address").val()),
+            function: parseInt(id),
+            state: !$(String.format('#funct_{0} i', id)).hasClass('icon-circle-check'),
+            id: get_ws_msg_id()
+          }));
         }
       });
       $('#ops_track_power').on('click', function (event) {
         if ($(this).hasClass('text-error')) {
-          ws_send(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FE' }));
+          ws_tx(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FE', id: get_ws_msg_id() }));
         } else {
-          ws_send(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FF' }));
+          ws_tx(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FF', id: get_ws_msg_id() }));
         }
         $('this').toggleClass('loading');
       });
     }
     function send_estop(button) {
-      ws_send(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FD' }));
+      ws_tx(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FD', id: get_ws_msg_id() }));
       // TODO: add ability to clear e-stop?
-      // ws_send(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FC'}));
+      // ws_tx(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FC',id:get_ws_msg_id()}));
     }
     function showLocoSelect(button) {
       if (window.location.host.length) {
@@ -826,11 +837,12 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         toggleModal('#turnout-editor');
       });
       $('#turnout-save').on('click', function () {
-        ws_send(JSON.stringify({
+        ws_tx(JSON.stringify({
           req: 'turnout',
           action: "save",
           address: parseInt($('#turnout-address').val()),
-          type: parseInt($('#turnout-type').val())
+          type: parseInt($('#turnout-type').val()),
+          id: get_ws_msg_id()
         }));
         toggleModal('#turnout-editor');
         refreshTurnouts(null);
@@ -903,11 +915,12 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     function toggleTurnout(address, button) {
       var target = $(button).attr('id');
       $(button).toggleClass('loading');
-      ws_send(JSON.stringify({
+      ws_tx(JSON.stringify({
         req: 'turnout',
         address: parseInt(address),
         action: "toggle",
-        target: target
+        target: target,
+        id: get_ws_msg_id()
       }));
     }
     function refreshRoster(button) {
@@ -995,7 +1008,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     }
     function changeLocomotive(newAddress) {
       if (newAddress !== "") {
-        ws_send(JSON.stringify({ req: 'loco-speed', address: selectedLoco, speed: 0 }));
+        ws_tx(JSON.stringify({ req: 'loco', address: parseInt(newAddress), speed: 0, dir: false, id: get_ws_msg_id() }));
         $('#loco-select').removeClass('active');
         enableLocoInputs();
       }
@@ -1021,7 +1034,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     function save_node_id(button) {
       $(button).addClass('loading');
       disable_button('save_node_id');
-      ws_send(JSON.stringify({ req: 'nodeid', value: $('#node_id').val() }));
+      ws_tx(JSON.stringify({ req: 'nodeid', value: $('#node_id').val(), id: get_ws_msg_id() }));
     }
     function build_cdi_dom(cdi, button) {
       cdi_loaders.splice(0, cdi_loaders.length);
@@ -1033,7 +1046,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       cdi_dynamic_group(doc, 253, 'WiFi Configuration', '#cdi_tab_wifi', offsets_253);
       cdi_dynamic_group(doc, 253, 'H-Bridge Configuration', '#cdi_tab_hbridge', offsets_253);
       cdi_dynamic_group(doc, 253, 'Thermal Configuration', '#cdi_tab_thermal', offsets_253);
-      cdi_loaders.forEach(elem => ws_send(elem));
+      cdi_loaders.forEach(elem => ws_tx(elem));
       cdi_loaders.splice(0, cdi_loaders.length);
       $('#tab-olcbconfig').show();
       $(button).toggleClass('loading');
@@ -1042,33 +1055,40 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     function save_cdi_field(field) {
       var target = $(field).attr('id').substr(9);
       $(field).toggleClass('loading');
-      ws_send(JSON.stringify({
+      ws_tx(JSON.stringify({
         req: 'cdi-set', offs: parseInt($('#' + target).data('offset')),
         size: parseInt($('#' + target).data('size')), type: $('#' + target).data('type'),
-        target: target, value: $('#' + target).val()
+        target: target, value: $('#' + target).val(), id: get_ws_msg_id()
       }));
     }
     function refresh_cdi_field(field) {
       var target = $(field).attr('id').substr(12);
       $(field).toggleClass('loading');
-      ws_send(JSON.stringify({
+      ws_tx(JSON.stringify({
         req: 'cdi-get', offs: $('#' + target).data('offset'),
         size: $('#' + target).data('size'), type: $('#' + target).data('type'),
-        target: target
+        target: target,
+        id: get_ws_msg_id()
       }));
     }
     function factory_reset() {
       if (confirm('Are you sure you want to perform a Factory Reset?')) {
-        ws_send(JSON.stringify({ req: 'factory-reset' }));
+        ws_tx(JSON.stringify({ req: 'factory-reset', id: get_ws_msg_id() }));
       }
     }
     function reset_events() {
       if (confirm('Are you sure you want to reset all event IDs?')) {
-        ws_send(JSON.stringify({ req: 'reset-events' }));
+        ws_tx(JSON.stringify({ req: 'reset-events', id: get_ws_msg_id() }));
       }
     }
     function update_complete() {
-      ws_send(JSON.stringify({ req: 'update-complete' }));
+      ws_tx(JSON.stringify({ req: 'update-complete', id: get_ws_msg_id() }));
+    }
+    function reset_cdi_buttons(target) {
+      $(String.format('#btn-refresh-{0}', target)).removeClass('loading');
+      $(String.format('#btn-save-{0}', target)).removeClass('loading');
+      enable_button('refresh-' + target);
+      disable_button('save-' + target);
     }
     function pad_hex(str, length) {
       var hex = new Array(length + 1).join('0') + str;
@@ -1167,7 +1187,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         content += String.format('<button class="btn btn-primary btn-sm loading" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
         content += '</div></div>';
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
-        cdi_loaders.push(JSON.stringify({ req: 'cdi-get', offs: offset, size: size, type: node_data_type, target: node_alias }));
+        cdi_loaders.push(JSON.stringify({ req: 'cdi-get', offs: offset, size: size, type: node_data_type, target: node_alias, id: get_ws_msg_id() }));
         console.groupEnd();
       } else if (node_data_type === 'group') {
         if ($.isNumeric(parseInt($(group).attr('offset'))) && node_name === '') {
@@ -1206,7 +1226,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         content += String.format('<button class="btn btn-primary btn-sm loading" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
         content += '</div></div>';
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description)
-        cdi_loaders.push(JSON.stringify({ req: 'cdi-get', offs: offset, size: size, type: node_data_type, target: node_alias }));
+        cdi_loaders.push(JSON.stringify({ req: 'cdi-get', offs: offset, size: size, type: node_data_type, target: node_alias, id: get_ws_msg_id() }));
       }
       return [content, size];
     }
