@@ -574,7 +574,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       b->data()->done.reset(EmptyNotifiable::DefaultInstance());
       cdi_client->send(b->ref());
       response =
-          StringPrintf(R"!^!({"res":"update-complete",id":%d})!^!"
+          StringPrintf(R"!^!({"res":"update-complete","id":%d})!^!"
                      , req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "cdi"))
