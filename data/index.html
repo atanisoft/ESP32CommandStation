@@ -619,7 +619,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           } else if (json.res === 'saved') {
             reset_cdi_buttons(json.tgt);
           } else if (json.res === 'field') {
-            if (json.type === 'eventid') {
+            if (json.type === 'evt') {
               $('#' + json.tgt).val(pad_hex(json.value, 16));
             } else {
               $('#' + json.tgt).val(json.value);
@@ -1086,13 +1086,23 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     function save_cdi_field(field) {
       var target = $(field).attr('id').substr(9);
       $(field).toggleClass('loading');
+      var size = parseInt($('#' + target).data('size'));
+      var type = $('#' + target).data('type');
+      var value = $('#' + target).val()
+      if (type === 'str') {
+        if (value.length < size) {
+          size = value.length;
+        } else {
+          value = value.substr(0, size);
+        }
+      }
       ws_tx(JSON.stringify({
         req: 'cdi',
         o: parseInt($('#' + target).data('offset')),
-        s: parseInt($('#' + target).data('size')),
-        t: $('#' + target).data('type'),
+        s: size,
+        t: type,
         tgt: target,
-        v: $('#' + target).val(),
+        v: value,
         id: get_ws_msg_id()
       }));
     }
@@ -1268,7 +1278,11 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       } else if (node_name !== '') {
         if (node_data_type === 'eventid') {
           size = 8; // events are always 8 bytes
+          node_data_type = 'evt';
         } else {
+          if (node_data_type === 'string') {
+            node_data_type = 'str';
+          }
           size = parseInt($(group).attr('size'));
         }
         console.log('Entry:', node_name, 'offset:', offset, 'size:', size, 'datatype:', node_data_type, 'description:', node_description);

@@ -246,7 +246,7 @@ private:
                                      , openlcb::MemoryConfigDefs::SPACE_CONFIG
                                      , request()->offs, request()->size);
       case CDIClientRequest::CMD_WRITE:
-        LOG(INFO, "[CDI:%s] Writing %zu bytes from offset %zu"
+        LOG(VERBOSE, "[CDI:%s] Writing %zu bytes from offset %zu"
           , request()->target.c_str(), request()->size, request()->offs);
         return invoke_subflow_and_wait(client_, STATE(write_complete)
                                      , openlcb::MemoryConfigClientRequest::WRITE
@@ -277,11 +277,11 @@ private:
     string response;
     LOG(VERBOSE, "[CDI:%s] Received %zu bytes from offset %zu"
       , request()->target.c_str(), request()->size, request()->offs);
-    if (request()->type == "string")
+    if (request()->type == "str")
     {
       response =
         StringPrintf(
-            R"!^!({"res":"field","tgt":"%s","value":"%s","type":"string","id":%d})!^!"
+            R"!^!({"res":"field","tgt":"%s","value":"%s","type":"str","id":%d})!^!"
           , request()->target.c_str(), b->data()->payload.c_str(), request()->req_id);
     }
     else if (request()->type == "int")
@@ -304,16 +304,17 @@ private:
             R"!^!({"res":"field","tgt":"%s","value":"%d","type":"int","id":%d})!^!"
         , request()->target.c_str(), data, request()->req_id);
     }
-    else if (request()->type == "eventid")
+    else if (request()->type == "evt")
     {
       uint64_t event_id = 0;
       memcpy(&event_id, b->data()->payload.data(), sizeof(uint64_t));
       response =
         StringPrintf(
-            R"!^!({"res":"field","tgt":"%s","value":"%s","type":"eventid","id":%d})!^!"
+            R"!^!({"res":"field","tgt":"%s","value":"%s","type":"evt","id":%d})!^!"
         , request()->target.c_str()
         , uint64_to_string_hex(be64toh(event_id)).c_str(), request()->req_id);
     }
+    LOG(VERBOSE, "[CDI-READ] %s", response.c_str());
     request()->socket->send_text(response);
     return return_ok();
   }
@@ -334,6 +335,7 @@ private:
     string response =
           StringPrintf(R"!^!({"res":"saved","tgt":"%s","id":%d})!^!"
                       , request()->target.c_str(), request()->req_id);
+    LOG(VERBOSE, "[CDI-WRITE] %s", response.c_str());
     request()->socket->send_text(response);
     return return_ok();
   }
@@ -595,33 +597,35 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       }
       else
       {
-        string value = cJSON_GetObjectItem(root, "v")->valuestring;
-
+        string value = "";
+        cJSON *raw_value = cJSON_GetObjectItem(root, "v");
         LOG(VERBOSE, "[Web] CDI WRITE offs:%d, value: %s, type: %s, target: %s"
-          , offs, value.c_str(), param_type.c_str(), target.c_str());
-        if (param_type == "s")
+          , offs, raw_value->valuestring, param_type.c_str(), target.c_str());
+        if (param_type == "str")
         {
-          // make sure value is null terminated
+          // copy of up to the reported size.
+          value = string(raw_value->valuestring, size);
+          // ensure value is null terminated
           value += '\0';
         }
         else if (param_type == "i")
         {
           if (size == 1)
           {
-            uint8_t data8 = std::stoi(value);
+            uint8_t data8 = std::stoi(raw_value->valuestring);
             value.clear();
             value.push_back(data8);
           }
           else if (size == 2)
           {
-            uint16_t data16 = std::stoi(value);
+            uint16_t data16 = std::stoi(raw_value->valuestring);
             value.clear();
             value.push_back((data16 >> 8) & 0xFF);
             value.push_back(data16 & 0xFF);
           }
           else
           {
-            uint32_t data32 = std::stoul(value);
+            uint32_t data32 = std::stoul(raw_value->valuestring);
             value.clear();
             value.push_back((data32 >> 24) & 0xFF);
             value.push_back((data32 >> 16) & 0xFF);
@@ -629,9 +633,9 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
             value.push_back(data32 & 0xFF);
           }
         }
-        else if (param_type == "eventid")
+        else if (param_type == "evt")
         {
-          uint64_t data = string_to_uint64(value);
+          uint64_t data = string_to_uint64(string(raw_value->valuestring));
           value.clear();
           value.push_back((data >> 56) & 0xFF);
           value.push_back((data >> 48) & 0xFF);
