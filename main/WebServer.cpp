@@ -53,6 +53,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #endif // CONFIG_GPIO_S88
 #endif // CONFIG_GPIO_SENSORS
 
+using commandstation::AllTrainNodes;
 using dcc::SpeedType;
 using http::Httpd;
 using http::HttpMethod;
@@ -72,7 +73,13 @@ using http::MIME_TYPE_IMAGE_GIF;
 using http::HTTP_ENCODING_GZIP;
 using http::HTTP_ENCODING_NONE;
 using http::WebSocketEvent;
-using commandstation::AllTrainNodes;
+using http::WebSocketFlow;
+using openlcb::DatagramClient;
+using openlcb::Defs;
+using openlcb::MemoryConfigClient;
+using openlcb::MemoryConfigClientRequest;
+using openlcb::MemoryConfigDefs;
+using openlcb::NodeHandle;
 
 class WebSocketClient : public DCCPPProtocolConsumer
 {
@@ -165,11 +172,13 @@ struct CDIClientRequest : public CallableFlowRequestBase
       UPDATE_COMPLETE
   };
 
-  void reset(ReadCmd, http::WebSocketFlow *socket, uint32_t req_id, size_t offs
-           , size_t size, string target, string type)
+  void reset(ReadCmd, NodeHandle target_node, WebSocketFlow *socket
+           , uint32_t req_id, size_t offs, size_t size, string target
+           , string type)
   {
     reset_base();
     cmd = CMD_READ;
+    this->target_node = target_node;
     this->socket = socket;
     this->req_id = req_id;
     this->offs = offs;
@@ -179,11 +188,13 @@ struct CDIClientRequest : public CallableFlowRequestBase
     value.clear();
   }
 
-  void reset(WriteCmd, http::WebSocketFlow *socket, uint32_t req_id, size_t offs
-           , size_t size, string target, string value)
+  void reset(WriteCmd, NodeHandle target_node, WebSocketFlow *socket
+           , uint32_t req_id, size_t offs, size_t size, string target
+           , string value)
   {
     reset_base();
     cmd = CMD_WRITE;
+    this->target_node = target_node;
     this->socket = socket;
     this->req_id = req_id;
     this->offs = offs;
@@ -193,10 +204,14 @@ struct CDIClientRequest : public CallableFlowRequestBase
     this->value = std::move(value);
   }
 
-  void reset(UpdateCompleteCmd)
+  void reset(UpdateCompleteCmd, NodeHandle target_node, WebSocketFlow *socket
+           , uint32_t req_id)
   {
     reset_base();
     cmd = CMD_UPDATE_COMPLETE;
+    this->target_node = target_node;
+    this->socket = socket;
+    this->req_id = req_id;
     type.clear();
     value.clear();
   }
@@ -209,7 +224,8 @@ struct CDIClientRequest : public CallableFlowRequestBase
   };
 
   Command cmd;
-  http::WebSocketFlow *socket;
+  WebSocketFlow *socket;
+  NodeHandle target_node;
   uint32_t req_id;
   size_t offs;
   size_t size;
@@ -221,124 +237,173 @@ struct CDIClientRequest : public CallableFlowRequestBase
 class CDIClient : public CallableFlow<CDIClientRequest>
 {
 public:
-  CDIClient()
-    : CallableFlow<CDIClientRequest>(Singleton<esp32cs::LCCStackManager>::instance()->service())
-    , nodeHandle_(Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id())
-    , client_(Singleton<esp32cs::LCCStackManager>::instance()->memory_config_client())
+  CDIClient(Service *service, MemoryConfigClient *memory_client)
+          : CallableFlow<CDIClientRequest>(service), client_(memory_client)
   {
   }
 
 private:
-  openlcb::NodeHandle nodeHandle_;
-  openlcb::MemoryConfigClient *client_;
+  MemoryConfigClient *client_;
 
   StateFlowBase::Action entry() override
   {
-    request()->resultCode = openlcb::DatagramClient::OPERATION_PENDING;
+    request()->resultCode = DatagramClient::OPERATION_PENDING;
     switch (request()->cmd)
     {
       case CDIClientRequest::CMD_READ:
-        LOG(VERBOSE, "[CDI:%s] Requesting %zu bytes from offset %zu"
-          , request()->target.c_str(), request()->size, request()->offs);
+        LOG(VERBOSE
+          , "[CDI:%d] Requesting %zu bytes from %s at offset %zu"
+          , request()->req_id, request()->size
+          , uint64_to_string_hex(request()->target_node.id).c_str()
+          , request()->offs);
         return invoke_subflow_and_wait(client_, STATE(read_complete)
-                                     , openlcb::MemoryConfigClientRequest::READ_PART
-                                     , nodeHandle_
-                                     , openlcb::MemoryConfigDefs::SPACE_CONFIG
+                                     , MemoryConfigClientRequest::READ_PART
+                                     , request()->target_node
+                                     , MemoryConfigDefs::SPACE_CONFIG
                                      , request()->offs, request()->size);
       case CDIClientRequest::CMD_WRITE:
-        LOG(VERBOSE, "[CDI:%s] Writing %zu bytes from offset %zu"
-          , request()->target.c_str(), request()->size, request()->offs);
+        LOG(VERBOSE
+          , "[CDI:%d] Writing %zu bytes to %s at offset %zu"
+          , request()->req_id, request()->size
+          , uint64_to_string_hex(request()->target_node.id).c_str()
+          , request()->offs);
         return invoke_subflow_and_wait(client_, STATE(write_complete)
-                                     , openlcb::MemoryConfigClientRequest::WRITE
-                                     , nodeHandle_
-                                     , openlcb::MemoryConfigDefs::SPACE_CONFIG
+                                     , MemoryConfigClientRequest::WRITE
+                                     , request()->target_node
+                                     , MemoryConfigDefs::SPACE_CONFIG
                                      , request()->offs, request()->value);
       case CDIClientRequest::CMD_UPDATE_COMPLETE:
-        invoke_subflow_and_ignore_result(client_
-                                       , openlcb::MemoryConfigClientRequest::UPDATE_COMPLETE
-                                       , nodeHandle_);
-        return return_ok();
+        LOG(VERBOSE, "[CDI:%d] Sending update-complete to %s"
+          , request()->req_id
+          , uint64_to_string_hex(request()->target_node.id).c_str());
+        return invoke_subflow_and_wait(client_, STATE(update_complete)
+                                     , MemoryConfigClientRequest::UPDATE_COMPLETE
+                                     , request()->target_node);
     }
-    return return_with_error(openlcb::Defs::ERROR_UNIMPLEMENTED_SUBCMD);
+    return return_with_error(Defs::ERROR_UNIMPLEMENTED_SUBCMD);
   }
 
   StateFlowBase::Action read_complete()
   {
     auto b = get_buffer_deleter(full_allocation_result(client_));
+    LOG(VERBOSE, "[CDI:%d] read bytes request returned with code: %d"
+      , request()->req_id, b->data()->resultCode);
+    string response;
     if (b->data()->resultCode)
     {
-      string response =
+      LOG(VERBOSE, "[CDI:%d] non-zero result code, sending error response."
+        , request()->req_id);
+      response =
+        StringPrintf(
+          R"!^!({"res":"error","error":"request failed: %d","id":%d}\m)!^!"
+        , b->data()->resultCode, request()->req_id);
+    }
+    else
+    {
+      LOG(VERBOSE, "[CDI:%d] Received %zu bytes from offset %zu"
+        , request()->req_id, request()->size, request()->offs);
+      if (request()->type == "str")
+      {
+        response =
           StringPrintf(
-              R"!^!({"res":"error","error":"request failed: %d","id":%d}\m)!^!"
-            , b->data()->resultCode, request()->req_id);
-      request()->socket->send_text(response);
-      return return_with_error(b->data()->resultCode);
-    }
-    string response;
-    LOG(VERBOSE, "[CDI:%s] Received %zu bytes from offset %zu"
-      , request()->target.c_str(), request()->size, request()->offs);
-    if (request()->type == "str")
-    {
-      response =
-        StringPrintf(
-            R"!^!({"res":"field","tgt":"%s","value":"%s","type":"str","id":%d})!^!"
-          , request()->target.c_str(), b->data()->payload.c_str(), request()->req_id);
-    }
-    else if (request()->type == "int")
-    {
-      uint32_t data = b->data()->payload.data()[0];
-      if (request()->size == 2)
-      {
-        uint16_t data16 = 0;
-        memcpy(&data16, b->data()->payload.data(), sizeof(uint16_t));
-        data = be16toh(data16);
+              R"!^!({"res":"field","tgt":"%s","val":"%s","type":"%s","id":%d})!^!"
+            , request()->target.c_str(), b->data()->payload.c_str()
+            , request()->type.c_str(), request()->req_id);
       }
-      else if (request()->size == 4)
+      else if (request()->type == "int")
       {
-        uint32_t data32 = 0;
-        memcpy(&data32, b->data()->payload.data(), sizeof(uint32_t));
-        data = be32toh(data32);
+        uint32_t data = b->data()->payload.data()[0];
+        if (request()->size == 2)
+        {
+          uint16_t data16 = 0;
+          memcpy(&data16, b->data()->payload.data(), sizeof(uint16_t));
+          data = be16toh(data16);
+        }
+        else if (request()->size == 4)
+        {
+          uint32_t data32 = 0;
+          memcpy(&data32, b->data()->payload.data(), sizeof(uint32_t));
+          data = be32toh(data32);
+        }
+        response =
+          StringPrintf(
+              R"!^!({"res":"field","tgt":"%s","val":"%d","type":"%s","id":%d})!^!"
+          , request()->target.c_str(), data, request()->type.c_str()
+          , request()->req_id);
       }
-      response =
-        StringPrintf(
-            R"!^!({"res":"field","tgt":"%s","value":"%d","type":"int","id":%d})!^!"
-        , request()->target.c_str(), data, request()->req_id);
-    }
-    else if (request()->type == "evt")
-    {
-      uint64_t event_id = 0;
-      memcpy(&event_id, b->data()->payload.data(), sizeof(uint64_t));
-      response =
-        StringPrintf(
-            R"!^!({"res":"field","tgt":"%s","value":"%s","type":"evt","id":%d})!^!"
-        , request()->target.c_str()
-        , uint64_to_string_hex(be64toh(event_id)).c_str(), request()->req_id);
+      else if (request()->type == "evt")
+      {
+        uint64_t event_id = 0;
+        memcpy(&event_id, b->data()->payload.data(), sizeof(uint64_t));
+        response =
+          StringPrintf(
+              R"!^!({"res":"field","tgt":"%s","val":"%s","type":"%s","id":%d})!^!"
+          , request()->target.c_str()
+          , uint64_to_string_hex(be64toh(event_id)).c_str()
+          , request()->type.c_str(), request()->req_id);
+      }
     }
     LOG(VERBOSE, "[CDI-READ] %s", response.c_str());
     request()->socket->send_text(response);
-    return return_ok();
+    return return_with_error(b->data()->resultCode);
   }
 
   StateFlowBase::Action write_complete()
   {
     auto b = get_buffer_deleter(full_allocation_result(client_));
+    LOG(VERBOSE, "[CDI:%d] write bytes request returned with code: %d"
+      , request()->req_id, b->data()->resultCode);
+    string response;
     if (b->data()->resultCode)
     {
-      string response =
+      LOG(VERBOSE, "[CDI:%d] non-zero result code, sending error response."
+        , request()->req_id);
+      response =
           StringPrintf(
               R"!^!({"res":"error","error":"request failed: %d","id":%d})!^!"
             , b->data()->resultCode, request()->req_id);
-      request()->socket->send_text(response);
-      return return_with_error(b->data()->resultCode);
     }
-      
-    string response =
-          StringPrintf(R"!^!({"res":"saved","tgt":"%s","id":%d})!^!"
-                      , request()->target.c_str(), request()->req_id);
+    else
+    {
+      LOG(VERBOSE, "[CDI:%d] Write request processed successfully."
+        , request()->req_id);
+      response =
+        StringPrintf(R"!^!({"res":"saved","tgt":"%s","id":%d})!^!"
+                    , request()->target.c_str(), request()->req_id);
+    }
     LOG(VERBOSE, "[CDI-WRITE] %s", response.c_str());
     request()->socket->send_text(response);
-    return return_ok();
+    return return_with_error(b->data()->resultCode);
   }
+
+  StateFlowBase::Action update_complete()
+  {
+    auto b = get_buffer_deleter(full_allocation_result(client_));
+    LOG(VERBOSE, "[CDI:%d] update-complete request returned with code: %d"
+      , request()->req_id, b->data()->resultCode);
+    string response;
+    if (b->data()->resultCode)
+    {
+      LOG(VERBOSE, "[CDI:%d] non-zero result code, sending error response."
+        , request()->req_id);
+      response =
+        StringPrintf(
+            R"!^!({"res":"error","error":"request failed: %d","id":%d}\m)!^!"
+          , b->data()->resultCode, request()->req_id);
+    }
+    else
+    {
+      LOG(VERBOSE, "[CDI:%d] update-complete request processed successfully."
+        , request()->req_id);
+      response =
+        StringPrintf(R"!^!({"res":"update-complete","id":%d})!^!"
+                   , request()->req_id);
+    }
+    LOG(VERBOSE, "[CDI-UPDATE-COMPLETE] %s", response.c_str());
+    request()->socket->send_text(response);
+    return return_with_error(b->data()->resultCode);
+  }
+
 };
 
 #define GET_LOCO_VIA_EXECUTOR(NAME, address)                                        \
@@ -358,11 +423,15 @@ private:
   }));
 
 std::unique_ptr<CDIClient> cdi_client;
+NodeHandle cs_node_handle;
 
 void init_webserver()
 {
+  auto stack = Singleton<esp32cs::LCCStackManager>::instance();
   auto httpd = Singleton<Httpd>::instance();
-  cdi_client.reset(new CDIClient());
+  cs_node_handle = NodeHandle(stack->node()->node_id());
+  cdi_client.reset(
+    new CDIClient(stack->service(), stack->memory_config_client()));
   httpd->captive_portal(
     StringPrintf(CAPTIVE_PORTAL_HTML
                , esp_ota_get_app_description()->version));
@@ -522,7 +591,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, client, event, data
 
 WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
 {
-  if (event == http::WebSocketEvent::WS_EVENT_TEXT)
+  if (event == WebSocketEvent::WS_EVENT_TEXT)
   {
     uint64_t node_id =
       Singleton<esp32cs::LCCStackManager>::instance()->node()->node_id();
@@ -535,23 +604,33 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     if (req_type == NULL || req_id == NULL)
     {
       // NO OP, the websocket is outbound only to trigger events on the client side.
-      LOG(INFO, "[Web] Failed to parse:%s", req.c_str());
+      LOG(INFO, "[WSJSON] Failed to parse:%s", req.c_str());
     }
     else if (!strcmp(req_type->valuestring, "nodeid"))
     {
-      std::string value = cJSON_GetObjectItem(root, "value")->valuestring;
-      if (Singleton<esp32cs::LCCStackManager>::instance()->set_node_id(value))
+      if (!cJSON_HasObjectItem(root, "val"))
       {
-        LOG(INFO, "[Web] Node ID updated to: %s, reboot pending"
-          , value.c_str());
         response =
-          StringPrintf(R"!^!({"res":"nodeid","id":%d})!^!", req_id->valueint);
+          StringPrintf(R"!^!({"res":"error","error":"The 'val' field must be provided","id":%d})!^!"
+                    , req_id->valueint);
       }
       else
       {
-        response =
-          StringPrintf(R"!^!({"res":"error","error":"Failed to update node-id","id":%d})!^!"
-                     , req_id->valueint);
+        std::string value = cJSON_GetObjectItem(root, "val")->valuestring;
+        if (Singleton<esp32cs::LCCStackManager>::instance()->set_node_id(value))
+        {
+          LOG(INFO, "[WSJSON:%d] Node ID updated to: %s, reboot pending"
+            , req_id->valueint, value.c_str());
+          response =
+            StringPrintf(R"!^!({"res":"nodeid","id":%d})!^!", req_id->valueint);
+        }
+        else
+        {
+          LOG(INFO, "[WSJSON:%d] Node ID update failed", req_id->valueint);
+          response =
+            StringPrintf(R"!^!({"res":"error","error":"Failed to update node-id","id":%d})!^!"
+                      , req_id->valueint);
+        }
       }
     }
     else if (!strcmp(req_type->valuestring, "info"))
@@ -572,90 +651,111 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     else if (!strcmp(req_type->valuestring, "update-complete"))
     {
       BufferPtr<CDIClientRequest> b(cdi_client->alloc());
-      b->data()->reset(CDIClientRequest::UPDATE_COMPLETE);
+      b->data()->reset(CDIClientRequest::UPDATE_COMPLETE, cs_node_handle
+                     , socket, req_id->valueint);
       b->data()->done.reset(EmptyNotifiable::DefaultInstance());
-      cdi_client->send(b->ref());
-      response =
-          StringPrintf(R"!^!({"res":"update-complete","id":%d})!^!"
-                     , req_id->valueint);
-    }
-    else if (!strcmp(req_type->valuestring, "cdi"))
-    {
-      size_t offs = cJSON_GetObjectItem(root, "o")->valueint;
-      std::string param_type =
-          cJSON_GetObjectItem(root, "t")->valuestring;
-      size_t size = cJSON_GetObjectItem(root, "s")->valueint;
-      string target = cJSON_GetObjectItem(root, "tgt")->valuestring;
-      BufferPtr<CDIClientRequest> b(cdi_client->alloc());
-
-      if (!cJSON_HasObjectItem(root, "v"))
-      {
-        LOG(VERBOSE, "[Web] CDI READ offs:%zu, size: %zu, type: %s, target: %s"
-          , offs, size, param_type.c_str(), target.c_str());
-        b->data()->reset(CDIClientRequest::READ, socket, req_id->valueint
-                       , offs, size, target, param_type);
-      }
-      else
-      {
-        string value = "";
-        cJSON *raw_value = cJSON_GetObjectItem(root, "v");
-        LOG(VERBOSE, "[Web] CDI WRITE offs:%d, value: %s, type: %s, target: %s"
-          , offs, raw_value->valuestring, param_type.c_str(), target.c_str());
-        if (param_type == "str")
-        {
-          // copy of up to the reported size.
-          value = string(raw_value->valuestring, size);
-          // ensure value is null terminated
-          value += '\0';
-        }
-        else if (param_type == "i")
-        {
-          if (size == 1)
-          {
-            uint8_t data8 = std::stoi(raw_value->valuestring);
-            value.clear();
-            value.push_back(data8);
-          }
-          else if (size == 2)
-          {
-            uint16_t data16 = std::stoi(raw_value->valuestring);
-            value.clear();
-            value.push_back((data16 >> 8) & 0xFF);
-            value.push_back(data16 & 0xFF);
-          }
-          else
-          {
-            uint32_t data32 = std::stoul(raw_value->valuestring);
-            value.clear();
-            value.push_back((data32 >> 24) & 0xFF);
-            value.push_back((data32 >> 16) & 0xFF);
-            value.push_back((data32 >> 8) & 0xFF);
-            value.push_back(data32 & 0xFF);
-          }
-        }
-        else if (param_type == "evt")
-        {
-          uint64_t data = string_to_uint64(string(raw_value->valuestring));
-          value.clear();
-          value.push_back((data >> 56) & 0xFF);
-          value.push_back((data >> 48) & 0xFF);
-          value.push_back((data >> 40) & 0xFF);
-          value.push_back((data >> 32) & 0xFF);
-          value.push_back((data >> 24) & 0xFF);
-          value.push_back((data >> 16) & 0xFF);
-          value.push_back((data >> 8) & 0xFF);
-          value.push_back(data & 0xFF);
-        }
-        b->data()->reset(CDIClientRequest::WRITE, socket, req_id->valueint
-                      , offs, size, target, value);
-      }
-      b->data()->done.reset(EmptyNotifiable::DefaultInstance());
+      LOG(VERBOSE, "[WSJSON:%d] Sending UPDATE_COMPLETE to queue"
+        , req_id->valueint);
       cdi_client->send(b->ref());
       cJSON_Delete(root);
       return;
     }
+    else if (!strcmp(req_type->valuestring, "cdi"))
+    {
+      if (!cJSON_HasObjectItem(root, "ofs") ||
+          !cJSON_HasObjectItem(root, "type") ||
+          !cJSON_HasObjectItem(root, "sz") ||
+          !cJSON_HasObjectItem(root, "tgt"))
+      {
+        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
+                , req_id->valueint, req.c_str());
+        response =
+          StringPrintf(
+            R"!^!({"res":"error", "error":"request is missing one (or more) required parameters","id":%d})!^!"
+          , req_id->valueint);
+      }
+      else
+      {
+        size_t offs = cJSON_GetObjectItem(root, "ofs")->valueint;
+        std::string param_type =
+            cJSON_GetObjectItem(root, "type")->valuestring;
+        size_t size = cJSON_GetObjectItem(root, "sz")->valueint;
+        string target = cJSON_GetObjectItem(root, "tgt")->valuestring;
+        BufferPtr<CDIClientRequest> b(cdi_client->alloc());
+
+        if (!cJSON_HasObjectItem(root, "val"))
+        {
+          LOG(VERBOSE
+            , "[WSJSON:%d] Sending CDI READ: offs:%zu size:%zu type:%s tgt:%s"
+            , req_id->valueint, offs, size, param_type.c_str()
+            , target.c_str());
+          b->data()->reset(CDIClientRequest::READ, cs_node_handle, socket
+                         , req_id->valueint, offs, size, target, param_type);
+        }
+        else
+        {
+          string value = "";
+          cJSON *raw_value = cJSON_GetObjectItem(root, "val");
+          if (param_type == "str")
+          {
+            // copy of up to the reported size.
+            value = string(raw_value->valuestring, size);
+            // ensure value is null terminated
+            value += '\0';
+          }
+          else if (param_type == "int")
+          {
+            if (size == 1)
+            {
+              uint8_t data8 = std::stoi(raw_value->valuestring);
+              value.clear();
+              value.push_back(data8);
+            }
+            else if (size == 2)
+            {
+              uint16_t data16 = std::stoi(raw_value->valuestring);
+              value.clear();
+              value.push_back((data16 >> 8) & 0xFF);
+              value.push_back(data16 & 0xFF);
+            }
+            else
+            {
+              uint32_t data32 = std::stoul(raw_value->valuestring);
+              value.clear();
+              value.push_back((data32 >> 24) & 0xFF);
+              value.push_back((data32 >> 16) & 0xFF);
+              value.push_back((data32 >> 8) & 0xFF);
+              value.push_back(data32 & 0xFF);
+            }
+          }
+          else if (param_type == "evt")
+          {
+            uint64_t data = string_to_uint64(string(raw_value->valuestring));
+            value.clear();
+            value.push_back((data >> 56) & 0xFF);
+            value.push_back((data >> 48) & 0xFF);
+            value.push_back((data >> 40) & 0xFF);
+            value.push_back((data >> 32) & 0xFF);
+            value.push_back((data >> 24) & 0xFF);
+            value.push_back((data >> 16) & 0xFF);
+            value.push_back((data >> 8) & 0xFF);
+            value.push_back(data & 0xFF);
+          }
+          LOG(VERBOSE
+            , "[WSJSON:%d] Sending CDI WRITE: offs:%zu value:%s tgt:%s"
+            , req_id->valueint, offs, raw_value->valuestring, target.c_str());
+          b->data()->reset(CDIClientRequest::WRITE, cs_node_handle, socket
+                         , req_id->valueint, offs, size, target, value);
+        }
+        b->data()->done.reset(EmptyNotifiable::DefaultInstance());
+        cdi_client->send(b->ref());
+        cJSON_Delete(root);
+        return;
+      }
+    }
     else if (!strcmp(req_type->valuestring, "factory-reset"))
     {
+      LOG(VERBOSE, "[WSJSON:%d] Factory reset received", req_id->valueint);
       Singleton<esp32cs::LCCStackManager>::instance()->factory_reset();
       Singleton<esp32cs::LCCStackManager>::instance()->reboot_node();
       response =
@@ -664,6 +764,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     }
     else if (!strcmp(req_type->valuestring, "reset-events"))
     {
+      LOG(VERBOSE, "[WSJSON:%d] Reset event IDs received", req_id->valueint);
       //Singleton<esp32cs::LCCStackManager>::instance()->reset_events();
       response =
         StringPrintf(R"!^!({"res":"reset-events","id":%d})!^!"
@@ -671,71 +772,136 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     }
     else if (!strcmp(req_type->valuestring, "event"))
     {
-      string value = cJSON_GetObjectItem(root, "evt")->valuestring;
-      uint64_t eventID = string_to_uint64(value);
-      Singleton<esp32cs::LCCStackManager>::instance()->stack()->send_event(eventID);
-      response =
-        StringPrintf(R"!^!({"res":"event","evt":"%s","id":%d})!^!"
-                   , value.c_str(), req_id->valueint);
+      if (!cJSON_HasObjectItem(root, "evt"))
+      {
+        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
+                , req_id->valueint, req.c_str());
+        response =
+          StringPrintf(R"!^!({"res":"error","error":"The 'evt' field must be provided","id":%d})!^!"
+                    , req_id->valueint);
+      }
+      else
+      {
+        string value = cJSON_GetObjectItem(root, "evt")->valuestring;
+        LOG(VERBOSE, "[WSJSON:%d] Sending event: %s", req_id->valueint
+          , value.c_str());
+        uint64_t eventID = string_to_uint64(value);
+        Singleton<esp32cs::LCCStackManager>::instance()->stack()->send_event(eventID);
+        response =
+          StringPrintf(R"!^!({"res":"event","evt":"%s","id":%d})!^!"
+                    , value.c_str(), req_id->valueint);
+      }
     }
     else if (!strcmp(req_type->valuestring, "function"))
     {
-      uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
-      uint8_t function = cJSON_GetObjectItem(root, "fn")->valueint;
-      GET_LOCO_VIA_EXECUTOR(train, address);
-      train->set_fn(function, cJSON_IsTrue(cJSON_GetObjectItem(root, "state")));
-      response =
-        StringPrintf(R"!^!({"res":"function","id":%d,"fn":%d,"state":%s})!^!"
-                   , req_id->valueint, function
-                   , train->get_fn(function) == 1 ? "true" : "false");
+      if (!cJSON_HasObjectItem(root, "addr") ||
+          !cJSON_HasObjectItem(root, "fn") ||
+          !cJSON_HasObjectItem(root, "state"))
+      {
+        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
+                , req_id->valueint, req.c_str());
+        response =
+          StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!"
+                    , req_id->valueint);
+      }
+      else
+      {
+        uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
+        uint8_t function = cJSON_GetObjectItem(root, "fn")->valueint;
+        uint8_t state = cJSON_IsTrue(cJSON_GetObjectItem(root, "state"));
+        LOG(VERBOSE, "[WSJSON:%d] Setting function %d on loco %d to %d"
+          , req_id->valueint, address, function, state);
+        GET_LOCO_VIA_EXECUTOR(train, address);
+        train->set_fn(function, state);
+        response =
+          StringPrintf(R"!^!({"res":"function","id":%d,"fn":%d,"state":%s})!^!"
+                    , req_id->valueint, function
+                    , train->get_fn(function) == 1 ? "true" : "false");
+      }
     }
     else if (!strcmp(req_type->valuestring, "loco"))
     {
-      uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
-      GET_LOCO_VIA_EXECUTOR(train, address);
-      auto req_speed = train->get_speed();
-      SpeedType direction = req_speed.direction();
-      if (cJSON_HasObjectItem(root, "s"))
+      if (!cJSON_HasObjectItem(root, "addr"))
       {
-        req_speed.set_mph(cJSON_GetObjectItem(root, "spd")->valueint);
+        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
+                , req_id->valueint, req.c_str());
+        response =
+          StringPrintf(R"!^!({"res":"error","error":"The 'addr' field must be provided","id":%d})!^!"
+                    , req_id->valueint);
       }
-      if (cJSON_HasObjectItem(root, "dir"))
+      else
       {
-        req_speed.set_direction(cJSON_IsTrue(cJSON_GetObjectItem(root, "dir")));
+        uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
+        GET_LOCO_VIA_EXECUTOR(train, address);
+        auto req_speed = train->get_speed();
+        SpeedType direction = req_speed.direction();
+        if (cJSON_HasObjectItem(root, "s"))
+        {
+          uint8_t speed = cJSON_GetObjectItem(root, "spd")->valueint;
+          LOG(VERBOSE, "[WSJSON:%d] Setting loco %d speed to %d"
+            , req_id->valueint, address, speed);
+          req_speed.set_mph(speed);
+        }
+        if (cJSON_HasObjectItem(root, "dir"))
+        {
+          bool direction = cJSON_IsTrue(cJSON_GetObjectItem(root, "dir"));
+          LOG(VERBOSE, "[WSJSON:%d] Setting loco %d direction to %s"
+            , req_id->valueint, address, direction ? "REV" : "FWD");
+          req_speed.set_direction(direction);
+        }
+        train->set_speed(req_speed);
+        response =
+          StringPrintf(R"!^!({"res":"loco","addr":%d,"spd":%d,"dir":%s,"id":%d})!^!"
+                    , address, (int)req_speed.mph()
+                    , req_speed.direction() ? "true" : "false", req_id->valueint);
       }
-      train->set_speed(req_speed);
-      response =
-        StringPrintf(R"!^!({"res":"loco","addr":%d,"spd":%d,"dir":%s,"id":%d})!^!"
-                   , address, (int)req_speed.mph()
-                   , req_speed.direction() ? "true" : "false", req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "turnout"))
     {
-      uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
-      string action = cJSON_GetObjectItem(root, "act")->valuestring;
-      string target = cJSON_HasObjectItem(root, "tgt") ?
-          cJSON_GetObjectItem(root, "tgt")->valuestring : "";
-      TurnoutType type = cJSON_HasObjectItem(root, "type") ?
-          (TurnoutType)cJSON_GetObjectItem(root, "type")->valueint :
-          TurnoutType::NO_CHANGE;
-      if (action == "save")
+      if (!cJSON_HasObjectItem(root, "addr") ||
+          !cJSON_HasObjectItem(root, "act"))
       {
-        Singleton<TurnoutManager>::instance()->createOrUpdate(address, type);
+        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
+                , req_id->valueint, req.c_str());
+        response =
+          StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!"
+                    , req_id->valueint);
       }
-      else if (action == "toggle")
+      else
       {
-        Singleton<TurnoutManager>::instance()->toggle(address);
+        uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
+        string action = cJSON_GetObjectItem(root, "act")->valuestring;
+        string target = cJSON_HasObjectItem(root, "tgt") ?
+            cJSON_GetObjectItem(root, "tgt")->valuestring : "";
+        TurnoutType type = cJSON_HasObjectItem(root, "type") ?
+            (TurnoutType)cJSON_GetObjectItem(root, "type")->valueint :
+            TurnoutType::NO_CHANGE;
+        if (action == "save")
+        {
+          LOG(VERBOSE, "[WSJSON:%d] Saving turnout %d as type %d"
+            , req_id->valueint, address, type);
+          Singleton<TurnoutManager>::instance()->createOrUpdate(address, type);
+        }
+        else if (action == "toggle")
+        {
+          LOG(VERBOSE, "[WSJSON:%d] Toggling turnout %d", req_id->valueint
+            , address);
+          Singleton<TurnoutManager>::instance()->toggle(address);
+        }
+        else if (action == "delete")
+        {
+          LOG(VERBOSE, "[WSJSON:%d] Deleting turnout %d", req_id->valueint
+            , address);
+          Singleton<TurnoutManager>::instance()->remove(address);
+        }
+        response =
+          StringPrintf(R"!^!({"res":"turnout","act":"%s","addr":%d,"tgt":"%s","id":%d})!^!"
+                    , action.c_str(), address, target.c_str(), req_id->valueint);
       }
-      else if (action == "delete")
-      {
-        Singleton<TurnoutManager>::instance()->remove(address);
-      }
-      response =
-        StringPrintf(R"!^!({"res":"turnout","act":"%s","addr":%d,"tgt":"%s","id":%d})!^!"
-                   , action.c_str(), address, target.c_str(), req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "ping"))
     {
+      LOG(VERBOSE, "[WSJSON:%d] PING received", req_id->valueint);
       response =
         StringPrintf(R"!^!({"res":"pong","id":%d})!^!", req_id->valueint);
     }
@@ -745,7 +911,6 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     }
     cJSON_Delete(root);
     LOG(VERBOSE, "[Web] WS: %s -> %s", req.c_str(), response.c_str());
-    response += "\n";
     socket->send_text(response);
   }
 }

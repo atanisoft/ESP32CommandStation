@@ -620,9 +620,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             reset_cdi_buttons(json.tgt);
           } else if (json.res === 'field') {
             if (json.type === 'evt') {
-              $('#' + json.tgt).val(pad_hex(json.value, 16));
+              $('#' + json.tgt).val(pad_hex(json.val, 16));
             } else {
-              $('#' + json.tgt).val(json.value);
+              $('#' + json.tgt).val(json.val);
             }
             reset_cdi_buttons(json.tgt);
           } else if (json.res === 'nodeid' || json.res === 'factory-reset') {
@@ -1063,7 +1063,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       disable_button('save_node_id');
       ws_tx(JSON.stringify({
         req: 'nodeid',
-        value: $('#node_id').val(),
+        val: $('#node_id').val(),
         id: get_ws_msg_id()
       }));
     }
@@ -1098,11 +1098,11 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       }
       ws_tx(JSON.stringify({
         req: 'cdi',
-        o: parseInt($('#' + target).data('offset')),
-        s: size,
-        t: type,
+        ofs: parseInt($('#' + target).data('offset')),
+        sz: size,
+        type: type,
         tgt: target,
-        v: value,
+        val: value,
         id: get_ws_msg_id()
       }));
     }
@@ -1111,9 +1111,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       $(field).toggleClass('loading');
       ws_tx(JSON.stringify({
         req: 'cdi',
-        o: $('#' + target).data('offset'),
-        s: $('#' + target).data('size'),
-        t: $('#' + target).data('type'),
+        ofs: $('#' + target).data('offset'),
+        sz: $('#' + target).data('size'),
+        type: $('#' + target).data('type'),
         tgt: target,
         id: get_ws_msg_id()
       }));
@@ -1245,9 +1245,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
         cdi_loaders.push(JSON.stringify({
           req: 'cdi',
-          o: offset,
-          s: size,
-          t: node_data_type,
+          ofs: offset,
+          sz: size,
+          type: node_data_type,
           tgt: node_alias,
           id: get_ws_msg_id()
         }));
@@ -1295,9 +1295,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description)
         cdi_loaders.push(JSON.stringify({
           req: 'cdi',
-          o: offset,
-          s: size,
-          t: node_data_type,
+          ofs: offset,
+          sz: size,
+          type: node_data_type,
           tgt: node_alias,
           id: get_ws_msg_id()
         }));
