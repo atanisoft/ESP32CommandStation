@@ -298,18 +298,13 @@ StateFlowBase::Action WebSocketFlow::frame_data_len_received()
 {
   if (frameLenType_ == 1)
   {
-    // byte swap frameLength16_ into frameLength_
-    frameLength_ = (frameLength16_ << 8) | (frameLength16_ >> 8);
+    // convert the big-endian (network order) length to host endianess
+    frameLength_ = be16toh(frameLength16_);
   }
   else if (frameLenType_ == 2)
   {
-    // byte swap frameLength_ (64 bit)
-    uint8_t *p = (uint8_t *)frameLength_;
-    uint64_t temp =            p[7]        | (uint16_t)(p[6]) << 8
-                  | (uint32_t)(p[5]) << 16 | (uint32_t)(p[4]) << 24
-                  | (uint64_t)(p[3]) << 32 | (uint64_t)(p[2]) << 40
-                  | (uint64_t)(p[1]) << 48 | (uint64_t)(p[0]) << 56;
-    frameLength_ = temp;
+    // convert the big-endian (network order) length to host endianess
+    frameLength_ = be64toh(frameLength_);
   }
 
   if (masked_)
@@ -423,25 +418,21 @@ StateFlowBase::Action WebSocketFlow::send_frame_header()
     data_size_ = textFrames_.front().length();
     send_size = data_size_ + 2;
   }
-  else if (textFrames_.front().length() < max_frame_size_ - 4)
+  else
   {
     data_size_ = textFrames_.front().length();
     data_[0] = WEBSOCKET_FINAL_FRAME;
+    if (textFrames_.front().length() > (max_frame_size_ - 4))
+    {
+      // size is greater than our max frame, send it as fragments
+      data_size_ = max_frame_size_ - 4;
+      data_[0] = OP_CONTINUATION;
+    }
     data_[1] = WEBSOCKET_FRAME_LEN_UINT16;
-    data_[2] = (data_size_ >> 8) & 0xFF;
-    data_[3] = data_size_ & 0xFF;
-    memcpy(data_+ 4, textFrames_.front().data(), textFrames_.front().length());
-    send_size = data_size_ + 4;
-  }
-  else
-  {
-    // size is greater than our max frame, send it as fragments
-    data_size_ = max_frame_size_ - 4;
-    data_[0] = OP_CONTINUATION;
-    data_[1] = WEBSOCKET_FRAME_LEN_UINT16;
-    data_[2] = (data_size_ >> 8) & 0xFF;
-    data_[3] = data_size_ & 0xFF;
-    memcpy(data_+ 4, textFrames_.front().data(), data_size_);
+    uint16_t size = htobe16(data_size_);
+    memcpy(data_ + 2, &size, sizeof(uint16_t));
+    memcpy(data_ + 4, textFrames_.front().data()
+         , textFrames_.front().length());
     send_size = data_size_ + 4;
   }
   data_[0] |= OP_TEXT;
