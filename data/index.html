@@ -584,7 +584,10 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     }
     function ws_ping() {
       ws_ping_timer_id = setTimeout(ws_dead, ws_ping_timeout_ms);
-      ws_tx(JSON.stringify({ req: 'ping', id: get_ws_msg_id() }));
+      ws_tx(JSON.stringify({
+        req: 'ping',
+        id: get_ws_msg_id()
+      }));
     }
     function ws_rx(event) {
       var messages = event.data.split(/[\r\n]+/);
@@ -593,7 +596,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           console.debug('WS-RX:', msg);
           var json = JSON.parse(msg);
           if (!json.hasOwnProperty('res')) {
-            console.error('Invalid JSON payload (missing res tag):', msg);
+            console.error('Invalid JSON payload (missing res element):', msg);
           } else if (json.res === 'error') {
             showErrorDialog(json.error);
           } else if (json.res === 'info') {
@@ -614,22 +617,22 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             }
             setInterval(ws_ping, ws_ping_interval_ms);
           } else if (json.res === 'saved') {
-            reset_cdi_buttons(json.target);
+            reset_cdi_buttons(json.tgt);
           } else if (json.res === 'field') {
             if (json.type === 'eventid') {
-              $('#' + json.target).val(pad_hex(json.value, 16));
+              $('#' + json.tgt).val(pad_hex(json.value, 16));
             } else {
-              $('#' + json.target).val(json.value);
+              $('#' + json.tgt).val(json.value);
             }
-            reset_cdi_buttons(json.target);
+            reset_cdi_buttons(json.tgt);
           } else if (json.res === 'nodeid' || json.res === 'factory-reset') {
             reload_page();
           } else if (json.res === 'reset-events') {
             refresh_all_fields();
           } else if (json.res === 'loco') {
             send_loco_events = false;
-            $("#loco-address").val(json.address);
-            $("#loco-speed").val(json.speed);
+            $("#loco-address").val(json.addr);
+            $("#loco-speed").val(json.spd);
             $('#loco-dir i').removeClass('icon-back icon-forward');
             if (json.dir) {
               $('#loco-dir i').addClass('icon-back');
@@ -639,18 +642,18 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             send_loco_events = true;
           } else if (json.res === 'function') {
             if (json.state) {
-              $(String.format('#funct_{0} i', json.function)).addClass('icon-circle-check');
+              $(String.format('#funct_{0} i', json.fn)).addClass('icon-circle-check');
             } else {
-              $(String.format('#funct_{0} i', json.function)).removeClass('icon-circle-check');
+              $(String.format('#funct_{0} i', json.fn)).removeClass('icon-circle-check');
             }
           } else if (json.res === 'turnout') {
-            if (json.hasOwnProperty('target')) {
-              $('#' + json.target).removeClass('loading');
+            if (json.hasOwnProperty('tgt')) {
+              $('#' + json.tgt).removeClass('loading');
             }
           } else if (json.res === 'event') {
-            if (json.event === '01.00.00.00.00.00.FF.FE') {
+            if (json.evt === '01.00.00.00.00.00.FF.FE') {
               updateTrackPowerStatus(true, false);
-            } else if (json.event === '01.00.00.00.00.00.FF.FF') {
+            } else if (json.evt === '01.00.00.00.00.00.FF.FF') {
               updateTrackPowerStatus(false, false);
             }
           } else if (json.res === 'pong') {
@@ -720,7 +723,10 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         };
       }
       if (window.location.host.length) {
-        ws_tx(JSON.stringify({ req: 'info', id: get_ws_msg_id() }));
+        ws_tx(JSON.stringify({
+          req: 'info',
+          id: get_ws_msg_id()
+        }));
         window.addEventListener('beforeunload', ws_cleanup);
       }
       setupThrottle();
@@ -741,8 +747,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       $("#loco-speed").on("change", function (event, ui) {
         if (send_loco_events) {
           ws_tx(JSON.stringify({
-            req: 'loco', address: parseInt($("#loco-address").val()),
-            speed: parseInt($("#loco-speed").val()),
+            req: 'loco',
+            addr: parseInt($("#loco-address").val()),
+            spd: parseInt($("#loco-speed").val()),
             id: get_ws_msg_id()
           }));
         }
@@ -758,7 +765,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       $("#loco-dir").on('click', function () {
         if (send_loco_events) {
           ws_tx(JSON.stringify({
-            req: 'loco', address: parseInt($("#loco-address").val()),
+            req: 'loco',
+            addr: parseInt($("#loco-address").val()),
             dir: $('#loco-dir i').hasClass('icon-forward'),
             id: get_ws_msg_id()
           }));
@@ -773,8 +781,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         if (send_loco_events) {
           ws_tx(JSON.stringify({
             req: 'function',
-            address: parseInt($("#loco-address").val()),
-            function: parseInt(id),
+            addr: parseInt($("#loco-address").val()),
+            fn: parseInt(id),
             state: !$(String.format('#funct_{0} i', id)).hasClass('icon-circle-check'),
             id: get_ws_msg_id()
           }));
@@ -782,17 +790,29 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       });
       $('#ops_track_power').on('click', function (event) {
         if ($(this).hasClass('text-error')) {
-          ws_tx(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FE', id: get_ws_msg_id() }));
+          ws_tx(JSON.stringify({
+            req: 'event',
+            evt: '01.00.00.00.00.00.FF.FE',
+            id: get_ws_msg_id()
+          }));
         } else {
-          ws_tx(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FF', id: get_ws_msg_id() }));
+          ws_tx(JSON.stringify({
+            req: 'event',
+            evt: '01.00.00.00.00.00.FF.FF',
+            id: get_ws_msg_id()
+          }));
         }
         $('this').toggleClass('loading');
       });
     }
     function send_estop(button) {
-      ws_tx(JSON.stringify({ req: 'event', value: '01.00.00.00.00.00.FF.FD', id: get_ws_msg_id() }));
+      ws_tx(JSON.stringify({
+        req: 'event',
+        evt: '01.00.00.00.00.00.FF.FD',
+        id: get_ws_msg_id()
+      }));
       // TODO: add ability to clear e-stop?
-      // ws_tx(JSON.stringify({req:'event', value:'01.00.00.00.00.00.FF.FC',id:get_ws_msg_id()}));
+      // ws_tx(JSON.stringify({r:'event', v:'01.00.00.00.00.00.FF.FC', id:get_ws_msg_id()}));
     }
     function showLocoSelect(button) {
       if (window.location.host.length) {
@@ -805,7 +825,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             tbody.children().remove();
             for (var idx in data) {
               if (data[idx].defaultOnThrottles) {
-                $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({1});"><td>{0}</td><td>{1}</td></tr>', data[idx].name, data[idx].address));
+                $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({1});"><td>{0}</td><td>{1}</td></tr>',
+                  data[idx].name, data[idx].address));
               }
             }
             $("#loco-list").show();
@@ -839,8 +860,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       $('#turnout-save').on('click', function () {
         ws_tx(JSON.stringify({
           req: 'turnout',
-          action: "save",
-          address: parseInt($('#turnout-address').val()),
+          act: "save",
+          addr: parseInt($('#turnout-address').val()),
           type: parseInt($('#turnout-type').val()),
           id: get_ws_msg_id()
         }));
@@ -917,9 +938,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       $(button).toggleClass('loading');
       ws_tx(JSON.stringify({
         req: 'turnout',
-        address: parseInt(address),
-        action: "toggle",
-        target: target,
+        addr: parseInt(address),
+        act: "toggle",
+        tgt: target,
         id: get_ws_msg_id()
       }));
     }
@@ -1008,7 +1029,13 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     }
     function changeLocomotive(newAddress) {
       if (newAddress !== "") {
-        ws_tx(JSON.stringify({ req: 'loco', address: parseInt(newAddress), speed: 0, dir: false, id: get_ws_msg_id() }));
+        ws_tx(JSON.stringify({
+          req: 'loco',
+          addr: parseInt(newAddress),
+          spd: 0,
+          dir: false,
+          id: get_ws_msg_id()
+        }));
         $('#loco-select').removeClass('active');
         enableLocoInputs();
       }
@@ -1034,7 +1061,11 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     function save_node_id(button) {
       $(button).addClass('loading');
       disable_button('save_node_id');
-      ws_tx(JSON.stringify({ req: 'nodeid', value: $('#node_id').val(), id: get_ws_msg_id() }));
+      ws_tx(JSON.stringify({
+        req: 'nodeid',
+        value: $('#node_id').val(),
+        id: get_ws_msg_id()
+      }));
     }
     function build_cdi_dom(cdi, button) {
       cdi_loaders.splice(0, cdi_loaders.length);
@@ -1056,33 +1087,48 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       var target = $(field).attr('id').substr(9);
       $(field).toggleClass('loading');
       ws_tx(JSON.stringify({
-        req: 'cdi-set', offs: parseInt($('#' + target).data('offset')),
-        size: parseInt($('#' + target).data('size')), type: $('#' + target).data('type'),
-        target: target, value: $('#' + target).val(), id: get_ws_msg_id()
+        req: 'cdi',
+        o: parseInt($('#' + target).data('offset')),
+        s: parseInt($('#' + target).data('size')),
+        t: $('#' + target).data('type'),
+        tgt: target,
+        v: $('#' + target).val(),
+        id: get_ws_msg_id()
       }));
     }
     function refresh_cdi_field(field) {
       var target = $(field).attr('id').substr(12);
       $(field).toggleClass('loading');
       ws_tx(JSON.stringify({
-        req: 'cdi-get', offs: $('#' + target).data('offset'),
-        size: $('#' + target).data('size'), type: $('#' + target).data('type'),
-        target: target,
+        req: 'cdi',
+        o: $('#' + target).data('offset'),
+        s: $('#' + target).data('size'),
+        t: $('#' + target).data('type'),
+        tgt: target,
         id: get_ws_msg_id()
       }));
     }
     function factory_reset() {
       if (confirm('Are you sure you want to perform a Factory Reset?')) {
-        ws_tx(JSON.stringify({ req: 'factory-reset', id: get_ws_msg_id() }));
+        ws_tx(JSON.stringify({
+          req: 'factory-reset',
+          id: get_ws_msg_id()
+        }));
       }
     }
     function reset_events() {
       if (confirm('Are you sure you want to reset all event IDs?')) {
-        ws_tx(JSON.stringify({ req: 'reset-events', id: get_ws_msg_id() }));
+        ws_tx(JSON.stringify({
+          req: 'reset-events',
+          id: get_ws_msg_id()
+        }));
       }
     }
     function update_complete() {
-      ws_tx(JSON.stringify({ req: 'update-complete', id: get_ws_msg_id() }));
+      ws_tx(JSON.stringify({
+        req: 'update-complete',
+        id: get_ws_msg_id()
+      }));
     }
     function reset_cdi_buttons(target) {
       $(String.format('#btn-refresh-{0}', target)).removeClass('loading');
@@ -1187,7 +1233,14 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         content += String.format('<button class="btn btn-primary btn-sm loading" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
         content += '</div></div>';
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
-        cdi_loaders.push(JSON.stringify({ req: 'cdi-get', offs: offset, size: size, type: node_data_type, target: node_alias, id: get_ws_msg_id() }));
+        cdi_loaders.push(JSON.stringify({
+          req: 'cdi',
+          o: offset,
+          s: size,
+          t: node_data_type,
+          tgt: node_alias,
+          id: get_ws_msg_id()
+        }));
         console.groupEnd();
       } else if (node_data_type === 'group') {
         if ($.isNumeric(parseInt($(group).attr('offset'))) && node_name === '') {
@@ -1226,7 +1279,14 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         content += String.format('<button class="btn btn-primary btn-sm loading" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
         content += '</div></div>';
         content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description)
-        cdi_loaders.push(JSON.stringify({ req: 'cdi-get', offs: offset, size: size, type: node_data_type, target: node_alias, id: get_ws_msg_id() }));
+        cdi_loaders.push(JSON.stringify({
+          req: 'cdi',
+          o: offset,
+          s: size,
+          t: node_data_type,
+          tgt: node_alias,
+          id: get_ws_msg_id()
+        }));
       }
       return [content, size];
     }
