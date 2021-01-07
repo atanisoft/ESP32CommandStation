@@ -414,10 +414,12 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       <div class="columns">
         <div class="column"><button class="btn btn-primary btn-sm" onclick="factory_reset();">Factory Reset</button>
         </div>
+        <div class="column" id="bootloader"><button class="btn btn-primary btn-sm" onclick="request_bootloader();">Enter
+            Bootloader</button>
+        </div>
         <div class="column"><button class="btn btn-primary btn-sm" onclick="reset_events();">Reset Events</button></div>
         <div class="column"><button class="btn btn-primary btn-sm" onclick="update_complete();">Update Complete</button>
         </div>
-        <!--div class="column"><button class="btn btn-primary btn-sm" onclick="enter_bootloader();">Enter Bootloader</button></div-->
       </div>
     </div>
     <div class="container" style="display:none;" id="tab-ota">
@@ -475,6 +477,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     var cdi_loaded = false;
     var cdi_loaders = [];
     var ws_ping_timer_id = 0;
+    var ws_ping_interval_timer_id = 0;
 
     function get_ws_msg_id() {
       ws_req_id++;
@@ -615,7 +618,10 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             } else {
               s88SensorIDBase = json.sensorIDBase;
             }
-            setInterval(ws_ping, ws_ping_interval_ms);
+            if (json.bootloader === false) {
+              $('#bootloader').hide();
+            }
+            ws_ping_interval_timer_id = setInterval(ws_ping, ws_ping_interval_ms);
           } else if (json.res === 'saved') {
             reset_cdi_buttons(json.tgt);
           } else if (json.res === 'field') {
@@ -1124,6 +1130,19 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           req: 'factory-reset',
           id: get_ws_msg_id()
         }));
+      }
+    }
+    function request_bootloader() {
+      if (confirm('Are you sure you want to enter the bootloader?')) {
+        ws_tx(JSON.stringify({
+          req: 'bootloader',
+          id: get_ws_msg_id()
+        }));
+        clearInterval(ws_ping_interval_timer_id);
+        clearTimeout(ws_ping_timer_id);
+        ws.removeEventListener('error', ws_closed);
+        ws.removeEventListener('close', ws_closed);
+        alert('The request to enter the bootloader has sent.\n\nOnce the command station returns to normal operating mode, you will need to manually refresh this page.');
       }
     }
     function reset_events() {

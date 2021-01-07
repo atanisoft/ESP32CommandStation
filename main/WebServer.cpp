@@ -629,13 +629,18 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       const esp_app_desc_t *app_data = esp_ota_get_app_description();
       const esp_partition_t *partition = esp_ota_get_running_partition();
       response =
-        StringPrintf(R"!^!({"res":"info","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","s88":%s,"sensorIDBase":%d,"outputs":%s,"sensors":%s,"id":%d})!^!"
+        StringPrintf(R"!^!({"res":"info","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","s88":%s,"sensorIDBase":%d,"outputs":%s,"sensors":%s,"bootloader":%s,"id":%d})!^!"
           , app_data->date, app_data->time, partition->label
           , openlcb::SNIP_STATIC_DATA.model_name
           , openlcb::SNIP_STATIC_DATA.hardware_version
           , openlcb::SNIP_STATIC_DATA.software_version
           , uint64_to_string_hex(node_id).c_str()
           , GPIO_S88_CFG, GPIO_S88_BASE, GPIO_OUTPUTS_CFG, GPIO_SENSORS_CFG
+#if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
+          , "true"
+#else
+          , "false"
+#endif
           , req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "update-complete"))
@@ -760,6 +765,14 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
           StringPrintf(R"!^!({"res":"error","error":"Failed to record factory reset request","id":%d})!^!"
                     , req_id->valueint);
       }
+    }
+    else if (!strcmp(req_type->valuestring, "bootloader"))
+    {
+      LOG(VERBOSE, "[WSJSON:%d] bootloader request received", req_id->valueint);
+      enter_bootloader();
+      // NOTE: This response may not get sent to the client.
+      response =
+        StringPrintf(R"!^!({"res":"bootloader","id":%d})!^!", req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "reset-events"))
     {

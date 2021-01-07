@@ -490,19 +490,6 @@ uninitialized<esp32cs::Esp32TrainDatabase> trainDb;
 uninitialized<commandstation::AllTrainNodes> trainNodes;
 uninitialized<FreeRTOSTaskMonitor> taskMon;
 
-extern "C" void enter_bootloader()
-{
-    node_config_t config;
-    if (load_config(&config) != ESP_OK)
-    {
-        default_config(&config);
-    }
-    config.bootloader_req = true;
-    save_config(&config);
-    LOG(INFO, "[Bootloader] Rebooting into bootloader");
-    reboot();
-}
-
 static const char * const reset_reasons[] =
 {
     "unknown",                  // NO_MEAN                  0

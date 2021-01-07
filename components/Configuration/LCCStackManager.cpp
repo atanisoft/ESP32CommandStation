@@ -28,8 +28,20 @@ namespace esp32cs
 
 #if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
 Esp32HardwareTwai twai(CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
-#define CAN_PERIPHERAL_AVAILABLE 1
-#endif // ESP32_TWAI_DRIVER_SUPPORTED
+
+extern "C" void enter_bootloader()
+{
+    node_config_t config;
+    if (load_config(&config) != ESP_OK)
+    {
+        default_config(&config);
+    }
+    config.bootloader_req = true;
+    save_config(&config);
+    LOG(INFO, "[Bootloader] Rebooting into bootloader");
+    reboot();
+}
+#endif // CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
 
 LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg
                                , const uint64_t node_id, bool factory_reset)
@@ -75,14 +87,14 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg
   stack_ = new openlcb::SimpleTcpStack(nodeID_);
 #else
   stack_ = new openlcb::SimpleCanStack(nodeID_);
-#if CAN_PERIPHERAL_AVAILABLE
+#if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
   stack_->executor()->add(new CallbackExecutable([&]
   {
       // Initialize the TWAI driver
       twai.hw_init();
       ((openlcb::SimpleCanStackBase *)stack_)->add_can_port_async("/dev/twai/twai0");
   }));
-#endif // CAN_PERIPHERAL_AVAILABLE
+#endif // CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
 #endif // CONFIG_LCC_TCP_STACK
   memory_client_ =
     new openlcb::MemoryConfigClient(node(), memory_config_handler());
