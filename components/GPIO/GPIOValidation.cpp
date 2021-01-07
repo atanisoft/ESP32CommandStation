@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2020 Mike Dunston
+COPYRIGHT (c) 2020-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -81,11 +81,6 @@ bool is_restricted_pin(gpio_num_t pin)
     CONFIG_DISPLAY_OLED_RESET_PIN != GPIO_NUM_NC
   , (gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN
 #endif
-#endif
-
-#if CONFIG_LOCONET
-  , (gpio_num_t)CONFIG_LOCONET_RX_PIN
-  , (gpio_num_t)CONFIG_LOCONET_TX_PIN
 #endif
 
 #if CONFIG_GPIO_S88

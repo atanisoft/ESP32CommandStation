@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2020 Mike Dunston
+COPYRIGHT (c) 2020-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@ COPYRIGHT (c) 2020 Mike Dunston
 
 #include "LCCStackManager.h"
 #include "FileSystemManager.h"
+#include "nvs.hxx"
 #include <freertos_drivers/esp32/Esp32HardwareTwai.hxx>
 #include <openlcb/MemoryConfigClient.hxx>
 #include <openlcb/SimpleStack.hxx>
@@ -25,28 +26,26 @@ COPYRIGHT (c) 2020 Mike Dunston
 namespace esp32cs
 {
 
-static constexpr const char LCC_NODE_ID_FILE[] = "lcc-node";
-static constexpr const char LCC_RESET_MARKER_FILE[] = "lcc-rst";
-
 #if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
 Esp32HardwareTwai twai(CONFIG_LCC_CAN_RX_PIN, CONFIG_LCC_CAN_TX_PIN);
 #define CAN_PERIPHERAL_AVAILABLE 1
 #endif // ESP32_TWAI_DRIVER_SUPPORTED
 
-LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
+LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg
+                               , const uint64_t node_id, bool factory_reset)
+                               : cfg_(cfg), nodeID_(node_id)
 {
-#if defined(CONFIG_LCC_FACTORY_RESET) || defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET)
-  bool lcc_factory_reset{true};
-#else
-  bool lcc_factory_reset{false};
-#endif
-  auto fs = Singleton<FileSystemManager>::instance();
   struct stat statbuf;
+
+#if defined(CONFIG_LCC_FACTORY_RESET) || \
+    defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET)
+  factory_reset = true;
+#endif
 
   // If we are not currently forcing a factory reset, verify if the LCC config
   // file is the correct size. If it is not the expected size force a factory
   // reset.
-  if (!lcc_factory_reset &&
+  if (!factory_reset &&
       stat(LCC_CONFIG_FILE, &statbuf) != 0 &&
       statbuf.st_size != openlcb::CONFIG_FILE_SIZE)
   {
@@ -54,7 +53,7 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
       , "[LCC] Corrupt/missing configuration file detected, %s is not the "
         "expected size: %lu vs %zu bytes."
       , LCC_CONFIG_FILE, statbuf.st_size, openlcb::CONFIG_FILE_SIZE);
-    lcc_factory_reset = true;
+    factory_reset = true;
   }
   else
   {
@@ -64,21 +63,10 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg) : cfg_(cfg)
 
   // if the factory reset marker is present or we need to reset due to config
   // file size changes take care of it now.
-  if (fs->exists(LCC_RESET_MARKER_FILE) || lcc_factory_reset)
+  if (factory_reset && !stat(LCC_CONFIG_FILE, &statbuf))
   {
-    fs->remove(LCC_RESET_MARKER_FILE);
-    if (!stat(LCC_CONFIG_FILE, &statbuf))
-    {
-        LOG(WARNING, "[LCC] Forcing regeneration of %s", LCC_CONFIG_FILE);
-        ERRNOCHECK(LCC_CONFIG_FILE, unlink(LCC_CONFIG_FILE));
-    }
-  }
-
-  // if there is a node-id override load it
-  if (fs->exists(LCC_NODE_ID_FILE))
-  {
-    string node_id_str = fs->load(LCC_NODE_ID_FILE);
-    nodeID_ = string_to_uint64(node_id_str);
+      LOG(WARNING, "[LCC] Forcing regeneration of %s", LCC_CONFIG_FILE);
+      ERRNOCHECK(LCC_CONFIG_FILE, unlink(LCC_CONFIG_FILE));
   }
 
   LOG(INFO, "[LCC] Initializing Stack (node-id: %s)"
@@ -144,7 +132,7 @@ void LCCStackManager::start(bool is_sd)
   // Create the default internal configuration file if it doesn't already exist.
   fd_ =
     stack_->create_config_file_if_needed(cfg_.seg().internal_config()
-                                       , CONFIG_ESP32CS_CDI_VERSION
+                                       , CDI_VERSION
                                        , openlcb::CONFIG_FILE_SIZE);
   LOG(INFO, "[LCC] Config file opened using fd:%d", fd_);
 
@@ -188,41 +176,6 @@ void LCCStackManager::shutdown()
     LOG(INFO, "[LCC] Closing config file.");
     ::close(fd_);
   }
-}
-
-bool LCCStackManager::set_node_id(string node_id)
-{
-  uint64_t new_node_id = string_to_uint64(node_id);
-  if (new_node_id != nodeID_)
-  {
-    LOG(INFO, "[LCC] Persisting updated NodeID: %s", node_id.c_str());
-    auto fs = Singleton<FileSystemManager>::instance();
-    string node_id_str = uint64_to_string_hex(new_node_id);
-    fs->store(LCC_NODE_ID_FILE, node_id_str);
-    factory_reset();
-    reboot_node();
-    return true;
-  }
-  return false;
-}
-
-void LCCStackManager::factory_reset()
-{
-  LOG(INFO, "[LCC] Enabling forced factory_reset.");
-  auto fs = Singleton<FileSystemManager>::instance();
-  string marker = uint64_to_string_hex(nodeID_);
-  fs->store(LCC_RESET_MARKER_FILE, marker);
-}
-
-std::string LCCStackManager::get_config_json()
-{
-  return StringPrintf("\"lcc\":{\"id\":\"%s\", \"can\":%s}"
-                    , uint64_to_string_hex(nodeID_).c_str()
-#if CAN_PERIPHERAL_AVAILABLE
-                    , "true");
-#else
-                    , "false");
-#endif
 }
 
 void LCCStackManager::reboot_node()

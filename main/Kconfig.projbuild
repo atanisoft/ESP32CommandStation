@@ -186,15 +186,3 @@ menu "Locomotive Roster"
             are modified.
 
 endmenu
-
-config ESP32CS_CDI_VERSION
-    hex
-    default 0x0151
-
-config ESP32CS_HW_VERSION
-    string
-    default "ESP32-v1"
-
-config ESP32CS_SW_VERSION
-    string
-    default "1.5.0"

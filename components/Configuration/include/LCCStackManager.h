@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2020 Mike Dunston
+COPYRIGHT (c) 2020-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -38,7 +38,8 @@ namespace esp32cs
 class LCCStackManager : public Singleton<LCCStackManager>
 {
 public:
-  LCCStackManager(const esp32cs::Esp32ConfigDef &cfg);
+  LCCStackManager(const esp32cs::Esp32ConfigDef &cfg, const uint64_t node_id
+                , bool factory_reset);
   openlcb::SimpleStackBase *stack();
   ExecutorBase *executor();
   Service *service();
@@ -48,15 +49,11 @@ public:
   openlcb::MemoryConfigHandler *memory_config_handler();
   void start(bool is_sd);
   void shutdown();
-  bool set_node_id(std::string);
-  void reconfigure_can(bool enable);
-  void factory_reset();
-  std::string get_config_json();
   void reboot_node();
 private:
   const Esp32ConfigDef cfg_;
+  const uint64_t nodeID_;
   int fd_;
-  uint64_t nodeID_{UINT64_C(CONFIG_LCC_NODE_ID)};
   openlcb::SimpleStackBase *stack_;
   openlcb::MemoryConfigClient *memory_client_;
   AutoSyncFileFlow *configAutoSync_;

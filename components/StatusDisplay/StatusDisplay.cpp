@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2017-2020 Mike Dunston
+COPYRIGHT (c) 2017-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -195,7 +195,7 @@ StatusDisplay::StatusDisplay(openlcb::SimpleStackBase *stack, Service *service)
                         , std::bind(&StatusDisplay::node_pong, this
                                   , std::placeholders::_1));
   clear();
-  info("ESP32-CS: v%s", CONFIG_ESP32CS_SW_VERSION);
+  info("ESP32-CS: v%s", openlcb::SNIP_STATIC_DATA.software_version);
 #if !defined(CONFIG_WIFI_MODE_DISABLED)
   wifi("IP:Pending");
   Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
@@ -606,11 +606,7 @@ StateFlowBase::Action StatusDisplay::initLCD()
 
 StateFlowBase::Action StatusDisplay::update()
 {
-#if CONFIG_LOCONET
-  static uint8_t rotatingLineCount = 7;
-#else
   static uint8_t rotatingLineCount = 5;
-#endif
   // switch to next status line detail set after 10 iterations
   if(++updateCount_ > 10)
   {
@@ -675,21 +671,6 @@ StateFlowBase::Action StatusDisplay::update()
           lccNodeBrowser_->refresh();
         }
       }
-#if CONFIG_LOCONET
-    }
-    else if (rotatingIndex_ == 5)
-    {
-      status("LN-RX: %d/%d", locoNet.getRxStats()->rxPackets
-           , locoNet.getRxStats()->rxErrors
-      );
-    }
-    else if (rotatingIndex_ == 6)
-    {
-      status("LN-TX: %d/%d/%d", locoNet.getTxStats()->txPackets
-           , locoNet.getTxStats()->txErrors
-           , locoNet.getTxStats()->collisions
-      );
-#endif
     }
   }
 

@@ -15,4 +15,27 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-void init_jmri_interface();
+#ifndef NVS_HXX_
+#define NVS_HXX_
+
+#include <esp_err.h>
+#include <esp_wifi_types.h>
+#include <stdint.h>
+
+typedef struct
+{
+    bool force_reset;
+    bool bootloader_req;
+    uint64_t node_id;
+    uint8_t reserved[22];
+} node_config_t;
+
+esp_err_t load_config(node_config_t *config);
+esp_err_t save_config(node_config_t *config);
+esp_err_t default_config(node_config_t *config);
+void nvs_init();
+void dump_config(node_config_t *config);
+bool force_factory_reset();
+bool set_node_id(uint64_t node_id);
+
+#endif // NVS_CONFIG_HXX_

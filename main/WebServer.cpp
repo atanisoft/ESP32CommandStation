@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2017-2020 Mike Dunston
+COPYRIGHT (c) 2017-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -33,8 +33,9 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <JsonConstants.h>
 #include <LCCStackManager.h>
 #include <LCCWiFiManager.h>
-#include <openlcb/MemoryConfigClient.hxx>
 #include <mutex>
+#include <nvs.hxx>
+#include <openlcb/MemoryConfigClient.hxx>
 #include <Turnouts.h>
 #include <utils/FileUtils.hxx>
 #include <utils/SocketClientParams.hxx>
@@ -444,22 +445,11 @@ void init_webserver()
   httpd->static_uri("/spectre.min.css", spectreCssGz, spectreCssGz_size
                   , MIME_TYPE_TEXT_CSS, HTTP_ENCODING_GZIP);
   httpd->static_uri("/cdi.xml", (const uint8_t *)openlcb::CDI_DATA
-                  , openlcb::CDI_SIZE - 1, MIME_TYPE_TEXT_XML);
+                  , openlcb::CDI_SIZE - 1, MIME_TYPE_TEXT_XML
+                  , HTTP_ENCODING_NONE, false);
   httpd->websocket_uri("/ws", process_ws);
   httpd->websocket_uri("/wsjson", process_wsjson);
   httpd->uri("/update", HttpMethod::POST, nullptr, process_ota);
-  httpd->uri("/version", [&](HttpRequest *req)
-  {
-    const esp_app_desc_t *app_data = esp_ota_get_app_description();
-    const esp_partition_t *partition = esp_ota_get_running_partition();
-    string version =
-      StringPrintf("{\"version\":\"%s\",\"build\":\"%s\","
-                    "\"timestamp\":\"%s %s\",\"ota\":\"%s\",\"uptime\":%llu}"
-                 , CONFIG_ESP32CS_SW_VERSION, app_data->version
-                 , app_data->date, app_data->time
-                 , partition->label, esp_timer_get_time());
-    return new JsonResponse(version);
-  });
   httpd->uri("/fs", HttpMethod::GET,
   [&](HttpRequest *request) -> AbstractHttpResponse *
   {
@@ -617,12 +607,13 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       else
       {
         std::string value = cJSON_GetObjectItem(root, "val")->valuestring;
-        if (Singleton<esp32cs::LCCStackManager>::instance()->set_node_id(value))
+        if (set_node_id(string_to_uint64(value)))
         {
           LOG(INFO, "[WSJSON:%d] Node ID updated to: %s, reboot pending"
             , req_id->valueint, value.c_str());
           response =
             StringPrintf(R"!^!({"res":"nodeid","id":%d})!^!", req_id->valueint);
+          Singleton<esp32cs::LCCStackManager>::instance()->reboot_node();
         }
         else
         {
@@ -638,9 +629,8 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       const esp_app_desc_t *app_data = esp_ota_get_app_description();
       const esp_partition_t *partition = esp_ota_get_running_partition();
       response =
-        StringPrintf(R"!^!({"res":"info","build":"%s","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","s88":%s,"sensorIDBase":%d,"outputs":%s,"sensors":%s,"id":%d})!^!",
-            app_data->version, app_data->date
-          , app_data->time, partition->label
+        StringPrintf(R"!^!({"res":"info","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","s88":%s,"sensorIDBase":%d,"outputs":%s,"sensors":%s,"id":%d})!^!"
+          , app_data->date, app_data->time, partition->label
           , openlcb::SNIP_STATIC_DATA.model_name
           , openlcb::SNIP_STATIC_DATA.hardware_version
           , openlcb::SNIP_STATIC_DATA.software_version
@@ -756,11 +746,20 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     else if (!strcmp(req_type->valuestring, "factory-reset"))
     {
       LOG(VERBOSE, "[WSJSON:%d] Factory reset received", req_id->valueint);
-      Singleton<esp32cs::LCCStackManager>::instance()->factory_reset();
-      Singleton<esp32cs::LCCStackManager>::instance()->reboot_node();
-      response =
-        StringPrintf(R"!^!({"res":"factory-reset","id":%d})!^!"
-                   , req_id->valueint);
+      if (force_factory_reset())
+      {
+        Singleton<esp32cs::LCCStackManager>::instance()->reboot_node();
+        response =
+          StringPrintf(R"!^!({"res":"factory-reset","id":%d})!^!"
+                    , req_id->valueint);
+      }
+      else
+      {
+        LOG(INFO, "[WSJSON:%d] Factory reset update failed", req_id->valueint);
+        response =
+          StringPrintf(R"!^!({"res":"error","error":"Failed to record factory reset request","id":%d})!^!"
+                    , req_id->valueint);
+      }
     }
     else if (!strcmp(req_type->valuestring, "reset-events"))
     {

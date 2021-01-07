@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2017-2019 Mike Dunston
+COPYRIGHT (c) 2017-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@ COPYRIGHT (c) 2017-2019 Mike Dunston
 #include <utils/StringPrintf.hxx>
 
 using nlohmann::json;
-
-std::unique_ptr<TurnoutManager> turnoutManager;
 
 static constexpr const char * TURNOUTS_JSON_FILE = "turnouts.json";
 

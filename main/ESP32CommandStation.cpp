@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2017-2020 Mike Dunston
+COPYRIGHT (c) 2017-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include "sdkconfig.h"
 #include "CSConfigDescriptor.h"
 #include "ESP32TrainDatabase.h"
+#include "nvs.hxx"
 #include "OTAMonitor.h"
 
 #include <AllTrainNodes.hxx>
@@ -28,6 +29,7 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <esp_task.h>
+#include <esp32/rom/rtc.h>
 #include <FreeRTOSTaskMonitor.h>
 #if !defined(CONFIG_WIFI_MODE_DISABLED)
 #include <Httpd.h>
@@ -164,8 +166,8 @@ namespace openlcb
     4,
     "github.com/atanisoft (Mike Dunston)",
     "ESP32 Command Station",
-    CONFIG_ESP32CS_HW_VERSION,
-    CONFIG_ESP32CS_SW_VERSION
+    CDI_HW_VERSION,
+    SNIP_SW_VERSION
   };
 }
 
@@ -188,8 +190,8 @@ namespace openlcb
 <identification>
 <manufacturer>github.com/atanisoft (Mike Dunston)</manufacturer>
 <model>ESP32 Command Station</model>
-<hardwareVersion>ESP32-v1</hardwareVersion>
-<softwareVersion>1.5.0</softwareVersion>
+<hardwareVersion>)xmlpayload" CDI_HW_VERSION R"xmlpayload(</hardwareVersion>
+<softwareVersion>)xmlpayload" CDI_SW_VERSION R"xmlpayload(</softwareVersion>
 </identification>
 <acdi/>
 <segment space='251' origin='1'>
@@ -455,7 +457,7 @@ public:
 
   void factory_reset(int fd) override
   {
-    LOG(INFO, "[LCC] ESP32 Command Station factory_reset(%d) triggered.", fd);
+    LOG(VERBOSE, "ESP32 Command Station factory_reset(%d) triggered.", fd);
     cfg.userinfo().name().write(fd, "ESP32 Command Station");
     cfg.userinfo().description().write(fd, "");
   }
@@ -463,181 +465,269 @@ public:
 
 void init_webserver();
 
+uninitialized<FileSystemManager> fs;
+uninitialized<esp32cs::LCCStackManager> stackManager;
+uninitialized<esp32cs::LCCWiFiManager> wifiManager;
+#if CONFIG_THERMALMONITOR
+uninitialized<esp32cs::ThermalMonitorFlow> thermal_monitor;
+#endif
+#if !CONFIG_DISPLAY_TYPE_NONE
+uninitialized<StatusDisplay> statusDisplay;
+#endif
+uninitialized<MDNS> mDNS;
+uninitialized<http::Httpd> httpd;
+uninitialized<TurnoutManager> turnoutManager;
+#if CONFIG_HC12
+uninitialized<esp32cs::HC12Radio> hc12;
+#endif
+#if CONFIG_STATUS_LED
+uninitialized<StatusLED> statusLED;
+#endif
+uninitialized<OTAMonitorFlow> ota;
+uninitialized<FactoryResetHelper> resetHelper;
+uninitialized<openlcb::TrainService> trainService;
+uninitialized<esp32cs::Esp32TrainDatabase> trainDb;
+uninitialized<commandstation::AllTrainNodes> trainNodes;
+uninitialized<FreeRTOSTaskMonitor> taskMon;
+
+extern "C" void enter_bootloader()
+{
+    node_config_t config;
+    if (load_config(&config) != ESP_OK)
+    {
+        default_config(&config);
+    }
+    config.bootloader_req = true;
+    save_config(&config);
+    LOG(INFO, "[Bootloader] Rebooting into bootloader");
+    reboot();
+}
+
+static const char * const reset_reasons[] =
+{
+    "unknown",                  // NO_MEAN                  0
+    "power on reset",           // POWERON_RESET            1
+    "unknown",                  // no key                   2
+    "software reset",           // SW_RESET                 3
+    "watchdog reset (legacy)",  // OWDT_RESET               4
+    "deep sleep reset",         // DEEPSLEEP_RESET          5
+    "reset (SLC)",              // SDIO_RESET               6
+    "watchdog reset (group0)",  // TG0WDT_SYS_RESET         7
+    "watchdog reset (group1)",  // TG1WDT_SYS_RESET         8
+    "RTC system reset",         // RTCWDT_SYS_RESET         9
+    "Intrusion test reset",     // INTRUSION_RESET          10
+    "WDT Timer group reset",    // TGWDT_CPU_RESET          11
+    "software reset (CPU)",     // SW_CPU_RESET             12
+    "RTC WDT reset",            // RTCWDT_CPU_RESET         13
+    "software reset (CPU)",     // EXT_CPU_RESET            14
+    "Brownout reset",           // RTCWDT_BROWN_OUT_RESET   15
+    "RTC Reset (Normal)",       // RTCWDT_RTC_RESET         16
+};
+
+void start_bootloader_stack(uint64_t id);
+
 extern "C" void app_main()
 {
   esp_log_level_set("*", ESP_LOG_ERROR);
-
-  // Setup UART0 115200 8N1 TX: 1, RX: 3, 2k buffer (1k rx, 1k tx)
-  uart_config_t uart0 =
+  // capture the reason for the CPU reset
+  uint8_t reset_reason = rtc_get_reset_reason(PRO_CPU_NUM);
+  uint8_t orig_reset_reason = reset_reason;
+  // Ensure the reset reason it within bounds.
+  if (reset_reason > ARRAYSIZE(reset_reasons))
   {
-    .baud_rate           = 115200,
-    .data_bits           = UART_DATA_8_BITS,         // 8 bit bytes
-    .parity              = UART_PARITY_DISABLE,      // no partity
-    .stop_bits           = UART_STOP_BITS_1,         // one stop bit
-    .flow_ctrl           = UART_HW_FLOWCTRL_DISABLE, // no flow control
-    .rx_flow_ctrl_thresh = 0,                        // unused
-    .use_ref_tick        = false                     // unused
-  };
-  uart_param_config(UART_NUM_0, &uart0);
-  uart_driver_install(UART_NUM_0, 1024, 1024, 0, NULL, 0);
+      reset_reason = 0;
+  }
 
   const esp_app_desc_t *app_data = esp_ota_get_app_description();
-
-  LOG(INFO, "\n\nESP32 Command Station v%s (%s) starting up...", CONFIG_ESP32CS_SW_VERSION, app_data->version);
+  esp_chip_info_t chip_info;
+  esp_chip_info(&chip_info);
+  LOG(INFO, "\n\nESP32 Command Station %s (%s) starting up (%d:%s)..."
+    , SNIP_SW_VERSION, app_data->version, reset_reason
+    , reset_reasons[reset_reason]);
+  LOG(INFO
+    , "[SoC] model:%s, rev:%d, cores:%d, flash:%s, WiFi:%s, BLE:%s, BT:%s"
+    , chip_info.model == CHIP_ESP32 ? "ESP32" :
+      chip_info.model == CHIP_ESP32S2 ? "ESP32-S2" : "unknown"
+    , chip_info.revision, chip_info.cores
+    , chip_info.features & CHIP_FEATURE_EMB_FLASH ? "Yes" : "No"
+    , chip_info.features & CHIP_FEATURE_WIFI_BGN ? "Yes" : "No"
+    , chip_info.features & CHIP_FEATURE_BLE ? "Yes" : "No"
+    , chip_info.features & CHIP_FEATURE_BT ? "Yes" : "No");
+  LOG(INFO, "[SoC] Heap: %.2fkB / %.2fKb"
+    , heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0f
+    , heap_caps_get_total_size(MALLOC_CAP_INTERNAL) / 1024.0f);
   LOG(INFO, "Compiled on %s %s using IDF %s", app_data->date, app_data->time
     , app_data->idf_ver);
   LOG(INFO, "Running from: %s", esp_ota_get_running_partition()->label);
-
   LOG(INFO, "ESP32 Command Station uses the OpenMRN library\n"
-            "Copyright (c) 2019-2020, OpenMRN\n"
+            "Copyright (c) 2019-2021, OpenMRN\n"
             "All rights reserved.");
-
-  // Initialize NVS before we do any other initialization as it may be
-  // internally used by various components even if we disable it's usage in
-  // the WiFi connection stack.
-  LOG(INFO, "[NVS] Initializing NVS");
-  if (ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_flash_init()) == ESP_ERR_NVS_NO_FREE_PAGES)
+  if (reset_reason != orig_reset_reason)
   {
-    const esp_partition_t* partition =
-      esp_partition_find_first(ESP_PARTITION_TYPE_DATA
-                             , ESP_PARTITION_SUBTYPE_DATA_NVS
-                             , NULL);
-    if (partition != NULL)
-    {
-      LOG(INFO, "[NVS] Erasing partition %s...", partition->label);
-      ESP_ERROR_CHECK(esp_partition_erase_range(partition, 0, partition->size));
-      ESP_ERROR_CHECK(nvs_flash_init());
-    }
+    LOG(WARNING, "Reset reason mismatch: %d vs %d", reset_reason
+      , orig_reset_reason);
+  }
+  nvs_init();
+  // load non-CDI based config from NVS.
+  bool factory_reset = false;
+  node_config_t config;
+  if (load_config(&config) != ESP_OK)
+  {
+    default_config(&config);
+    factory_reset = true;
   }
 
-#if defined(CONFIG_TIMEZONE)
-  LOG(INFO, "[TimeZone] %s", CONFIG_TIMEZONE);
-  setenv("TZ", CONFIG_TIMEZONE, 1);
-  tzset();
-#endif // CONFIG_TIMEZONE
+  bool run_bootloader = false;
+  bool config_updated = false;
+  // Check for and reset factory reset flag.
+  if (config.force_reset)
+  {
+    factory_reset = true;
+    config.force_reset = false;
+    config_updated = true;
+  }
 
-  // Configure ADC1 up front to use 12 bit (0-4095) as we use it for all
-  // monitored h-bridges.
-  LOG(INFO, "[ADC] Configure 12-bit ADC resolution");
-  adc1_config_width(ADC_WIDTH_BIT_12);
+  if (config.bootloader_req)
+  {
+    run_bootloader = true;
+    // reset the flag so we start in normal operating mode next time.
+    config.bootloader_req = false;
+    config_updated = true;
+  }
 
-  // Initialize the FileSystemManager, this manages the underlying persistent
-  // filesystem. This may also trigger a factory reset if the reset pin is
-  // shorted to GND or the marker file is present.
-  FileSystemManager fs;
+  if (config_updated)
+  {
+    save_config(&config);
+  }
 
-  esp32cs::LCCStackManager stackManager(cfg);
+  dump_config(&config);
 
-  esp32cs::LCCWiFiManager wifiManager(stackManager.stack(), cfg);
+#if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
+  if (run_bootloader)
+  {
+    start_bootloader_stack(config.node_id);
+  }
+  else
+#else
+  // silence unused variable warning
+  (void)run_bootloader;
+#endif
+  {
+    // Initialize the FileSystemManager, this manages the underlying persistent
+    // filesystem. This may also trigger a factory reset if the reset pin is
+    // shorted to GND or the marker file is present.
+    fs.emplace();
+    // Configure ADC1 up front to use 12 bit (0-4095) as we use it for all
+    // monitored h-bridges.
+    LOG(INFO, "[ADC] Configure 12-bit ADC resolution");
+    adc1_config_width(ADC_WIDTH_BIT_12);
+
+    stackManager.emplace(cfg, config.node_id, factory_reset);
+    wifiManager.emplace(stackManager->stack(), cfg);
+    auto stack = stackManager->stack();
 
 #if CONFIG_THERMALMONITOR
-  esp32cs::ThermalMonitorFlow thermal_monitor(stackManager.service()
-                                            , stackManager.node()
-                                            , cfg.seg().thermal()
-                                            , (adc1_channel_t)CONFIG_THERMALMONITOR_ADC);
+    thermal_monitor.emplace(stackManager->service(), stackManager->node()
+                          , cfg.seg().thermal()
+                          , (adc1_channel_t)CONFIG_THERMALMONITOR_ADC);
 #endif // CONFIG_THERMALMONITOR
 
 #if !CONFIG_DISPLAY_TYPE_NONE
-  // Initialize the status display module (dependency of WiFi)
-  StatusDisplay statusDisplay(stackManager.stack()
-                            , stackManager.service());
+    // Initialize the status display module (dependency of WiFi)
+    statusDisplay.emplace(stack, stackManager->service());
 #endif // !CONFIG_DISPLAY_TYPE_NONE
 
-  // Initialize the DCC VFS adapter, this will also initialize the DCC signal
-  // generation code.
-  esp32cs::init_dcc(stackManager.node(), stackManager.service()
-                  , cfg.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX)
-                  , cfg.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX));
+    // Initialize the DCC VFS adapter, this will also initialize the DCC signal
+    // generation code.
+    esp32cs::init_dcc(stackManager->node(), stackManager->service()
+                    , cfg.seg().hbridge().entry(esp32cs::OPS_CDI_TRACK_OUTPUT_IDX)
+                    , cfg.seg().hbridge().entry(esp32cs::PROG_CDI_TRACK_OUTPUT_IDX));
 
-#if !defined(CONFIG_WIFI_MODE_DISABLED)
-  // Initialize the Http server and mDNS instance
-  MDNS mDNS;
-  http::Httpd httpd(&mDNS);
-  init_webserver();
-#endif
+    // Initialize the Http server and mDNS instance
+    mDNS.emplace();
+    httpd.emplace(mDNS.get_mutable());
+    init_webserver();
 
 #if CONFIG_NEXTION
-  // Initialize the Nextion module (dependency of WiFi)
-  LOG(INFO, "[Config] Enabling Nextion module");
-  nextionInterfaceInit(stackManager.service());
+    // Initialize the Nextion module (dependency of WiFi)
+    LOG(INFO, "[Config] Enabling Nextion module");
+    nextionInterfaceInit(stackManager.service());
 #endif // CONFIG_NEXTION
 
 #if CONFIG_JMRI
-  init_jmri_interface();
+    init_jmri_interface();
 #endif // CONFIG_JMRI
 
-  // Initialize the turnout manager and register it with the LCC stack to
-  // process accessories packets.
-  TurnoutManager turnoutManager(stackManager.node()
-                              , stackManager.service());
+    // Initialize the turnout manager and register it with the LCC stack to
+    // process accessories packets.
+    turnoutManager.emplace(stackManager->node(), stackManager->service());
 
 #if CONFIG_GPIO_OUTPUTS
-  LOG(INFO, "[Config] Enabling GPIO Outputs");
-  OutputManager::init();
+    LOG(INFO, "[Config] Enabling GPIO Outputs");
+    OutputManager::init();
 #endif // CONFIG_GPIO_OUTPUTS
 
 #if CONFIG_GPIO_SENSORS
-  LOG(INFO, "[Config] Enabling GPIO Inputs");
-  SensorManager::init();
-  RemoteSensorManager::init();
+    LOG(INFO, "[Config] Enabling GPIO Inputs");
+    SensorManager::init();
+    RemoteSensorManager::init();
 #if CONFIG_GPIO_S88
-  S88BusManager s88(stackManager.node());
+    S88BusManager s88(stackManager.node());
 #endif // CONFIG_GPIO_S88
 #endif // CONFIG_GPIO_SENSORS
 
-#if CONFIG_LOCONET
-  LOG(INFO, "[Config] Enabling LocoNet interface");
-  initializeLocoNet();
-#endif // CONFIG_LOCONET
-
 #if CONFIG_HC12
-  esp32cs::HC12Radio hc12(stackManager.service()
-                        , (uart_port_t)CONFIG_HC12_UART
-                        , (gpio_num_t)CONFIG_HC12_RX_PIN
-                        , (gpio_num_t)CONFIG_HC12_TX_PIN));
+    hc12.emplace(stackManager->service(), (uart_port_t)CONFIG_HC12_UART
+              , (gpio_num_t)CONFIG_HC12_RX_PIN
+              , (gpio_num_t)CONFIG_HC12_TX_PIN));
 #endif // CONFIG_HC12
 
 #if CONFIG_STATUS_LED
-  StatusLED statusLED(stackManager.service());
+    statusLED.emplace(stackManager->service());
 #endif // CONFIG_STATUS_LED
 
-  // Initialize the OTA monitor
-  OTAMonitorFlow ota(stackManager.service());
+    // Initialize the OTA monitor
+    ota.emplace(stackManager->service());
 
-  // Initialize the factory reset helper for the CS.
-  FactoryResetHelper resetHelper;
+    // Initialize the factory reset helper for the CS.
+    resetHelper.emplace();
 
-  // Starts the OpenMRN stack, this needs to be done *AFTER* all other LCC
-  // dependent components as it will initiate configuration load and factory
-  // reset calls.
-  stackManager.start(fs.is_sd());
+    // Starts the OpenMRN stack, this needs to be done *AFTER* all other LCC
+    // dependent components as it will initiate configuration load and factory
+    // reset calls.
+    stackManager->start(fs->is_sd());
 
-  // Initialize the DCC++ protocol adapter
-  DCCPPProtocolHandler::init();
+    // Initialize the DCC++ protocol adapter
+    DCCPPProtocolHandler::init();
 
-  // Initialize the Traction Protocol support
-  openlcb::TrainService trainService(stackManager.stack()->iface());
+    // Initialize the Traction Protocol support
+    trainService.emplace(stack->iface());
 
-  // Initialize the train database
-  esp32cs::Esp32TrainDatabase trainDb(stackManager.stack());
+    // Initialize the train database
+    trainDb.emplace(stack);
 
-  // Initialize the Train Search and Train Manager.
-  commandstation::AllTrainNodes trainNodes(&trainDb
-                                         , &trainService
-                                         , stackManager.info_flow()
-                                         , stackManager.memory_config_handler()
-                                         , trainDb.get_train_cdi()
-                                         , trainDb.get_temp_train_cdi());
+    // Initialize the Train Search and Train Manager.
+    trainNodes.emplace(trainDb.get_mutable(), trainService.get_mutable()
+                    , stackManager->info_flow()
+                    , stackManager->memory_config_handler()
+                    , trainDb->get_train_cdi(), trainDb->get_temp_train_cdi());
 
-  // Task Monitor, periodically dumps runtime state to STDOUT.
-  LOG(VERBOSE, "Starting FreeRTOS Task Monitor");
-  FreeRTOSTaskMonitor taskMon(stackManager.service());
+    // Task Monitor, periodically dumps runtime state to STDOUT.
+    LOG(VERBOSE, "Starting FreeRTOS Task Monitor");
+    taskMon.emplace(stackManager->service());
 
-  LOG(INFO, "\n\nESP32 Command Station Startup complete!\n");
+    LOG(INFO, "\n\nESP32 Command Station Startup complete!\n");
 #if !CONFIG_DISPLAY_TYPE_NONE
-  Singleton<StatusDisplay>::instance()->status("ESP32-CS Started");
+    Singleton<StatusDisplay>::instance()->status("ESP32-CS Started");
 #endif // !CONFIG_DISPLAY_TYPE_NONE
 
-  // donate our task thread to OpenMRN executor.
-  stackManager.stack()->loop_executor();
+    // Start the OpenMRN stack executor
+    stack->start_executor_thread("OpenMRN"
+                              , config_arduino_openmrn_task_priority()
+                              , config_arduino_openmrn_stack_size());
+  }
+
+  // At this point the OpenMRN stack is running in it's own task and we can
+  // safely exit from this one. We do not need to cleanup as that will be
+  // handled automatically by ESP-IDF.
 }
