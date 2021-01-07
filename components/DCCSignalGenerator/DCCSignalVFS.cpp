@@ -190,15 +190,18 @@ typedef GpioInitializer<
 , PROG_SIGNAL_Pin, PROG_ENABLE_Pin
 > DCCGpioInitializer;
 
+// dcc_poller and track must remain as std::unique_ptr and not uninitialized to
+// prevent compiler errors and errors at runtime when the RMT TX complete ISR
+// fires.
 static std::unique_ptr<openlcb::RefreshLoop> dcc_poller;
 static std::unique_ptr<RMTTrackDevice> track[RMT_CHANNEL_MAX];
-static std::unique_ptr<HBridgeShortDetector> track_mon[RMT_CHANNEL_MAX];
-static std::unique_ptr<openlcb::BitEventConsumer> power_event;
-static std::unique_ptr<EStopHandler> estop_handler;
-static std::unique_ptr<ProgrammingTrackBackend> prog_track_backend;
-static std::unique_ptr<esp32cs::DuplexedTrackIf> track_interface;
-static std::unique_ptr<esp32cs::PrioritizedUpdateLoop> track_update_loop;
-static std::unique_ptr<PoolToQueueFlow<Buffer<dcc::Packet>>> track_flow;
+uninitialized<HBridgeShortDetector> track_mon[RMT_CHANNEL_MAX];
+uninitialized<openlcb::BitEventConsumer> power_event;
+uninitialized<EStopHandler> estop_handler;
+uninitialized<ProgrammingTrackBackend> prog_track_backend;
+uninitialized<esp32cs::DuplexedTrackIf> track_interface;
+uninitialized<esp32cs::PrioritizedUpdateLoop> track_update_loop;
+uninitialized<PoolToQueueFlow<Buffer<dcc::Packet>>> track_flow;
 
 #if CONFIG_OPS_RAILCOM
 static std::unique_ptr<dcc::RailcomHubFlow> railcom_hub;
@@ -444,22 +447,20 @@ void init_dcc(openlcb::Node *node, Service *service
 #endif
 #endif // CONFIG_OPS_RAILCOM
 
-  track_mon[OPS_RMT_CHANNEL].reset(
-    new HBridgeShortDetector(node, (adc1_channel_t)CONFIG_OPS_ADC
-                           , OPS_ENABLE_Pin::instance()
-                           , CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS
-                           , CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS
-                           , CONFIG_OPS_TRACK_NAME
-                           , CONFIG_OPS_HBRIDGE_TYPE_NAME
-                           , ops_cfg));
+  track_mon[OPS_RMT_CHANNEL].emplace(node, (adc1_channel_t)CONFIG_OPS_ADC
+                                   , OPS_ENABLE_Pin::instance()
+                                   , CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS
+                                   , CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS
+                                   , CONFIG_OPS_TRACK_NAME
+                                   , CONFIG_OPS_HBRIDGE_TYPE_NAME
+                                   , ops_cfg);
 
-  track_mon[PROG_RMT_CHANNEL].reset(
-    new HBridgeShortDetector(node, (adc1_channel_t)CONFIG_PROG_ADC
-                           , PROG_ENABLE_Pin::instance()
-                           , CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS
-                           , CONFIG_PROG_TRACK_NAME
-                           , CONFIG_PROG_HBRIDGE_TYPE_NAME
-                           , prog_cfg));
+  track_mon[PROG_RMT_CHANNEL].emplace(node, (adc1_channel_t)CONFIG_PROG_ADC
+                                    , PROG_ENABLE_Pin::instance()
+                                    , CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS
+                                    , CONFIG_PROG_TRACK_NAME
+                                    , CONFIG_PROG_HBRIDGE_TYPE_NAME
+                                    , prog_cfg);
 
   SyncNotifiable notif;
   // initialize the track signal generators on the second core so that the ISR
@@ -474,37 +475,29 @@ void init_dcc(openlcb::Node *node, Service *service
     , "[Track] Registering LCC EventConsumer for Track Power (On:%s, Off:%s)"
     , uint64_to_string_hex(openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT).c_str()
     , uint64_to_string_hex(openlcb::Defs::EMERGENCY_OFF_EVENT).c_str());
-  power_event.reset(
-    new openlcb::BitEventConsumer(
-      new TrackPowerBit(node, OPS_ENABLE_Pin::instance())));
+  power_event.emplace(new TrackPowerBit(node, OPS_ENABLE_Pin::instance()));
 
   // Initialize the e-stop event handler
-  estop_handler.reset(new EStopHandler(node));
+  estop_handler.emplace(node);
 
   // Initialize the Programming Track backend handler
-  prog_track_backend.reset(
-    new ProgrammingTrackBackend(service
-                              , &enable_prog_track_output
-                              , &disable_prog_track_output));
+  prog_track_backend.emplace(service, &enable_prog_track_output
+                           , &disable_prog_track_output);
 
   // Configure h-bridge polling
   dcc_poller.reset(new openlcb::RefreshLoop(node,
-    { track_mon[OPS_RMT_CHANNEL].get()
-    , track_mon[PROG_RMT_CHANNEL].get()
+    { track_mon[OPS_RMT_CHANNEL].get_mutable()
+    , track_mon[PROG_RMT_CHANNEL].get_mutable()
   }));
 
-  track_interface.reset(
-    new esp32cs::DuplexedTrackIf(service, CONFIG_DCC_PACKET_POOL_SIZE
-                               , CONFIG_OPS_TRACK_NAME
-                               , CONFIG_PROG_TRACK_NAME
-                               , "/dev/track"));
-  track_update_loop.reset(
-    new esp32cs::PrioritizedUpdateLoop(service, track_interface.get()));
+  track_interface.emplace(service, CONFIG_DCC_PACKET_POOL_SIZE
+                        , CONFIG_OPS_TRACK_NAME, CONFIG_PROG_TRACK_NAME
+                        , "/dev/track");
+  track_update_loop.emplace(service, track_interface.get_mutable());
 
   // Attach the DCC update loop to the track interface
-  track_flow.reset(
-    new PoolToQueueFlow<Buffer<dcc::Packet>>(service, track_interface->pool()
-                                           , track_update_loop.get()));
+  track_flow.emplace(service, track_interface->pool()
+                   , track_update_loop.get_mutable());
 
 #if defined(CONFIG_OPS_ENERGIZE_ON_STARTUP)
   // with everything up and running it's time to energize the track if it is
