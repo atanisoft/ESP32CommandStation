@@ -49,11 +49,6 @@ LCCStackManager::LCCStackManager(const esp32cs::Esp32ConfigDef &cfg
 {
   struct stat statbuf;
 
-#if defined(CONFIG_LCC_FACTORY_RESET) || \
-    defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET)
-  factory_reset = true;
-#endif
-
   // If we are not currently forcing a factory reset, verify if the LCC config
   // file is the correct size. If it is not the expected size force a factory
   // reset.

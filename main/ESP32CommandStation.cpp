@@ -600,6 +600,10 @@ extern "C" void app_main()
   (void)run_bootloader;
 #endif
   {
+#if defined(CONFIG_LCC_FACTORY_RESET) || \
+    defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET)
+    factory_reset = true;
+#endif
     // Initialize the FileSystemManager, this manages the underlying persistent
     // filesystem. This may also trigger a factory reset if the reset pin is
     // shorted to GND or the marker file is present.
