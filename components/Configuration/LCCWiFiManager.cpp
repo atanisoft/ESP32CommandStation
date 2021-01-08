@@ -68,6 +68,10 @@ namespace esp32cs
 #define CONFIG_WIFI_STATION_PASSWORD "esp32cs"
 #endif
 
+#ifndef CONFIG_SNTP
+#define CONFIG_SNTP false
+#endif
+
 #ifndef CONFIG_SNTP_SERVER
 #define CONFIG_SNTP_SERVER "pool.ntp.org"
 #endif
@@ -111,7 +115,11 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
                        , CONFIG_WIFI_SOFTAP_CHANNEL
                        , nullptr /* SoftAP static ip */
                        , CONFIG_SNTP_SERVER, CONFIG_TIMEZONE
+#if CONFIG_SNTP
+                       , true));
+#else
                        , false));
+#endif // CONFIG_SNTP
 
 #if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
   // Disable the uplink by default *IF* the TWAI interface has been enabled so
