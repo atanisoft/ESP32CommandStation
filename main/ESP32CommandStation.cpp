@@ -556,7 +556,12 @@ extern "C" void app_main()
   }
   nvs_init();
   // load non-CDI based config from NVS.
+#if defined(CONFIG_LCC_FACTORY_RESET) || \
+    defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET)
+  bool factory_reset = true;
+#else
   bool factory_reset = false;
+#endif
   node_config_t config;
   if (load_config(&config) != ESP_OK)
   {
@@ -600,10 +605,6 @@ extern "C" void app_main()
   (void)run_bootloader;
 #endif
   {
-#if defined(CONFIG_LCC_FACTORY_RESET) || \
-    defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET)
-    factory_reset = true;
-#endif
     // Initialize the FileSystemManager, this manages the underlying persistent
     // filesystem. This may also trigger a factory reset if the reset pin is
     // shorted to GND or the marker file is present.
