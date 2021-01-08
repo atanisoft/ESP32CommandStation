@@ -206,6 +206,16 @@ public:
         wifiStatusLed_ = led;
     }
 
+    /// Configures the default setting for enabling/disabling the uplink.
+    ///
+    /// NOTE: The persistent CDI settings will override this setting if called
+    /// before the configuration has been loaded.
+    void set_uplink_enabled(bool enabled = true)
+    {
+        enableUplink_ = enabled;
+        stop_uplink();
+    }
+
     /// Updates the WiFiConfiguration settings used by this node.
     ///
     /// @param fd is the file descriptor used for the configuration settings.

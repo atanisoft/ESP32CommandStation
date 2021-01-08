@@ -113,6 +113,13 @@ LCCWiFiManager::LCCWiFiManager(openlcb::SimpleStackBase *stack
                        , CONFIG_SNTP_SERVER, CONFIG_TIMEZONE
                        , false));
 
+#if CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
+  // Disable the uplink by default *IF* the TWAI interface has been enabled so
+  // we can prevent a bus loop condition. NOTE: The user will be able to reset
+  // this via CDI.
+  wifi_->set_uplink_enabled(false);
+#endif // CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
+
 #if CONFIG_WIFI_DEBUG_OUTPUT
   wifi_->enable_verbose_logging();
 #endif // CONFIG_WIFI_DEBUG_OUTPUT
