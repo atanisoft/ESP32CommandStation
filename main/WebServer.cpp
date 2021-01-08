@@ -629,7 +629,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       const esp_app_desc_t *app_data = esp_ota_get_app_description();
       const esp_partition_t *partition = esp_ota_get_running_partition();
       response =
-        StringPrintf(R"!^!({"res":"info","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","s88":%s,"sensorIDBase":%d,"outputs":%s,"sensors":%s,"bootloader":%s,"id":%d})!^!"
+        StringPrintf(R"!^!({"res":"info","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","s88":%s,"sensorIDBase":%d,"outputs":%s,"sensors":%s,"bootloader":%s,"statusLED":%s,"statusLEDBrightness":%d,"id":%d})!^!"
           , app_data->date, app_data->time, partition->label
           , openlcb::SNIP_STATIC_DATA.model_name
           , openlcb::SNIP_STATIC_DATA.hardware_version
@@ -640,7 +640,12 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
           , "true"
 #else
           , "false"
-#endif
+#endif // CONFIG_LCC_CAN_RX_PIN != -1 && CONFIG_LCC_CAN_TX_PIN != -1
+#if CONFIG_STATUS_LED
+          , "true", Singleton<StatusLED>::instance()->getBrightness()
+#else
+          , "false", 128
+#endif // CONFIG_STATUS_LED
           , req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "update-complete"))
@@ -652,6 +657,9 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       LOG(VERBOSE, "[WSJSON:%d] Sending UPDATE_COMPLETE to queue"
         , req_id->valueint);
       cdi_client->send(b->ref());
+#if CONFIG_STATUS_LED
+      update_status_led_brightness(Singleton<StatusLED>::instance()->getBrightness());
+#endif // CONFIG_STATUS_LED
       cJSON_Delete(root);
       return;
     }
@@ -916,6 +924,17 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       LOG(VERBOSE, "[WSJSON:%d] PING received", req_id->valueint);
       response =
         StringPrintf(R"!^!({"res":"pong","id":%d})!^!", req_id->valueint);
+    }
+    else if (!strcmp(req_type->valuestring, "statusled"))
+    {
+      cJSON *value = cJSON_GetObjectItem(root, "val");
+      LOG(VERBOSE, "[WSJSON:%d] statusled received, new brightness:%d"
+        , req_id->valueint, value->valueint);
+#if CONFIG_STATUS_LED
+      Singleton<StatusLED>::instance()->setBrightness(value->valueint);
+#endif // CONFIG_STATUS_LED
+      response =
+        StringPrintf(R"!^!({"res":"statusled","id":%d})!^!", req_id->valueint);
     }
     else
     {

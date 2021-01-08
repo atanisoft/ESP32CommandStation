@@ -27,7 +27,8 @@ typedef struct
     bool force_reset;
     bool bootloader_req;
     uint64_t node_id;
-    uint8_t reserved[22];
+    uint8_t status_led_brightness;
+    uint8_t reserved[21];
 } node_config_t;
 
 esp_err_t load_config(node_config_t *config);
@@ -37,5 +38,6 @@ void nvs_init();
 void dump_config(node_config_t *config);
 bool force_factory_reset();
 bool set_node_id(uint64_t node_id);
+bool update_status_led_brightness(uint8_t value);
 
 #endif // NVS_CONFIG_HXX_

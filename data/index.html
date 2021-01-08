@@ -401,12 +401,30 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         <div class="columns">
           <div class="column"><label class="form-label" for="sw_version">Software Version:</label></div>
           <div class="column column-6" id="sw_version"></div>
+          <div class="column"></div>
         </div>
         <div class="columns">
           <div class="column"><label class="form-label" for="hw_version">Hardware Version:</label></div>
           <div class="column column-6" id="hw_version"></div>
+          <div class="column"></div>
         </div>
-        <div class="container" id="node_info_dynamic"></div>
+        <div id="node_info_dynamic"></div>
+        <div id="status_led">
+          <div class="columns">
+            <div class="column">
+              <label for="led-brightness">Status LED Brightness:</label>
+            </div>
+            <div class="column column-6"><input class="bar bar-slider" type="range" id="led-brightness" min="8" max="255"
+                value="128" onchange="statusLEDChange(this);" />
+            </div>
+            <div class="column"></div>
+          </div>
+          <div class="columns">
+            <div class="column">
+              <small>This controls the brightness of the on-board RGB Status LEDs. The minimum value is 8 and maximum of 255, however, values over 200 are not discernable.</small>
+            </div>
+          </div>
+        </div>
       </div>
       <div id="cdi_tab_wifi" style="display:none;"></div>
       <div id="cdi_tab_hbridge" style="display:none;"></div>
@@ -618,6 +636,11 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             } else {
               s88SensorIDBase = json.sensorIDBase;
             }
+            if (json.statusLED === false) {
+              $('#status_led').hide();
+            } else {
+              $('#led-brightness').val(json.statusLEDBrightness);
+            }
             if (json.bootloader === false) {
               $('#bootloader').hide();
             }
@@ -738,6 +761,13 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       setupThrottle();
       setupTurnouts();
     });
+    function statusLEDChange(slider) {
+      ws_tx(JSON.stringify({
+        req: 'statusled',
+        val: parseInt($(slider).val()),
+        id: get_ws_msg_id()
+      }));
+    }
     function setupThrottle() {
       disableLocoInputs();
       $('#btn-ext_funcs').on('click', function () {

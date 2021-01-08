@@ -12,11 +12,11 @@ menu "Status LED"
 
     config STATUS_LED_BRIGHTNESS
         int "LED brightness"
+        range 8 255
         default 128
         help
             Controls how bright the LEDs will appear. The lower the value the darker the LED will appear.
             Recommended value is 128.
-        range 0 255
 
     choice STATUS_LED_TYPE
         bool "LED type"

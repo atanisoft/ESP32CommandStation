@@ -34,6 +34,10 @@ static constexpr char NVS_NAMESPACE[] = "cscfg";
 /// NVS Persistence key.
 static constexpr char NVS_CFG_KEY[] = "node";
 
+#ifndef CONFIG_STATUS_LED_BRIGHTNESS
+#define CONFIG_STATUS_LED_BRIGHTNESS 128
+#endif
+
 esp_err_t load_config(node_config_t *config)
 {
     LOG(INFO, "[NVS] Loading configuration");
@@ -58,6 +62,13 @@ esp_err_t load_config(node_config_t *config)
         LOG_ERROR("[NVS] Configuration load failed (loaded size incorrect: "
                   "%zu vs %zu)", size, sizeof(node_config_t));
         res = ESP_FAIL;
+    }
+
+    // bounds check for LED brightness, it needs to be at least 8 to be visible
+    // per NeoPixelBus documentation.
+    if (config->status_led_brightness < 8)
+    {
+        config->status_led_brightness = 8;
     }
     return res;
 }
@@ -89,15 +100,19 @@ esp_err_t save_config(node_config_t *config)
     {
         LOG_ERROR("[NVS] Commit failed: %s (%d)", esp_err_to_name(res), res);
     }
+    else
+    {
+        LOG(INFO, "[NVS] Config persisted");
+    }
     return res;
 }
-
 
 esp_err_t default_config(node_config_t *config)
 {
     LOG(INFO, "[NVS] Initializing default configuration");
     bzero(config, sizeof(node_config_t));
     config->node_id = CONFIG_LCC_NODE_ID;
+    config->status_led_brightness = CONFIG_STATUS_LED_BRIGHTNESS;
     return save_config(config);
 }
 
@@ -129,6 +144,8 @@ void dump_config(node_config_t *config)
 {
     LOG(INFO, "[NVS] Node ID: %s"
       , uint64_to_string_hex(config->node_id).c_str());
+    LOG(INFO, "[NVS] Status LED brightness: %d"
+      , config->status_led_brightness);
 }
 
 bool force_factory_reset()
@@ -147,5 +164,13 @@ bool set_node_id(uint64_t node_id)
     config.node_id = node_id;
     config.force_reset = true;
 
+    return save_config(&config) == ESP_OK;
+}
+
+bool update_status_led_brightness(uint8_t value)
+{
+    node_config_t config;
+    load_config(&config);
+    config.status_led_brightness = value;
     return save_config(&config) == ESP_OK;
 }

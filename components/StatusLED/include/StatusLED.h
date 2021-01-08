@@ -106,11 +106,16 @@ public:
     MAX_LED
   };
 
-  StatusLED(Service *service)
+  StatusLED(Service *service, uint8_t brightness)
     : StateFlowBase(service)
     , bus_(nullptr)
     , updateInterval_(MSEC_TO_NSEC(CONFIG_STATUS_LED_UPDATE_INTERVAL_MSEC))
+    , brightness_(brightness)
   {
+    if (brightness_ < 8)
+    {
+      brightness_ = 8;
+    }
     for(int index = 0; index < LED::MAX_LED; index++)
     {
       colors_[index] = RGB_OFF_;
@@ -129,13 +134,20 @@ public:
 
   void setStatusLED(const LED, const COLOR, const bool=false);
 
-  void wifi_event(system_event_t *);
+  void setBrightness(uint8_t level);
+
+  uint8_t getBrightness()
+  {
+    return bus_->GetBrightness();
+  }
+
 private:
   StateFlowTimer timer_{this};
   std::unique_ptr<NeoPixelBrightnessBus<NEO_COLOR_MODE, NEO_METHOD>> bus_;
   NEO_COLOR_TYPE colors_[LED::MAX_LED];
   bool state_[LED::MAX_LED];
   const uint64_t updateInterval_;
+  uint8_t brightness_{CONFIG_STATUS_LED_BRIGHTNESS};
 
   NEO_COLOR_TYPE RGB_RED_{NEO_COLOR_TYPE(255, 0, 0)};
   NEO_COLOR_TYPE RGB_GREEN_{NEO_COLOR_TYPE(0, 255, 0)};

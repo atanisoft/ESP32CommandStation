@@ -27,12 +27,12 @@ StateFlowBase::Action StatusLED::init()
     , "[Status] Initializing LEDs (color-mode:%s, protocol:%s, pin: %d, "
       "brightness: %d)"
     , NEO_COLOR_MODE_NAME, NEO_METHOD_NAME, CONFIG_STATUS_LED_DATA_PIN
-    , CONFIG_STATUS_LED_BRIGHTNESS);
+    , brightness_);
   bus_.reset(
     new NeoPixelBrightnessBus<NEO_COLOR_MODE, NEO_METHOD>(LED::MAX_LED
                                                         , CONFIG_STATUS_LED_DATA_PIN));
   bus_->Begin();
-  bus_->SetBrightness(CONFIG_STATUS_LED_BRIGHTNESS);
+  bus_->SetBrightness(brightness_);
   bus_->ClearTo(RGB_OFF_);
   bus_->Show();
   Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
@@ -104,6 +104,10 @@ StateFlowBase::Action StatusLED::update()
 
 StateFlowBase::Action StatusLED::update_bus()
 {
+  if (bus_->GetBrightness() != brightness_)
+  {
+    bus_->SetBrightness(brightness_);
+  }
   if (bus_->CanShow())
   {
     bus_->Show();
@@ -116,4 +120,9 @@ void StatusLED::setStatusLED(const LED led, const COLOR color, const bool on)
 {
   colors_[led] = color;
   state_[led] = on;
+}
+
+void StatusLED::setBrightness(uint8_t level)
+{
+  brightness_ = level;
 }

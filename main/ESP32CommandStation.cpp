@@ -670,7 +670,7 @@ extern "C" void app_main()
 #endif // CONFIG_HC12
 
 #if CONFIG_STATUS_LED
-    statusLED.emplace(stackManager->service());
+    statusLED.emplace(stackManager->service(), config.status_led_brightness);
 #endif // CONFIG_STATUS_LED
 
     // Initialize the OTA monitor
