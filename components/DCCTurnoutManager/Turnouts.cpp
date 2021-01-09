@@ -270,8 +270,12 @@ void TurnoutManager::send(Buffer<dcc::Packet> *b, unsigned prio)
     uint8_t boardIndex = (pkt->payload[1] & 0b00000110) >> 1;
     // least significant bit of the second byte is thrown/closed indicator.
     bool state = pkt->payload[1] & 0b00000001;
+    uint16_t address = decodeDCCAccessoryAddress(boardAddress, boardIndex);
+    LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d %d:%d] Setting to %d", address
+      , boardAddress, boardIndex
+      , state ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
     // Set the turnout to the requested state, don't send a DCC packet.
-    set(decodeDCCAccessoryAddress(boardAddress, boardIndex), state);
+    set(address, state);
   }
   b->unref();
 }
