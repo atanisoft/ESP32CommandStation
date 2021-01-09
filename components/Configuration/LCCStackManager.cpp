@@ -134,7 +134,7 @@ openlcb::MemoryConfigHandler *LCCStackManager::memory_config_handler()
 #define CONFIG_LCC_SD_FSYNC_SEC 10
 #endif
 
-void LCCStackManager::start(bool is_sd)
+void LCCStackManager::start(bool is_sd, bool reset_event_ids)
 {
   // Create the default internal configuration file if it doesn't already exist.
   fd_ =
@@ -158,6 +158,11 @@ void LCCStackManager::start(bool is_sd)
   LOG(INFO, "[LCC] Configuring LCC packet printer");
   ((openlcb::SimpleCanStack *)stack_)->print_all_packets();
 #endif
+
+  if (reset_event_ids)
+  {
+    reset_events();
+  }
 }
 
 void LCCStackManager::shutdown()
@@ -188,6 +193,11 @@ void LCCStackManager::shutdown()
 void LCCStackManager::reboot_node()
 {
   stack_->executor()->add(new CallbackExecutable([](){ reboot(); }));
+}
+
+void LCCStackManager::reset_events()
+{
+  stack_->factory_reset_all_events(cfg_.seg().internal_config(), nodeID_, fd_);
 }
 
 } // namespace esp32cs

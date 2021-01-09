@@ -34,7 +34,7 @@ static constexpr char LCC_CONFIG_FILE[] = "/cfg/LCC/config";
 class FileSystemManager : public Singleton<FileSystemManager>
 {
 public:
-  FileSystemManager();
+  FileSystemManager(bool erase_config);
   void shutdown();
   bool is_sd()
   {
@@ -45,7 +45,6 @@ public:
   void remove(const std::string &);
   std::string load(const std::string &);
   void store(const char *, const std::string &);
-  void force_factory_reset();
 private:
   std::string getFilePath(const std::string &);
   int configFd_{-1};

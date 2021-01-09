@@ -51,7 +51,6 @@ HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
 {
   // set warning limit to ~75% of overcurrent limit
   warnLimit_ = ((overCurrentLimit_ << 1) + overCurrentLimit_) >> 2;
-  configure();
 }
 
 HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
@@ -80,7 +79,6 @@ HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
 {
   // set warning limit to ~75% of overcurrent limit
   warnLimit_ = ((overCurrentLimit_ << 1) + overCurrentLimit_) >> 2;
-  configure();
 }
 
 string HBridgeShortDetector::getState()

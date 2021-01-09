@@ -785,7 +785,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     else if (!strcmp(req_type->valuestring, "reset-events"))
     {
       LOG(VERBOSE, "[WSJSON:%d] Reset event IDs received", req_id->valueint);
-      //Singleton<esp32cs::LCCStackManager>::instance()->reset_events();
+      Singleton<esp32cs::LCCStackManager>::instance()->reset_events();
       response =
         StringPrintf(R"!^!({"res":"reset-events","id":%d})!^!"
                    , req_id->valueint);

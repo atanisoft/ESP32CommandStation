@@ -47,9 +47,10 @@ public:
   openlcb::SimpleInfoFlow *info_flow();
   openlcb::MemoryConfigClient *memory_config_client();
   openlcb::MemoryConfigHandler *memory_config_handler();
-  void start(bool is_sd);
+  void start(bool is_sd, bool reset_event_ids);
   void shutdown();
   void reboot_node();
+  void reset_events();
 private:
   const Esp32ConfigDef cfg_;
   const uint64_t nodeID_;

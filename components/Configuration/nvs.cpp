@@ -144,8 +144,13 @@ void dump_config(node_config_t *config)
 {
     LOG(INFO, "[NVS] Node ID: %s"
       , uint64_to_string_hex(config->node_id).c_str());
-    LOG(INFO, "[NVS] Status LED brightness: %d"
-      , config->status_led_brightness);
+#if CONFIG_STATUS_LED
+    LOG(INFO, "[NVS] StatusLED brightness: %d", config->status_led_brightness);
+#endif // CONFIG_STATUS_LED
+    LOG(INFO, "[NVS] Erase configuration: %s"
+      , config->force_reset ? "Yes" : "No");
+    LOG(INFO, "[NVS] Reset Event IDs: %s"
+      , config->reset_events ? "Yes" : "No");
 }
 
 bool force_factory_reset()

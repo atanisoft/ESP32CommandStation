@@ -28,7 +28,8 @@ typedef struct
     bool bootloader_req;
     uint64_t node_id;
     uint8_t status_led_brightness;
-    uint8_t reserved[21];
+    bool reset_events;
+    uint8_t reserved[20];
 } node_config_t;
 
 esp_err_t load_config(node_config_t *config);

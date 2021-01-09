@@ -139,6 +139,7 @@ public:
       new (&shutdownProducer_)openlcb::BitEventProducer(&shutdownBit_);
       res = REINIT_NEEDED;
     }
+    configure();
     return res;
   }
 

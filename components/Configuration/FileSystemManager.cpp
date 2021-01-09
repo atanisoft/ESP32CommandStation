@@ -32,8 +32,6 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <sys/types.h>
 #include <utils/FileUtils.hxx>
 
-static constexpr const char FACTORY_RESET_MARKER_FILE[] = "resetcfg.txt";
-
 #if defined(CONFIG_ESP32CS_FORCE_FACTORY_RESET_PIN) && CONFIG_ESP32CS_FORCE_FACTORY_RESET_PIN >= 0
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
 GPIO_PIN(FACTORY_RESET, GpioInputPU, CONFIG_ESP32CS_FORCE_FACTORY_RESET_PIN);
@@ -100,19 +98,13 @@ void recursiveWalkTree(const string &path, bool remove = false, bool first = tru
 }
 
 static constexpr uint64_t ONE_MB = 1048576ULL;
-FileSystemManager::FileSystemManager()
+FileSystemManager::FileSystemManager(bool erase_config)
 {
-#if CONFIG_ESP32CS_FORCE_FACTORY_RESET
-  bool factory_reset_config = true;
-#else
-  bool factory_reset_config = false;
-#endif
-
   FACTORY_RESET_Pin::hw_init();
 
   if (FACTORY_RESET_Pin::instance()->is_clr())
   {
-    factory_reset_config = true;
+    erase_config = true;
   }
 
   // Use SPI mode instead of SDMMC due to TTGO-T1 failing to mount the SD card.
@@ -169,6 +161,11 @@ FileSystemManager::FileSystemManager()
   }
   else
   {
+    gpio_reset_pin(GPIO_NUM_2);
+    gpio_reset_pin(GPIO_NUM_13);
+    gpio_reset_pin(GPIO_NUM_14);
+    gpio_reset_pin(GPIO_NUM_15);
+  
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4,2,0)
     // unmount the SD VFS since it failed to successfully mount. We will
     // remount SPIFFS in it's place instead.
@@ -198,12 +195,7 @@ FileSystemManager::FileSystemManager()
     LOG(INFO, "[FS] SPIFFS will be used for persistent storage.");
   }
 
-  if (exists(FACTORY_RESET_MARKER_FILE))
-  {
-    factory_reset_config = true;
-  }
-
-  if (factory_reset_config)
+  if (erase_config)
   {
     LOG(WARNING, "!!!! WARNING WARNING WARNING WARNING WARNING !!!!");
     LOG(WARNING, "!!!! WARNING WARNING WARNING WARNING WARNING !!!!");
@@ -221,7 +213,7 @@ FileSystemManager::FileSystemManager()
     LOG(WARNING, "[FS] Factory reset starting!");
   }
 
-  recursiveWalkTree(VFS_MOUNT, factory_reset_config);
+  recursiveWalkTree(VFS_MOUNT, erase_config);
   // Pre-create ESP32 CS configuration directory.
   mkdir(CS_CONFIG_DIR, ACCESSPERMS);
   // Pre-create LCC configuration directory.
@@ -289,12 +281,4 @@ void FileSystemManager::store(const char *name, const string &content)
 string FileSystemManager::getFilePath(const string &name)
 {
   return StringPrintf("%s/%s", CS_CONFIG_DIR, name.c_str());
-}
-
-void FileSystemManager::force_factory_reset()
-{
-  LOG(INFO, "[FS] Enabling forced factory_reset.");
-  string marker = "force factory reset";
-  store(FACTORY_RESET_MARKER_FILE, marker);
-  Singleton<esp32cs::LCCStackManager>::instance()->reboot_node();
 }
