@@ -879,7 +879,8 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     else if (!strcmp(req_type->valuestring, "turnout"))
     {
       if (!cJSON_HasObjectItem(root, "addr") ||
-          !cJSON_HasObjectItem(root, "act"))
+          !cJSON_HasObjectItem(root, "act") ||
+          !cJSON_HasObjectItem(root, "olcb"))
       {
         LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
                 , req_id->valueint, req.c_str());
@@ -889,6 +890,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       }
       else
       {
+        auto turnouts = Singleton<TurnoutManager>::instance();
         uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
         string action = cJSON_GetObjectItem(root, "act")->valuestring;
         string target = cJSON_HasObjectItem(root, "tgt") ?
@@ -896,23 +898,34 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
         TurnoutType type = cJSON_HasObjectItem(root, "type") ?
             (TurnoutType)cJSON_GetObjectItem(root, "type")->valueint :
             TurnoutType::NO_CHANGE;
+        bool olcb = cJSON_IsTrue(cJSON_GetObjectItem(root, "olcb"));
         if (action == "save")
         {
           LOG(VERBOSE, "[WSJSON:%d] Saving turnout %d as type %d"
             , req_id->valueint, address, type);
-          Singleton<TurnoutManager>::instance()->createOrUpdate(address, type);
+          if (!olcb)
+          {
+            turnouts->createOrUpdateDcc(address, type);
+          }
+          else
+          {
+            turnouts->createOrUpdateOlcb(address
+                                       , cJSON_GetObjectItem(root, "closed")->valuestring
+                                       , cJSON_GetObjectItem(root, "thrown")->valuestring
+                                       , type);
+          }
         }
         else if (action == "toggle")
         {
           LOG(VERBOSE, "[WSJSON:%d] Toggling turnout %d", req_id->valueint
             , address);
-          Singleton<TurnoutManager>::instance()->toggle(address);
+          turnouts->toggle(address);
         }
         else if (action == "delete")
         {
           LOG(VERBOSE, "[WSJSON:%d] Deleting turnout %d", req_id->valueint
             , address);
-          Singleton<TurnoutManager>::instance()->remove(address);
+          turnouts->remove(address);
         }
         response =
           StringPrintf(R"!^!({"res":"turnout","act":"%s","addr":%d,"tgt":"%s","id":%d})!^!"
@@ -1231,7 +1244,7 @@ HTTP_HANDLER_IMPL(process_turnouts, request)
     auto turnout = turnoutMgr->get(address);
     if (turnout)
     {
-      return new JsonResponse(turnout->toJson());
+      return new JsonResponse(turnout->to_json());
     }
     request->set_status(HttpStatusCode::STATUS_NOT_FOUND);
   }
@@ -1239,10 +1252,10 @@ HTTP_HANDLER_IMPL(process_turnouts, request)
   {
     TurnoutType type = (TurnoutType)request->param(JSON_TYPE_NODE
                                                  , TurnoutType::LEFT);
-    auto turnout = turnoutMgr->createOrUpdate(address, type);
+    auto turnout = turnoutMgr->createOrUpdateDcc(address, type);
     if (turnout)
     {
-      return new JsonResponse(turnout->toJson());
+      return new JsonResponse(turnout->to_json());
     }
     request->set_status(HttpStatusCode::STATUS_NOT_FOUND);
   }

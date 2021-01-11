@@ -478,7 +478,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
     {
       // If the turnout exists delete it.
       auto turnout = turnoutManager->getByID(id);
-      if (turnout && turnoutManager->remove(turnout->getAddress()))
+      if (turnout && turnoutManager->remove(turnout->address()))
       {
         // delete turnout
         return COMMAND_SUCCESSFUL_RESPONSE;
@@ -520,7 +520,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
       }
       LOG(VERBOSE, "[DCC++ T] decoded %d:%d to DCC %d (USER)", board, port, addr);
       // Create or update the turnout with the validated inputs.
-      turnoutManager->createOrUpdate(addr, TurnoutType::NO_CHANGE, id);
+      turnoutManager->createOrUpdateDcc(addr, TurnoutType::NO_CHANGE, id);
       return COMMAND_SUCCESSFUL_RESPONSE;
     }
   }
@@ -557,7 +557,7 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutExCommandAdapter,
       return Singleton<TurnoutManager>::instance()->toggle(addr);
     }
     TurnoutType type = (TurnoutType)std::stoi(arguments[1]);
-    if (Singleton<TurnoutManager>::instance()->createOrUpdate(addr, type))
+    if (Singleton<TurnoutManager>::instance()->createOrUpdateDcc(addr, type))
     {
       return COMMAND_SUCCESSFUL_RESPONSE;
     }

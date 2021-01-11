@@ -10,7 +10,16 @@
 #
 # Note that FATAL will cause the MCU to reboot!
 
-menu "DCC Turnout"
+menu "Turnout Management"
+
+    config TURNOUT_CREATE_ON_DEMAND
+        bool "Create turnouts on first use"
+        default y
+        help
+            When this option is enabled, the first attempt to access a turnout
+            will result in it being created and persisted. NOTE: This will only
+            create DCC Turnouts. For OpenLCB based turnouts you will need to
+            update them to provide the event mapping.
 
     config TURNOUT_PERSISTENCE_INTERVAL_SEC
         int "Number of seconds between automatic persistence of turnout list"

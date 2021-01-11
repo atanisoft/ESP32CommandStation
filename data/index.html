@@ -84,7 +84,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           </div-->
         </div>
       </h1>
-      <small id="cs-version"></small>
     </div>
   </div>
   <header class="navbar">
@@ -235,22 +234,53 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           onclick="$(this).toggleClass('loading');refreshTurnouts(this);"><span
             class="icon icon-refresh"></span></button>
       </div>
-      <div id="turnout-editor" class="modal modal-sm">
+      <div id="turnout-editor" class="modal model-sm">
         <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#turnout-editor');"></a>
         <div class="modal-container">
           <div class="modal-header">
             <div class="modal-title h5">Turnout Editor</div>
           </div>
           <div class="modal-body">
-            <label class="form-label text-dark" for="turnout-address">Address:</label>
-            <input type="number" pattern="[0-9]*" id="turnout-address" value="1" min="1" max="2044">
-            <label class="form-label text-dark" for="turnout-type">Type:</label>
-            <select id="turnout-type">
-              <option value="0">Left</option>
-              <option value="1">Right</option>
-              <option value="2">Wye</option>
-              <option value="3">Multi (threeway/etc)</option>
-            </select>
+            <div class="columns">
+              <div class="column">
+                <label class="form-label text-dark" for="turnout-address">Address:</label>
+                <input type="number" pattern="[0-9]*" id="turnout-address" value="1" min="1" max="2044">
+              </div>
+              <div class="column">
+                <label class="form-label text-dark" for="turnout-type">Type:</label>
+                <select id="turnout-type">
+                  <option value="0">Left</option>
+                  <option value="1">Right</option>
+                  <option value="2">Wye</option>
+                  <option value="3">Multi (threeway/etc)</option>
+                </select>
+              </div>
+            </div>
+            <div class="columns">
+              <div class="column-12">
+                <label class="form-switch">
+                  <input type="checkbox" id="turnout-olcb" onclick="toggleOpenLCBTurnout(this);">
+                  <i class="form-icon"></i><span class="text-dark">Send OpenLCB Event instead of DCC packet(s)?</span>
+                </label>
+              </div>
+            </div>
+            <div id="turnout-olcb-events" style="display:none;">
+              <div class="columns">
+                <div class="column">
+                  <label class="form-label text-dark" for="turnout-evt-closed">Closed event(s):</label>
+                  <textarea id="turnout-evt-closed" cols="25" placeholder="01.01.02.00.00.FF.00.00"></textarea>
+                </div>
+                <div class="column">
+                  <label class="form-label text-dark" for="turnout-evt-thrown">Thrown event(s):</label>
+                  <textarea id="turnout-evt-thrown" cols="25" placeholder="01.01.02.00.00.FF.00.01"></textarea>
+                </div>
+              </div>
+              <div class="columns">
+                <div class="column-12">
+                  <small class="text-dark">To send more than one event for closed/thrown, provide a comma separated list of events.</small>
+                </div>
+              </div>
+          </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#turnout-editor');"><span
@@ -761,6 +791,13 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       setupThrottle();
       setupTurnouts();
     });
+    function toggleOpenLCBTurnout(toggle) {
+      if ($(toggle).prop('checked')) {
+        $('#turnout-olcb-events').show();
+      } else {
+        $('#turnout-olcb-events').hide();
+      }
+    }
     function statusLEDChange(slider) {
       ws_tx(JSON.stringify({
         req: 'statusled',
@@ -891,6 +928,10 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       $('#turnout-create').on('click', function () {
         $('#turnout-address').val(1);
         $('#turnout-type').val(0);
+        $('#turnout-olcb').prop('checked', false);
+        $('#turnout-evt-closed').val("");
+        $('#turnout-evt-thrown').val("");
+        toggleOpenLCBTurnout($('#turnout-olcb'));
         toggleModal('#turnout-editor');
       });
       $('#turnout-save').on('click', function () {
@@ -899,6 +940,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           act: "save",
           addr: parseInt($('#turnout-address').val()),
           type: parseInt($('#turnout-type').val()),
+          olcb: $('#turnout-olcb').prop('checked'),
+          closed: $('#turnout-evt-closed').val(),
+          thrown: $('#turnout-evt-thrown').val(),
           id: get_ws_msg_id()
         }));
         toggleModal('#turnout-editor');
@@ -957,6 +1001,30 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       fetchWithTimeout(String.format('/turnouts?address={0}', address)).then(res => res.json()).then(data => {
         $('#turnout-address').val(data.address);
         $('#turnout-type').val(data.type);
+        if (data.hasOwnProperty('openlcb')) {
+          $('#turnout-olcb').prop('checked', true);
+          var closed_event_string = "";
+          var thrown_event_string = "";
+          data.openlcb.closed.split(/,/).forEach(event => {
+            if (closed_event_string.length) {
+              closed_event_string += ",";
+            }
+            closed_event_string += pad_hex(event, 16);
+          });
+          data.openlcb.thrown.split(/,/).forEach(event => {
+            if (thrown_event_string.length) {
+              thrown_event_string += ",";
+            }
+            thrown_event_string += pad_hex(event, 16);
+          });
+          $('#turnout-evt-closed').val(closed_event_string);
+          $('#turnout-evt-thrown').val(thrown_event_string);
+        } else {
+          $('#turnout-olcb').prop('checked', false);
+          $('#turnout-evt-closed').val("");
+          $('#turnout-evt-thrown').val("");
+        }
+        toggleOpenLCBTurnout($('#turnout-olcb'));
         toggleModal('#turnout-editor');
       }).catch(function (error) {
         showErrorDialog('Failed to retrieve turnout details', error);

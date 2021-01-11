@@ -20,9 +20,12 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <FileSystemManager.h>
 #include <dcc/DccDebug.hxx>
 #include <dcc/UpdateLoop.hxx>
+#include <HttpStringUtils.h>
 #include <JsonConstants.h>
 #include <json.hpp>
+#include <utils/format_utils.hxx>
 #include <utils/StringPrintf.hxx>
+#include <LCCStackManager.h>
 
 using nlohmann::json;
 
@@ -61,7 +64,19 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
     }
     bool state = turnout[JSON_STATE_NODE].get<int>();
     TurnoutType type = (TurnoutType)turnout[JSON_TYPE_NODE].get<int>();
-    turnouts_.push_back(std::make_unique<Turnout>(address, id, state, type));
+    if (turnout.contains("openlcb"))
+    {
+      auto events = turnout["openlcb"];
+      turnouts_.push_back(
+        std::make_unique<OpenLCBTurnout>(address
+                                       , events["closed"].get<string>()
+                                       , events["thrown"].get<string>()
+                                       , type, state));
+    }
+    else
+    {
+      turnouts_.push_back(std::make_unique<Turnout>(address, id, state, type));
+    }
   }
   LOG(INFO, "[Turnout] Loaded %d DCC turnout(s)", turnouts_.size());
 }
@@ -79,17 +94,17 @@ void TurnoutManager::clear()
 
 #define FIND_TURNOUT(address)                             \
   std::find_if(turnouts_.begin(), turnouts_.end(),        \
-    [address](std::unique_ptr<Turnout> & turnout) -> bool \
+    [address](auto & turnout) -> bool                     \
     {                                                     \
-      return (turnout->getAddress() == address);          \
+      return (turnout->address() == address);             \
     }                                                     \
   )
 
 #define FIND_TURNOUT_BY_ID(id)                            \
   std::find_if(turnouts_.begin(), turnouts_.end(),        \
-    [id](std::unique_ptr<Turnout> & turnout) -> bool      \
+    [id](auto & turnout) -> bool                          \
     {                                                     \
-      return (turnout->getID() == id);                    \
+      return (turnout->id() == id);                       \
     }                                                     \
   )
 
@@ -101,15 +116,18 @@ string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
   {
     elem->get()->set(thrown, sendDCC);
     dirty_ = true;
-    return StringPrintf("<H %d %d>", elem->get()->getID()
-                      , elem->get()->isThrown());
+    return StringPrintf("<H %d %d>", elem->get()->id()
+                      , elem->get()->get());
   }
-
+#if CONFIG_TURNOUT_CREATE_ON_DEMAND
   // we didn't find it, create it and set it
   turnouts_.push_back(std::make_unique<Turnout>(address, address));
   turnouts_.back().get()->set(thrown, sendDCC);
-  return StringPrintf("<H %d %d>", turnouts_.back().get()->getID()
-                    , turnouts_.back().get()->isThrown());
+  return StringPrintf("<H %d %d>", turnouts_.back().get()->id()
+                    , turnouts_.back().get()->get());
+#else
+  return COMMAND_FAILED_RESPONSE;
+#endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
 }
 
 string TurnoutManager::toggle(uint16_t address)
@@ -123,16 +141,21 @@ string TurnoutManager::toggle(uint16_t address)
     LOG(CONFIG_TURNOUT_LOG_LEVEL, "turnout found, toggling");
     elem->get()->toggle();
     dirty_ = true;
-    return StringPrintf("<H %d %d>", elem->get()->getID()
-                      , elem->get()->isThrown());
+    return StringPrintf("<H %d %d>", elem->get()->id()
+                      , elem->get()->get());
   }
+
+#if CONFIG_TURNOUT_CREATE_ON_DEMAND
   LOG(CONFIG_TURNOUT_LOG_LEVEL, "turnout not found, creating and toggling");
 
   // we didn't find it, create it and throw it
   turnouts_.push_back(std::make_unique<Turnout>(address, address));
   turnouts_.back().get()->toggle();
-  return StringPrintf("<H %d %d>", turnouts_.back().get()->getID()
-                    , turnouts_.back().get()->isThrown());
+  return StringPrintf("<H %d %d>", turnouts_.back().get()->id()
+                    , turnouts_.back().get()->get());
+#else
+  return COMMAND_FAILED_RESPONSE;
+#endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
 }
 
 string TurnoutManager::getStateAsJson(bool readable)
@@ -153,16 +176,16 @@ string TurnoutManager::get_state_for_dccpp()
   {
     uint16_t board;
     int8_t port;
-    encodeDCCAccessoryAddress(&board, &port, turnout->getAddress());
-    status += StringPrintf("<H %d %d %d %d>", turnout->getID(), board, port
-                         , turnout->isThrown());
+    encodeDCCAccessoryAddress(&board, &port, turnout->address());
+    status += StringPrintf("<H %d %d %d %d>", turnout->id(), board, port
+                         , turnout->get());
   }
   return status;
 }
 
-Turnout *TurnoutManager::createOrUpdate(const uint16_t address
-                                      , const TurnoutType type
-                                      , const int16_t id)
+TurnoutBase *TurnoutManager::createOrUpdateDcc(const uint16_t address
+                                             , const TurnoutType type
+                                             , const int16_t id)
 {
   const std::lock_guard<std::mutex> lock(mux_);
   if (id != -1)
@@ -194,6 +217,29 @@ Turnout *TurnoutManager::createOrUpdate(const uint16_t address
   return turnouts_.back().get();
 }
 
+TurnoutBase *TurnoutManager::createOrUpdateOlcb(const uint16_t address
+                                              , std::string closed_events
+                                              , std::string thrown_events
+                                              , const TurnoutType type)
+{
+  const std::lock_guard<std::mutex> lock(mux_);
+  auto const &elem = FIND_TURNOUT(address);
+  if (elem != turnouts_.end())
+  {
+    elem->get()->update(address, type);
+    static_cast<OpenLCBTurnout *>(elem->get())->update_events(closed_events
+                                                            , thrown_events);
+    dirty_ = true;
+    return elem->get();
+  }
+  // we didn't find it, create it!
+  turnouts_.push_back(
+    std::make_unique<OpenLCBTurnout>(address, closed_events, thrown_events
+                                   , type, false));
+  dirty_ = true;
+  return turnouts_.back().get();
+}
+
 bool TurnoutManager::remove(const uint16_t address)
 {
   const std::lock_guard<std::mutex> lock(mux_);
@@ -209,7 +255,7 @@ bool TurnoutManager::remove(const uint16_t address)
   return false;
 }
 
-Turnout *TurnoutManager::getByID(const uint16_t id)
+TurnoutBase *TurnoutManager::getByID(const uint16_t id)
 {
   const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT_BY_ID(id);
@@ -221,7 +267,7 @@ Turnout *TurnoutManager::getByID(const uint16_t id)
   return nullptr;
 }
 
-Turnout *TurnoutManager::get(const uint16_t address)
+TurnoutBase *TurnoutManager::get(const uint16_t address)
 {
   const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT(address);
@@ -291,7 +337,7 @@ string TurnoutManager::get_state_as_json(bool readableStrings)
     {
       content += ",";
     }
-    content += turnout->toJson(readableStrings);
+    content += turnout->to_json(readableStrings);
   }
   content += "]";
   return content;
@@ -310,7 +356,7 @@ void TurnoutManager::persist()
   }
   LOG(INFO, "[Turnout] Persisting %zu turnouts", turnouts_.size());
   Singleton<FileSystemManager>::instance()->store(TURNOUTS_JSON_FILE
-                                                   , get_state_as_json(false));
+                                                , get_state_as_json(false));
 }
 
 void encodeDCCAccessoryAddress(uint16_t *board, int8_t *port
@@ -330,56 +376,55 @@ uint16_t decodeDCCAccessoryAddress(uint16_t board, int8_t port)
   return (uint16_t)(addr & 0xFFFF);
 }
 
-Turnout::Turnout(uint16_t address, int16_t id, bool thrown, TurnoutType type)
-               : _address(address), _id(id > 0 ? id : address), _thrown(thrown)
-               , _type(type)
+void TurnoutBase::update(uint16_t address, TurnoutType type, int16_t id)
+{
+  address_ = address;
+  if (type != TurnoutType::NO_CHANGE)
+  {
+    type_ = type;
+  }
+  id_ = (id != -1) ? id : address;
+  
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Updated type %s", id_
+    , address_, TURNOUT_TYPE_STRINGS[type_]);
+}
+
+Turnout::Turnout(uint16_t address, int16_t id, bool state, TurnoutType type)
+               : TurnoutBase(address, id > 0 ? id : address, state, type)
 {
   LOG(INFO, "[Turnout %d (%d)] Registered as type %s and initial state of %s"
-    , _id, _address, TURNOUT_TYPE_STRINGS[_type]
-    , _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
+    , id_, address_, TURNOUT_TYPE_STRINGS[type_]
+    , state_ ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
   packet_processor_add_refresh_source(this);
 }
 
-void Turnout::update(uint16_t address, TurnoutType type, int16_t id)
-{
-  _address = address;
-  if (type != TurnoutType::NO_CHANGE)
-  {
-    _type = type;
-  }
-  _id = (id != -1) ? id : address;
-  
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Updated type %s", _id
-    , _address, TURNOUT_TYPE_STRINGS[_type]);
-}
-
-string Turnout::toJson(bool readableStrings)
+string Turnout::to_json(bool readableStrings)
 {
   string serialized = StringPrintf("{\"%s\":%d,\"%s\":%d,\"%s\":%d,\"%s\":"
-  , JSON_ADDRESS_NODE, _address, JSON_ID_NODE, _id, JSON_TYPE_NODE, _type
+  , JSON_ADDRESS_NODE, address(), JSON_ID_NODE, id(), JSON_TYPE_NODE, type()
   , JSON_STATE_NODE);
   if (readableStrings)
   {
-    serialized += StringPrintf("\"%s\"", _thrown ? JSON_VALUE_THROWN
-                                                 : JSON_VALUE_CLOSED);
+    serialized += StringPrintf("\"%s\"", get() ? JSON_VALUE_THROWN
+                                               : JSON_VALUE_CLOSED);
   }
   else
   {
-    serialized += integer_to_string(_thrown);
+    serialized += integer_to_string(get());
   }
   serialized += "}";
   return serialized;
 }
 
-void Turnout::set(bool thrown, bool sendDCCPacket)
+void Turnout::set(bool thrown, bool send_event)
 {
-  _thrown = thrown;
-  if (sendDCCPacket)
+  TurnoutBase::set(thrown, send_event);
+  if (send_event)
   {
     packet_processor_notify_update(this, 1);
   }
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Set to %s", _id, _address
-    , _thrown ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Set to %s", id(), address()
+    , get() ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
 }
 
 void Turnout::get_next_packet(unsigned code, dcc::Packet* packet)
@@ -391,11 +436,102 @@ void Turnout::get_next_packet(unsigned code, dcc::Packet* packet)
   }
   // shift address by one to account for the output pair state bit (thrown).
   // decrement the address prior to shift to bring it into the 0-2047 range.
-  uint16_t addr = (((_address - 1) << 1) | _thrown);
+  uint16_t addr = (((address() - 1) << 1) | get());
 
   // always send activate as true (sets C to 1)
   packet->add_dcc_basic_accessory(addr, true);
 
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Packet: %s", _id, _address
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Packet: %s", id(), address()
     , packet_to_string(*packet, true).c_str());
+}
+
+OpenLCBTurnout::OpenLCBTurnout(const uint16_t address
+                             , std::string closed_events
+                             , std::string thrown_events, TurnoutType type
+                             , bool state)
+                             : TurnoutBase(address, address, state, type)
+{
+  LOG(INFO, "[OpenLCBTurnout %d] Registered as type %s and initial state of %s"
+    , address, TURNOUT_TYPE_STRINGS[type_]
+    , state_ ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
+  update_events(closed_events, thrown_events);
+}
+
+void OpenLCBTurnout::update_events(std::string closed_events, std::string thrown_events)
+{
+  vector<string> closed;
+  vector<string> thrown;
+  http::tokenize(closed_events, closed, ",", true, true);
+  http::tokenize(thrown_events, thrown, ",", true, true);
+  closed_.clear();
+  for (auto event : closed)
+  {
+    LOG(INFO, "[OpenLCBTurnout %d] Closed event: %s", address()
+      , event.c_str());
+    closed_.push_back(string_to_uint64(event));
+  }
+  thrown_.clear();
+  for (auto event : thrown)
+  {
+    LOG(INFO, "[OpenLCBTurnout %d] Thrown event: %s", address()
+      , event.c_str());
+    thrown_.push_back(string_to_uint64(event));
+  }
+}
+
+void OpenLCBTurnout::set(bool thrown, bool send_event)
+{
+  TurnoutBase::set(thrown, send_event);
+  if (send_event)
+  {
+    if (thrown)
+    {
+      for (auto event : thrown_)
+      {
+        Singleton<esp32cs::LCCStackManager>::instance()->send_event(event);
+      }
+    }
+    else
+    {
+      for (auto event : closed_)
+      {
+        Singleton<esp32cs::LCCStackManager>::instance()->send_event(event);
+      }
+    }
+  }
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[OpenLCBTurnout %d] Set to %s", address()
+    , get() ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
+}
+
+std::string OpenLCBTurnout::to_json(bool readableStrings)
+{
+  std::vector<string> closed_events;
+  std::vector<string> thrown_events;
+  for (auto event : closed_)
+  {
+    closed_events.push_back(uint64_to_string_hex(event));
+  }
+  for (auto event : thrown_)
+  {
+    thrown_events.push_back(uint64_to_string_hex(event));
+  }
+  string serialized =
+    StringPrintf(R"!^!({"%s":%d,"%s":%d,"%s":%d,"openlcb":{"closed":"%s","thrown":"%s"},"%s":)!^!"
+               , JSON_ADDRESS_NODE, address(), JSON_ID_NODE, id()
+               , JSON_TYPE_NODE, type_
+               , http::string_join(closed_events, ",").c_str()
+               , http::string_join(thrown_events, ",").c_str()
+               , JSON_STATE_NODE);
+  if (readableStrings)
+  {
+    serialized +=
+      StringPrintf(R"!^!("%s")!^!"
+                 , get() ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
+  }
+  else
+  {
+    serialized += integer_to_string(get());
+  }
+  serialized += "}";
+  return serialized;
 }

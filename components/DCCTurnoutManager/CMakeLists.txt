@@ -7,6 +7,7 @@ set(COMPONENT_ADD_INCLUDEDIRS "include" )
 set(COMPONENT_REQUIRES
     "OpenMRNLite"
     "DCCppProtocol"
+    "HttpServer"
     "nlohmann_json"
     "Configuration"
 )

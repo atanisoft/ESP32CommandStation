@@ -39,45 +39,77 @@ enum TurnoutType
 void encodeDCCAccessoryAddress(uint16_t *board, int8_t *port, uint16_t address);
 uint16_t decodeDCCAccessoryAddress(uint16_t board, int8_t port);
 
-class Turnout : public dcc::NonTrainPacketSource
+class TurnoutBase
+{
+public:
+  uint16_t address()
+  {
+    return address_;
+  }
+  uint16_t id()
+  {
+    return id_;
+  }
+  void toggle()
+  {
+    set(!get());
+  }
+  bool get()
+  {
+    return state_;
+  }
+  TurnoutType type()
+  {
+    return type_;
+  }
+  void type(TurnoutType type)
+  {
+    type_ = type;
+  }
+  virtual void set(bool state, bool send_event = true)
+  {
+    state_ = state;
+  }
+  virtual std::string to_json(bool readable_strings = false)
+  {
+    return "{}";
+  }
+  void update(uint16_t address, TurnoutType type, int16_t id = -1);
+
+protected:
+  TurnoutBase(uint16_t address, uint16_t id, bool state
+            , TurnoutType type = TurnoutType::LEFT)
+            : address_(address), id_(id), state_(state), type_(type)
+  {
+  }
+
+  uint16_t address_;
+  uint16_t id_;
+  bool state_;
+  TurnoutType type_;
+};
+
+class Turnout : public TurnoutBase, public dcc::NonTrainPacketSource
 {
 public:
   Turnout(uint16_t address, int16_t id = -1, bool thrown = false
         , TurnoutType type = TurnoutType::LEFT);
-  virtual ~Turnout() {}
-  void update(uint16_t address, TurnoutType type, int16_t id = -1);
-  void set(bool thrown = false, bool sendDCCPacket = true);
-  std::string toJson(bool readableStrings = false);
-  uint16_t getAddress()
-  {
-    return _address;
-  }
-  uint16_t getID()
-  {
-    return _id;
-  }
-  bool isThrown()
-  {
-    return _thrown;
-  }
-  void toggle()
-  {
-    set(!_thrown);
-  }
-  TurnoutType getType()
-  {
-    return _type;
-  }
-  void setType(const TurnoutType type)
-  {
-    _type = type;
-  }
+  void set(bool state, bool send_event = true) override;
+  std::string to_json(bool readable_strings = false) override;
   void get_next_packet(unsigned code, dcc::Packet* packet) override;
+};
+
+class OpenLCBTurnout : public TurnoutBase
+{
+public:
+  OpenLCBTurnout(const uint16_t address, std::string closed_events
+               , std::string thrown_events, TurnoutType type, bool state);
+  void set(bool state, bool send_event = true) override;
+  std::string to_json(bool readable_strings = false) override;
+  void update_events(std::string closed_events, std::string thrown_events);
 private:
-  uint16_t _address;
-  uint16_t _id;
-  bool _thrown;
-  TurnoutType _type;
+  std::vector<openlcb::EventId> closed_;
+  std::vector<openlcb::EventId> thrown_;
 };
 
 class TurnoutManager : public dcc::PacketFlowInterface
@@ -94,18 +126,22 @@ public:
   std::string toggle(uint16_t);
   std::string getStateAsJson(bool=true);
   std::string get_state_for_dccpp();
-  Turnout *createOrUpdate(const uint16_t address
-                        , const TurnoutType = TurnoutType::LEFT
-                        , const int16_t id = -1);
+  TurnoutBase *createOrUpdateDcc(const uint16_t address
+                               , const TurnoutType = TurnoutType::LEFT
+                               , const int16_t id = -1);
+  TurnoutBase *createOrUpdateOlcb(const uint16_t address
+                                , std::string closed_events
+                                , std::string thrown_events
+                                , const TurnoutType = TurnoutType::LEFT);
   bool remove(const uint16_t);
-  Turnout *getByID(const uint16_t id);
-  Turnout *get(const uint16_t);
+  TurnoutBase *getByID(const uint16_t id);
+  TurnoutBase *get(const uint16_t);
   uint16_t count();
   void send(Buffer<dcc::Packet> *, unsigned);
 private:
   std::string get_state_as_json(bool);
   void persist();
-  std::vector<std::unique_ptr<Turnout>> turnouts_;
+  std::vector<std::unique_ptr<TurnoutBase>> turnouts_;
   openlcb::DccAccyConsumer turnoutEventConsumer_;
   AutoPersistFlow persistFlow_;
   bool dirty_;
