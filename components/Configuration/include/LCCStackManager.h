@@ -51,6 +51,7 @@ public:
   void shutdown();
   void reboot_node();
   void reset_events();
+  void send_event(uint64_t event);
 private:
   const Esp32ConfigDef cfg_;
   const uint64_t nodeID_;

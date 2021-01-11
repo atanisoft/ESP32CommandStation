@@ -200,4 +200,9 @@ void LCCStackManager::reset_events()
   stack_->factory_reset_all_events(cfg_.seg().internal_config(), nodeID_, fd_);
 }
 
+void LCCStackManager::send_event(uint64_t event)
+{
+  stack_->executor()->add(new CallbackExecutable([&](){ stack_->send_event(event); }));
+}
+
 } // namespace esp32cs
