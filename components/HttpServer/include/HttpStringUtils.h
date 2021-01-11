@@ -37,8 +37,10 @@
 #ifndef STRINGUTILS_H_
 #define STRINGUTILS_H_
 
+#include <algorithm>
 #include <string>
 #include <vector>
+#include <utils/StringPrintf.hxx>
 
 namespace http
 {
