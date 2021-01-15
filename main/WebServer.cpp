@@ -879,8 +879,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
     else if (!strcmp(req_type->valuestring, "turnout"))
     {
       if (!cJSON_HasObjectItem(root, "addr") ||
-          !cJSON_HasObjectItem(root, "act") ||
-          !cJSON_HasObjectItem(root, "olcb"))
+          !cJSON_HasObjectItem(root, "act"))
       {
         LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
                 , req_id->valueint, req.c_str());
@@ -895,15 +894,14 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
         string action = cJSON_GetObjectItem(root, "act")->valuestring;
         string target = cJSON_HasObjectItem(root, "tgt") ?
             cJSON_GetObjectItem(root, "tgt")->valuestring : "";
-        TurnoutType type = cJSON_HasObjectItem(root, "type") ?
-            (TurnoutType)cJSON_GetObjectItem(root, "type")->valueint :
-            TurnoutType::NO_CHANGE;
-        bool olcb = cJSON_IsTrue(cJSON_GetObjectItem(root, "olcb"));
         if (action == "save")
         {
+          TurnoutType type = cJSON_HasObjectItem(root, "type") ?
+              (TurnoutType)cJSON_GetObjectItem(root, "type")->valueint :
+              TurnoutType::NO_CHANGE;
           LOG(VERBOSE, "[WSJSON:%d] Saving turnout %d as type %d"
             , req_id->valueint, address, type);
-          if (!olcb)
+          if (cJSON_IsFalse(cJSON_GetObjectItem(root, "olcb")))
           {
             turnouts->createOrUpdateDcc(address, type);
           }
