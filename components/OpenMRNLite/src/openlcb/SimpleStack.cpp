@@ -157,7 +157,8 @@ void SimpleStackBase::default_start_node()
 #if OPENMRN_HAVE_POSIX_FD
     if (CONFIG_FILENAME != nullptr)
     {
-        auto *space = new FileMemorySpace(CONFIG_FILENAME, CONFIG_FILE_SIZE);
+        auto *space = new FileMemorySpace(
+            configUpdateFlow_.open_file(CONFIG_FILENAME), CONFIG_FILE_SIZE);
         memory_config_handler()->registry()->insert(
             node(), openlcb::MemoryConfigDefs::SPACE_CONFIG, space);
         additionalComponents_.emplace_back(space);
