@@ -29,6 +29,8 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 using nlohmann::json;
 
+DECLARE_CONST(dcc_turnout_packet_repeats);
+
 static constexpr const char * TURNOUTS_JSON_FILE = "turnouts.json";
 
 static constexpr const char *TURNOUT_TYPE_STRINGS[] =
@@ -47,7 +49,7 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
   , dirty_(false)
 {
   const std::lock_guard<std::mutex> lock(mux_);
-  LOG(INFO, "[Turnout] Initializing DCC Turnout database");
+  LOG(INFO, "[TurnoutManager] Initializing Turnout database");
   json root = json::parse(
     Singleton<FileSystemManager>::instance()->load(TURNOUTS_JSON_FILE));
   for (auto turnout : root)
@@ -78,7 +80,10 @@ TurnoutManager::TurnoutManager(openlcb::Node *node, Service *service)
       turnouts_.push_back(std::make_unique<Turnout>(address, id, state, type));
     }
   }
-  LOG(INFO, "[Turnout] Loaded %d DCC turnout(s)", turnouts_.size());
+  LOG(INFO, "[TurnoutManager] Loaded %d turnout(s)", turnouts_.size());
+
+  packet_processor_add_refresh_source(this);
+
 }
 
 void TurnoutManager::clear()
@@ -114,17 +119,22 @@ string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
   auto const &elem = FIND_TURNOUT(address);
   if (elem != turnouts_.end())
   {
-    elem->get()->set(thrown, sendDCC);
+    if ((*elem)->set(thrown, sendDCC))
+    {
+      packet_processor_notify_update(this, (*elem)->address());
+    }
     dirty_ = true;
-    return StringPrintf("<H %d %d>", elem->get()->id()
-                      , elem->get()->get());
+    return StringPrintf("<H %d %d>", (*elem)->id(), (*elem)->get());
   }
 #if CONFIG_TURNOUT_CREATE_ON_DEMAND
   // we didn't find it, create it and set it
   turnouts_.push_back(std::make_unique<Turnout>(address, address));
-  turnouts_.back().get()->set(thrown, sendDCC);
-  return StringPrintf("<H %d %d>", turnouts_.back().get()->id()
-                    , turnouts_.back().get()->get());
+  if (turnouts_.back()->set(thrown, sendDCC))
+  {
+    packet_processor_notify_update(this, turnouts_.back()->address());
+  }
+  return StringPrintf("<H %d %d>", turnouts_.back()->id()
+                    , turnouts_.back()->get());
 #else
   return COMMAND_FAILED_RESPONSE;
 #endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
@@ -132,27 +142,33 @@ string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
 
 string TurnoutManager::toggle(uint16_t address)
 {
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "request to toggle turnout address %d"
-    , address);
+  LOG(CONFIG_TURNOUT_LOG_LEVEL
+    , "[TurnoutManager] Request to toggle turnout address %d", address);
   const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT(address);
   if (elem != turnouts_.end())
   {
-    LOG(CONFIG_TURNOUT_LOG_LEVEL, "turnout found, toggling");
-    elem->get()->toggle();
+    LOG(CONFIG_TURNOUT_LOG_LEVEL, "[TurnoutManager] Turnout found, toggling");
+    if((*elem)->toggle())
+    {
+      packet_processor_notify_update(this, (*elem)->address());
+    }
     dirty_ = true;
-    return StringPrintf("<H %d %d>", elem->get()->id()
-                      , elem->get()->get());
+    return StringPrintf("<H %d %d>", (*elem)->id(), (*elem)->get());
   }
 
 #if CONFIG_TURNOUT_CREATE_ON_DEMAND
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "turnout not found, creating and toggling");
+  LOG(CONFIG_TURNOUT_LOG_LEVEL
+    , "[TurnoutManager] Turnout not found, creating and toggling");
 
   // we didn't find it, create it and throw it
   turnouts_.push_back(std::make_unique<Turnout>(address, address));
-  turnouts_.back().get()->toggle();
-  return StringPrintf("<H %d %d>", turnouts_.back().get()->id()
-                    , turnouts_.back().get()->get());
+  if(turnouts_.back()->toggle())
+  {
+    packet_processor_notify_update(this, turnouts_.back()->address());
+  }
+  return StringPrintf("<H %d %d>", turnouts_.back()->id()
+                    , turnouts_.back()->get());
 #else
   return COMMAND_FAILED_RESPONSE;
 #endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
@@ -325,6 +341,31 @@ void TurnoutManager::send(Buffer<dcc::Packet> *b, unsigned prio)
   b->unref();
 }
 
+void TurnoutManager::get_next_packet(unsigned code, dcc::Packet* packet)
+{
+  // If the code is zero it is a general update packet which we do not use for
+  // turnouts, default it to an idle packet instead.
+  if (!code)
+  {
+    packet->set_dcc_idle();
+    return;
+  }
+
+  // retrieve the turnout based on the provided code (address).
+  auto turnout = get(code);
+
+  // shift address by one to account for the output pair state bit (thrown).
+  // decrement the address prior to shift to bring it into the 0-2047 range.
+  uint16_t addr = (((turnout->address() - 1) << 1) | turnout->get());
+
+  // always send activate as true (sets C to 1)
+  packet->add_dcc_basic_accessory(addr, true);
+  packet->packet_header.rept_count = config_dcc_turnout_packet_repeats();
+
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[TurnoutManager] Sending packet: %s"
+    , packet_to_string(*packet, true).c_str());
+}
+
 string TurnoutManager::get_state_as_json(bool readableStrings)
 {
   string content = "[";
@@ -394,7 +435,6 @@ Turnout::Turnout(uint16_t address, int16_t id, bool state, TurnoutType type)
   LOG(INFO, "[Turnout %d (%d)] Registered as type %s and initial state of %s"
     , id_, address_, TURNOUT_TYPE_STRINGS[type_]
     , state_ ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
-  packet_processor_add_refresh_source(this);
 }
 
 string Turnout::to_json(bool readableStrings)
@@ -415,33 +455,12 @@ string Turnout::to_json(bool readableStrings)
   return serialized;
 }
 
-void Turnout::set(bool thrown, bool send_event)
+bool Turnout::set(bool thrown, bool send_event)
 {
   TurnoutBase::set(thrown, send_event);
-  if (send_event)
-  {
-    packet_processor_notify_update(this, 1);
-  }
   LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Set to %s", id(), address()
     , get() ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
-}
-
-void Turnout::get_next_packet(unsigned code, dcc::Packet* packet)
-{
-  if (!code)
-  {
-    packet->set_dcc_idle();
-    return;
-  }
-  // shift address by one to account for the output pair state bit (thrown).
-  // decrement the address prior to shift to bring it into the 0-2047 range.
-  uint16_t addr = (((address() - 1) << 1) | get());
-
-  // always send activate as true (sets C to 1)
-  packet->add_dcc_basic_accessory(addr, true);
-
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d (%d)] Packet: %s", id(), address()
-    , packet_to_string(*packet, true).c_str());
+  return send_event;
 }
 
 OpenLCBTurnout::OpenLCBTurnout(const uint16_t address
@@ -478,7 +497,7 @@ void OpenLCBTurnout::update_events(std::string closed_events, std::string thrown
   }
 }
 
-void OpenLCBTurnout::set(bool thrown, bool send_event)
+bool OpenLCBTurnout::set(bool thrown, bool send_event)
 {
   TurnoutBase::set(thrown, send_event);
   if (send_event)
@@ -500,6 +519,7 @@ void OpenLCBTurnout::set(bool thrown, bool send_event)
   }
   LOG(CONFIG_TURNOUT_LOG_LEVEL, "[OpenLCBTurnout %d] Set to %s", address()
     , get() ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
+  return false;
 }
 
 std::string OpenLCBTurnout::to_json(bool readableStrings)

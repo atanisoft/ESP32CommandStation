@@ -50,9 +50,9 @@ public:
   {
     return id_;
   }
-  void toggle()
+  bool toggle()
   {
-    set(!get());
+    return set(!get());
   }
   bool get()
   {
@@ -66,9 +66,10 @@ public:
   {
     type_ = type;
   }
-  virtual void set(bool state, bool send_event = true)
+  virtual bool set(bool state, bool send_event = true)
   {
     state_ = state;
+    return false;
   }
   virtual std::string to_json(bool readable_strings = false)
   {
@@ -89,14 +90,13 @@ protected:
   TurnoutType type_;
 };
 
-class Turnout : public TurnoutBase, public dcc::NonTrainPacketSource
+class Turnout : public TurnoutBase
 {
 public:
   Turnout(uint16_t address, int16_t id = -1, bool thrown = false
         , TurnoutType type = TurnoutType::LEFT);
-  void set(bool state, bool send_event = true) override;
+  bool set(bool state, bool send_event = true) override;
   std::string to_json(bool readable_strings = false) override;
-  void get_next_packet(unsigned code, dcc::Packet* packet) override;
 };
 
 class OpenLCBTurnout : public TurnoutBase
@@ -104,7 +104,7 @@ class OpenLCBTurnout : public TurnoutBase
 public:
   OpenLCBTurnout(const uint16_t address, std::string closed_events
                , std::string thrown_events, TurnoutType type, bool state);
-  void set(bool state, bool send_event = true) override;
+  bool set(bool state, bool send_event = true) override;
   std::string to_json(bool readable_strings = false) override;
   void update_events(std::string closed_events, std::string thrown_events);
 private:
@@ -114,6 +114,7 @@ private:
 
 class TurnoutManager : public dcc::PacketFlowInterface
                      , public Singleton<TurnoutManager>
+                     , public dcc::NonTrainPacketSource
 {
 public:
   TurnoutManager(openlcb::Node *, Service *);
@@ -138,6 +139,7 @@ public:
   TurnoutBase *get(const uint16_t);
   uint16_t count();
   void send(Buffer<dcc::Packet> *, unsigned);
+  void get_next_packet(unsigned code, dcc::Packet* packet) override;
 private:
   std::string get_state_as_json(bool);
   void persist();

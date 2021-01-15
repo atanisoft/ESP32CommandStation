@@ -1,4 +1,5 @@
 set(COMPONENT_SRCS
+    "turnout_constants.cpp"
     "Turnouts.cpp"
 )
 
