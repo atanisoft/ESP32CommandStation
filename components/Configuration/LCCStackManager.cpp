@@ -202,7 +202,12 @@ void LCCStackManager::reset_events()
 
 void LCCStackManager::send_event(uint64_t event)
 {
-  stack_->executor()->add(new CallbackExecutable([&](){ stack_->send_event(event); }));
+  uint64_t evt = event;
+  stack_->executor()->add(new CallbackExecutable(
+  [evt, this](){
+    LOG(INFO, "[LCC] Sending event: %s", uint64_to_string_hex(evt).c_str());
+    stack_->send_event(evt);
+  }));
 }
 
 } // namespace esp32cs

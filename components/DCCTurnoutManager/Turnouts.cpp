@@ -287,13 +287,12 @@ uint16_t TurnoutManager::count()
 // TODO: shift this to consume the LCC event directly
 void TurnoutManager::send(Buffer<dcc::Packet> *b, unsigned prio)
 {
-  // add ref count so send doesn't delete it
   dcc::Packet *pkt = b->data();
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "TurnoutManager::send(%s)"
+    , dcc::packet_to_string(*pkt).c_str());
   // Verify that the packet looks like a DCC Accessory decoder packet
   if(!pkt->packet_header.is_marklin &&
-      pkt->dlc == 2 &&
-      pkt->payload[0] & 0x80 &&
-      pkt->payload[1] & 0x80)
+      pkt->payload[0] & 0x80 && pkt->payload[1] & 0x80)
   {
     // packet data format:
     // payload[0]  payload[1]
@@ -316,7 +315,7 @@ void TurnoutManager::send(Buffer<dcc::Packet> *b, unsigned prio)
     uint8_t boardIndex = (pkt->payload[1] & 0b00000110) >> 1;
     // least significant bit of the second byte is thrown/closed indicator.
     bool state = pkt->payload[1] & 0b00000001;
-    uint16_t address = decodeDCCAccessoryAddress(boardAddress, boardIndex);
+    uint16_t address = decodeDCCAccessoryAddress(boardAddress, boardIndex) - 4;
     LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d %d:%d] Setting to %s", address
       , boardAddress, boardIndex
       , state ? JSON_VALUE_THROWN : JSON_VALUE_CLOSED);
