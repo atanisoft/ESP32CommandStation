@@ -627,10 +627,7 @@ void start_openlcb_stack(node_config_t *config, bool brownout_detected)
   if (brownout_detected)
   {
     LOG_ERROR("[Brownout] Detected a brownout reset, sending event");
-    stack->executor()->add(new CallbackExecutable([&]()
-    {
-      stack->send_event(openlcb::Defs::NODE_POWER_BROWNOUT_EVENT);
-    }));
+    stackManager->send_event(openlcb::Defs::NODE_POWER_BROWNOUT_EVENT);
   }
 
   // Start the OpenMRN stack executor
