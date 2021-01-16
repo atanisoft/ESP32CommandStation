@@ -489,9 +489,8 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutCommandAdapter,
       // If the turnout exists set it to whichever direction the user provided
       // 0 = closed/normal/unthrown, 1 = thrown.
       auto turnout = turnoutManager->getByID(id);
-      if (turnout)
+      if (turnout && turnout->set(std::stoi(arguments[1])))
       {
-        turnout->set(std::stoi(arguments[1]));
         return COMMAND_SUCCESSFUL_RESPONSE;
       }
     }
@@ -554,7 +553,11 @@ DCC_PROTOCOL_COMMAND_HANDLER(TurnoutExCommandAdapter,
     }
     if (arguments.size() == 1)
     {
-      return Singleton<TurnoutManager>::instance()->toggle(addr);
+      auto turnout = Singleton<TurnoutManager>::instance()->toggle(addr);
+      if (turnout)
+      {
+        return StringPrintf("<H %d %d>", turnout->id(), turnout->get());
+      }
     }
     TurnoutType type = (TurnoutType)std::stoi(arguments[1]);
     if (Singleton<TurnoutManager>::instance()->createOrUpdateDcc(addr, type))
@@ -581,11 +584,16 @@ DECLARE_DCC_PROTOCOL_COMMAND_CLASS(AccessoryCommand, "a", 3)
 DCC_PROTOCOL_COMMAND_HANDLER(AccessoryCommand,
 [](const vector<string> arguments)
 {
-  return Singleton<TurnoutManager>::instance()->set(
+  auto turnout = 
+    Singleton<TurnoutManager>::instance()->set(
       decodeDCCAccessoryAddress(std::stoi(arguments[0])
                               , std::stoi(arguments[1]))
-    , std::stoi(arguments[2])
-  );
+    , std::stoi(arguments[2]));
+  if (turnout)
+  {
+    return StringPrintf("<H %d %d>", turnout->id(), turnout->get());
+  }
+  return COMMAND_FAILED_RESPONSE;
 })
 
 

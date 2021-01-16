@@ -113,34 +113,33 @@ void TurnoutManager::clear()
     }                                                     \
   )
 
-string TurnoutManager::set(uint16_t address, bool thrown, bool sendDCC)
+TurnoutBase *TurnoutManager::set(uint16_t address, bool thrown, bool send_event)
 {
   const std::lock_guard<std::mutex> lock(mux_);
   auto const &elem = FIND_TURNOUT(address);
   if (elem != turnouts_.end())
   {
-    if ((*elem)->set(thrown, sendDCC))
+    if ((*elem)->set(thrown, send_event))
     {
       packet_processor_notify_update(this, (*elem)->address());
     }
     dirty_ = true;
-    return StringPrintf("<H %d %d>", (*elem)->id(), (*elem)->get());
+    return (*elem).get();
   }
 #if CONFIG_TURNOUT_CREATE_ON_DEMAND
   // we didn't find it, create it and set it
   turnouts_.push_back(std::make_unique<Turnout>(address, address));
-  if (turnouts_.back()->set(thrown, sendDCC))
+  if (turnouts_.back()->set(thrown, send_event))
   {
     packet_processor_notify_update(this, turnouts_.back()->address());
   }
-  return StringPrintf("<H %d %d>", turnouts_.back()->id()
-                    , turnouts_.back()->get());
+  return turnouts_.back().get();
 #else
-  return COMMAND_FAILED_RESPONSE;
+  return nullptr;
 #endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
 }
 
-string TurnoutManager::toggle(uint16_t address)
+TurnoutBase *TurnoutManager::toggle(uint16_t address)
 {
   LOG(CONFIG_TURNOUT_LOG_LEVEL
     , "[TurnoutManager] Request to toggle turnout address %d", address);
@@ -154,7 +153,7 @@ string TurnoutManager::toggle(uint16_t address)
       packet_processor_notify_update(this, (*elem)->address());
     }
     dirty_ = true;
-    return StringPrintf("<H %d %d>", (*elem)->id(), (*elem)->get());
+    return (*elem).get();
   }
 
 #if CONFIG_TURNOUT_CREATE_ON_DEMAND
@@ -167,10 +166,9 @@ string TurnoutManager::toggle(uint16_t address)
   {
     packet_processor_notify_update(this, turnouts_.back()->address());
   }
-  return StringPrintf("<H %d %d>", turnouts_.back()->id()
-                    , turnouts_.back()->get());
+  return turnouts_.back().get();
 #else
-  return COMMAND_FAILED_RESPONSE;
+  return nullptr;
 #endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
 }
 

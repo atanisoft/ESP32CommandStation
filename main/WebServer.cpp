@@ -894,6 +894,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
         string action = cJSON_GetObjectItem(root, "act")->valuestring;
         string target = cJSON_HasObjectItem(root, "tgt") ?
             cJSON_GetObjectItem(root, "tgt")->valuestring : "";
+        TurnoutBase *turnout = nullptr;
         if (action == "save")
         {
           TurnoutType type = cJSON_HasObjectItem(root, "type") ?
@@ -903,21 +904,22 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
             , req_id->valueint, address, type);
           if (cJSON_IsFalse(cJSON_GetObjectItem(root, "olcb")))
           {
-            turnouts->createOrUpdateDcc(address, type);
+            turnout = turnouts->createOrUpdateDcc(address, type);
           }
           else
           {
-            turnouts->createOrUpdateOlcb(address
-                                       , cJSON_GetObjectItem(root, "closed")->valuestring
-                                       , cJSON_GetObjectItem(root, "thrown")->valuestring
-                                       , type);
+            turnout =
+              turnouts->createOrUpdateOlcb(address
+                                         , cJSON_GetObjectItem(root, "closed")->valuestring
+                                         , cJSON_GetObjectItem(root, "thrown")->valuestring
+                                         , type);
           }
         }
         else if (action == "toggle")
         {
           LOG(VERBOSE, "[WSJSON:%d] Toggling turnout %d", req_id->valueint
             , address);
-          turnouts->toggle(address);
+          turnout = turnouts->toggle(address);
         }
         else if (action == "delete")
         {
@@ -925,9 +927,18 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
             , address);
           turnouts->remove(address);
         }
-        response =
-          StringPrintf(R"!^!({"res":"turnout","act":"%s","addr":%d,"tgt":"%s","id":%d})!^!"
-                    , action.c_str(), address, target.c_str(), req_id->valueint);
+        if (turnout)
+        {
+          response =
+            StringPrintf(R"!^!({"res":"turnout","act":"%s","addr":%d,"tgt":"%s","state":%d,"type":%d,"id":%d})!^!"
+                      , action.c_str(), address, target.c_str(), turnout->get(), turnout->type(), req_id->valueint);
+        }
+        else
+        {
+          response =
+            StringPrintf(R"!^!({"res":"turnout","act":"%s","addr":%d,"tgt":"%s","id":%d})!^!"
+                      , action.c_str(), address, target.c_str(), req_id->valueint);
+        }
       }
     }
     else if (!strcmp(req_type->valuestring, "ping"))

@@ -123,20 +123,21 @@ public:
     persistFlow_.stop();
   }
   void clear();
-  std::string set(uint16_t, bool=false, bool=true);
-  std::string toggle(uint16_t);
+  TurnoutBase *set(uint16_t address, bool thrown = false
+                 , bool send_event = true);
+  TurnoutBase *toggle(uint16_t address);
   std::string getStateAsJson(bool=true);
   std::string get_state_for_dccpp();
   TurnoutBase *createOrUpdateDcc(const uint16_t address
-                               , const TurnoutType = TurnoutType::LEFT
+                               , const TurnoutType type = TurnoutType::LEFT
                                , const int16_t id = -1);
   TurnoutBase *createOrUpdateOlcb(const uint16_t address
                                 , std::string closed_events
                                 , std::string thrown_events
                                 , const TurnoutType = TurnoutType::LEFT);
-  bool remove(const uint16_t);
+  bool remove(const uint16_t address);
   TurnoutBase *getByID(const uint16_t id);
-  TurnoutBase *get(const uint16_t);
+  TurnoutBase *get(const uint16_t address);
   uint16_t count();
   void send(Buffer<dcc::Packet> *, unsigned);
   void get_next_packet(unsigned code, dcc::Packet* packet) override;

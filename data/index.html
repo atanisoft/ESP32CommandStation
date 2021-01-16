@@ -134,8 +134,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         <div class="column"><button class="btn btn-primary" id="funct_8">F8<i class="icon"></i></button></div>
       </div>
       <details class="accordion" id="ext_funcs">
-        <summary class="accordion-header c-hand"><button id="btn-ext_funcs" class="btn btn-primary">F9-F28<span
-              class="icon icon-arrow-down"></span></button></summary>
+        <summary class="accordion-header c-hand"><button id="btn-ext_funcs" class="btn btn-primary">F9-F28<i
+              class="icon icon-arrow-down"></i></button></summary>
         <div class="accordion-body">
           <div class="columns">
             <div class="column"></div>
@@ -178,8 +178,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#loco-select');"></a>
         <div class="modal-container">
           <div class="modal-header">
-            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#loco-select');"><span
-                class="icon icon-cross"></span></button>
+            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#loco-select');"><i
+                class="icon icon-cross"></i></button>
             <div class="modal-title h5">Select Locomotive</div>
           </div>
           <div class="modal-body">
@@ -200,10 +200,10 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             </div>
           </div>
           <div class="modal-footer">
-            <button id="loco-select-add" class="btn btn-primary" title="Manual"><span
-                class="icon icon-plus"></span></button>
-            <button id="loco-select-select" class="btn btn-primary" title="Select"><span
-                class="icon icon-check"></span></button>
+            <button id="loco-select-add" class="btn btn-primary" title="Manual"><i
+                class="icon icon-plus"></i></button>
+            <button id="loco-select-select" class="btn btn-primary" title="Select"><i
+                class="icon icon-check"></i></button>
           </div>
         </div>
       </div>
@@ -228,11 +228,11 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         </table>
       </div>
       <div class="container">
-        <button id='turnout-create' title='Create' class='btn btn-lg btn-action btn-primary'><span
-            class="icon icon-plus"></span></button>
+        <button id='turnout-create' title='Create' class='btn btn-lg btn-action btn-primary'><i
+            class="icon icon-plus"></i></button>
         <button id='turnout-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'
-          onclick="$(this).toggleClass('loading');refreshTurnouts(this);"><span
-            class="icon icon-refresh"></span></button>
+          onclick="$(this).toggleClass('loading');refreshTurnouts(this);"><i
+            class="icon icon-refresh"></i></button>
       </div>
       <div id="turnout-editor" class="modal">
         <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#turnout-editor');"></a>
@@ -280,10 +280,10 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#turnout-editor');"><span
-                class="icon icon-cross"></span></button>
-            <button id="turnout-save" class="btn btn-primary" title="Save"><span
-                class="icon icon-check"></span></button>
+            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#turnout-editor');"><i
+                class="icon icon-cross"></i></button>
+            <button id="turnout-save" class="btn btn-primary" title="Save"><i
+                class="icon icon-check"></i></button>
           </div>
         </div>
       </div>
@@ -308,9 +308,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       </div>
       <div class="container">
         <button id='roster-create' title='Create' class='btn btn-lg btn-action btn-primary'
-          onclick="clearRosterEditor();toggleModal('#roster-editor');"><span class="icon icon-plus"></span></button>
+          onclick="clearRosterEditor();toggleModal('#roster-editor');"><i class="icon icon-plus"></i></button>
         <button id='roster-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'
-          onclick="$(this).toggleClass('loading');refreshRoster(this);"><span class="icon icon-refresh"></span></button>
+          onclick="$(this).toggleClass('loading');refreshRoster(this);"><i class="icon icon-refresh"></i></button>
       </div>
       <div id="roster-editor" class="modal">
         <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#roster-editor');"></a>
@@ -335,10 +335,10 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             </label>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#roster-editor');"><span
-                class="icon icon-cross"></span></button>
-            <button id="roster-save" class="btn btn-primary" title="Save" onclick="saveLoco();"><span
-                class="icon icon-check"></span></button>
+            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#roster-editor');"><i
+                class="icon icon-cross"></i></button>
+            <button id="roster-save" class="btn btn-primary" title="Save" onclick="saveLoco();"><i
+                class="icon icon-check"></i></button>
           </div>
         </div>
       </div>
@@ -483,8 +483,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#active-locos');"></a>
       <div class="modal-container">
         <div class="modal-header">
-          <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#active-locos');"><span
-              class="icon icon-cross"></span></button>
+          <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#active-locos');"><i
+              class="icon icon-cross"></i></button>
           <div class="modal-title h5">Active Locomotives</div>
         </div>
         <div class="modal-body">
@@ -513,8 +513,21 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     const ws_ping_interval_ms = 5000;
     const page_reload_delay_ms = 7500;
     const fetch_timeout_ms = 10000;
+    const turnout_types = ["Left", "Right", "Wye", "Multi"];
+    const turnout_states = ["Closed", "Thrown"];
+    const turnout_states_tooltip = ["Throw", "Close"];
+    const turnout_icons = [
+      "icon-arrow-right", "icon-arrow-left", // left
+      "icon-arrow-left", "icon-arrow-right", // right
+      "icon-arrow-right", "icon-arrow-left", // wye
+      "icon-arrow-right", "icon-arrow-left", // multi
+    ];
+    const ops_track_off_evt = '01.00.00.00.00.00.FF.FF';
+    const ops_track_on_evt = '01.00.00.00.00.00.FF.FE';
+    var ops_track_overcurrent_evt = '';
+    var ops_track_shutdown_evt = '';
 
-    var send_loco_events = true;
+    var loco_events = true;
     var ws = null;
     var ws_pending_send = [];
     var ws_req_id = 0;
@@ -686,7 +699,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           } else if (json.res === 'reset-events') {
             refresh_all_fields();
           } else if (json.res === 'loco') {
-            send_loco_events = false;
+            loco_events = false;
             $("#loco-address").val(json.addr);
             $("#loco-speed").val(json.spd);
             $('#loco-dir i').removeClass('icon-back icon-forward');
@@ -695,22 +708,36 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             } else {
               $('#loco-dir i').addClass('icon-forward');
             }
-            send_loco_events = true;
+            loco_events = true;
           } else if (json.res === 'function') {
+            $(String.format('#funct_{0} i', json.fn)).removeClass('icon-circle-check');
             if (json.state) {
               $(String.format('#funct_{0} i', json.fn)).addClass('icon-circle-check');
-            } else {
-              $(String.format('#funct_{0} i', json.fn)).removeClass('icon-circle-check');
             }
           } else if (json.res === 'turnout') {
-            if (json.hasOwnProperty('tgt')) {
+            if (json.tgt !== '') {
               $('#' + json.tgt).removeClass('loading');
             }
+            $(String.format("#turnout_{0}_addr", json.addr)).text(json.addr);
+            $(String.format("#turnout_{0}_type", json.addr)).text(turnout_types[json.type]);
+            if (json.hasOwnProperty('state')) {
+              $(String.format("#turnout_{0}_toggle i", json.addr)).removeClass('icon-arrow-left icon-arrow-right');
+              $(String.format("#turnout_{0}_toggle i", json.addr)).addClass(turnout_icons[(json.type * 2) + json.state]);
+              $(String.format("#turnout_{0}_toggle", json.addr)).attr('data-tooltip', turnout_states_tooltip[json.state]);
+              $(String.format("#turnout_{0}_state", json.addr)).text(turnout_states[json.state]);
+            }
+            if (json.act === 'save') {
+              refreshTurnouts(null);
+            }
           } else if (json.res === 'event') {
-            if (json.evt === '01.00.00.00.00.00.FF.FE') {
+            if (json.evt === ops_track_on_evt) {
               updateTrackPowerStatus(true, false);
-            } else if (json.evt === '01.00.00.00.00.00.FF.FF') {
+            } else if (json.evt === ops_track_off_evt) {
               updateTrackPowerStatus(false, false);
+            /*} else if (json.evt === ops_track_overcurrent_evt) {
+              updateTrackPowerStatus(true, true);
+            } else if (json.evt === ops_track_shutdown_evt) {
+              updateTrackPowerStatus(true, true);*/
             }
           } else if (json.res === 'pong') {
             clearTimeout(ws_ping_timer_id);
@@ -805,7 +832,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     function setupThrottle() {
       disableLocoInputs();
       $('#btn-ext_funcs').on('click', function () {
-        var icon = $('#ext_funcs').contents().find('span').first();
+        var icon = $('#ext_funcs').contents().find('i').first();
         if ($('#ext_funcs').attr('open')) {
           $('#ext_funcs').removeAttr('open');
         } else {
@@ -815,7 +842,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         $(icon).toggleClass('icon-arrow-up');
       });
       $("#loco-speed").on("change", function (event, ui) {
-        if (send_loco_events) {
+        if (loco_events) {
           ws_tx(JSON.stringify({
             req: 'loco',
             addr: parseInt($("#loco-address").val()),
@@ -833,14 +860,12 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         $("#loco-manual").show();
       });
       $("#loco-dir").on('click', function () {
-        if (send_loco_events) {
-          ws_tx(JSON.stringify({
-            req: 'loco',
-            addr: parseInt($("#loco-address").val()),
-            dir: $('#loco-dir i').hasClass('icon-forward'),
-            id: get_ws_msg_id()
-          }));
-        }
+        ws_tx(JSON.stringify({
+          req: 'loco',
+          addr: parseInt($("#loco-address").val()),
+          dir: $('#loco-dir i').hasClass('icon-forward'),
+          id: get_ws_msg_id()
+        }));
       });
       $('[id^=funct_]').on('click', function (event) {
         var target = event.target;
@@ -848,15 +873,13 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           target = $(target).parent();
         }
         var id = $(target).prop('id').match(/.*(\d+).*/)[1];
-        if (send_loco_events) {
-          ws_tx(JSON.stringify({
-            req: 'function',
-            addr: parseInt($("#loco-address").val()),
-            fn: parseInt(id),
-            state: !$(String.format('#funct_{0} i', id)).hasClass('icon-circle-check'),
-            id: get_ws_msg_id()
-          }));
-        }
+        ws_tx(JSON.stringify({
+          req: 'function',
+          addr: parseInt($("#loco-address").val()),
+          fn: parseInt(id),
+          state: !$(String.format('#funct_{0} i', id)).hasClass('icon-circle-check'),
+          id: get_ws_msg_id()
+        }));
       });
       $('#ops_track_power').on('click', function (event) {
         if ($(this).hasClass('text-error')) {
@@ -931,7 +954,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       } else {
         $('#' + target).append(String.format('<div class="input-group" id="{0}"><input type="text" class="form-input" maxlength="23" placeholder="00.00.00.00.00.00.00.00"><button class="btn btn-primary input-group-btn" onclick="removeEventRow(\'{0}\');"><i class="icon icon-cross"></i></button></div>', id));
       }
-      
     }
     function setupTurnouts() {
       $('#turnout-create').on('click', function () {
@@ -986,7 +1008,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           }));
         }
         toggleModal('#turnout-editor');
-        refreshTurnouts(null);
       });
     }
     function refreshTurnouts(button) {
@@ -998,23 +1019,14 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           if (data.length) {
             var tbody = $('#turnouts-table tbody');
             tbody.children().remove();
-            const turnout_types = ["Left", "Right", "Wye", "Multi"];
-            const turnout_states = ["Closed", "Thrown"];
-            const turnout_states_tooltip = ["Throw", "Close"];
-            const turnout_icons = [
-              "icon-arrow-right", "icon-arrow-left", // left
-              "icon-arrow-left", "icon-arrow-right", // right
-              "icon-arrow-right", "icon-arrow-left", // wye
-              "icon-arrow-right", "icon-arrow-left", // multi
-            ];
             for (var idx in data) {
-              var actions = String.format('<button id="edit-turnout-{0}" class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editTurnout({0});"><i class="icon icon-edit"></i></button>',
+              var actions = String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editTurnout({0});"><i class="icon icon-edit"></i></button>',
                 data[idx].address);
-              actions += String.format('<button id="delete-turnout-{0}"class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteTurnout({0});"><i class="icon icon-delete"></i></button>',
+              actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteTurnout({0});"><i class="icon icon-delete"></i></button>',
                 data[idx].address);
-              actions += String.format('<button id="toggle-turnout-{0}"class="btn btn-primary btn-sm tooltip" data-tooltip="{2}" onclick="toggleTurnout({0},this);"><i class="icon {1}"></i></button>',
-                data[idx].address, turnout_icons[(data[idx].type * 2) + data[idx].state], turnout_states_tooltip[data[idx].state]);
-              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>',
+              actions += String.format('<button id="turnout_{0}_toggle" class="btn btn-primary btn-sm tooltip" data-tooltip="{1}" onclick="toggleTurnout({0},this);"><i class="icon {2}"></i></button>',
+                data[idx].address, turnout_states_tooltip[data[idx].state], turnout_icons[(data[idx].type * 2) + data[idx].state]);
+              $(tbody).append(String.format('<tr><td id="turnout_{0}_addr">{0}</td><td id="turnout_{0}_type">{1}</td><td id="turnout_{0}_state">{2}</td><td>{3}</td></tr>',
                 data[idx].address, turnout_types[data[idx].type], turnout_states[data[idx].state], actions));
             }
             $("#turnouts-empty").hide();
