@@ -21,6 +21,8 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <AllTrainNodes.hxx>
 #include <driver/i2c.h>
 #include <esp_ota_ops.h>
+#include <freertos_drivers/arduino/DummyGPIO.hxx>
+#include <freertos_drivers/esp32/Esp32Gpio.hxx>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <LCCWiFiManager.h>
 
@@ -30,6 +32,12 @@ static constexpr uint8_t STATUS_DISPLAY_LINE_COUNT = 5;
 
 static constexpr TickType_t DISPLAY_I2C_TIMEOUT =
   pdMS_TO_TICKS(CONFIG_DISPLAY_I2C_TIMEOUT_MSEC);
+
+#if CONFIG_DISPLAY_OLED_RESET_PIN != -1
+GPIO_PIN(DISPLAY_RESET, GpioOutputSafeLow, CONFIG_DISPLAY_OLED_RESET_PIN);
+#else
+typedef DummyPin DISPLAY_RESET_Pin;
+#endif
 
 #if CONFIG_DISPLAY_TYPE_OLED
 
@@ -195,23 +203,23 @@ StatusDisplay::StatusDisplay(openlcb::SimpleStackBase *stack, Service *service)
                         , std::bind(&StatusDisplay::node_pong, this
                                   , std::placeholders::_1));
   clear();
-  info("ESP32-CS: v%s", openlcb::SNIP_STATIC_DATA.software_version);
+  info("ESP32-CS:%s", openlcb::SNIP_STATIC_DATA.software_version);
 #if !defined(CONFIG_WIFI_MODE_DISABLED)
-  wifi("IP:Pending");
+  wifi("Pending");
   Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
   [&](esp_interface_t interface, uint32_t ip)
   {
     if (interface == ESP_IF_WIFI_STA)
     {
 #if CONFIG_DISPLAY_COLUMN_COUNT > 16 || CONFIG_DISPLAY_TYPE_OLED
-      wifi("IP: %s", ipv4_to_string(ip).c_str());
+      wifi("IP:%s", ipv4_to_string(ip).c_str());
 #else
       wifi(ipv4_to_string(ip).c_str());
 #endif
     }
     else if (interface == ESP_IF_WIFI_AP)
     {
-      wifi("SSID: %s"
+      wifi("SSID:%s"
          , Singleton<Esp32WiFiManager>::instance()->get_softap_ssid().c_str());
     }
   });
@@ -351,13 +359,7 @@ void StatusDisplay::node_pong(openlcb::NodeID id)
 StateFlowBase::Action StatusDisplay::resetOLED()
 {
 #if !CONFIG_DISPLAY_TYPE_NONE
-#if CONFIG_DISPLAY_OLED_RESET_PIN != -1
-  LOG(INFO, "[StatusDisplay] Resetting OLED display");
-  gpio_pad_select_gpio((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN);
-  gpio_set_direction((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN
-                    , GPIO_MODE_OUTPUT);
-  gpio_set_level((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN, 0);
-#endif // CONFIG_DISPLAY_OLED_RESET_PIN
+  DISPLAY_RESET_Pin::hw_init();
   return sleep_and_call(&timer_, MSEC_TO_NSEC(50), STATE(init));
 #else
   return exit();
@@ -367,9 +369,7 @@ StateFlowBase::Action StatusDisplay::resetOLED()
 StateFlowBase::Action StatusDisplay::init()
 {
 #if !CONFIG_DISPLAY_TYPE_NONE
-#if CONFIG_DISPLAY_OLED_RESET_PIN != -1
-  gpio_set_level((gpio_num_t)CONFIG_DISPLAY_OLED_RESET_PIN, 1);
-#endif // CONFIG_DISPLAY_OLED_RESET_PIN
+  DISPLAY_RESET_Pin::instance()->set();
 
   LOG(INFO, "[StatusDisplay] Initializing I2C driver...");
   i2c_config_t i2c_config;
@@ -441,7 +441,7 @@ StateFlowBase::Action StatusDisplay::init()
     i2c_cmd_link_delete(cmd);
     if (ret == ESP_OK)
     {
-      scanresults += int64_to_string_hex(addr);
+      scanresults += StringPrintf(" %02x", addr);
     }
     else if (ret == ESP_ERR_TIMEOUT)
     {
@@ -477,10 +477,12 @@ StateFlowBase::Action StatusDisplay::initOLED()
   i2c_master_write_byte(cmd, OLED_CHARGEPUMP_ON, true);
 
   // Test the register zero data with power/state masked to identify the
-  // connected chipset since SSD1306 and SH1106 require slightly different
-  // initialization parameters.
-  if (((regZero_ & 0x0F) == 0x03) || ((regZero_ & 0x0F) == 0x06) ||
-      ((regZero_ & 0x0F) == 0x07))
+  // connected chipset since SSD1306/SSD1309 and SH1106 require slightly
+  // different initialization parameters.
+  if (((regZero_ & 0x0F) == 0x03) || // SSD1306
+      ((regZero_ & 0x0F) == 0x06) || // SSD1306
+      ((regZero_ & 0x0F) == 0x07) || // SSD1306
+      ((regZero_ & 0x0F) == 0x01))   // SSD1309
   {
     LOG(INFO, "[StatusDisplay] OLED driver IC: SSD1306");
     i2c_master_write_byte(cmd, OLED_CLOCK_DIVIDER, true);
@@ -614,11 +616,22 @@ StateFlowBase::Action StatusDisplay::update()
     ++rotatingIndex_ %= rotatingLineCount;
   }
   // update the status line details every other iteration
-  if(updateCount_ % 2)
+  if (updateCount_ % 2)
   {
-    if(rotatingIndex_ == 0)
+    if (rotatingIndex_ == 0)
     {
-      status("Free Heap:%d", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+      static uint8_t heapIndex = 0;
+      ++heapIndex %= 2;
+      if (heapIndex)
+      {
+        status("Heap b:%.2fkB"
+             , heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024.0f);
+      }
+      else
+      {
+        status("Heap f:%.2fkB"
+             , heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0f);
+      }
     }
     else if (rotatingIndex_ == 1)
     {
