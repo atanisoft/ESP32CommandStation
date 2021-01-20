@@ -43,6 +43,12 @@ GPIO_PIN(DISPLAY_RESET, GpioOutputSafeLow, CONFIG_DISPLAY_OLED_RESET_PIN);
 /// Wrapped DummyPin that exposes an instance method.
 struct WrappedDummyPin : public DummyPin
 {
+  /// @return the input pin level.
+  static bool get()
+  {
+      return false;
+  }
+
   /// @return the static Gpio instance.
   static constexpr const Gpio *instance()
   {
