@@ -40,7 +40,16 @@ static constexpr TickType_t DISPLAY_I2C_TIMEOUT =
 #if CONFIG_DISPLAY_OLED_RESET_PIN != -1
 GPIO_PIN(DISPLAY_RESET, GpioOutputSafeLow, CONFIG_DISPLAY_OLED_RESET_PIN);
 #else
-typedef DummyPin DISPLAY_RESET_Pin;
+/// Wrapped DummyPin that exposes an instance method.
+struct WrappedDummyPin : public DummyPin
+{
+  /// @return the static Gpio instance.
+  static constexpr const Gpio *instance()
+  {
+    return GpioWrapper<WrappedDummyPin>::instance();
+  }
+};
+typedef WrappedDummyPin DISPLAY_RESET_Pin;
 #endif
 
 #if CONFIG_DISPLAY_TYPE_OLED
