@@ -359,7 +359,7 @@ extern "C" void app_main()
   esp32cs::HC12Radio hc12(stackManager.service()
                         , (uart_port_t)CONFIG_HC12_UART
                         , (gpio_num_t)CONFIG_HC12_RX_PIN
-                        , (gpio_num_t)CONFIG_HC12_TX_PIN));
+                        , (gpio_num_t)CONFIG_HC12_TX_PIN);
 #endif // CONFIG_HC12
 
 #if CONFIG_STATUS_LED
