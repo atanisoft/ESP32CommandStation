@@ -16,8 +16,12 @@ COPYRIGHT (c) 2018-2020 Mike Dunston
 **********************************************************************/
 
 #include "HC12Radio.h"
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <utils/StringPrintf.hxx>
 
-#if defined(CONFIG_HC12)
+#if CONFIG_HC12
 
 /// Utility macro for StateFlow early abort
 #define LOG_ESP_ERROR_AND_EXIT_FLOW(name, text, cmd)  \
