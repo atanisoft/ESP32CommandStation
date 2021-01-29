@@ -5,33 +5,32 @@ layout: default
 # ESP32 Command Station PCB
 The ESP32 Command Station works quite well with off the shelf components, however you must pick and choose functionality based on available components or you need to assemble a mess of jumper wires to have a complete package. This PCB provides a single board solution for the ESP32 Command Station project based on either the TTGO-T1 ESP32 module or the ESP32 DevKit-C module with all components on-board to provided:
 
-* OPS Track output (3 Amp) supporting RailCom detection.
+* OPS Track output (5 Amp) supporting RailCom detection.
 * PROG Track output (250 mA).
-* Native LCC interface with two RJ45 ports.
-* Two I2C interfaces for OLED/LCD display usage (additional usages may be developed in the future).
-* UART interface for LocoNet or Nextion display usage.
+* Native OpenLCB (LCC) interface with integrated Power Station interface (including RailCom feedback from boosters).
+* I2C interface for OLED/LCD display usage.
 * Single Power Supply interface with reverse polarity protection.
 
 ## PCB
 The PCB has been designed utilizing a combination of SMD and through-hole components.
 
 Below is a rendering of the ESP32 Command Station PCB:
-![pcb-front.png](pcb-front.png "PCB front side")
+![esp32cspcb.png](esp32cspcb.png "Rendered PCB image")
 
 ### Gerber files
 These can be used with any PCB manufacturing company.
 
-* v1.4 - Coming soon
+* v1.5 - Coming soon
 
-### PCB Assembly (PCBA)
-Some PCB manufacturers are offering assembly of the PCBs before delivery. Currently the files below are suitable only for JLCPCB, other manufacturers may be supported in the future.
+### PCBA Services
+Some PCB manufactures offer PCBA. The files below can possibly be used for such purposes:
 
-* v1.4 - Coming soon
+* v1.5 - Coming soon
 
 ## Schematic and BOM
 
-* The schematic is available [here (PDF)](ESP32-CS.pdf).
-* The BOM can be viewed [here](ESP32-CS-BOM.html).
+* The schematic is available [here (PDF)](esp32cspcb.pdf).
+* The BOM can be viewed [here](pcb-BOM.html).
 
 ## PCB Availability
 Due to the costs involved in a production run of the PCBs they will only be available in a few forms:
@@ -44,19 +43,19 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 
 | GPIO Pin | Usage |
 | -------- | ----- |
-| 0 | Unused |
+| 0 | OLED-RESET |
 | 1 | UART0 TX |
 | 2 | SD-MISO |
 | 3 | UART0 RX |
-| 4 | OPS DCC ENABLE |
-| 5 | UART1 RX |
+| 4 | TWAI TX |
+| 5 | TWAI RX |
 | 6-11 | NOT AVAILABLE (connected to on chip flash) |
 | 12 | RAILCOM ENABLE |
 | 13 | SD-CS |
 | 14 | SD-CLK |
 | 15 | SD-MOSI |
-| 16 | UART1 TX |
-| 17 | OPS DCC SIGNAL |
+| 16 | OPS DCC SIGNAL |
+| 17 | OPS DCC ENABLE |
 | 18 | PROG DCC ENABLE |
 | 19 | PROG DCC SIGNAL |
 | 20 | NOT AVAILABLE |
@@ -65,12 +64,12 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | 23 | I2C - SDA |
 | 24 | NOT AVAILABLE |
 | 25 | RAILCOM DIRECTION |
-| 26 | OPS DCC BRAKE  |
-| 27 | CAN RX |
+| 26 | RAILCOM DATA |
+| 27 | OPS BRAKE |
 | 28-31 | NOT AVAILABLE |
-| 32 | CAN TX |
-| 33 | RAILCOM DATA |
-| 34 | FACTORY RESET |
+| 32 | FACTORY RESET |
+| 33 | NOT USED |
+| 34 | NOT USED |
 | 35 | AMBIENT TEMP SENSOR |
 | 36 (SVP) | OPS CURRENT SENSE |
 | 37 | NOT AVAILABLE |
@@ -81,7 +80,7 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 
 | Track | Current Limit | h-bridge | PTC Fuse |
 | ----- | ------------- | -------- | -------- |
-| OPS | approximately 2.85A | [LMD18200](https://www.ti.com/lit/ds/symlink/lmd18200.pdf) | [0ZRB0300FF1A datasheet](https://www.mouser.com/datasheet/2/643/ds-CP-0zrb-series-1664140.pdf) 3A (hold), 6A (trip) |
+| OPS | 5A (software limited) | [DRV8873](https://www.ti.com/lit/ds/symlink/drv8873.pdf) | [MF-R500-2 datasheet](https://www.mouser.com/datasheet/2/54/mfr-777680.pdf) 5A (hold), 10A (trip) |
 | PROG | 250mA | [DRV8801](https://www.ti.com/lit/ds/symlink/drv8801.pdf) | [0ZCG0035AF2C datasheet](https://www.mouser.com/datasheet/2/643/0ZCG_Nov2016-1132141.pdf) 350mA (hold), 700mA (trip)  |
 | LCC | 250mA | [DRV8801](https://www.ti.com/lit/ds/symlink/drv8801.pdf) | [0ZCG0035AF2C datasheet](https://www.mouser.com/datasheet/2/643/0ZCG_Nov2016-1132141.pdf) 350mA (hold), 700mA (trip) |
 
@@ -101,21 +100,5 @@ GPIO 22 is connected to five APA106/WS2812 (or similar) RGB LEDs. APA106 and WS2
 | EXT-2 | TBD | TBD |
 
 Flashing LEDs use an on/off frequency of 450ms-500ms.
-
-### LED 5V and GND pin connections
-There are currently two common pin assignments for the RGB LEDs supported by the Command Station. The 5V and GND pins are swapped depending on the specific type of LED being used and who manufactured it. The WS2812 based LEDs are typically (1) DATA IN, (2) GND, (3) 5V, (4) DATA OUT. The APA106 LEDs are typically (1) DATA IN, (2) 5V, (3) GND, (4) DATA OUT.
-
-The LED-PIN2 and LED-PIN3 solder jumper pads on the back side of the PCB can be used to switch the LED pins to match the LEDs being used, these default to the APA106 pin assignment.
-
-The LEDs included in the PCB kit are F5 diffused APA106 LEDs.
-
-## Expansion Interfaces
-The PCB has four expansion ports available for optional features:
-
-| Port | Usage |
-| ---- | ----- |
-| I2C | OLED or LCD Screen. |
-| UART1 | This is planned for future expansion purposes. |
-| SD-Module | When using the ESP32 DevKit-C module it is highly recommended to use an SD card adapter module to reduce wear on the ESP32 built-in flash by the SPIFFS filesystem. |
 
 [Return to ESP32 Command Station](./index.html)
