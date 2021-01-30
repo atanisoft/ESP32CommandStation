@@ -86,7 +86,7 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 
 
 ### DCC Power Supply requirements
-The DCC-POWER connections supply power to the DCC track outputs as well as the PCB itself. It is recommended to use a 14-18v DC power supply rated for 5 Amps. The LMD18200 and DRV8801 h-bridges used by the PCB will reduce the track output voltage by approximately 2v compared to the DCC-POWER supply voltage.
+The DCC-POWER connections supply power to the DCC track outputs as well as the PCB itself. It is recommended to use a 14-18v DC power supply rated for 7 Amps. The DRV8873 and DRV8801 h-bridges used by the PCB will reduce the track output voltage by approximately 2v compared to the DCC-POWER supply voltage.
 
 ## Status LEDs
 GPIO 22 is connected to five APA106/WS2812 (or similar) RGB LEDs. APA106 and WS2812 use different pin assignments for GND and 5V, care must be taken to account for this.
