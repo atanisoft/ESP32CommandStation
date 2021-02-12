@@ -20,12 +20,12 @@ Below is a rendering of the ESP32 Command Station PCB:
 ### Gerber files
 These can be used with any PCB manufacturing company.
 
-* v1.5 - Coming soon
+* v1.5.1 - Coming soon
 
 ### PCBA Services
 Some PCB manufactures offer PCBA. The files below can possibly be used for such purposes:
 
-* v1.5 - Coming soon
+* v1.5.1 - Coming soon
 
 ## Schematic and BOM
 
@@ -44,9 +44,9 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | GPIO Pin | Usage |
 | -------- | ----- |
 | 0 | OLED-RESET |
-| 1 | UART0 TX |
+| 1 | UART0 TX (USB only) |
 | 2 | SD-MISO |
-| 3 | UART0 RX |
+| 3 | UART0 RX (USB only) |
 | 4 | TWAI TX |
 | 5 | TWAI RX |
 | 6-11 | NOT AVAILABLE (connected to on chip flash) |
