@@ -947,6 +947,13 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_wsjson, socket, event, data, len)
       response =
         StringPrintf(R"!^!({"res":"pong","id":%d})!^!", req_id->valueint);
     }
+    else if (!strcmp(req_type->valuestring, "status"))
+    {
+      LOG(VERBOSE, "[WSJSON:%d] STATUS received", req_id->valueint);
+      response =
+        StringPrintf(R"!^!({"res":"status","id":%d,"track":%s})!^!"
+                   , req_id->valueint, esp32cs::get_track_state_json().c_str());
+    }
     else if (!strcmp(req_type->valuestring, "statusled"))
     {
       cJSON *value = cJSON_GetObjectItem(root, "val");

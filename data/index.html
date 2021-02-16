@@ -511,6 +511,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     const ws_retry_connection_timeout_ms = 500;
     const ws_ping_timeout_ms = 2000;
     const ws_ping_interval_ms = 5000;
+    const cs_status_interval_ms = 25000;
     const page_reload_delay_ms = 7500;
     const fetch_timeout_ms = 10000;
     const turnout_types = ["Left", "Right", "Wye", "Multi"];
@@ -536,6 +537,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     var cdi_loaders = [];
     var ws_ping_timer_id = 0;
     var ws_ping_interval_timer_id = 0;
+    var cs_status_interval_timer_id = 0;
 
     function get_ws_msg_id() {
       ws_req_id++;
@@ -625,6 +627,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       alert(text);
     }
     function reload_page() {
+      clearInterval(ws_ping_interval_timer_id);
+      clearInterval(cs_status_interval_timer_id);
+      ws_cleanup();
       setTimeout(function () { location.reload(); }, page_reload_delay_ms);
     }
     function ws_cleanup() {
@@ -647,6 +652,12 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       ws_ping_timer_id = setTimeout(ws_dead, ws_ping_timeout_ms);
       ws_tx(JSON.stringify({
         req: 'ping',
+        id: get_ws_msg_id()
+      }));
+    }
+    function cs_status() {
+      ws_tx(JSON.stringify({
+        req: 'status',
         id: get_ws_msg_id()
       }));
     }
@@ -684,7 +695,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             if (json.bootloader === false) {
               $('#bootloader').hide();
             }
+            cs_status();
             ws_ping_interval_timer_id = setInterval(ws_ping, ws_ping_interval_ms);
+            cs_status_interval_timer_id = setInterval(cs_status, cs_status_interval_ms);
           } else if (json.res === 'saved') {
             reset_cdi_buttons(json.tgt);
           } else if (json.res === 'field') {
@@ -741,6 +754,16 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             }
           } else if (json.res === 'pong') {
             clearTimeout(ws_ping_timer_id);
+          } else if (json.res === 'status') {
+            json.track.forEach(track => {
+              if (!track.prog) {
+                updateTrackPowerStatus(track.state !== 'Off',
+                  (track.state === 'Fault' || track.state === 'Shutdown'));
+                if (track.state !== 'Off') {
+                  $('#ops_usage').text(String.format('{0} mA', track.usage));
+                }
+              }
+            });
           }
         }
       });
@@ -1279,6 +1302,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           id: get_ws_msg_id()
         }));
         clearInterval(ws_ping_interval_timer_id);
+        clearInterval(cs_status_interval_timer_id);
         clearTimeout(ws_ping_timer_id);
         ws.removeEventListener('error', ws_closed);
         ws.removeEventListener('close', ws_closed);
