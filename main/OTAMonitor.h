@@ -45,15 +45,15 @@ public:
 #if CONFIG_STATUS_LED
     // set blink pattern to alternating green blink
     Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::WIFI, StatusLED::COLOR::GREEN_BLINK, true);
+      StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN_BLINK, true);
+    Singleton<StatusLED>::instance()->setStatusLED(
+      StatusLED::LED::WIFI_AP, StatusLED::COLOR::GREEN_BLINK);
+    Singleton<StatusLED>::instance()->setStatusLED(
+      StatusLED::LED::EXT, StatusLED::COLOR::GREEN_BLINK, true);
     Singleton<StatusLED>::instance()->setStatusLED(
       StatusLED::LED::OPS_TRACK, StatusLED::COLOR::GREEN_BLINK);
     Singleton<StatusLED>::instance()->setStatusLED(
       StatusLED::LED::PROG_TRACK, StatusLED::COLOR::GREEN_BLINK, true);
-    Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::EXT_1, StatusLED::COLOR::GREEN_BLINK);
-    Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::EXT_2, StatusLED::COLOR::GREEN_BLINK, true);
 #endif // CONFIG_STATUS_LED
 #if !CONFIG_DISPLAY_TYPE_NONE
     Singleton<StatusDisplay>::instance()->status("Update starting");
@@ -69,15 +69,15 @@ public:
 #if CONFIG_STATUS_LED
     // report successful OTA receipt
     Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::WIFI, StatusLED::COLOR::GREEN);
+      StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN);
+    Singleton<StatusLED>::instance()->setStatusLED(
+      StatusLED::LED::WIFI_AP, StatusLED::COLOR::GREEN);
+    Singleton<StatusLED>::instance()->setStatusLED(
+      StatusLED::LED::EXT, StatusLED::COLOR::GREEN);
     Singleton<StatusLED>::instance()->setStatusLED(
       StatusLED::LED::OPS_TRACK, StatusLED::COLOR::GREEN);
     Singleton<StatusLED>::instance()->setStatusLED(
       StatusLED::LED::PROG_TRACK, StatusLED::COLOR::GREEN);
-    Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::EXT_1, StatusLED::COLOR::GREEN);
-    Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::EXT_2, StatusLED::COLOR::GREEN);
 #endif // CONFIG_STATUS_LED
 #if CONFIG_NEXTION
     titlePage_->setStatusText(1, "Update Complete");
@@ -96,15 +96,15 @@ public:
 #if CONFIG_STATUS_LED
     // set blink pattern for alternating red blink
     Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::WIFI, StatusLED::COLOR::RED_BLINK, true);
+      StatusLED::LED::WIFI_STA, StatusLED::COLOR::RED_BLINK, true);
+    Singleton<StatusLED>::instance()->setStatusLED(
+      StatusLED::LED::WIFI_AP, StatusLED::COLOR::RED_BLINK);
+    Singleton<StatusLED>::instance()->setStatusLED(
+      StatusLED::LED::EXT, StatusLED::COLOR::RED_BLINK, true);
     Singleton<StatusLED>::instance()->setStatusLED(
       StatusLED::LED::OPS_TRACK, StatusLED::COLOR::RED_BLINK);
     Singleton<StatusLED>::instance()->setStatusLED(
       StatusLED::LED::PROG_TRACK, StatusLED::COLOR::RED_BLINK, true);
-    Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::EXT_1, StatusLED::COLOR::RED_BLINK);
-    Singleton<StatusLED>::instance()->setStatusLED(
-      StatusLED::LED::EXT_2, StatusLED::COLOR::RED_BLINK, true);
 #endif // CONFIG_STATUS_LED
 #if CONFIG_NEXTION
     titlePage_->setStatusText(1, esp_err_to_name(err));

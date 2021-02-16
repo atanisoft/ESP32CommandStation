@@ -35,29 +35,45 @@ StateFlowBase::Action StatusLED::init()
   bus_->SetBrightness(brightness_);
   bus_->ClearTo(RGB_OFF_);
   bus_->Show();
+
   Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
   [&](esp_interface_t interface, uint32_t ip)
   {
     if (interface == ESP_IF_WIFI_AP)
     {
-      setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::BLUE);
+      setStatusLED(StatusLED::LED::WIFI_AP, StatusLED::COLOR::BLUE);
     }
     else if (interface == ESP_IF_WIFI_STA)
     {
-      setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::GREEN);
+      setStatusLED(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN);
     }
   });
   Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
   [&](esp_interface_t interface)
   {
-    setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::RED);
+    if (interface == ESP_IF_WIFI_AP)
+    {
+      setStatusLED(StatusLED::LED::WIFI_AP, StatusLED::COLOR::RED);
+    }
+    else if (interface == ESP_IF_WIFI_STA)
+    {
+      setStatusLED(StatusLED::LED::WIFI_STA, StatusLED::COLOR::RED);
+    }
   });
   Singleton<Esp32WiFiManager>::instance()->register_network_init_callback(
   [&](esp_interface_t interface)
   {
-    setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::GREEN_BLINK);
+    if (interface == ESP_IF_WIFI_AP)
+    {
+      setStatusLED(StatusLED::LED::WIFI_AP, StatusLED::COLOR::BLUE_BLINK);
+    }
+    else if (interface == ESP_IF_WIFI_STA)
+    {
+      setStatusLED(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN_BLINK);
+    }
   });
-  return sleep_and_call(&timer_, updateInterval_, STATE(update));
+
+  return call_immediately(STATE(test_cycle));
 #endif
 }
 
@@ -114,6 +130,28 @@ StateFlowBase::Action StatusLED::update_bus()
     return sleep_and_call(&timer_, updateInterval_, STATE(update));
   }
   return yield_and_call(STATE(update_bus));
+}
+
+StateFlowBase::Action StatusLED::test_cycle()
+{
+  static uint8_t cycle_index = 0;
+  static NEO_COLOR_TYPE COLORS[5] =
+  {
+    RGB_RED_,
+    RGB_GREEN_,
+    RGB_BLUE_,
+    RGB_YELLOW_,
+    RGB_OFF_
+  };
+  bus_->ClearTo(COLORS[cycle_index++]);
+  bus_->Show();
+
+  if (cycle_index < ARRAYSIZE(COLORS))
+  {
+    return sleep_and_call(&timer_, MSEC_TO_NSEC(250), STATE(test_cycle));
+  }
+
+  return sleep_and_call(&timer_, updateInterval_, STATE(update));
 }
 
 void StatusLED::setStatusLED(const LED led, const COLOR color, const bool on)

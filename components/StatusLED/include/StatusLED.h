@@ -40,6 +40,7 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 #define NEO_COLOR_MODE NeoRgbFeature
 #define NEO_COLOR_MODE_NAME "RGB"
 #elif defined(CONFIG_STATUS_LED_COLOR_GRB)
+#define NEO_COLOR_TYPE RgbColor
 #define NEO_COLOR_MODE NeoGrbFeature
 #define NEO_COLOR_MODE_NAME "GRB"
 #elif defined(CONFIG_STATUS_LED_COLOR_RGBW)
@@ -80,6 +81,9 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 #elif defined(CONFIG_STATUS_LED_TYPE_APA106)
 #define NEO_METHOD NeoEsp32Rmt6Apa106Method
 #define NEO_METHOD_NAME "RMT(6)-APA106"
+#elif defined(CONFIG_STATUS_LED_TYPE_TX1812)
+#define NEO_METHOD NeoEsp32Rmt6Tx1812Method
+#define NEO_METHOD_NAME "RMT(6)-TX1812"
 #else
 #error "StatusLED: unknown LED type"
 #endif
@@ -102,11 +106,11 @@ public:
 
   enum LED : uint8_t
   {
-    WIFI,
+    WIFI_STA,
+    WIFI_AP,
+    EXT,
     OPS_TRACK,
     PROG_TRACK,
-    EXT_1,
-    EXT_2,
     MAX_LED
   };
 
@@ -162,6 +166,7 @@ private:
   STATE_FLOW_STATE(init);
   STATE_FLOW_STATE(update);
   STATE_FLOW_STATE(update_bus);
+  STATE_FLOW_STATE(test_cycle);
 };
 
 #endif // STATUS_LED_H_

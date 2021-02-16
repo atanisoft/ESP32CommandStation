@@ -31,7 +31,7 @@ menu "Status LED"
             SK6812           80 uS        SK6812
             LC6812           80 uS        LC6812
             APA106           50 uS        APA106
-            Note: APA106 is the type used for testing.
+            TX1812           80 uS        TX1812
         config STATUS_LED_TYPE_WS281X
             bool "WS281X"
         config STATUS_LED_TYPE_WS281X_800K
@@ -46,17 +46,22 @@ menu "Status LED"
             bool "LC6812"
         config STATUS_LED_TYPE_APA106
             bool "APA106"
+        config STATUS_LED_TYPE_TX1812
+            bool "TX1812"
     endchoice
 
     choice STATUS_LED_COLOR
         bool "LED color order"
         default STATUS_LED_COLOR_RGB
+        default STATUS_LED_COLOR_GRB if STATUS_LED_TYPE_TX1812
         config STATUS_LED_COLOR_RGB
             bool "Red, Green, Blue"
         config STATUS_LED_COLOR_BRG
             bool "Blue, Red, Green"
         config STATUS_LED_COLOR_RBG
             bool "Red, Blue, Green"
+        config STATUS_LED_COLOR_GRB
+            bool "Green, Red, Blue"
         config STATUS_LED_COLOR_RGBW
             bool "Red, Green, Blue, White"
         config STATUS_LED_COLOR_GRBW
