@@ -19,6 +19,8 @@ menu "DCC Signal"
                 L298           : Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A per channel https://store.arduino.cc/usa/arduino-motor-shield-rev3
                 LMD18200       : Texas Instruments LMD18200 55V 3A h-bridge. http://www.ti.com/lit/ds/symlink/lmd18200.pdf
                 DRV880x        : Texas Instruments DRV880x 36V 2.8A h-bridge. https://www.ti.com/lit/ds/symlink/drv8800.pdf
+                DRV8873        : Texas Instruments DRV8873 36V 10A h-bridge. https://www.ti.com/lit/ds/symlink/drv8873.pdf
+                DRV8873_5A     : Texas Instruments DRV8873 36V 10A h-bridge (limited to 5A). https://www.ti.com/lit/ds/symlink/drv8873.pdf
                 POLOLU         : Pololu MC33926 Motor Driver (shield or carrier). Max Output 2.5A per channel https://www.pololu.com/product/1213 / https://www.pololu.com/product/2503
                 BTS7960B_5A    : Infineon Technologies BTS 7960 Motor Driver Module. Max Output 5A (43A actual max) https://www.infineon.com/dgdl/bts7960b-pb-final.pdf
                 BTS7960B_10A   : Infineon Technologies BTS 7960 Motor Driver Module. Max Output 10A (43A actual max) https://www.infineon.com/dgdl/bts7960b-pb-final.pdf
@@ -28,6 +30,10 @@ menu "DCC Signal"
                 bool "LMD18200"
             config OPS_HBRIDGE_DRV880X
                 bool "DRV880x"
+            config OPS_HBRIDGE_DRV8873
+                bool "DRV8873"
+            config OPS_HBRIDGE_DRV8873_5A
+                bool "DRV8873 (5A limit)"
             config OPS_HBRIDGE_POLOLU
                 bool "Pololu MC33926"
             config OPS_HBRIDGE_BTS7960B_5A
@@ -41,6 +47,7 @@ menu "DCC Signal"
             default "L298" if OPS_HBRIDGE_L298
             default "LMD18200" if OPS_HBRIDGE_LMD18200
             default "DRV880x" if OPS_HBRIDGE_DRV880X
+            default "DRV8873" if OPS_HBRIDGE_DRV8873 || OPS_HBRIDGE_DRV8873_5A
             default "MC33926" if OPS_HBRIDGE_POLOLU
             default "BTS7960B" if OPS_HBRIDGE_BTS7960B_5A
             default "BTS7960B" if OPS_HBRIDGE_BTS7960B_10A
@@ -49,7 +56,8 @@ menu "DCC Signal"
             int
             default 2000 if OPS_HBRIDGE_L298
             default 3000 if OPS_HBRIDGE_LMD18200
-            default 2800 if OPS_HBRIDGE_DRV880X
+            default 2800 if OPS_HBRIDGE_DRV880X 
+            default 10000 if OPS_HBRIDGE_DRV8873 || OPS_HBRIDGE_DRV8873_5A
             default 2500 if OPS_HBRIDGE_POLOLU
             default 43000 if OPS_HBRIDGE_BTS7960B_5A
             default 43000 if OPS_HBRIDGE_BTS7960B_10A
@@ -59,6 +67,8 @@ menu "DCC Signal"
             default 2000 if OPS_HBRIDGE_L298
             default 3000 if OPS_HBRIDGE_LMD18200
             default 2800 if OPS_HBRIDGE_DRV880X
+            default 10000 if OPS_HBRIDGE_DRV8873
+            default 5000 if OPS_HBRIDGE_DRV8873_5A
             default 2500 if OPS_HBRIDGE_POLOLU
             default 5000 if OPS_HBRIDGE_BTS7960B_5A
             default 10000 if OPS_HBRIDGE_BTS7960B_10A
@@ -221,6 +231,8 @@ menu "DCC Signal"
                 L298           : Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A per channel https://store.arduino.cc/usa/arduino-motor-shield-rev3
                 LMD18200       : Texas Instruments LMD18200 55V 3A h-bridge. http://www.ti.com/lit/ds/symlink/lmd18200.pdf
                 DRV880x        : Texas Instruments DRV880x 36V 2.8A h-bridge. https://www.ti.com/lit/ds/symlink/drv8800.pdf
+                DRV8873        : Texas Instruments DRV8873 36V 10A h-bridge. https://www.ti.com/lit/ds/symlink/drv8873.pdf
+                DRV8873_5A     : Texas Instruments DRV8873 36V 10A h-bridge (limited to 5A). https://www.ti.com/lit/ds/symlink/drv8873.pdf
                 POLOLU         : Pololu MC33926 Motor Driver (shield or carrier). Max Output 2.5A per channel https://www.pololu.com/product/1213 / https://www.pololu.com/product/2503
                 BTS7960B_5A    : Infineon Technologies BTS 7960 Motor Driver Module. Max Output 5A (43A actual max) https://www.infineon.com/dgdl/bts7960b-pb-final.pdf
                 BTS7960B_10A   : Infineon Technologies BTS 7960 Motor Driver Module. Max Output 10A (43A actual max) https://www.infineon.com/dgdl/bts7960b-pb-final.pdf
@@ -230,6 +242,10 @@ menu "DCC Signal"
                 bool "LMD18200"
             config PROG_HBRIDGE_DRV880X
                 bool "DRV880x"
+            config PROG_HBRIDGE_DRV8873
+                bool "DRV8873"
+            config PROG_HBRIDGE_DRV8873_5A
+                bool "DRV8873 (5A limit)"
             config PROG_HBRIDGE_POLOLU
                 bool "Pololu MC33926"
             config PROG_HBRIDGE_BTS7960B_5A
@@ -243,6 +259,7 @@ menu "DCC Signal"
             default "L298" if PROG_HBRIDGE_L298
             default "LMD18200" if PROG_HBRIDGE_LMD18200
             default "DRV880x" if PROG_HBRIDGE_DRV880X
+            default "DRV8873" if PROG_HBRIDGE_DRV8873 || PROG_HBRIDGE_DRV8873_5A
             default "MC33926" if PROG_HBRIDGE_POLOLU
             default "BTS7960B" if PROG_HBRIDGE_BTS7960B_5A
             default "BTS7960B" if PROG_HBRIDGE_BTS7960B_10A
@@ -252,15 +269,17 @@ menu "DCC Signal"
             default 2000 if PROG_HBRIDGE_L298
             default 3000 if PROG_HBRIDGE_LMD18200
             default 2800 if PROG_HBRIDGE_DRV880X
+            default 10000 if PROG_HBRIDGE_DRV8873 || PROG_HBRIDGE_DRV8873_5A
             default 2500 if PROG_HBRIDGE_POLOLU
-            default 43000 if PROG_HBRIDGE_BTS7960B_5A
-            default 43000 if PROG_HBRIDGE_BTS7960B_10A
+            default 43000 if PROG_HBRIDGE_BTS7960B_5A || PROG_HBRIDGE_BTS7960B_10A
 
         config PROG_HBRIDGE_LIMIT_MILLIAMPS
             int
             default 2000 if PROG_HBRIDGE_L298
             default 3000 if PROG_HBRIDGE_LMD18200
             default 2800 if PROG_HBRIDGE_DRV880X
+            default 10000 if PROG_HBRIDGE_DRV8873
+            default 5000 if PROG_HBRIDGE_DRV8873_5A
             default 2500 if PROG_HBRIDGE_POLOLU
             default 5000 if PROG_HBRIDGE_BTS7960B_5A
             default 10000 if PROG_HBRIDGE_BTS7960B_10A
