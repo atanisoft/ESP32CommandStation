@@ -27,6 +27,7 @@ namespace esp32cs
 HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
                                          , const adc1_channel_t senseChannel
                                          , const Gpio *enablePin
+                                         , const uint8_t enablePinNum
                                          , const uint32_t limitMilliAmps
                                          , const uint32_t maxMilliAmps
                                          , const string &name
@@ -35,6 +36,7 @@ HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
   : DefaultConfigUpdateListener()
   , channel_(senseChannel)
   , enablePin_(enablePin)
+  , enablePinNum_(enablePinNum)
   , maxMilliAmps_(maxMilliAmps)
   , name_(name)
   , bridgeType_(bridgeType)
@@ -56,6 +58,7 @@ HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
 HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
                                          , const adc1_channel_t senseChannel
                                          , const Gpio *enablePin
+                                         , const uint8_t enablePinNum
                                          , const uint32_t maxMilliAmps
                                          , const string &name
                                          , const string &bridgeType
@@ -63,6 +66,7 @@ HBridgeShortDetector::HBridgeShortDetector(openlcb::Node *node
   : DefaultConfigUpdateListener()
   , channel_(senseChannel)
   , enablePin_(enablePin)
+  , enablePinNum_(enablePinNum)
   , maxMilliAmps_(maxMilliAmps)
   , name_(name)
   , bridgeType_(bridgeType)
@@ -146,8 +150,10 @@ string HBridgeShortDetector::get_state_for_dccpp()
 void HBridgeShortDetector::configure()
 {
   adc1_config_channel_atten(channel_, (adc_atten_t)CONFIG_ADC_ATTENUATION);
-  LOG(INFO, "[%s] Configuring H-Bridge (%s %u mA max) using ADC 1:%d"
-    , name_.c_str(), bridgeType_.c_str(), maxMilliAmps_, channel_);
+  LOG(INFO
+    , "[%s] Configuring H-Bridge (%s %u mA max) using ADC 1:%d, Enable pin: %d"
+    , name_.c_str(), bridgeType_.c_str(), maxMilliAmps_, channel_
+    , enablePinNum_);
   LOG(INFO, "[%s] Short limit %u/4096 (%6.2f mA), events (on: %s, off: %s)"
     , name_.c_str(), overCurrentLimit_
     , ((overCurrentLimit_ * maxMilliAmps_) / 4096.0f)

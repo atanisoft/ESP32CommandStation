@@ -45,6 +45,7 @@ public:
   HBridgeShortDetector(openlcb::Node *node
                      , const adc1_channel_t senseChannel
                      , const Gpio *enablePin
+                     , const uint8_t enablePinNum
                      , const uint32_t limitMilliAmps
                      , const uint32_t maxMilliAmps
                      , const string &name
@@ -54,6 +55,7 @@ public:
   HBridgeShortDetector(openlcb::Node *node
                      , const adc1_channel_t senseChannel
                      , const Gpio *enablePin
+                     , const uint8_t enablePinNum
                      , const uint32_t
                      , const std::string &name
                      , const std::string &bridgeType
@@ -161,7 +163,7 @@ public:
 private:
   const adc1_channel_t channel_;
   const Gpio *enablePin_;
-  const Gpio *thermalWarningPin_;
+  const uint8_t enablePinNum_;
   const uint32_t maxMilliAmps_;
   const std::string name_;
   const std::string bridgeType_;

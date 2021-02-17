@@ -449,6 +449,7 @@ void init_dcc(openlcb::Node *node, Service *service
 
   track_mon[OPS_RMT_CHANNEL].emplace(node, (adc1_channel_t)CONFIG_OPS_ADC
                                    , OPS_ENABLE_Pin::instance()
+                                   , CONFIG_OPS_HBRIDGE_ENABLE_PIN
                                    , CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS
                                    , CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS
                                    , CONFIG_OPS_TRACK_NAME
@@ -457,6 +458,7 @@ void init_dcc(openlcb::Node *node, Service *service
 
   track_mon[PROG_RMT_CHANNEL].emplace(node, (adc1_channel_t)CONFIG_PROG_ADC
                                     , PROG_ENABLE_Pin::instance()
+                                    , CONFIG_PROG_HBRIDGE_ENABLE_PIN
                                     , CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS
                                     , CONFIG_PROG_TRACK_NAME
                                     , CONFIG_PROG_HBRIDGE_TYPE_NAME
