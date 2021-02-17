@@ -97,7 +97,7 @@ menu "DCC Signal"
             int "H-Bridge brake pin"
             default 0
             range 0 33
-            depends on OPS_HBRIDGE_LMD18200
+            depends on OPS_HBRIDGE_LMD18200 || OPS_HBRIDGE_DRV880X || OPS_HBRIDGE_DRV8873 || OPS_HBRIDGE_DRV8873_5A
             help
                 This pin should be connected to the H-Bridge BRAKE pin
                 input and is used to put the H-Bridge into a "coast" mode.
@@ -272,17 +272,6 @@ menu "DCC Signal"
             default 10000 if PROG_HBRIDGE_DRV8873 || PROG_HBRIDGE_DRV8873_5A
             default 2500 if PROG_HBRIDGE_POLOLU
             default 43000 if PROG_HBRIDGE_BTS7960B_5A || PROG_HBRIDGE_BTS7960B_10A
-
-        config PROG_HBRIDGE_LIMIT_MILLIAMPS
-            int
-            default 2000 if PROG_HBRIDGE_L298
-            default 3000 if PROG_HBRIDGE_LMD18200
-            default 2800 if PROG_HBRIDGE_DRV880X
-            default 10000 if PROG_HBRIDGE_DRV8873
-            default 5000 if PROG_HBRIDGE_DRV8873_5A
-            default 2500 if PROG_HBRIDGE_POLOLU
-            default 5000 if PROG_HBRIDGE_BTS7960B_5A
-            default 10000 if PROG_HBRIDGE_BTS7960B_10A
 
         config PROG_HBRIDGE_ENABLE_PIN
             int "H-Bridge enable pin"
