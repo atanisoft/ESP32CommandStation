@@ -479,7 +479,7 @@ menu "DCC Signal"
 
         config DCC_RMT_TICKS_ZERO_PULSE
             int "RMT ticks for DCC zero"
-            default 96
+            default 100
             help
                 This is how many ticks the RMT should use for each half of a
                 DCC ZERO bit.
