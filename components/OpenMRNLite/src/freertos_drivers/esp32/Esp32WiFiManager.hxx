@@ -213,7 +213,10 @@ public:
     void set_uplink_enabled(bool enabled = true)
     {
         enableUplink_ = enabled;
-        stop_uplink();
+        if (!enabled)
+        {
+            stop_uplink();
+        }
     }
 
     /// Updates the WiFiConfiguration settings used by this node.
