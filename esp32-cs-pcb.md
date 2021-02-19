@@ -47,8 +47,8 @@ The PCB uses almost every pin available on the TTGO-T1/DevKit-C module.
 | 1 | UART0 TX (USB only) |
 | 2 | SD-MISO |
 | 3 | UART0 RX (USB only) |
-| 4 | TWAI TX |
-| 5 | TWAI RX |
+| 4 | TWAI RX |
+| 5 | TWAI TX |
 | 6-11 | NOT AVAILABLE (connected to on chip flash) |
 | 12 | RAILCOM ENABLE |
 | 13 | SD-CS |
