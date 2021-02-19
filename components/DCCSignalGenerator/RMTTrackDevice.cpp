@@ -57,8 +57,8 @@ static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 1;
 //
 // DCC ZERO:
 //    ----------------
-//    |      96      |
-// ---|     usec     |      96      ---
+//    |     100      |
+// ---|     usec     |     100      ---
 //                   |     usec     |
 //                   ----------------
 // DCC ONE:
@@ -70,6 +70,9 @@ static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 1;
 //
 // The timing can be adjusted via menuconfig with the above being the default
 // values when using the APB clock.
+//
+// NMRA S-9.1 reference:
+// https://www.nmra.org/sites/default/files/standards/sandrp/pdf/s-9.1_electrical_standards_2020.pdf
 //
 ///////////////////////////////////////////////////////////////////////////////
 
