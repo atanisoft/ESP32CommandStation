@@ -474,21 +474,34 @@ menu "DCC Signal"
             default 1 if DCC_RMT_USE_REF_CLOCK
             default 80
             help
-                When using the APB clock (80Mhz) this will provide around a
-                1usec time factor for the RMT pulses.
+                This is the clock divider used to calculate the tick rate. With
+                the APB clock (80Mhz) the default value of 80 will provide
+                approximately one microsecond per tick. With REF_TICK enabled
+                the default value of one will provide a similar one microsecond
+                tick.
 
         config DCC_RMT_TICKS_ZERO_PULSE
-            int "RMT ticks for DCC zero"
+            int "DCC ZERO RMT tick count"
+            range 95 9900
             default 100
             help
-                This is how many ticks the RMT should use for each half of a
-                DCC ZERO bit.
+                This controls how many RMT ticks will be used for each half of
+                a ZERO bit being transmitted by the RMT.
+                Warning: Depending on the h-bridge in use it may be necessary
+                to pad this value with one or two ticks to allow for transition
+                of HIGH to LOW. The default value accounts for this variance of
+                the h-bridges.
 
         config DCC_RMT_TICKS_ONE_PULSE
-            int "RMT ticks for DCC one"
+            int "DCC ONE RMT tick count"
+            range 55 61
             default 58
             help
-                This is how many ticks the RMT should use for each half of a
-                DCC ONE bit.
+                This controls how many RMT ticks will be used for each half of
+                a ONE bit being transmitted by the RMT.
+                Warning: Depending on the h-bridge in use it may be necessary
+                to pad this value with one or two ticks to allow for transition
+                of HIGH to LOW. The default value accounts for this variance of
+                the h-bridges.
     endmenu
 endmenu
