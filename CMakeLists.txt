@@ -203,6 +203,22 @@ if (CONFIG_LCC_CAN_RX_PIN GREATER_EQUAL 0 AND CONFIG_LCC_CAN_TX_PIN GREATER_EQUA
 endif()
 
 ###############################################################################
+# RMT configuration validations
+###############################################################################
+math (EXPR RMT_ZERO_LEN "${CONFIG_DCC_RMT_TICKS_ZERO_PULSE} * 2")
+if (RMT_ZERO_LEN GREATER_EQUAL 12000)
+    message(FATAL_ERROR "RMT zero bit tick count ${RMT_ZERO_LEN} exceeds S-9.1 limit of 12000 microseconds")
+endif()
+
+if (CONFIG_DCC_RMT_TICKS_ZERO_PULSE LESS_EQUAL 95)
+    message(WARNING "RMT zero bit tick count ${CONFIG_DCC_RMT_TICKS_ZERO_PULSE} may not always generate an S-9.1 compliant signal")
+endif()
+
+if (CONFIG_DCC_RMT_TICKS_ONE_PULSE LESS_EQUAL 55)
+    message(WARNING "RMT zero bit tick count ${CONFIG_DCC_RMT_TICKS_ONE_PULSE} may not always generate an S-9.1 compliant signal")
+endif()
+
+###############################################################################
 # OPS H-Bridge validations
 ###############################################################################
 
