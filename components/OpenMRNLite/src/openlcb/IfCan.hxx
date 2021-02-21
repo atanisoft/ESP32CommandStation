@@ -115,6 +115,15 @@ public:
     /// Sets the alias allocator for this If. Takes ownership of pointer.
     void set_alias_allocator(AliasAllocator *a);
 
+    /// Sends a global alias enquiry packet. This will also clear the remote
+    /// alias cache (in this node and in all other OpenMRN-based nodes on the
+    /// bus) and let it re-populate from the responses coming back. This call
+    /// should be used very sparingly because of the effect it has on the
+    /// entire bus.
+    /// @param source a local node to use for sending this message out. Must be
+    /// already initialized.
+    void send_global_alias_enquiry(Node *source);
+
     void add_owned_flow(Executable *e) override;
 
     bool matching_node(NodeHandle expected, NodeHandle actual) override;

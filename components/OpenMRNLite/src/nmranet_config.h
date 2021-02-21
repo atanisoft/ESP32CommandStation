@@ -122,6 +122,10 @@ DECLARE_CONST(remote_alias_cache_size);
 /** Number of entries in the local alias cache */
 DECLARE_CONST(local_alias_cache_size);
 
+/** Keep this many allocated but unused aliases around. (Currently supported
+ * values are 0 or 1.) */
+DECLARE_CONST(reserve_unused_alias_count);
+
 /** Maximum number of local nodes */
 DECLARE_CONST(local_nodes_count);
 
@@ -145,6 +149,10 @@ DECLARE_CONST(enable_all_memory_space);
  * identified messages at boot time. This is required by the OpenLCB
  * standard. */
 DECLARE_CONST(node_init_identify);
+
+/** How many CAN frames should the bulk alias allocator be sending at the same
+ * time. */
+DECLARE_CONST(bulk_alias_num_can_frames);
 
 /** Stack size for @ref SocketListener threads. */
 DECLARE_CONST(socket_listener_stack_size);

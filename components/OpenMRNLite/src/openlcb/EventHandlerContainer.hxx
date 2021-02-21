@@ -40,7 +40,6 @@
 #include <algorithm>
 #include <vector>
 #include <forward_list>
-#include <stdint.h>
 #include <endian.h>
 
 #ifndef LOGLEVEL
@@ -110,8 +109,9 @@ private:
 
 /// EventRegistry implementation that keeps all event handlers in a vector and
 /// forwards every single call to each event handler.
-class VectorEventHandlers : public EventRegistry {
- public:
+class VectorEventHandlers : public EventRegistry, private Atomic
+{
+public:
     VectorEventHandlers() {}
 
     // Creates a new event iterator. Caller takes ownership of object.
@@ -119,30 +119,24 @@ class VectorEventHandlers : public EventRegistry {
         return new FullContainerIterator<HandlersList>(&handlers_);
     }
 
-  void register_handler(const EventRegistryEntry& entry, unsigned mask) OVERRIDE {
-    // @TODO(balazs.racz): need some kind of locking here.
-    handlers_.push_front(entry);
-    set_dirty();
-  }
-  void unregister_handler(EventHandler *handler) OVERRIDE
-  {
-      // @TODO(balazs.racz): need some kind of locking here.
-      struct HandlerEquals
-      {
-          HandlerEquals(EventHandler *h) : h_(h)
-          {
-          }
-          bool operator()(const EventRegistryEntry &e)
-          {
-              return e.handler == h_;
-          }
-
-      private:
-          EventHandler *h_;
-      } predicate(handler);
-      handlers_.remove_if(predicate);
-      set_dirty();
-  }
+    void register_handler(
+        const EventRegistryEntry &entry, unsigned mask) OVERRIDE
+    {
+        AtomicHolder h(this);
+        handlers_.push_front(entry);
+        set_dirty();
+    }
+    void unregister_handler(EventHandler *handler, uint32_t user_arg = 0,
+        uint32_t user_arg_mask = 0) OVERRIDE
+    {
+        AtomicHolder h(this);
+        handlers_.remove_if([handler, user_arg, user_arg_mask](
+                                const EventRegistryEntry &e) {
+            return e.handler == handler &&
+                ((e.user_arg & user_arg_mask) == (user_arg & user_arg_mask));
+        });
+        set_dirty();
+    }
 
  private:
   typedef std::forward_list<EventRegistryEntry> HandlersList;
@@ -159,7 +153,9 @@ public:
     EventIterator* create_iterator() OVERRIDE;
     void register_handler(const EventRegistryEntry &entry,
                           unsigned mask) OVERRIDE;
-    void unregister_handler(EventHandler* handler) OVERRIDE;
+    void unregister_handler(EventHandler *handler, uint32_t user_arg = 0,
+        uint32_t user_arg_mask = 0) OVERRIDE;
+    void reserve(size_t count) OVERRIDE;
 
 private:
     class Iterator;

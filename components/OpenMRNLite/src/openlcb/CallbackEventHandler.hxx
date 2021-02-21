@@ -101,7 +101,7 @@ public:
 
     ~CallbackEventHandler()
     {
-        EventRegistry::instance()->unregister_handler(this);
+        remove_all_entries();
     }
 
     /// Registers this event handler for a given event ID in the global event
@@ -119,6 +119,21 @@ public:
     {
         EventRegistry::instance()->register_handler(
             EventRegistryEntry(this, event, entry_bits), 0);
+    }
+
+    /// Removes the registration of every single entry added so far.
+    void remove_all_entries()
+    {
+        EventRegistry::instance()->unregister_handler(this);
+    }
+
+    /// Removes the registration of entries added before with a given user_arg
+    /// value.
+    /// @param user_arg argument to match on.
+    void remove_entry(uint32_t entry_bits)
+    {
+        EventRegistry::instance()->unregister_handler(
+            this, entry_bits, 0xFFFFFFFFu);
     }
 
     /// @return the node pointer for which this handler is exported.

@@ -619,16 +619,15 @@ private:
             {
                 bool expected = pending_reply_arrived();
                 Velocity v;
-                if (TractionDefs::speed_get_parse_last(p, &v))
+                bool is_estop;
+                if (TractionDefs::speed_get_parse_last(p, &v, &is_estop))
                 {
                     lastSetSpeed_ = v;
+                    estopActive_ = is_estop;
                     if (updateCallback_ && !expected)
                     {
                         updateCallback_(-1);
                     }
-
-                    /// @todo (Stuart.Baker): Do we need to do anything with
-                    /// estopActive_?
                 }
                 return;
             }
@@ -644,6 +643,14 @@ private:
                     {
                         updateCallback_(-1);
                     }
+                }
+            }
+            case TractionDefs::RESP_TRACTION_MGMT:
+            {
+                if (p.size() >= 2 && p[1] == TractionDefs::MGMTRESP_HEARTBEAT)
+                {
+                    // Automatically responds to heartbeat requests.
+                    send_traction_message(TractionDefs::noop_payload());
                 }
             }
         }

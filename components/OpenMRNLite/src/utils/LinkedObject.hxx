@@ -90,6 +90,12 @@ public:
         return static_cast<T *>(link_);
     }
 
+    /// @return the subclass pointer of the beginning of the list.
+    static T *link_head()
+    {
+        return static_cast<T *>(head_);
+    }
+
     /// Locks the list for modification (at any entry!).
     static Atomic* head_mu() {
         return LinkedObjectHeadMutex<T>::headMu_.get();

@@ -200,16 +200,6 @@ void SimpleCanStackBase::start_iface(bool restart)
         if_can()->alias_allocator()->reinit_seed();
         if_can()->local_aliases()->clear();
         if_can()->remote_aliases()->clear();
-        // Deletes all reserved aliases from the queue.
-        while (!if_can()->alias_allocator()->reserved_aliases()->empty())
-        {
-            Buffer<AliasInfo> *a = static_cast<Buffer<AliasInfo> *>(
-                if_can()->alias_allocator()->reserved_aliases()->next().item);
-            if (a)
-            {
-                a->unref();
-            }
-        }
     }
 
     // Bootstraps the fresh alias allocation process.

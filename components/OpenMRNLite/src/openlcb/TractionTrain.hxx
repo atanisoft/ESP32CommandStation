@@ -82,6 +82,11 @@ public:
     virtual bool function_policy(NodeHandle src, uint8_t command_byte,
         uint32_t fnum, uint16_t value, Notifiable *done) = 0;
 
+    /// Invoked for every incoming traction command targeted to this node.
+    /// @param src what node sent this command
+    /// @param p command payload
+    virtual void command_hook(NodeHandle src, const Payload& p) = 0;
+
     /// @return the last stored controller node.
     virtual NodeHandle get_controller() = 0;
 
@@ -170,6 +175,10 @@ public:
     {
         AutoNotify an(done);
         return true;
+    }
+
+    void command_hook(NodeHandle src, const Payload &p) override
+    {
     }
 
     /** Adds a node ID to the consist targets. @return false if the node was

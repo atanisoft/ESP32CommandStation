@@ -57,6 +57,9 @@ struct Packet : public DCCPacket
      * for marklin-14-step speed commands. */
     static const unsigned CHANGE_DIR = DCC_PACKET_EMERGENCY_STOP;
 
+    /** Used for page-preset packets. */
+    static const unsigned PAGE_REGISTER_ID = 0b101;
+
     Packet()
     {
         clear();
@@ -179,11 +182,34 @@ struct Packet : public DCCPacket
     /** Adds a DCC function group command to the packet. The lowest numbered
      * function is always at bit zero. @param values are bitmask of functions
      * to send to the loco. */
-    void add_dcc_function13_20(unsigned values);
+    void add_dcc_function13_20(unsigned values)
+    {
+        add_dcc_function_hi(13, values);
+    }
     /** Adds a DCC function group command to the packet. The lowest numbered
      * function is always at bit zero. @param values are bitmask of functions
      * to send to the loco. */
-    void add_dcc_function21_28(unsigned values);
+    void add_dcc_function21_28(unsigned values)
+    {
+        add_dcc_function_hi(21, values);
+    }
+    /** Adds a DCC function group command to the packet. The lowest numbered
+     * function is always at bit zero.
+     * @param base is a valid function number base, 13, 21, 29, 37, 45, 53
+     * or 61.
+     * @param values are bitmask of functions to send to the loco. */
+    void add_dcc_function_hi(uint8_t base, uint8_t values);
+
+    /** Adds a DCC binary state control command to the packet. Automatically
+     * picks the short or long form, depending on the range of the argument.
+     * @param fn is a binary function variable, 0 to 32767.
+     * @param value true/false, what to set to. */
+    void add_dcc_binary_state(uint16_t fn, bool value);
+
+    /** Adds a DCC analog function control command to the packet.
+     * @param fn is an analog function variable, 0 to 255.
+     * @param value to set it to, 0 to 255. */
+    void add_dcc_analog_function(uint8_t fn, uint8_t value);
 
     /** Helper function for adding programming mode packets. */
     void add_dcc_prog_command(
@@ -229,6 +255,35 @@ struct Packet : public DCCPacket
      * @param bit is 0..7 to define which bit to edit
      * @param desired is true if bit:=1 should be written */
     void set_dcc_svc_write_bit(unsigned cv_number, unsigned bit, bool desired);
+
+    /** Sets the packet to a DCC service mode packet in Paged Mode, setting the
+     * page register. This function does not need a DCC address.  Includes the
+     * checksum.
+     * @param page Page to set, 1 is the default page, zero is reserved, 255
+     * max.
+     */
+    void set_dcc_svc_paged_set_page(unsigned page = 1)
+    {
+        set_dcc_svc_paged_write_reg(PAGE_REGISTER_ID, page);
+    }
+
+    /** Sets the packet to a DCC service mode packet in Paged Mode, setting any
+     * register. This function does not need a DCC address.  Includes the
+     * checksum.
+     * @param reg register, 0 to 7. On the default page register 0 is CV1
+     * (address).
+     * @param value Payload to write to that register. 0 to 255.
+     */
+    void set_dcc_svc_paged_write_reg(uint8_t reg, uint8_t value);
+
+    /** Sets the packet to a DCC service mode packet in Paged Mode, setting the
+     * page register. This function does not need a DCC address.  Includes the
+     * checksum.
+     * @param reg register, 0 to 7. On the default page register 0 is CV1
+     * (address).
+     * @param value Payload to check on that register.
+     */
+    void set_dcc_svc_paged_verify_reg(uint8_t reg, uint8_t value);
 
     /** Adds a DCC basic accessory decoder command packet and the checksum
      * byte.

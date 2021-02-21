@@ -69,9 +69,9 @@ struct AliasInfo
     }
 
     /** The current alias. This is 0 if the alias needs to be generated. */
-    unsigned alias : 12;
-    unsigned state : 3;
-    unsigned return_to_reallocation : 1;
+    uint16_t alias : 12;
+    uint16_t state : 3;
+    uint16_t return_to_reallocation : 1;
 
     enum State
     {
@@ -108,24 +108,57 @@ public:
      */
     AliasAllocator(NodeID if_id, IfCan *if_can);
 
+    /** Destructor */
     virtual ~AliasAllocator();
+
+    /** @return the Node ID for the interface. */
+    NodeID if_node_id()
+    {
+        return if_id_;
+    }
 
     /** Resets the alias allocator to the state it was at construction. useful
      * after connection restart in order to ensure it will try to allocate the
      * same alias. */
     void reinit_seed();
 
-    /** "Allocate" a buffer from this pool (but without initialization) in
-     * order to get a reserved alias. */
-    QAsync *reserved_aliases()
-    {
-        return &reserved_alias_pool_;
-    }
+    /** Returns a new alias to check from the random sequence. Checks that it
+     * is not in the alias cache yet.*/
+    NodeAlias get_new_seed();
+
+    /** Allocates an alias from the reserved but unused aliases list. If there
+     * is a free alias there, that alias will be reassigned to destination_id
+     * in the local alias cache, and done will never be notified. If there is
+     * no free alias, then a new alias will be allocated, and done will be
+     * notified when the allocation is complete. Then the call has to be
+     * re-tried by the destination flow.
+     * @param destination_id if there is a free alias right now, it will be
+     * assigned to this Node ID in the local alias cache.
+     * @param done if an async allocation is necessary, this will be notified
+     * after a new alias has been received.
+     * @return the alias if the it was allocated inline, or 0 if there will be
+     * an asynchronous notification coming later. */
+    NodeAlias get_allocated_alias(NodeID destination_id, Executable *done);
+
+    /** @return the number of aliases that are reserved and available for new
+     * virtual nodes to use. */
+    unsigned num_reserved_aliases();
+
+    /** Removes all aliases that are reserved but not yet used. */
+    void clear_reserved_aliases();
 
     /** Releases a given alias. Sends out an AMR frame and puts the alias into
      * the reserved aliases queue. */
     void return_alias(NodeID id, NodeAlias alias);
 
+    /** Call from an alternate alias allocator. Marks that alias is reserved
+     * for the local interface (RID frame is just sent out). Adds the alias to
+     * the local alias cache and wakes up a flow that might be waiting for an
+     * alias.
+     * @param alias a reserved node alias. */
+    void add_allocated_alias(NodeAlias alias);
+
+#ifdef GTEST
     /** If there is a pending alias allocation waiting for the timer to expire,
      * finishes it immediately. Needed in test destructors. */
     void TEST_finish_pending_allocation();
@@ -133,7 +166,14 @@ public:
     /** Adds an allocated aliad to the reserved aliases queue.
         @param alias the next allocated alias to add.
     */
-    void TEST_add_allocated_alias(NodeAlias alias, bool repeat=false);
+    void TEST_add_allocated_alias(NodeAlias alias);
+
+    /** Overrides the configured value for reserve_unused_alias_count. */
+    void TEST_set_reserve_unused_alias_count(unsigned count)
+    {
+        reserveUnusedAliases_ = count;
+    }
+#endif
     
 private:
     /** Listens to incoming CAN frames and handles alias conflicts. */
@@ -172,10 +212,8 @@ private:
 
     StateFlowTimer timer_;
 
-    /** Freelist of reserved aliases that can be used by virtual nodes. The
-        AliasAllocatorFlow will post successfully reserved aliases to this
-        allocator. */
-    QAsync reserved_alias_pool_;
+    /// Set of client flows that are waiting for allocating an alias.
+    Q waitingClients_;
 
     /// 48-bit nodeID that we will use for alias reservations.
     NodeID if_id_;
@@ -194,6 +232,10 @@ private:
 
     /// Seed for generating random-looking alias numbers.
     unsigned seed_ : 12;
+
+    /// How many unused aliases we should reserve. Currently we only support 0
+    /// or 1 as value.
+    unsigned reserveUnusedAliases_ : 8;
 
     /// Notifiable used for tracking outgoing frames.
     BarrierNotifiable n_;

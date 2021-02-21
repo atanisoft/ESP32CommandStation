@@ -184,6 +184,7 @@ struct TrainService::Impl
                  * send a reject response. */
                 return release_and_exit();
             }
+            train_node()->command_hook(nmsg()->src, nmsg()->payload);
             // No command byte?
             if (size() < 1)
             {
@@ -280,7 +281,12 @@ struct TrainService::Impl
                     uint8_t *d = reinterpret_cast<uint8_t *>(&(*p)[0]);
                     d[0] = TractionDefs::RESP_QUERY_SPEED;
                     speed_to_fp16(train_node()->train()->get_speed(), d + 1);
-                    d[3] = 0; // status byte: reserved.
+                    uint8_t status = 0;
+                    if (train_node()->train()->get_emergencystop())
+                    {
+                        status |= TractionDefs::SPEEDRESP_STATUS_IS_ESTOP;
+                    }
+                    d[3] = status;
                     speed_to_fp16(train_node()->train()->get_commanded_speed(),
                                   d + 4);
                     speed_to_fp16(train_node()->train()->get_actual_speed(),
@@ -570,8 +576,13 @@ struct TrainService::Impl
                     reserved_ = 0;
                     return release_and_exit();
                 }
+                case TractionDefs::MGMTREQ_NOOP:
+                {
+                    // Nothing to do.
+                    return release_and_exit();
+                }
                 default:
-                    LOG(VERBOSE, "Unknown Traction proxy manage subcommand %x",
+                    LOG(VERBOSE, "Unknown Traction management subcommand %x",
                         cmd);
                     return reject_permanent();
             }

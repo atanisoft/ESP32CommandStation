@@ -104,51 +104,17 @@ private:
          * @TODO(balazs.racz): implement proper local alias reclaim/reuse
          * mechanism. */
         HASSERT(if_can()->alias_allocator());
-        return allocate_and_call(
-            STATE(take_new_alias),
-            if_can()->alias_allocator()->reserved_aliases());
-    }
-
-    Action take_new_alias()
-    {
-        /* In this function we do a number of queries to the local alias
-         * cache. It is important that these queries show a consistent state;
-         * we do not need to hold any mutex though because only the current
-         * executor is allowed to access that object. */
-        NodeAlias alias = 0;
+        NodeAlias alias = if_can()->alias_allocator()->get_allocated_alias(
+            nmsg()->src.id, this);
+        if (!alias)
         {
-            Buffer<AliasInfo> *new_alias =
-                full_allocation_result(if_can()->alias_allocator());
-            HASSERT(new_alias->data()->alias);
-            alias = new_alias->data()->alias;
-            /* Sends the alias back for reallocating. This will trigger the
-             * alias allocator flow. */
-            if (new_alias->data()->return_to_reallocation)
-            {
-                new_alias->data()->reset();
-                if_can()->alias_allocator()->send(new_alias);
-            }
-            else
-            {
-                new_alias->unref();
-            }
+            // wait for notification and re-try this step.
+            return wait();
         }
         LOG(INFO, "Allocating new alias %03X for node %012" PRIx64, alias,
             nmsg()->src.id);
 
-        // Checks that there was no conflict on this alias.
-        if (!CanDefs::is_reserved_alias_node_id(
-                if_can()->local_aliases()->lookup(alias)))
-        {
-            LOG(INFO, "Alias has seen conflict: %03X", alias);
-            // Problem. Let's take another alias.
-            return call_immediately(STATE(allocate_new_alias));
-        }
-
         srcAlias_ = alias;
-        /** @TODO(balazs.racz): We leak aliases here in case of eviction by the
-         * AliasCache object. */
-        if_can()->local_aliases()->add(nmsg()->src.id, alias);
         // Take a CAN frame to send off the AMD frame.
         return allocate_and_call(if_can()->frame_write_flow(),
                                  STATE(send_amd_frame));

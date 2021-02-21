@@ -132,6 +132,56 @@ public:
         return round();
     }
 
+    /// Multiplies *this with pow(2, o). This is effectively a generalized
+    /// shift operation that works on fractional numbers too. The precision is
+    /// limited.
+    ///
+    /// Modifies *this.
+    /// @param o number of "bits" to shift with. May be positive or negative.
+    /// @return *this = *this * pow(2, o);
+    Fixed16 &mulpow2(Fixed16 o)
+    {
+        const Fixed16* coeffs;
+        uint16_t f;
+        if (o.is_positive())
+        {
+            // multiplying
+            value_ <<= o.trunc();
+            f = o.frac();
+            static constexpr const Fixed16 pown[6] = {
+                {FROM_DOUBLE, 1.4142135623730951},  // 2^(1/2)
+                {FROM_DOUBLE, 1.1892071150027210},  // 2^(1/4)
+                {FROM_DOUBLE, 1.0905077326652577},  // 2^(1/8)
+                {FROM_DOUBLE, 1.0442737824274138},  // 2^(1/16)
+                {FROM_DOUBLE, 1.0218971486541166},  // 2^(1/32)
+                {FROM_DOUBLE, 1.0108892860517005}}; // 2^(1/64)
+            coeffs = pown;
+        }
+        else
+        {
+            // dividing
+            o.negate();
+            value_ >>= o.trunc();
+            f = o.frac();
+            static constexpr const Fixed16 pown[6] = {
+                {FROM_DOUBLE, 0.7071067811865476},  // 2^(-1/2)
+                {FROM_DOUBLE, 0.8408964152537145},  // 2^(-1/4)
+                {FROM_DOUBLE, 0.9170040432046712},  // 2^(-1/8)
+                {FROM_DOUBLE, 0.9576032806985737},  // 2^(-1/16)
+                {FROM_DOUBLE, 0.9785720620877001},  // 2^(-1/32)
+                {FROM_DOUBLE, 0.9892280131939755}}; // 2^(-1/64)
+            coeffs = pown;
+        }
+        for (unsigned idx = 0, bit = 0x8000; idx < 6; ++idx, bit >>= 1)
+        {
+            if (f & bit)
+            {
+                *this *= coeffs[idx];
+            }
+        }
+        return *this;
+    }
+
     /// @return the value rounded to nearest integer.
     int16_t round() const {
         int16_t b = (value_ + 0x8000) >> 16;

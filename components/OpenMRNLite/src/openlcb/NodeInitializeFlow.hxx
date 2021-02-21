@@ -80,6 +80,10 @@ private:
 
     Action entry() OVERRIDE
     {
+        if (!node())
+        {
+            return release_and_exit();
+        }
         HASSERT(message()->data()->node);
         return allocate_and_call(
             node()->iface()->global_message_write_flow(),

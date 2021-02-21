@@ -162,6 +162,16 @@ public:
      */
     bool retrieve(unsigned entry, NodeID* node, NodeAlias* alias);
 
+    /** Retrieves the next entry by increasing node ID.
+     * @param bound is a Node ID. Will search for the next largest node ID
+     * (upper bound of this key).
+     * @param node will be filled with the node ID. May be null.
+     * @param alias will be filled with the alias. May be null.
+     * @return true if a larger element is found and node and alias were
+     * filled, otherwise false if bound is >= the largest node ID in the cache.
+     */
+    bool next_entry(NodeID bound, NodeID *node, NodeAlias *alias);
+
     /** Generate a 12-bit pseudo-random alias for a given alias cache.
      * @return pseudo-random 12-bit alias, an alias of zero is invalid
      */

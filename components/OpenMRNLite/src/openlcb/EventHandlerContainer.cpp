@@ -48,31 +48,33 @@ void TreeEventHandlers::register_handler(const EventRegistryEntry &entry,
     handlers_[mask].insert(EventRegistryEntry(entry));
 }
 
-void TreeEventHandlers::unregister_handler(EventHandler *handler)
+void TreeEventHandlers::unregister_handler(
+    EventHandler *handler, uint32_t user_arg, uint32_t user_arg_mask)
 {
     AtomicHolder h(this);
     set_dirty();
     LOG(VERBOSE, "%p: unregister %p", this, handler);
-    bool found = false;
     for (auto r = handlers_.begin(); r != handlers_.end(); ++r)
     {
         auto begin_it = r->second.begin();
         auto end_it = r->second.end();
-        auto erase_it = std::remove_if(
-            begin_it, end_it, [handler](const EventRegistryEntry &reg) {
-                return reg.handler == handler;
+        auto erase_it = std::remove_if(begin_it, end_it,
+            [handler, user_arg, user_arg_mask](const EventRegistryEntry &e) {
+                return e.handler == handler &&
+                    ((e.user_arg & user_arg_mask) ==
+                        (user_arg & user_arg_mask));
             });
         if (erase_it != end_it)
         {
             r->second.erase(erase_it, end_it);
-            found = true;
         }
     }
-    if (found)
-    {
-        return;
-    }
-    DIE("tried to unregister a handler that was not registered");
+}
+
+void TreeEventHandlers::reserve(size_t count)
+{
+    AtomicHolder h(this);
+    handlers_[0].reserve(handlers_[0].size() + count);
 }
 
 /// Class representing the iteration state on the binary tree-based event

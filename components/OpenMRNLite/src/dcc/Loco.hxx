@@ -70,6 +70,11 @@ enum DccTrainUpdateCode
     FUNCTION9 = 4,
     FUNCTION13 = 5,
     FUNCTION21 = 6,
+    FUNCTION29 = 7,
+    FUNCTION37 = 8,
+    FUNCTION45 = 9,
+    FUNCTION53 = 10,
+    FUNCTION61 = 11,
     MM_F1 = 2,
     MM_F2,
     MM_F3,
@@ -117,6 +122,7 @@ public:
             return;
         }
         p.lastSetSpeed_ = new_speed;
+        p.isEstop_ = false;
         unsigned previous_light = get_effective_f0();
         if (speed.direction() != p.direction_)
         {
@@ -170,6 +176,7 @@ public:
     void set_emergencystop() OVERRIDE
     {
         p.speed_ = 0;
+        p.isEstop_ = true;
         SpeedType dir0;
         dir0.set_direction(p.direction_);
         p.lastSetSpeed_ = dir0.get_wire();
@@ -182,7 +189,7 @@ public:
     /// Gets the train's ESTOP state.
     bool get_emergencystop() OVERRIDE
     {
-        return false;
+        return p.isEstop_;
     }
     /// Sets a function to a given value. @param address is the function number
     /// (0..28), @param value is 0 for funciton OFF, 1 for function ON.
@@ -210,12 +217,12 @@ public:
                 // reverse.
                 if (p.direction_ == 0)
                 {
-                    p.f0OnForward_ = p.fn_ & 1;
+                    p.f0OnForward_ = p.get_fn_store(0);
                     p.f0OnReverse_ = 0;
                 }
                 else
                 {
-                    p.f0OnReverse_ = p.fn_ & 1;
+                    p.f0OnReverse_ = p.get_fn_store(0);
                     p.f0OnForward_ = 0;
                 }
             }
@@ -246,15 +253,7 @@ public:
             // Ignore.
             return;
         }
-        unsigned bit = 1 << address;
-        if (value)
-        {
-            p.fn_ |= bit;
-        }
-        else
-        {
-            p.fn_ &= ~bit;
-        }
+        p.set_fn_store(address, value);
         packet_processor_notify_update(this, p.get_fn_update_code(address));
     }
     /// @return the last set value of a given function, or 0 if the function is
@@ -279,7 +278,7 @@ public:
             // Unknown.
             return 0;
         }
-        return (p.fn_ & (1 << address)) ? 1 : 0;
+        return p.get_fn_store(address) ? 1 : 0;
     }
     /// @return the legacy address of this loco.
     uint32_t legacy_address() OVERRIDE
@@ -347,55 +346,125 @@ protected:
     P p;
 };
 
-/// Structure defining the volatile state for a 28-speed-step DCC locomotive.
-struct Dcc28Payload
+/// Common storage variables for the different DCC Payload types.
+struct DccPayloadBase
 {
-    Dcc28Payload()
-    {
-        memset(this, 0, sizeof(*this));
-    }
     /// Track address. largest address allowed is 10239.
-    unsigned address_ : 14;
+    uint16_t address_ : 14;
     /// 1 if this is a short address train.
-    unsigned isShortAddress_ : 1;
+    uint16_t isShortAddress_ : 1;
     /// 0: forward, 1: reverse
-    unsigned direction_ : 1;
+    uint16_t direction_ : 1;
     /// fp16 value of the last set speed.
-    unsigned lastSetSpeed_ : 16;
+    uint16_t lastSetSpeed_ : 16;
+
+    // ==== 32-bit boundary ====
+
     /// functions f0-f28.
     unsigned fn_ : 29;
     /// Which refresh packet should go out next.
-    unsigned nextRefresh_ : 3;
-    /// Speed step we last set.
-    unsigned speed_ : 5;
+    uint8_t nextRefresh_ : 3;
+
+    // ==== 32-bit boundary ====
+
+    /// 1 if the last speed set was estop.
+    uint8_t isEstop_ : 1;
     /// Whether the direction change packet still needs to go out.
-    unsigned directionChanged_ : 1;
+    uint8_t directionChanged_ : 1;
     /// 1 if the F0 function should be set/get in a directional way.
-    unsigned f0SetDirectional_ : 1;
+    uint8_t f0SetDirectional_ : 1;
     /// 1 if directional f0 is used and f0 is on for F.
-    unsigned f0OnForward_ : 1;
+    uint8_t f0OnForward_ : 1;
     /// 1 if directional f0 is used and f0 is on for R.
-    unsigned f0OnReverse_ : 1;
+    uint8_t f0OnReverse_ : 1;
     /// 1 if F0 should be turned off when dir==forward.
-    unsigned f0BlankForward_ : 1;
+    uint8_t f0BlankForward_ : 1;
     /// 1 if F0 should be turned off when dir==reverse.
-    unsigned f0BlankReverse_ : 1;
+    uint8_t f0BlankReverse_ : 1;
+    /// Speed step we last set.
+    uint8_t speed_ : 7;
 
-    /** @return the number of speed steps (in float). */
-    static unsigned get_speed_steps()
-    {
-        return 28;
-    }
+    /// f29-f68 state.
+    uint8_t fhi_[5];
 
-    /** @returns the largest function number that is still valid. */
+    /// @return the largest function number supported by this train
+    /// (inclusive).
     static unsigned get_max_fn()
     {
-        return 28;
+        return 68;
+    }
+
+    /// Set a given function bit in storage.
+    /// @param idx function number, 0 to get_max_fn.
+    /// @param value function state
+    void set_fn_store(unsigned idx, bool value)
+    {
+        if (idx < 29)
+        {
+            if (value)
+            {
+                fn_ |= (1u << idx);
+            }
+            else
+            {
+                fn_ &= ~(1u << idx);
+            }
+        }
+        else
+        {
+            idx -= 29;
+            if (value)
+            {
+                fhi_[idx / 8] |= (1u << (idx & 7));
+            }
+            else
+            {
+                fhi_[idx / 8] &= ~(1u << (idx & 7));
+            }
+        }
+    }
+
+    /// Get a given function bit in storage.
+    /// @param idx function number, 0 to get_max_fn.
+    /// @return function state
+    bool get_fn_store(unsigned idx)
+    {
+        if (idx < 29)
+        {
+            return (fn_ & (1u << idx)) != 0;
+        }
+        else
+        {
+            idx -= 29;
+            return (fhi_[idx / 8] & (1u << (idx & 7))) != 0;
+        }
     }
 
     /** @return the update code to send ot the packet handler for a given
      * function value change. @param address is the function number(0..28). */
     static unsigned get_fn_update_code(unsigned address);
+    
+    /// @return what type of address this train has.
+    TrainAddressType get_address_type()
+    {
+        return isShortAddress_ ? TrainAddressType::DCC_SHORT_ADDRESS
+                               : TrainAddressType::DCC_LONG_ADDRESS;
+    }
+};
+
+/// Structure defining the volatile state for a 28-speed-step DCC locomotive.
+struct Dcc28Payload : public DccPayloadBase
+{
+    Dcc28Payload()
+    {
+        memset(this, 0, sizeof(*this));
+    }
+    
+    /** @return the number of speed steps (in float). */
+    static unsigned get_speed_steps()
+    {
+        return 28;
+    }
 
     /** Adds the speed payload to a DCC packet. @param p is the packet to add
      * the speed payload to. */
@@ -410,13 +479,9 @@ struct Dcc28Payload
     {
         p->add_dcc_speed28(!direction_, Packet::EMERGENCY_STOP);
     }
-
-    /// @return what type of address this train has.
-    TrainAddressType get_address_type()
-    {
-        return isShortAddress_ ? TrainAddressType::DCC_SHORT_ADDRESS : TrainAddressType::DCC_LONG_ADDRESS;
-    }
 };
+
+static_assert(sizeof(Dcc28Payload) == 16, "size of dcc payload is wrong");
 
 /// TrainImpl class for a DCC locomotive.
 template <class Payload> class DccTrain : public AbstractTrain<Payload>
@@ -450,57 +515,17 @@ public:
 typedef DccTrain<Dcc28Payload> Dcc28Train;
 
 /// Structure defining the volatile state for a 128-speed-step DCC locomotive.
-struct Dcc128Payload
+struct Dcc128Payload : public DccPayloadBase
 {
     Dcc128Payload()
     {
         memset(this, 0, sizeof(*this));
     }
-    /// Track address. largest address allowed is 10239.
-    unsigned address_ : 14;
-    /// 1 if this is a short address train.
-    unsigned isShortAddress_ : 1;
-    /// 0: forward, 1: reverse
-    unsigned direction_ : 1;
-    /// fp16 value of the last set speed.
-    unsigned lastSetSpeed_ : 16;
-    /// functions f0-f28.
-    unsigned fn_ : 29;
-    /// Which refresh packet should go out next.
-    unsigned nextRefresh_ : 3;
-    /// Speed step we last set.
-    unsigned speed_ : 7;
-    /// Whether the direction change packet still needs to go out.
-    unsigned directionChanged_ : 1;
-
-    /// 1 if the F0 function should be set/get in a directional way.
-    unsigned f0SetDirectional_ : 1;
-    /// 1 if directional f0 is used and f0 is on for F.
-    unsigned f0OnForward_ : 1;
-    /// 1 if directional f0 is used and f0 is on for R.
-    unsigned f0OnReverse_ : 1;
-    /// 1 if F0 should be turned off when dir==forward.
-    unsigned f0BlankForward_ : 1;
-    /// 1 if F0 should be turned off when dir==reverse.
-    unsigned f0BlankReverse_ : 1;
 
     /** @return the number of speed steps (the largest valid speed step). */
     static unsigned get_speed_steps()
     {
         return 126;
-    }
-
-    /** @return the largest function number that is still valid. */
-    static unsigned get_max_fn()
-    {
-        return 28;
-    }
-
-    /** @return the update code to send ot the packet handler for a given
-     * function value change. */
-    static unsigned get_fn_update_code(unsigned address)
-    {
-        return Dcc28Payload::get_fn_update_code(address);
     }
 
     /** Adds the speed payload to a DCC packet. @param p is the packet to add
@@ -515,12 +540,6 @@ struct Dcc128Payload
     void add_dcc_estop_to_packet(dcc::Packet *p)
     {
         p->add_dcc_speed128(!direction_, Packet::EMERGENCY_STOP);
-    }
-
-    /// @return what type of address this train has.
-    TrainAddressType get_address_type()
-    {
-        return isShortAddress_ ? TrainAddressType::DCC_SHORT_ADDRESS : TrainAddressType::DCC_LONG_ADDRESS;
     }
 };
 
@@ -548,6 +567,8 @@ struct MMOldPayload
     unsigned directionChanged_ : 1;
     /// Speed step we last set.
     unsigned speed_ : 4;
+    /// 1 if the last speed set was estop.
+    unsigned isEstop_ : 1;
 
     /// 1 if the F0 function should be set/get in a directional way.
     unsigned f0SetDirectional_ : 1;
@@ -572,6 +593,28 @@ struct MMOldPayload
         return 0;
     }
 
+    /// Set a given function bit in storage.
+    /// @param idx function number, 0 to get_max_fn.
+    /// @param value function state
+    void set_fn_store(unsigned idx, bool value) {
+        if (value)
+        {
+            fn_ |= (1u << idx);
+        }
+        else
+        {
+            fn_ &= ~(1u << idx);
+        }
+    }
+
+    /// Get a given function bit in storage.
+    /// @param idx function number, 0 to get_max_fn.
+    /// @return function state
+    bool get_fn_store(unsigned idx)
+    {
+        return (fn_ & (1u << idx)) != 0;
+    }
+    
     /** @return the update code to send to the packet handler for a given
      * function value change. @param address is ignored */
     unsigned get_fn_update_code(unsigned address)
@@ -625,6 +668,8 @@ struct MMNewPayload
     unsigned speed_ : 4;
     /// internal refresh cycle state machine
     unsigned nextRefresh_ : 3;
+    /// 1 if the last speed set was estop.
+    unsigned isEstop_ : 1;
 
     /// 1 if the F0 function should be set/get in a directional way.
     unsigned f0SetDirectional_ : 1;
@@ -647,6 +692,28 @@ struct MMNewPayload
     unsigned get_max_fn()
     {
         return 4;
+    }
+
+    /// Set a given function bit in storage.
+    /// @param idx function number, 0 to get_max_fn.
+    /// @param value function state
+    void set_fn_store(unsigned idx, bool value) {
+        if (value)
+        {
+            fn_ |= (1u << idx);
+        }
+        else
+        {
+            fn_ &= ~(1u << idx);
+        }
+    }
+
+    /// Get a given function bit in storage.
+    /// @param idx function number, 0 to get_max_fn.
+    /// @return function state
+    bool get_fn_store(unsigned idx)
+    {
+        return (fn_ & (1u << idx)) != 0;
     }
 
     /** @return the update code to send to the packet handler for a given

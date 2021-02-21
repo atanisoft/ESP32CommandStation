@@ -164,6 +164,11 @@ typedef struct
  */
 extern long long os_get_time_monotonic(void);
 
+/** Get the fake time for a unit test.
+ * @return time in nanoseconds, <= 0 if there is no fake clock.
+ */
+extern long long os_get_fake_time(void);
+
 #ifndef OPENMRN_FEATURE_MUTEX_PTHREAD
 /** @ref os_thread_once states.
  */

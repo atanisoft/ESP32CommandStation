@@ -642,7 +642,15 @@ long long os_get_time_monotonic(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
 #endif
     time = ((long long)ts.tv_sec * 1000000000LL) + ts.tv_nsec;
-    
+
+#ifdef GTEST
+    long long fake_time = os_get_fake_time();
+    if (fake_time >= 0)
+    {
+        return fake_time;
+    }
+#endif // not GTEST
+
 #endif
     /* This logic ensures that every successive call is one value larger
      * than the last.  Each call returns a unique value.

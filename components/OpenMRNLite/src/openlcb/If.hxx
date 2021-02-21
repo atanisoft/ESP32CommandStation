@@ -471,6 +471,28 @@ public:
     }
 };
 
+/// Sends an OpenLCB message to the bus.  Performs synchronous (dynamic) memory
+/// allocation so use it sparingly and when there is sufficient amount of RAM
+/// available.
+/// @param src_node A local virtual node from which to send the message.
+/// @param mti message type indicator
+/// @param args either a Payload to send a global message, or a NodeHandle dst
+/// and a Payload to send an addressed message.
+template <typename... Args> void send_message(Node *src_node, Defs::MTI mti, Args &&...args)
+{
+    Buffer<GenMessage> *msg;
+    mainBufferPool->alloc(&msg);
+    msg->data()->reset(mti, src_node->node_id(), std::forward<Args>(args)...);
+    if (msg->data()->dst == NodeHandle())
+    {
+        src_node->iface()->global_message_write_flow()->send(msg);
+    }
+    else
+    {
+        src_node->iface()->addressed_message_write_flow()->send(msg);
+    }
+}
+
 } // namespace openlcb
 
 #endif // _OPENLCB_IF_HXX_

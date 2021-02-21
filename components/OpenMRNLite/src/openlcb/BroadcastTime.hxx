@@ -130,9 +130,10 @@ public:
         if (started_)
         {
             long long elapsed = OSTime::get_monotonic() - timestamp_;
-            elapsed = ((elapsed * rate_) + 2) / 4;
+            elapsed = ((elapsed * std::abs(rate_)) + 2) / 4;
 
-            return seconds_ + (time_t)NSEC_TO_SEC_ROUNDED(elapsed);
+            time_t diff = (time_t)NSEC_TO_SEC_ROUNDED(elapsed);
+            return (rate_ < 0) ? seconds_ - diff : seconds_ + diff;
         }
         else
         {
@@ -210,7 +211,12 @@ public:
     {
         if (rate != 0 && rate >= -2048 && rate <= 2047)
         {
-            *real_nsec = ((SEC_TO_NSEC(fast_sec) * 4) + (rate / 2)) / rate;
+            *real_nsec = ((SEC_TO_NSEC(std::abs(fast_sec)) * 4) +
+                          (std::abs(rate) / 2)) / rate;
+            if (fast_sec < 0)
+            {
+                *real_nsec = -(*real_nsec);
+            }
             return true;
         }
         else
@@ -230,7 +236,11 @@ public:
     {
         if (rate != 0 && rate >= -2048 && rate <= 2047)
         {
-            *fast_sec = (NSEC_TO_SEC(real_nsec * rate) + 2) / 4;
+            *fast_sec = (std::abs(NSEC_TO_SEC(real_nsec * rate)) + 2) / 4;
+            if ((real_nsec < 0 && rate > 0) || (real_nsec >= 0 && rate < 0))
+            {
+                *fast_sec = -(*fast_sec);
+            }
             return true;
         }
         else
@@ -252,7 +262,8 @@ public:
         if (fast_sec_to_real_nsec_period_abs(fast_sec - seconds_, real_nsec))
         {
             *real_nsec += timestamp_;
-            *real_nsec -= OSTime::get_monotonic();
+            long long monotonic = OSTime::get_monotonic();
+            *real_nsec -= monotonic;
             return true;
         }
         else

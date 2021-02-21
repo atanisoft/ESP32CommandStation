@@ -86,7 +86,8 @@ void LoggingTrain::set_emergencystop()
         TractionDefs::train_node_name_from_legacy(
             legacyAddressType_, legacyAddress_)
             .c_str());
-    estopActive_ = 0;
+    currentSpeed_.set_mph(0); // keeps sign
+    estopActive_ = true;
 }
 
 bool LoggingTrain::get_emergencystop()

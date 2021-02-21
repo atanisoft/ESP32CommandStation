@@ -55,7 +55,7 @@ template <> DccTrain<Dcc128Payload>::~DccTrain()
     packet_processor_remove_refresh_source(this);
 }
 
-unsigned Dcc28Payload::get_fn_update_code(unsigned address)
+unsigned DccPayloadBase::get_fn_update_code(unsigned address)
 {
     if (address < 5)
     {
@@ -69,13 +69,9 @@ unsigned Dcc28Payload::get_fn_update_code(unsigned address)
     {
         return FUNCTION9;
     }
-    else if (address < 21)
+    else if (address <= 68)
     {
-        return FUNCTION13;
-    }
-    else if (address <= 28)
-    {
-        return FUNCTION21;
+        return FUNCTION13 + (address - 13) / 8;
     }
     return SPEED;
 }
@@ -132,6 +128,16 @@ void DccTrain<Payload>::get_next_packet(unsigned code, Packet *packet)
         case FUNCTION21:
         {
             packet->add_dcc_function21_28(this->p.fn_ >> 21);
+            return;
+        }
+        case FUNCTION29:
+        case FUNCTION37:
+        case FUNCTION45:
+        case FUNCTION53:
+        case FUNCTION61:
+        {
+            unsigned s = code - FUNCTION29;
+            packet->add_dcc_function_hi(29 + s * 8, this->p.fhi_[s]);
             return;
         }
         case ESTOP:

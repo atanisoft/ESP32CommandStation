@@ -112,8 +112,8 @@ private:
                 return call_immediately(STATE(do_initial_load));
             }
             l = nextRefresh_.operator->();
+            ++nextRefresh_;
         }
-        ++nextRefresh_;
         return call_listener(l, false);
     }
 

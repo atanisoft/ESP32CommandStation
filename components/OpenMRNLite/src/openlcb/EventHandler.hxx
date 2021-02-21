@@ -272,7 +272,17 @@ public:
     virtual void register_handler(const EventRegistryEntry &entry,
                                   unsigned mask) = 0;
     /// Removes all registered instances of a given event handler pointer.
-    virtual void unregister_handler(EventHandler *handler) = 0;
+    /// @param handler the handler for which to unregister entries
+    /// @param user_arg values of the 32-bit user arg to remove
+    /// @param user_arg_mask 32-bit mask where to verify user_arg being equal
+    virtual void unregister_handler(EventHandler *handler,
+        uint32_t user_arg = 0, uint32_t user_arg_mask = 0) = 0;
+
+    /// Prepares storage for adding many event handlers.
+    /// @param count how many empty slots to reserve.
+    virtual void reserve(size_t count)
+    {
+    }
 
     /// Creates a new event iterator. Caller takes ownership of object.
     virtual EventIterator *create_iterator() = 0;

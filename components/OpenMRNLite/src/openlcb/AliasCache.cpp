@@ -36,6 +36,7 @@
 #include <set>
 
 #include "os/OS.hxx"
+#include "utils/logging.h"
 
 #ifdef GTEST
 #define TEST_CONSISTENCY
@@ -236,6 +237,17 @@ void AliasCache::clear()
     }
 }
 
+void debug_print_entry(void *, NodeID id, NodeAlias alias)
+{
+    LOG(INFO, "[%012" PRIx64 "]: %03X", id, alias);
+}
+
+void debug_print_cache(AliasCache *c)
+{
+    LOG(INFO, "Alias cache:");
+    c->for_each(&debug_print_entry, nullptr);
+}
+
 /** Add an alias to an alias cache.
  * @param id 48-bit NMRAnet Node ID to associate alias with
  * @param alias 12-bit alias associated with Node ID
@@ -388,6 +400,25 @@ bool AliasCache::retrieve(unsigned entry, NodeID* node, NodeAlias* alias)
     if (!md->alias_) return false;
     if (node) *node = md->get_node_id();
     if (alias) *alias = md->alias_;
+    return true;
+}
+
+bool AliasCache::next_entry(NodeID bound, NodeID *node, NodeAlias *alias)
+{
+    auto it = idMap.upper_bound(bound);
+    if (it == idMap.end())
+    {
+        return false;
+    }
+    Metadata *metadata = it->deref(this);
+    if (alias)
+    {
+        *alias = metadata->alias_;
+    }
+    if (node)
+    {
+        *node = metadata->get_node_id();
+    }
     return true;
 }
 

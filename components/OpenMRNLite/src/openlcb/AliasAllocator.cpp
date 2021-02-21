@@ -33,6 +33,7 @@
  */
 
 #include "openlcb/AliasAllocator.hxx"
+#include "nmranet_config.h"
 #include "openlcb/CanDefs.hxx"
 
 namespace openlcb
@@ -47,6 +48,7 @@ AliasAllocator::AliasAllocator(NodeID if_id, IfCan *if_can)
     , if_id_(if_id)
     , cid_frame_sequence_(0)
     , conflict_detected_(0)
+    , reserveUnusedAliases_(config_reserve_unused_alias_count())
 {
     reinit_seed();
     // Moves all the allocated alias buffers over to the input queue for
@@ -77,6 +79,50 @@ void seed_alias_allocator(AliasAllocator* aliases, Pool* pool, int n) {
     }
 }
 
+/** @return the number of aliases that are reserved and available for new
+ * virtual nodes to use. */
+unsigned AliasAllocator::num_reserved_aliases()
+{
+    unsigned cnt = 0;
+    NodeID found_id = CanDefs::get_reserved_alias_node_id(0);
+    NodeAlias found_alias = 0;
+    do
+    {
+        if (if_can()->local_aliases()->next_entry(
+                found_id, &found_id, &found_alias) &&
+            CanDefs::is_reserved_alias_node_id(found_id))
+        {
+            ++cnt;
+        }
+        else
+        {
+            break;
+        }
+    } while (true);
+    return cnt;
+}
+
+/** Removes all aliases that are reserved but not yet used. */
+void AliasAllocator::clear_reserved_aliases()
+{
+    do
+    {
+        NodeID found_id = CanDefs::get_reserved_alias_node_id(0);
+        NodeAlias found_alias = 0;
+        if (if_can()->local_aliases()->next_entry(
+                CanDefs::get_reserved_alias_node_id(0), &found_id,
+                &found_alias) &&
+            CanDefs::is_reserved_alias_node_id(found_id))
+        {
+            if_can()->local_aliases()->remove(found_alias);
+        }
+        else
+        {
+            break;
+        }
+    } while (true);
+}
+
 void AliasAllocator::return_alias(NodeID id, NodeAlias alias)
 {
     // This is synchronous allocation, which is not nice.
@@ -89,15 +135,68 @@ void AliasAllocator::return_alias(NodeID id, NodeAlias alias)
         if_can()->frame_write_flow()->send(b);
     }
 
-    // This is synchronous allocation, which is not nice.
+    add_allocated_alias(alias);
+}
+
+void AliasAllocator::add_allocated_alias(NodeAlias alias)
+{
+    // Note: We leak aliases here in case of eviction by the AliasCache
+    // object. This is okay for two reasons: 1) Generally the local alias cache
+    // size should be about equal to the local nodes count. 2) OpenLCB alias
+    // allocation algorithm is able to reuse aliases that were allocated by
+    // nodes that are not on the network anymore.
+    if_can()->local_aliases()->add(
+        CanDefs::get_reserved_alias_node_id(alias), alias);
+    if (!waitingClients_.empty())
     {
-        auto* b = alloc();
-        b->data()->reset();
-        b->data()->alias = alias;
-        b->data()->do_not_reallocate();
-        b->data()->state = AliasInfo::STATE_RESERVED;
-        reserved_aliases()->insert(b);
+        // Wakes up exactly one executable that is waiting for an alias.
+        Executable *w = static_cast<Executable *>(waitingClients_.next().item);
+        // This schedules a state flow onto its executor.
+        w->alloc_result(nullptr);
     }
+}
+
+NodeAlias AliasAllocator::get_allocated_alias(
+    NodeID destination_id, Executable *done)
+{
+    NodeID found_id;
+    NodeAlias found_alias = 0;
+    bool allocate_new = false;
+    bool found = if_can()->local_aliases()->next_entry(
+        CanDefs::get_reserved_alias_node_id(0), &found_id, &found_alias);
+    if (found)
+    {
+        found = (found_id == CanDefs::get_reserved_alias_node_id(found_alias));
+    }
+    if (found)
+    {
+        if_can()->local_aliases()->add(destination_id, found_alias);
+        if (reserveUnusedAliases_)
+        {
+            NodeID next_id;
+            NodeAlias next_alias = 0;
+            if (!if_can()->local_aliases()->next_entry(
+                    CanDefs::get_reserved_alias_node_id(0), &next_id,
+                    &next_alias) ||
+                !CanDefs::is_reserved_alias_node_id(next_id))
+            {
+                allocate_new = true;
+            }
+        }
+    }
+    else
+    {
+        found_alias = 0;
+        allocate_new = true;
+        waitingClients_.insert(done);
+    }
+    if (allocate_new)
+    {
+        Buffer<AliasInfo> *b = alloc();
+        b->data()->do_not_reallocate();
+        this->send(b);
+    }
+    return found_alias;
 }
 
 AliasAllocator::~AliasAllocator()
@@ -111,9 +210,7 @@ StateFlowBase::Action AliasAllocator::entry()
     HASSERT(pending_alias()->state == AliasInfo::STATE_EMPTY);
     while (!pending_alias()->alias)
     {
-        pending_alias()->alias = seed_;
-        next_seed();
-        // TODO(balazs.racz): check if the alias is already known about.
+        pending_alias()->alias = get_new_seed();
     }
     // Registers ourselves as a handler for incoming CAN frames to detect
     // conflicts.
@@ -122,6 +219,27 @@ StateFlowBase::Action AliasAllocator::entry()
 
     // Grabs an outgoing frame buffer.
     return call_immediately(STATE(handle_allocate_for_cid_frame));
+}
+
+NodeAlias AliasAllocator::get_new_seed()
+{
+    while (true)
+    {
+        NodeAlias ret = seed_;
+        next_seed();
+        LOG(VERBOSE, "(%p) alias test seed is %03X (next %03X)", this, ret,
+            seed_);
+        if (if_can()->local_aliases()->lookup(ret))
+        {
+            continue;
+        }
+        if (if_can()->remote_aliases()->lookup(ret))
+        {
+            continue;
+        }
+        LOG(VERBOSE, "alias get seed is %03X (next %03X)", ret, seed_);
+        return ret;
+    }
 }
 
 void AliasAllocator::next_seed()
@@ -216,10 +334,7 @@ StateFlowBase::Action AliasAllocator::send_rid_frame()
     pending_alias()->state = AliasInfo::STATE_RESERVED;
     if_can()->frame_dispatcher()->unregister_handler(
         &conflictHandler_, pending_alias()->alias, ~0x1FFFF000U);
-    if_can()->local_aliases()->add(
-        CanDefs::get_reserved_alias_node_id(pending_alias()->alias),
-        pending_alias()->alias);
-    reserved_alias_pool_.insert(transfer_message());
+    add_allocated_alias(pending_alias()->alias);
     return release_and_exit();
 }
 
@@ -242,27 +357,19 @@ void AliasAllocator::ConflictHandler::send(Buffer<CanMessageData> *message,
     message->unref();
 }
 
+#ifdef GTEST
+
 void AliasAllocator::TEST_finish_pending_allocation() {
     if (is_state(STATE(wait_done))) {
         timer_.trigger();
     }
 }
 
-void AliasAllocator::TEST_add_allocated_alias(NodeAlias alias, bool repeat)
+void AliasAllocator::TEST_add_allocated_alias(NodeAlias alias)
 {
-    Buffer<AliasInfo> *a;
-    mainBufferPool->alloc(&a);
-    a->data()->reset();
-    a->data()->alias = alias;
-    a->data()->state = AliasInfo::STATE_RESERVED;
-    if (!repeat)
-    {
-        a->data()->do_not_reallocate();
-    }
-    if_can()->local_aliases()->add(
-        CanDefs::get_reserved_alias_node_id(a->data()->alias),
-        a->data()->alias);
-    reserved_aliases()->insert(a);
+    add_allocated_alias(alias);
 }
+
+#endif
 
 } // namespace openlcb

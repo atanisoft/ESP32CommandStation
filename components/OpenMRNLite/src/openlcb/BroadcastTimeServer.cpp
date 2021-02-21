@@ -561,6 +561,7 @@ private:
             {
                 tm.tm_hour = BroadcastTimeDefs::event_to_hour(suffix);
                 tm.tm_min = BroadcastTimeDefs::event_to_min(suffix);
+                tm.tm_sec = server_->rate_ < 0 ? 59 : 0;
                 break;
             }
             case BroadcastTimeDefs::SET_DATE:
@@ -576,7 +577,7 @@ private:
             }
             case BroadcastTimeDefs::SET_RATE:
             {
-                    server_->rate_ = BroadcastTimeDefs::event_to_rate(suffix);
+                server_->rate_ = BroadcastTimeDefs::event_to_rate(suffix);
                 break;
             }
             default:
@@ -652,7 +653,8 @@ public:
     BroadcastTimeServerAlarm(BroadcastTimeServer *server)
         : BroadcastTimeAlarm(
               server->node(), server,
-              std::bind(&BroadcastTimeServerAlarm::expired_callback, this))
+              std::bind(&BroadcastTimeServerAlarm::expired_callback, this,
+                        std::placeholders::_1))
         , server_(server)
     {
         memset(activeMinutes_, 0, sizeof(activeMinutes_));
@@ -690,10 +692,12 @@ private:
     }
 
     /// callback for when the alarm expires.
-    void expired_callback()
+    /// @param done used to notify we are finished
+    void expired_callback(BarrierNotifiable *done)
     {
         server_->time_->request_time();
         update_notify();
+        done->notify();
     }
 
     /// Called when the clock time has changed.
@@ -726,7 +730,7 @@ private:
         }
         else
         {
-             seconds -= tm->tm_sec ? tm->tm_sec : 60;
+            seconds -= tm->tm_sec + 1;
         }
 
         do

@@ -81,6 +81,7 @@ set_source_files_properties(src/openlcb/TractionTestTrain.cpp PROPERTIES COMPILE
 set_source_files_properties(src/openlcb/TractionThrottle.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/openlcb/TractionTrain.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/openlcb/WriteHelper.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
+set_source_files_properties(src/os/FakeClock.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/utils/CanIf.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/utils/GcTcpHub.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/utils/GridConnectHub.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)

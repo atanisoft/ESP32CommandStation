@@ -127,12 +127,16 @@ struct TractionDefs {
         // Byte 1 of REQ_TRACTION_MGMT command
         MGMTREQ_RESERVE = 0x01,
         MGMTREQ_RELEASE = 0x02,
+        MGMTREQ_NOOP = 0x03,
         // Byte 0 of response commands
         RESP_QUERY_SPEED = REQ_QUERY_SPEED,
         RESP_QUERY_FN = REQ_QUERY_FN,
         RESP_CONTROLLER_CONFIG = REQ_CONTROLLER_CONFIG,
         RESP_CONSIST_CONFIG = REQ_CONSIST_CONFIG,
         RESP_TRACTION_MGMT = REQ_TRACTION_MGMT,
+
+        // Status byte of the Speed Query response
+        SPEEDRESP_STATUS_IS_ESTOP = 1,
 
         // Byte 1 of Controller Configuration response
         CTRLRESP_ASSIGN_CONTROLLER = CTRLREQ_ASSIGN_CONTROLLER,
@@ -156,6 +160,7 @@ struct TractionDefs {
 
         // Byte 1 of Traction Management replies
         MGMTRESP_RESERVE = MGMTREQ_RESERVE,
+        MGMTRESP_HEARTBEAT = 0x03,
 
         PROXYREQ_ALLOCATE = 0x01,
         PROXYREQ_ATTACH = 0x02,
@@ -356,8 +361,12 @@ struct TractionDefs {
     /** Parses the response payload of a GET_SPEED packet.
      * @returns true if the last_set_speed value was present and non-NaN.
      * @param p is the response payload.
-     * @param v is the velocity that will be set to the speed value. */
-    static bool speed_get_parse_last(const Payload &p, Velocity *v)
+     * @param v is the velocity that will be set to the speed value.
+     * @param is_estop if non-null, will be set to true if the train was last
+     * set to estop instead of a speed.
+     */
+    static bool speed_get_parse_last(
+        const Payload &p, Velocity *v, bool *is_estop = nullptr)
     {
         if (p.size() < 3)
         {
@@ -367,6 +376,14 @@ struct TractionDefs {
         if (std::isnan(v->speed()))
         {
             return false;
+        }
+        if (is_estop)
+        {
+            if (p.size() < 4)
+            {
+                return false;
+            }
+            *is_estop = (p[3] & SPEEDRESP_STATUS_IS_ESTOP) != 0;
         }
         return true;
     }
@@ -505,6 +522,26 @@ struct TractionDefs {
         p[3] = index;
         p[4] = flags;
         node_id_to_data(slave, &p[5]);
+        return p;
+    }
+
+    /// Generates a Heartbeat Request, to be sent from the train node to the
+    /// controller.
+    static Payload heartbeat_request_payload(uint8_t deadline_sec = 3)
+    {
+        Payload p(3, 0);
+        p[0] = RESP_TRACTION_MGMT;
+        p[1] = MGMTRESP_HEARTBEAT;
+        p[2] = deadline_sec;
+        return p;
+    }
+
+    /// Generates a Noop message, to be sent from the throttle to the train node.
+    static Payload noop_payload()
+    {
+        Payload p(2, 0);
+        p[0] = REQ_TRACTION_MGMT;
+        p[1] = MGMTREQ_NOOP;
         return p;
     }
 };

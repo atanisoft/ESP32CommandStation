@@ -50,16 +50,17 @@ public:
     /// @param clock clock that our alarm is based off of
     /// @param callback callback for when alarm expires
     BroadcastTimeAlarm(Node *node, BroadcastTime *clock,
-        std::function<void()> callback)
+        std::function<void(BarrierNotifiable *)> callback)
         : StateFlowBase(node->iface())
         , clock_(clock)
         , wakeup_(this)
         , callback_(callback)
         , timer_(this)
+        , bn_()
+        , bnPtr_(nullptr)
         , expires_(0)
         , running_(false)
         , set_(false)
-        , waiting_(true)
 #if defined(GTEST)
         , shutdown_(false)
 #endif
@@ -80,14 +81,17 @@ public:
     }
 
     /// Start the alarm to expire at the given period from now.
-    /// @time period in fast seconds from now to expire
+    /// @param period in fast seconds from now to expire. @ref period is a
+    ///        a signed value. If the fast time rate is negative, the @ref
+    ///        period passed in should also be negative for an expiration in
+    ///        the future.
     void set_period(time_t period)
     {
         set(clock_->time() + period);
     }
 
     /// Start the alarm to expire at the given fast time.
-    /// @time time in seconds since epoch to expire
+    /// @param time in seconds since epoch to expire
     void set(time_t time)
     {
         bool need_wakeup = false;
@@ -121,7 +125,6 @@ public:
 #if defined(GTEST)
     void shutdown()
     {
-        AtomicHolder h(this);
         shutdown_ = true;
         wakeup_.trigger();
     }
@@ -195,7 +198,6 @@ private:
     ///         setup() if clock and/or alarm is not currently active
     Action setup()
     {
-        waiting_ = false;
 #if defined(GTEST)
         if (shutdown_)
         {
@@ -227,7 +229,7 @@ private:
             }
         }
 
-        waiting_ = true;
+        bnPtr_ = bn_.reset(this);
         return wait_and_call(STATE(setup));
     }
 
@@ -252,34 +254,36 @@ private:
     /// @return setup()
     Action expired()
     {
+        bnPtr_ = bn_.reset(this);
         if (running_ && clock_->is_running() && callback_)
         {
             running_ = false;
-            callback_();
+            callback_(bnPtr_->new_child());
         }
 
-        waiting_ = true;
         return wait_and_call(STATE(setup));
-    }        
+    }
 
     /// Wakeup the state machine. Must be called from this service's executor.
     void wakeup()
     {
         timer_.ensure_triggered();
-        if (waiting_)
+        if (bnPtr_)
         {
-            waiting_ = false;
-            notify();
+            bnPtr_ = nullptr;
+            bn_.notify();
         }
     }
 
     Wakeup wakeup_; ///< wakeup helper for scheduling alarms
-    std::function<void()> callback_; ///< callback for when alarm expires
+    /// callback for when alarm expires
+    std::function<void(BarrierNotifiable *)> callback_;
     StateFlowTimer timer_; ///< timer helper
+    BarrierNotifiable bn_; ///< notifiable for callback callee
+    BarrierNotifiable *bnPtr_; ///< not null we have an outstanding notification
     time_t expires_; ///< time at which the alarm expires
     uint8_t running_  : 1; ///< true if running (alarm armed), else false
     uint8_t set_      : 1; ///< true if a start request is pending
-    uint8_t waiting_  : 1; ///< true if waiting for stateflow to be notified
 #if defined(GTEST)
     uint8_t shutdown_ : 1; ///< true if test has requested shutdown
 #endif
@@ -302,10 +306,10 @@ public:
     /// @param clock clock that our alarm is based off of
     /// @param callback callback for when alarm expires
     BroadcastTimeAlarmDate(Node *node, BroadcastTime *clock,
-        std::function<void()> callback)
+        std::function<void(BarrierNotifiable *)> callback)
         : BroadcastTimeAlarm(
               node, clock, std::bind(&BroadcastTimeAlarmDate::expired_callback,
-                                     this))
+                                     this, std::placeholders::_1))
         , callbackUser_(callback)
     {
     }
@@ -340,19 +344,17 @@ private:
         else if (clock_->get_rate_quarters() < 0)
         {
             set(seconds - ((tm->tm_sec + 1) +
-                           (60 * (tm->tm_min + 1)) +
+                           (60 * (tm->tm_min)) +
                            (60 * 60 * tm->tm_hour)));
         }
     }
 
     /// callback for when the alarm expires
-    void expired_callback()
+    /// @param done used to notify we are finished
+    void expired_callback(BarrierNotifiable *done)
     {
         reset_expired_time();
-        if (callbackUser_)
-        {
-            callbackUser_();
-        }
+        callbackUser_ ? callbackUser_(done) : done->notify();
     }
 
     /// Called when the clock time has changed.
@@ -362,7 +364,8 @@ private:
         BroadcastTimeAlarm::update_notify();
     }
 
-    std::function<void()> callbackUser_; ///< callback for when alarm expires
+    /// callback for when alarm expires
+    std::function<void(BarrierNotifiable *)> callbackUser_;
 
     DISALLOW_COPY_AND_ASSIGN(BroadcastTimeAlarmDate);
 };
@@ -377,10 +380,11 @@ public:
     /// @param clock clock that our alarm is based off of
     /// @param callback callback for when alarm expires
     BroadcastTimeAlarmMinute(Node *node, BroadcastTime *clock,
-        std::function<void()> callback)
+        std::function<void(BarrierNotifiable *)> callback)
         : BroadcastTimeAlarm(
               node, clock,
-              std::bind(&BroadcastTimeAlarmMinute::expired_callback, this))
+              std::bind(&BroadcastTimeAlarmMinute::expired_callback, this,
+                        std::placeholders::_1))
         , callbackUser_(callback)
     {
     }
@@ -401,11 +405,22 @@ private:
     }
 
     /// Reset the expired time based on what time it is now.
-    void reset_expired_time()
+    /// @param force_on_match true to force an expiration if on a minute
+    ///                       rollover boundary
+    void reset_expired_time(bool force_on_match = false)
     {
         const struct tm *tm = clock_->gmtime_recalculate();
         time_t seconds = clock_->time();
 
+        if (force_on_match)
+        {
+            if ((clock_->get_rate_quarters() > 0 && tm->tm_sec == 0) ||
+                (clock_->get_rate_quarters() < 0 && tm->tm_sec == 59))
+            {
+                set(seconds);
+                return;
+            }
+        }
         if (clock_->get_rate_quarters() > 0)
         {
             set(seconds + (60 - tm->tm_sec));
@@ -417,24 +432,22 @@ private:
     }
 
     /// callback for when the alarm expires
-    void expired_callback()
+    /// @param done used to notify we are finished
+    void expired_callback(BarrierNotifiable *done)
     {
         reset_expired_time();
-        if (callbackUser_)
-        {
-            callbackUser_();
-        }
+        callbackUser_ ? callbackUser_(done) : done->notify();
     }
 
     /// Called when the clock time has changed.
     void update_notify() override
     {
-        reset_expired_time();
+        reset_expired_time(true);
         BroadcastTimeAlarm::update_notify();
     }
 
     /// callback for when alarm expires
-    std::function<void()> callbackUser_;
+    std::function<void(BarrierNotifiable *)> callbackUser_;
 
     DISALLOW_COPY_AND_ASSIGN(BroadcastTimeAlarmMinute);
 };
