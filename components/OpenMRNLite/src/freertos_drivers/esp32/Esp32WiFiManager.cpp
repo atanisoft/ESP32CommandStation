@@ -1449,8 +1449,7 @@ void Esp32WiFiManager::on_station_disconnected(uint8_t reason)
 
 void Esp32WiFiManager::on_station_ip_assigned(uint32_t ip_address)
 {
-    LOG(INFO, "[WiFi] IP address is %s, starting hub (if enabled) and uplink"
-      , ipv4_to_string(ip_address).c_str());
+    LOG(INFO, "[WiFi] IP address is %s", ipv4_to_string(ip_address).c_str());
 
     // Start the mDNS system since we have an IP address, the mDNS system
     // on the ESP32 requires that the IP address be assigned otherwise it
