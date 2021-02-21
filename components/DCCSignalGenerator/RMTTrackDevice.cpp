@@ -205,7 +205,7 @@ RMTTrackDevice::RMTTrackDevice(const char *name
                              , const rmt_channel_t channel
                              , const uint8_t dccPreambleBitCount
                              , size_t packet_queue_len
-                             , gpio_num_t pin
+                             , gpio_num_t signal_pin
                              , RailcomDriver *railcomDriver)
                              : name_(name)
                              , channel_(channel)
@@ -249,7 +249,7 @@ RMTTrackDevice::RMTTrackDevice(const char *name
     , MARKLIN_PREAMBLE_BIT_PULSE_HIGH_USEC + MARKLIN_PREAMBLE_BIT_PULSE_LOW_USEC);
 #endif
   LOG(INFO, "[%s] signal pin: %d, RMT(ch:%d,mem:%d[%d],clk-div:%d,clk-src:%s)"
-    , name_, pin, channel_, maxBitCount, memoryBlocks
+    , name_, signal_pin, channel_, maxBitCount, memoryBlocks
     , CONFIG_DCC_RMT_CLOCK_DIVIDER, RMT_TRACK_DEVICE_CLOCK_SOURCE);
 
   // Configure the RMT channel for TX
@@ -258,7 +258,7 @@ RMTTrackDevice::RMTTrackDevice(const char *name
   config.rmt_mode = RMT_MODE_TX;
   config.channel = channel_;
   config.clk_div = CONFIG_DCC_RMT_CLOCK_DIVIDER;
-  config.gpio_num = pin;
+  config.gpio_num = signal_pin;
   config.mem_block_num = memoryBlocks;
   ESP_ERROR_CHECK(rmt_config(&config));
   ESP_ERROR_CHECK(rmt_driver_install(channel_, 0, RMT_ISR_FLAGS));
