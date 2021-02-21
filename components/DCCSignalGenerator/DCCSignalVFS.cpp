@@ -57,13 +57,13 @@ GPIO_PIN(OPS_SIGNAL, GpioOutputSafeLow, CONFIG_OPS_HBRIDGE_SIGNAL_PIN);
 /// OPS Track h-bridge enable pin.
 GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_HBRIDGE_ENABLE_PIN);
 
-#if defined(CONFIG_OPS_BRAKE_PIN)
+#ifdef CONFIG_OPS_HBRIDGE_BRAKE_PIN
 /// OPS Track h-bridge brake pin, active HIGH.
 GPIO_PIN(OPS_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_HBRIDGE_BRAKE_PIN);
 #else
 /// OPS Track h-bridge brakde pin, not connected to actual hardware.
 typedef DummyPin OPS_BRAKE_Pin;
-#endif
+#endif // CONFIG_OPS_HBRIDGE_BRAKE_PIN
 
 /// RailCom driver instance for the PROG track, unused.
 NoRailcomDriver progRailComDriver;
