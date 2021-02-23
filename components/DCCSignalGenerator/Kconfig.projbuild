@@ -452,6 +452,14 @@ menu "DCC Signal"
 #
 ###############################################################################
     menu "Advanced options"
+        config DCC_RMT_EMC_SPREAD
+            bool "EMC spectrum spreading"
+            default n
+            help
+                When enabled this will cause the bit times to be adjusted by
+                a small amount to spread out the pulses widths to reduce the
+                EMC peak emissions.
+
         config DCC_RMT_HIGH_FIRST
             bool "Generate HIGH,LOW signal"
             default y

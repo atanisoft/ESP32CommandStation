@@ -98,6 +98,21 @@ static constexpr rmt_item32_t DCC_RMT_ONE_BIT =
   , RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // of the square wave.
 }}};
 
+#if CONFIG_DCC_RMT_EMC_SPREAD
+///////////////////////////////////////////////////////////////////////////////
+// Maximum number of microseconds that can be added to each bit pulse time.
+//
+// The 105 and 61 microsecond limit comes from S-9.1.
+// 
+// NOTE: the values below are one higher than maximum to allow for modulo
+// operation.
+///////////////////////////////////////////////////////////////////////////////
+static constexpr uint8_t DCC_RMT_MAX_ZERO_BIT_SPREAD =
+  105 - CONFIG_DCC_RMT_TICKS_ZERO_PULSE + 1;
+static constexpr uint8_t DCC_RMT_MAX_ONE_BIT_SPREAD =
+  61 - CONFIG_DCC_RMT_TICKS_ONE_PULSE + 1;
+#endif // CONFIG_DCC_RMT_EMC_SPREAD
+
 ///////////////////////////////////////////////////////////////////////////////
 // Marklin Motorola bit timing (WIP)
 // https://people.zeelandnet.nl/zondervan/digispan.html
@@ -109,6 +124,11 @@ static constexpr uint32_t MARKLIN_ONE_BIT_PULSE_HIGH_USEC = 26;
 static constexpr uint32_t MARKLIN_ONE_BIT_PULSE_LOW_USEC = 182;
 static constexpr uint32_t MARKLIN_PREAMBLE_BIT_PULSE_HIGH_USEC = 104;
 static constexpr uint32_t MARKLIN_PREAMBLE_BIT_PULSE_LOW_USEC = 104;
+#if CONFIG_DCC_RMT_EMC_SPREAD
+// NOTE: the value below is one higher than maximum to allow for modulo
+// operation.
+static constexpr uint8_t MARKLIN_RMT_MAX_BIT_SPREAD = 3;
+#endif // CONFIG_DCC_RMT_EMC_SPREAD
 
 ///////////////////////////////////////////////////////////////////////////////
 // Marklin Motorola ZERO bit pre-encoded in RMT format, sent as HIGH then LOW.
@@ -414,6 +434,67 @@ void RMTTrackDevice::rmt_transmit_complete()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// Generates the DCC bit timing, optionally with EMC spectrum spreading.
+//
+// This method provides an optional feature that can help with passing EMC
+// certification. The observation is that if the output signal has may repeats
+// of a certain period, then in the measured spectrum there will be a big spike
+// in energy that might exceed the thresholds for compliance. However, by
+// slightly varying the timing of the output signal, the energy will be spread
+// across a wider spectrum, thus the peak of emission will be smaller.
+//
+// This feature is disabled by default and can be enabled via menuconfig under
+// DCC Signal -> Advanced options -> EMC spectrum spreading.
+///////////////////////////////////////////////////////////////////////////////
+static inline uint32_t packet_bit_time_dcc(uint32_t index, bool one)
+{
+  if (one)
+  {
+    rmt_item32_t value = DCC_RMT_ONE_BIT;
+#if CONFIG_DCC_RMT_EMC_SPREAD
+    value.duration0 += index % DCC_RMT_MAX_ONE_BIT_SPREAD;
+    value.duration1 += index % DCC_RMT_MAX_ONE_BIT_SPREAD;
+#endif // CONFIG_DCC_RMT_EMC_SPREAD
+    return value.val;
+  }
+  else
+  {
+    rmt_item32_t value = DCC_RMT_ZERO_BIT;
+#if CONFIG_DCC_RMT_EMC_SPREAD
+    value.duration0 += index % DCC_RMT_MAX_ZERO_BIT_SPREAD;
+    value.duration1 += index % DCC_RMT_MAX_ZERO_BIT_SPREAD;
+#endif // CONFIG_DCC_RMT_EMC_SPREAD
+    return value.val;
+  }
+  return RMT_END_OF_PACKET_BIT.val;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Generates the Marklin Motorola bit timing, optionally with EMC spectrum
+// spreading.
+//
+// This method provides an optional feature that can help with passing EMC
+// certification. The observation is that if the output signal has may repeats
+// of a certain period, then in the measured spectrum there will be a big spike
+// in energy that might exceed the thresholds for compliance. However, by
+// slightly varying the timing of the output signal, the energy will be spread
+// across a wider spectrum, thus the peak of emission will be smaller.
+//
+// This feature is enabled by default and can be disabled via menuconfig under
+// DCC Signal -> Advanced options -> EMC spectrum spreading.
+///////////////////////////////////////////////////////////////////////////////
+static inline uint32_t packet_bit_time_marklin(uint32_t index, bool one)
+{
+  rmt_item32_t value = one ? MARKLIN_RMT_ONE_BIT : MARKLIN_RMT_ZERO_BIT;
+#if CONFIG_DCC_RMT_EMC_SPREAD
+  value.duration0 += (index % MARKLIN_RMT_MAX_BIT_SPREAD);
+  value.duration1 += (index % MARKLIN_RMT_MAX_BIT_SPREAD);
+#endif // CONFIG_DCC_RMT_EMC_SPREAD
+
+  return value.val;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // Encode the next packet or reuse the existing packet.
 ///////////////////////////////////////////////////////////////////////////////
 void RMTTrackDevice::encode_next_packet(BaseType_t *woken)
@@ -438,35 +519,41 @@ void RMTTrackDevice::encode_next_packet(BaseType_t *woken)
   {
     n->notify_from_isr();
   }
-  // TODO: add encoding for Marklin-Motorola
-
-  // encode the preamble bits
-  for (pktLength_ = 0; pktLength_ < dccPreambleBitCount_; pktLength_++)
+  /*if (packet.packet_header.is_marklin)
   {
-    packet_[pktLength_].val = DCC_RMT_ONE_BIT.val;
+    // TODO: add Marklin encoding
   }
-  // start of payload marker
-  packet_[pktLength_++].val = DCC_RMT_ZERO_BIT.val;
-  // encode the packet bits
-  for (uint8_t dlc = 0; dlc < packet.dlc; dlc++)
+  else*/
   {
-    for(uint8_t bit = 0; bit < 8; bit++)
+    // encode the preamble bits
+    for (pktLength_ = 0; pktLength_ < dccPreambleBitCount_; pktLength_++)
     {
-      packet_[pktLength_++].val =
-        packet.payload[dlc] & PACKET_BIT_MASK[bit] ?
-          DCC_RMT_ONE_BIT.val : DCC_RMT_ZERO_BIT.val;
+      packet_[pktLength_].val = packet_bit_time_dcc(pktLength_, true);
     }
-    // end of byte marker
-    packet_[pktLength_++].val = DCC_RMT_ZERO_BIT.val;
+    // start of payload marker
+    packet_[pktLength_].val = packet_bit_time_dcc(pktLength_, false);
+    pktLength_++;
+    // encode the packet bits
+    for (uint8_t dlc = 0; dlc < packet.dlc; dlc++)
+    {
+      for(uint8_t bit = 0; bit < 8; bit++, pktLength_++)
+      {
+        packet_[pktLength_].val =
+          packet_bit_time_dcc(pktLength_, packet.payload[dlc] & PACKET_BIT_MASK[bit]);
+      }
+      // end of byte marker
+      packet_[pktLength_].val = packet_bit_time_dcc(pktLength_, false);
+      pktLength_++;
+    }
+    // set the last bit of the encoded payload to be an end of packet marker
+    packet_[pktLength_ - 1].val = packet_bit_time_dcc(pktLength_, true);
+    // add an extra ONE bit to the end to prevent mangling of the last bit by
+    // the RMT
+    packet_[pktLength_].val = packet_bit_time_dcc(pktLength_, true);
+    // Add marker to the end of the DCC packet data to allow the RMT to know it
+    // can stop transmitting at this point.
+    packet_[++pktLength_].val = RMT_END_OF_PACKET_BIT.val;
   }
-  // set the last bit of the encoded payload to be an end of packet marker
-  packet_[pktLength_ - 1].val = DCC_RMT_ONE_BIT.val;
-  // add an extra ONE bit to the end to prevent mangling of the last bit by
-  // the RMT
-  packet_[pktLength_++].val = DCC_RMT_ONE_BIT.val;
-  // Add marker to the end of the DCC packet data to allow the RMT to know it
-  // can stop transmitting at this point.
-  packet_[pktLength_++].val = RMT_END_OF_PACKET_BIT.val;
   // record the repeat count
   pktRepeatCount_ = packet.packet_header.rept_count;
 
