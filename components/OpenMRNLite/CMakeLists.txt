@@ -47,6 +47,7 @@ set_source_files_properties(src/freertos_drivers/arduino/CpuLoad.cpp PROPERTIES 
 set_source_files_properties(src/freertos_drivers/esp32/Esp32WiFiManager.cpp PROPERTIES COMPILE_FLAGS
     "-Wno-ignored-qualifiers -DESP32_WIFIMGR_SOCKETPARAMS_LOG_LEVEL=VERBOSE -DESP32_WIFIMGR_MDNS_LOOKUP_LOG_LEVEL=VERBOSE")
 set_source_files_properties(src/openlcb/AliasAllocator.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
+set_source_files_properties(src/openlcb/BulkAliasAllocator.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/openlcb/BroadcastTime.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/openlcb/BroadcastTimeClient.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
 set_source_files_properties(src/openlcb/BroadcastTimeServer.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
