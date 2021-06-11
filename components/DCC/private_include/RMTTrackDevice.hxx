@@ -149,7 +149,17 @@ public:
       errno = ENOTSUP;
       return -1;
     }
-
+#if CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
+    if (sourcePacket->packet_header.send_long_preamble)
+    {
+      // If the packet looks like a programming track packet, drop it since as
+      // only short preamble packets will be accepted for TX.
+      return 1;
+    }
+#elif CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
+    // force long preamble for all packets.
+    sourcePacket->packet_header.send_long_preamble = 1;
+#endif // CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
     if (xQueueSendToBack(packetQueueHandle_, sourcePacket
                       , MAX_PACKET_QUEUE_WAIT_TIME) == pdTRUE)
     {
@@ -444,11 +454,17 @@ private:
     }
     else*/
     {
+#if CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
+      uint32_t preableBitCount = HW::DCC_SERVICE_MODE_PREAMBLE_BITS;
+#else
       uint32_t preableBitCount = HW::DCC_PREAMBLE_BITS;
+#ifndef CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
       if (packet.packet_header.send_long_preamble)
       {
         preableBitCount = HW::DCC_SERVICE_MODE_PREAMBLE_BITS;
       }
+#endif // CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
+#endif // CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
       // encode the preamble bits
       for (pktLength_ = 0; pktLength_ < preableBitCount; pktLength_++)
       {
