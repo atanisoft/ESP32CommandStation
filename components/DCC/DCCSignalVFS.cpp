@@ -36,7 +36,6 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
 #include <map>
-#include <openlcb/CallbackEventHandler.hxx>
 #include <openlcb/EventHandlerTemplates.hxx>
 #include <openlcb/MemoryConfig.hxx>
 #include <openlcb/Node.hxx>
@@ -50,6 +49,120 @@ namespace esp32cs
 /// RMT channel to use for track output.
 static constexpr rmt_channel_t TRACK_RMT_CHANNEL = RMT_CHANNEL_0;
 
+class TrackPowerBit : public openlcb::BitEventInterface
+{
+public:
+  TrackPowerBit(openlcb::Node *node)
+    : openlcb::BitEventInterface(openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT
+                               , openlcb::Defs::EMERGENCY_OFF_EVENT)
+    , node_(node)
+  {
+  }
+
+  openlcb::EventState get_current_state() override
+  {
+    if (OPS_ENABLE_Pin::instance()->is_set())
+    {
+      return openlcb::EventState::VALID;
+    }
+    return openlcb::EventState::INVALID;
+  }
+  
+  void set_state(bool new_value) override
+  {
+    auto ops_track = get_dcc_output(DccOutput::Type::TRACK);
+    ops_track->override_disable_bit_for_reason(DccOutput::DisableReason::GLOBAL_EOFF, new_value);
+    // TODO remove this once RMTTrackDevice checks output status.
+    OPS_ENABLE_Pin::instance()->write(new_value);
+  }
+
+  openlcb::Node *node()
+  {
+    return node_;
+  }
+
+private:
+  openlcb::Node *node_;
+};
+
+
+// TODO: move this into TrainSearchProtocol
+class EStopPacketSource : public dcc::NonTrainPacketSource,
+                          public openlcb::BitEventInterface
+{
+public:
+  EStopPacketSource(openlcb::Node *node)
+    : openlcb::BitEventInterface(openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT
+                               , openlcb::Defs::EMERGENCY_STOP_EVENT),
+    node_(node)
+  {
+  }
+  bool is_enabled()
+  {
+    return enabled_;
+  }
+
+  openlcb::EventState get_current_state() override
+  {
+    if (is_enabled())
+    {
+      return openlcb::EventState::VALID;
+    }
+    return openlcb::EventState::INVALID;
+  }
+
+  void set_state(bool new_value) override
+  {
+    enabled_ = new_value;
+    if (new_value)
+    {
+      enable();
+    }
+    else
+    {
+      disable();
+    }
+  }
+
+  openlcb::Node *node()
+  {
+    return node_;
+  }
+
+  void enable()
+  {
+    //LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");
+    // TODO: add helper method on AllTrainNodes for this.
+    auto trains = Singleton<commandstation::AllTrainNodes>::instance();
+    for (size_t id = 0; id < trains->size(); id++)
+    {
+      auto node = trains->get_train_node_id_ext(id, false);
+      if (node)
+      {
+        trains->get_train_impl(node)->set_emergencystop();
+      }
+    }
+    packet_processor_add_refresh_source(this, dcc::UpdateLoopBase::ESTOP_PRIORITY);
+    enabled_ = true;
+  }
+
+  void disable()
+  {
+    //LOG(INFO, "[eStop] Received eStop clear request.");
+    packet_processor_remove_refresh_source(this);
+    enabled_ = false;
+  }
+
+  void get_next_packet(unsigned code, dcc::Packet* packet)
+  {
+    packet->set_dcc_speed14(dcc::DccShortAddress(0), true, false
+                          , dcc::Packet::EMERGENCY_STOP);
+  }
+private:
+  bool enabled_{false};
+  openlcb::Node *node_;
+};
+
 /// RailCom driver instance.
 static NoRailcomDriver railComDriver;
 static esp32cs::RMTTrackDevice<DccHwDefs> track(&railComDriver);
@@ -60,7 +173,8 @@ static uninitialized<dcc::RailcomHubFlow> railcom_hub;
 #if CONFIG_OPS_RAILCOM_DUMP_PACKETS
 static uninitialized<dcc::RailcomPrintfFlow> railcom_dumper;
 #endif
-static uninitialized<openlcb::CallbackEventHandler> track_events;
+static uninitialized<TrackPowerBit> track_power;
+static uninitialized<EStopPacketSource> estop_packet_source;
 
 /// ESP32 VFS ::write() impl for the RMTTrackDevice.
 /// @param fd is the file descriptor being written to.
@@ -79,7 +193,7 @@ static ssize_t dcc_vfs_write(int fd, const void *data, size_t size)
 /// @returns file descriptor for the opened file location.
 static int dcc_vfs_open(const char *path, int flags, int mode)
 {
-  int fd = TRACK_RMT_CHANNEL;
+  int fd = DccHwDefs::RMT_CHANNEL;
   LOG(INFO, "[Track:%d] Connecting track interface", fd);
   return fd;
 }
@@ -113,7 +227,7 @@ static int dcc_vfs_ioctl(int fd, int cmd, va_list args)
 /// of TX data.
 static void rmt_tx_callback(rmt_channel_t channel, void *ctx)
 {
-  if (channel == TRACK_RMT_CHANNEL)
+  if (channel == DccHwDefs::RMT_CHANNEL)
   {
     track.rmt_transmit_complete();
   }
@@ -140,73 +254,6 @@ static void init_rmt_outputs(void *param)
 
   // this is a one-time task, shutdown the task before returning
   vTaskDelete(nullptr);
-}
-
-// TODO: move this into TrainSearchProtocol
-class EStopPacketSource : public dcc::NonTrainPacketSource
-{
-public:
-  bool is_enabled()
-  {
-    return enabled_;
-  }
-
-  void enable()
-  {
-    LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");
-    // TODO: add helper method on AllTrainNodes for this.
-    auto trains = Singleton<commandstation::AllTrainNodes>::instance();
-    for (size_t id = 0; id < trains->size(); id++)
-    {
-      auto node = trains->get_train_node_id_ext(id, false);
-      if (node)
-      {
-        trains->get_train_impl(node)->set_emergencystop();
-      }
-    }
-    packet_processor_add_refresh_source(this, dcc::UpdateLoopBase::ESTOP_PRIORITY);
-    enabled_ = true;
-  }
-  void disable()
-  {
-    LOG(INFO, "[eStop] Received eStop clear request.");
-    packet_processor_remove_refresh_source(this);
-    enabled_ = false;
-  }
-  void get_next_packet(unsigned code, dcc::Packet* packet)
-  {
-    packet->set_dcc_speed14(dcc::DccShortAddress(0), true, false
-                          , dcc::Packet::EMERGENCY_STOP);
-  }
-private:
-  bool enabled_{false};
-} estop_packet_source;
-
-void track_event_received(const openlcb::EventRegistryEntry &registry_entry,
-                          openlcb::EventReport *report, BarrierNotifiable *done)
-{
-  AutoNotify n(done);
-  switch(report->event)
-  {
-    case openlcb::Defs::EMERGENCY_OFF_EVENT:
-      DccHwDefs::Output1::clear_disable_reason(
-            DccOutput::DisableReason::GLOBAL_EOFF);
-      DccHwDefs::Output2::clear_disable_reason(
-            DccOutput::DisableReason::GLOBAL_EOFF);
-    break;
-    case openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT:
-      DccHwDefs::Output1::set_disable_reason(
-            DccOutput::DisableReason::GLOBAL_EOFF);
-      DccHwDefs::Output2::set_disable_reason(
-            DccOutput::DisableReason::GLOBAL_EOFF);
-    break;
-    case openlcb::Defs::EMERGENCY_STOP_EVENT:
-      estop_packet_source.enable();
-    break;
-    case openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT:
-     estop_packet_source.disable();
-    break;
-  }
 }
 
 /// Initializes the ESP32 VFS adapter for the DCC track interface and the short
@@ -254,16 +301,8 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   railcom_dumper.emplace(railcom_hub.operator->());
 #endif
 #endif // CONFIG_OPS_RAILCOM
-
-  track_events.emplace(node, track_event_received, nullptr);
-  track_events->add_entry(openlcb::Defs::EMERGENCY_STOP_EVENT,
-    openlcb::CallbackEventHandler::RegistryEntryBits::IS_CONSUMER);
-  track_events->add_entry(openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT,
-    openlcb::CallbackEventHandler::RegistryEntryBits::IS_CONSUMER);
-  track_events->add_entry(openlcb::Defs::EMERGENCY_OFF_EVENT,
-    openlcb::CallbackEventHandler::RegistryEntryBits::IS_CONSUMER);
-  track_events->add_entry(openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
-    openlcb::CallbackEventHandler::RegistryEntryBits::IS_CONSUMER);
+  track_power.emplace(node);
+  estop_packet_source.emplace(node);
 
   DccHwDefs::Output1::clear_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
