@@ -1143,7 +1143,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         fetchWithTimeout(String.format('/locomotive/roster?address={0}', address)).then(res => res.json()).then(data => {
           $('#roster-name').val(data.name);
           $('#roster-addr').val(data.address);
-          $('#roster-idle').prop('checked', data.idle();
+          $('#roster-idle').prop('checked', data.idle());
           $('#roster-default').prop('checked', data.default);
           toggleModal('#roster-editor');
         }).catch(function (error) {
