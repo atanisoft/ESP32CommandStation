@@ -22,10 +22,10 @@ jobs:
         run: |
           mkdir -p binaries
           cp .github/firmwarereadme.txt binaries/readme.txt
-          cp firmware/build/ESP32CommandStation.bin binaries
-          cp firmware/build/partition_table/partition-table.bin binaries
-          cp firmware/build/ota_data_initial.bin binaries
-          cp firmware/build/bootloader/bootloader.bin binaries
+          cp build/ESP32CommandStation.bin binaries
+          cp build/partition_table/partition-table.bin binaries
+          cp build/ota_data_initial.bin binaries
+          cp build/bootloader/bootloader.bin binaries
       - name: Package binaries
         uses: actions/upload-artifact@v1
         with:
