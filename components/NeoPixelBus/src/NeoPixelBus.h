@@ -27,8 +27,38 @@ License along with NeoPixel.  If not, see
 
 #ifdef ARDUINO
 #include <Arduino.h>
-#endif
+#else
 #include <stdint.h>
+#ifndef PI
+#define PI 3.1415926535897932384626433832795
+#endif
+#ifndef HALF_PI
+#define HALF_PI 1.5707963267948966192313216916398
+#endif
+#include <cstddef>
+#define pgm_read_byte(addr)   (*(const unsigned char *)(addr))
+#define pgm_read_word(addr) ({ \
+  typeof(addr) _addr = (addr); \
+  *(const unsigned short *)(_addr); \
+})
+#define pgm_read_dword(addr) ({ \
+  typeof(addr) _addr = (addr); \
+  *(const unsigned long *)(_addr); \
+})
+#define pgm_read_float(addr) ({ \
+  typeof(addr) _addr = (addr); \
+  *(const float *)(_addr); \
+})
+#define pgm_read_ptr(addr) ({ \
+  typeof(addr) _addr = (addr); \
+  *(void * const *)(_addr); \
+})
+#define PROGMEM
+#define PGM_P         const char *
+#define PGM_VOID_P    const void *
+#define PSTR(s)       (s)
+#define _SFR_BYTE(n)  (n)
+#endif
 
 // some platforms do not come with STL or properly defined one, specifically functional
 // if you see...
@@ -56,7 +86,7 @@ License along with NeoPixel.  If not, see
 #include "internal/RgbColor.h"
 #include "internal/HslColor.h"
 #include "internal/HsbColor.h"
-#include "internal/HtmlColor.h"
+//#include "internal/HtmlColor.h"
 #include "internal/RgbwColor.h"
 #include "internal/SegmentDigit.h"
 
@@ -83,17 +113,36 @@ License along with NeoPixel.  If not, see
 #include "internal/NeoEase.h"
 #include "internal/NeoGamma.h"
 
-// these require the Wire library
-#ifdef ARDUINO
+#if defined(ARDUINO)
 #include "internal/DotStarGenericMethod.h"
 #include "internal/Lpd8806GenericMethod.h"
 #include "internal/Ws2801GenericMethod.h"
 #include "internal/P9813GenericMethod.h"
 #endif
 
-#if defined(ESP32)
+#if defined(ARDUINO_ARCH_ESP8266)
 
+#include "internal/NeoEsp8266DmaMethod.h"
+#include "internal/NeoEsp8266UartMethod.h"
+#include "internal/NeoEspBitBangMethod.h"
+
+#elif defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+
+#include "internal/NeoEsp32I2sMethod.h"
 #include "internal/NeoEsp32RmtMethod.h"
+#include "internal/NeoEspBitBangMethod.h"
+
+#elif defined(ARDUINO_ARCH_NRF52840) // must be before __arm__
+
+#include "internal/NeoNrf52xMethod.h"
+
+#elif defined(__arm__) // must be before ARDUINO_ARCH_AVR due to Teensy incorrectly having it set
+
+#include "internal/NeoArmMethod.h"
+
+#elif defined(ARDUINO_ARCH_AVR) || defined(ARDUINO_ARCH_MEGAAVR)
+
+#include "internal/NeoAvrMethod.h"
 
 #else
 #error "Platform Currently Not Supported, please add an Issue at Github/Makuna/NeoPixelBus"

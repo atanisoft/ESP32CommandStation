@@ -28,6 +28,8 @@ License along with NeoPixel.  If not, see
 
 #ifdef ARDUINO
 #include <Arduino.h>
+#else
+#include <stdint.h>
 #endif
 
 // ------------------------------------------------------------------------

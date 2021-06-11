@@ -27,9 +27,10 @@ License along with NeoPixel.  If not, see
 
 #ifdef ARDUINO
 #include <Arduino.h>
-#endif
-#include <memory.h>
+#else
 #include <stdint.h>
+#include <string.h>
+#endif
 
 enum LedSegment
 {

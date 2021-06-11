@@ -27,13 +27,13 @@ License along with NeoPixel.  If not, see
 
 #ifdef ARDUINO
 #include <Arduino.h>
-#endif
+#else
 #include <stdint.h>
+#endif
 #include "NeoSettings.h"
 
 struct HslColor;
 struct HsbColor;
-struct HtmlColor;
 
 // ------------------------------------------------------------------------
 // RgbColor represents a color object that is represented by Red, Green, Blue
@@ -61,11 +61,6 @@ struct RgbColor
         R(brightness), G(brightness), B(brightness)
     {
     };
-
-    // ------------------------------------------------------------------------
-    // Construct a RgbColor using HtmlColor
-    // ------------------------------------------------------------------------
-    RgbColor(const HtmlColor& color);
 
     // ------------------------------------------------------------------------
     // Construct a RgbColor using HslColor
@@ -181,21 +176,18 @@ struct RgbColor
 private:
     inline static uint8_t _elementDim(uint8_t value, uint8_t ratio)
     {
-        return (static_cast<uint16_t>(value) * (static_cast<uint16_t>(ratio) + 1)) >> 8;
+        return (value * (ratio + 1)) >> 8;
     }
 
     inline static uint8_t _elementBrighten(uint8_t value, uint8_t ratio)
     { 
-        uint16_t element = ((static_cast<uint16_t>(value) + 1) << 8) / (static_cast<uint16_t>(ratio) + 1);
+        uint16_t element = (value << 8) / (ratio + 1);
 
         if (element > 255)
         {
             element = 255;
         }
-        else
-        {
-            element -= 1;
-        }
+
         return element;
     }
 };

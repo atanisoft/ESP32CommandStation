@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2019-2020 Mike Dunston
+COPYRIGHT (c) 2019-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,63 +18,117 @@ COPYRIGHT (c) 2019-2020 Mike Dunston
 #include "StatusLED.h"
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 
-StateFlowBase::Action StatusLED::init()
+namespace esp32cs
 {
-#if !CONFIG_STATUS_LED
-  return exit();
-#else
-  LOG(INFO
-    , "[Status] Initializing LEDs (color-mode:%s, protocol:%s, pin: %d, "
-      "brightness: %d)"
-    , NEO_COLOR_MODE_NAME, NEO_METHOD_NAME, CONFIG_STATUS_LED_DATA_PIN
-    , CONFIG_STATUS_LED_BRIGHTNESS);
-  bus_.reset(
-    new NeoPixelBrightnessBus<NEO_COLOR_MODE, NEO_METHOD>(LED::MAX_LED
-                                                        , CONFIG_STATUS_LED_DATA_PIN));
+
+StatusLED::StatusLED()
+{
+  if (brightness_ < 8)
+  {
+    brightness_ = 8;
+  }
+  clear();
+}
+
+void StatusLED::hw_init()
+{
+#if CONFIG_STATUS_LED_DATA_PIN != -1
+  static NEO_COLOR_TYPE LED_COLOR_CYCLE[5] =
+  {
+    RGB_RED_,
+    RGB_GREEN_,
+    RGB_BLUE_,
+    RGB_YELLOW_,
+    RGB_OFF_
+  };
+  LOG(INFO,
+      "[Status] Initializing LEDs (color-mode:%s, protocol:%s, pin: %d, "
+      "brightness: %d)",
+      NEO_COLOR_MODE_NAME, NEO_METHOD_NAME, CONFIG_STATUS_LED_DATA_PIN,
+      brightness_);
+  bus_.emplace(LED::MAX_LED, CONFIG_STATUS_LED_DATA_PIN);
   bus_->Begin();
-  bus_->SetBrightness(CONFIG_STATUS_LED_BRIGHTNESS);
-  bus_->ClearTo(RGB_OFF_);
-  bus_->Show();
-  Singleton<Esp32WiFiManager>::instance()->register_network_up_callback(
-  [&](esp_interface_t interface, uint32_t ip)
+  bus_->SetBrightness(brightness_);
+  for (auto color : LED_COLOR_CYCLE)
   {
-    if (interface == ESP_IF_WIFI_AP)
-    {
-      setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::BLUE);
-    }
-    else if (interface == ESP_IF_WIFI_STA)
-    {
-      setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::GREEN);
-    }
-  });
-  Singleton<Esp32WiFiManager>::instance()->register_network_down_callback(
-  [&](esp_interface_t interface)
-  {
-    setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::RED);
-  });
-  Singleton<Esp32WiFiManager>::instance()->register_network_init_callback(
-  [&](esp_interface_t interface)
-  {
-    setStatusLED(StatusLED::LED::WIFI, StatusLED::COLOR::GREEN_BLINK);
-  });
-  return sleep_and_call(&timer_, updateInterval_, STATE(update));
+    bus_->ClearTo(color);
+    bus_->Show();
+    vTaskDelay(pdMS_TO_TICKS(250));
+  }
 #endif
+}
+
+void StatusLED::attach_callbacks(Esp32WiFiManager *wifi)
+{
+  wifi->register_network_up_callback(
+    [&](esp_network_interface_t interface, uint32_t ip)
+    {
+      if (interface == esp_network_interface_t::SOFTAP_INTERFACE)
+      {
+        Singleton<StatusLED>::instance()->set(WIFI_AP, BLUE);
+      }
+      else if (interface == esp_network_interface_t::STATION_INTERFACE)
+      {
+        Singleton<StatusLED>::instance()->set(WIFI_STA, GREEN);
+      }
+    });
+  wifi->register_network_down_callback(
+    [&](esp_network_interface_t interface)
+    {
+      if (interface == esp_network_interface_t::SOFTAP_INTERFACE)
+      {
+        Singleton<StatusLED>::instance()->set(WIFI_AP, RED);
+      }
+      else if (interface == esp_network_interface_t::STATION_INTERFACE)
+      {
+        Singleton<StatusLED>::instance()->set(WIFI_STA, RED);
+      }
+    });
+  wifi->register_network_init_callback(
+    [&](esp_network_interface_t interface)
+    {
+      if (interface == esp_network_interface_t::SOFTAP_INTERFACE)
+      {
+        Singleton<StatusLED>::instance()->set(WIFI_AP, BLUE_BLINK);
+      }
+      else if (interface == esp_network_interface_t::STATION_INTERFACE)
+      {
+        Singleton<StatusLED>::instance()->set(WIFI_STA, GREEN_BLINK);
+      }
+    });
 }
 
 #define SET_LED_COLOR_BLINK(led, val, color) \
   else if(colors_[led] == val) \
   { \
     bus_->SetPixelColor(led, color); \
-  } \
+  }
 
 #define SET_LED_STATE(led, val, color) \
   else if (colors_[led] == val && bus_->GetPixelColor(led) != color) \
   { \
     bus_->SetPixelColor(led, color); \
-  } \
+  }
 
-StateFlowBase::Action StatusLED::update()
+void StatusLED::set(const LED led, const COLOR color, const bool on)
 {
+  colors_[led] = color;
+  state_[led] = on;
+  //refresh();
+}
+
+void StatusLED::clear()
+{
+  for(int index = 0; index < LED::MAX_LED; index++)
+  {
+    colors_[index] = RGB_OFF_;
+    state_[index] = false;
+  }
+}
+
+void StatusLED::refresh()
+{
+#if CONFIG_STATUS_LED_DATA_PIN != -1
   for(int led = 0; led < LED::MAX_LED; led++)
   {
     // if the LED is set to blink, toggle it
@@ -99,21 +153,15 @@ StateFlowBase::Action StatusLED::update()
     SET_LED_STATE(led, YELLOW, RGB_YELLOW_)
     SET_LED_STATE(led, OFF, RGB_OFF_)
   }
-  return yield_and_call(STATE(update_bus));
-}
-
-StateFlowBase::Action StatusLED::update_bus()
-{
+  if (bus_->GetBrightness() != brightness_)
+  {
+    bus_->SetBrightness(brightness_);
+  }
   if (bus_->CanShow())
   {
     bus_->Show();
-    return sleep_and_call(&timer_, updateInterval_, STATE(update));
   }
-  return yield_and_call(STATE(update_bus));
+#endif
 }
 
-void StatusLED::setStatusLED(const LED led, const COLOR color, const bool on)
-{
-  colors_[led] = color;
-  state_[led] = on;
-}
+} // namespace esp32cs

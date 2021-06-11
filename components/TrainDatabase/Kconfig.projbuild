@@ -1,0 +1,27 @@
+menu "Locomotive Roster"
+
+    config ROSTER_AUTO_IDLE_NEW_LOCOS
+        bool "Automatically Idle newly created locomotives"
+        default n
+        help
+            By enabling this option, when any train is newly added to the
+            roster it will default to automatic idle.
+
+    config ROSTER_AUTO_CREATE_ENTRIES
+        bool "Create a roster entry for new trains on first use"
+        default y
+        help
+            By enabling this option, any train that is requested that does not
+            already exist in the locomotive roster will be automatically added
+            to the roster using DCC 128 speed step mode.
+
+    config ROSTER_PERSISTENCE_INTERVAL_SEC
+        int "Locomotive roster persistence interval (seconds)"
+        default 30
+        help
+            Any changes to locomotives in the roster will be persisted after
+            this many seconds to persistant storage (SPIFFS or SD). This is
+            done to minimize the number of write operations when roster entries
+            are modified.
+
+endmenu
