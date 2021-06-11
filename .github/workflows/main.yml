@@ -18,8 +18,6 @@ jobs:
           fetch-depth: 0
       - name: Build
         uses: georgik/esp-idf-ci-action@branch-release-v4.3
-        with:
-          path: firmware
       - name: Prepare Binaries
         run: |
           mkdir -p binaries
