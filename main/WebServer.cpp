@@ -531,9 +531,11 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
     else if (!strcmp(req_type->valuestring, "status"))
     {
       LOG(VERBOSE, "[WSJSON:%d] STATUS received", req_id->valueint);
+      // TODO: fix the track status so it retrieves from the actual track
+      // interface.
       response =
         StringPrintf(R"!^!({"res":"status","id":%d,"track":%s})!^!",
-                     req_id->valueint, "esp32cs::get_track_state_json().c_str()");
+                     req_id->valueint, "[{\"prog\":false, \"state\":\"Off\"}]");
     }
     else if (!strcmp(req_type->valuestring, "statusled"))
     {

@@ -783,7 +783,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         return;
       }
       $('#ws-status').addClass('flash');
-      var socketUrl = String.format('ws://{0}:{1}/wsjson', window.location.host, window.location.port);
+      var socketUrl = String.format('ws://{0}:{1}/ws', window.location.host, window.location.port);
       try {
         ws = new WebSocket(socketUrl);
         ws.addEventListener('open', ws_opened);
@@ -1143,7 +1143,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         fetchWithTimeout(String.format('/locomotive/roster?address={0}', address)).then(res => res.json()).then(data => {
           $('#roster-name').val(data.name);
           $('#roster-addr').val(data.address);
-          $('#roster-idle').prop('checked', data.idle());
+          $('#roster-idle').prop('checked', data.idle);
           $('#roster-default').prop('checked', data.default);
           toggleModal('#roster-editor');
         }).catch(function (error) {
@@ -1225,7 +1225,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       var offsets_253 = calculate_offsets(doc, 253);
       cdi_dynamic_group(doc, 251, 'node_info', '#node_info_dynamic', offsets_251, '//segment[@space="251"]');
       cdi_dynamic_group(doc, 253, 'Track Configuration', '#cdi_tab_track', offsets_253);
-      cdi_dynamic_group(doc, 253, 'Thermal Monitor Configuration', '#cdi_tab_thermal', offsets_253);
+      cdi_dynamic_group(doc, 253, 'Thermal Monitoring Configuration', '#cdi_tab_thermal', offsets_253);
       cdi_dynamic_group(doc, 253, 'WiFi Configuration', '#cdi_tab_wifi', offsets_253);
       cdi_loaders.forEach(elem => ws_tx(elem));
       cdi_loaders.splice(0, cdi_loaders.length);
