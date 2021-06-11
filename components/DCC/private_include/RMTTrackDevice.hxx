@@ -327,7 +327,13 @@ private:
   Notifiable* notifiable_{nullptr};
   int8_t pktRepeatCount_{0};
   uint32_t pktLength_{0};
+#ifdef SOC_RMT_CHANNEL_MEM_WORDS
+  rmt_item32_t packet_[SOC_RMT_CHANNEL_MEM_WORDS * MAX_RMT_MEMORY_BLOCKS];
+#elif defined(SOC_RMT_MEM_WORDS_PER_CHANNEL)
   rmt_item32_t packet_[SOC_RMT_MEM_WORDS_PER_CHANNEL * MAX_RMT_MEMORY_BLOCKS];
+#else
+#error Unable to determine RMT bits per channel
+#endif
 
   ///////////////////////////////////////////////////////////////////////////////
   // Generates the DCC bit timing, optionally with EMC spectrum spreading.
