@@ -116,7 +116,8 @@ public:
                 "[Thermal] Using vRef: %s (%d mV), mV/C: %.2f, 0C: %d mV",
                 calibration_type == ESP_ADC_CAL_VAL_EFUSE_VREF ? "eFuse" :
                 calibration_type == ESP_ADC_CAL_VAL_EFUSE_TP ? "two-point" :
-                "default", calibration_.vref, MV_PER_C, MV_AT_ZERO_C);
+                "default", calibration_.vref, MV_PER_C.to_float(),
+                MV_AT_ZERO_C);
             LOG(INFO,
                 "[Thermal] Warning: %dC (event:%s), Shutdown: %dC (event:%s)",
                 warningTemp_.round(),
@@ -151,7 +152,7 @@ private:
     static constexpr uint32_t DEFAULT_ADC_VREF = 1100;
 
     /// Calculated millivolts per degree C.
-    static constexpr float MV_PER_C = CONFIG_THERMALMONITOR_MV_PER_C / 10.0f;
+    static constexpr Fixed16 MV_PER_C = CONFIG_THERMALMONITOR_MV_PER_C / 10;
 
     /// Millivolts for zero degrees C.
     static constexpr uint32_t MV_AT_ZERO_C = CONFIG_THERMALMONITOR_ZERO_MV;
