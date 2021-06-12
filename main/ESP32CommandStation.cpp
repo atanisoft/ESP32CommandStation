@@ -128,7 +128,9 @@ static uninitialized<esp32cs::DelayRebootHelper> delayed_reboot;
 static uninitialized<esp32cs::HealthMonitor> health_monitor;
 static uninitialized<esp32cs::StatusDisplay> status_display;
 static uninitialized<esp32cs::Esp32TrainDatabase> train_db;
+#if TEMPSENSOR_ADC_CHANNEL != -1
 static uninitialized<esp32cs::ThermalMonitorFlow> thermal_monitor;
+#endif
 static uninitialized<http::Httpd> httpd;
 static MDNS mdns;
 
@@ -229,17 +231,17 @@ extern "C" void app_main()
                    train_db->get_train_cdi(), train_db->get_temp_train_cdi());
     httpd.emplace(wifi_manager.operator->(), &mdns);
     memory_client.emplace(stack->node(), stack->memory_config_handler());
-#ifndef TEMPSENSOR_DISABLED
+#if TEMPSENSOR_ADC_CHANNEL != -1
     thermal_monitor.emplace(stack->service(), stack->node(),
                             cfg.seg().thermal(),
-                            (adc1_channel_t)CONFIG_TEMP_SENSOR_ADC);
-#endif // TEMPSENSOR_DISABLED
+                            (adc1_channel_t)TEMPSENSOR_ADC_CHANNEL);
+#endif
     esp32cs::init_dcc(stack->node(), stack->service(), cfg.seg().track());
 
     // Create / update CDI, if the CDI is out of date a factory reset will be
     // forced.
     if (CDIXMLGenerator::create_config_descriptor_xml(
-      cfg, openlcb::CDI_FILENAME, stack.operator->()))
+        cfg, openlcb::CDI_FILENAME, stack.operator->()))
     {
       LOG(WARNING, "[CDI] Forcing factory reset due to CDI update");
       unlink(openlcb::CONFIG_FILENAME);
@@ -248,15 +250,14 @@ extern "C" void app_main()
     // Create config file and initiate factory reset if it doesn't exist or is
     // otherwise corrupted.
     int config_fd =
-        stack->create_config_file_if_needed(cfg.seg().internal_config()
-                                          , CDI_VERSION
-                                          , openlcb::CONFIG_FILE_SIZE);
+        stack->create_config_file_if_needed(cfg.seg().internal_config(),
+                                            CDI_VERSION,
+                                            openlcb::CONFIG_FILE_SIZE);
     node_reboot_helper.emplace(stack.operator->(), config_fd);
 
     if (using_sd)
     {
-      LOG(INFO,
-          "[FS] Configuring automatic sync of data to SD card ever %d seconds.",
+      LOG(INFO, "[FS] Configuring fsync of data to SD card ever %d seconds.",
           CONFIG_OLCB_SD_FSYNC_SEC);
       sd_auto_sync.emplace(stack->service(), config_fd,
                            SEC_TO_USEC(CONFIG_OLCB_SD_FSYNC_SEC));
