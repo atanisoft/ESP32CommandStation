@@ -46,6 +46,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <openlcb/SimpleStack.hxx>
 #include <StatusLED.h>
 #include <TrainDatabase.h>
+#include <Turnouts.h>
 #include <utils/AutoSyncFileFlow.hxx>
 #include <utils/constants.hxx>
 
@@ -131,6 +132,7 @@ static uninitialized<esp32cs::Esp32TrainDatabase> train_db;
 #if TEMPSENSOR_ADC_CHANNEL != -1
 static uninitialized<esp32cs::ThermalMonitorFlow> thermal_monitor;
 #endif
+static uninitialized<esp32cs::TurnoutManager> turnout_manager;
 static uninitialized<http::Httpd> httpd;
 static MDNS mdns;
 
@@ -236,6 +238,7 @@ extern "C" void app_main()
                             cfg.seg().thermal(),
                             (adc1_channel_t)TEMPSENSOR_ADC_CHANNEL);
 #endif
+    turnout_manager.emplace(stack->node(), stack->service());
     esp32cs::init_dcc(stack->node(), stack->service(), cfg.seg().track());
 
     // Create / update CDI, if the CDI is out of date a factory reset will be
@@ -293,4 +296,20 @@ extern "C" void reboot()
 extern "C" ssize_t os_get_free_heap()
 {
   return heap_caps_get_free_size(MALLOC_CAP_8BIT);
+}
+
+std::mutex log_mux;
+// OpenMRN log output method, overridden to add mutex guard around fwrite/fputc
+// due to what appears to be a bug in esp-idf where it thinks a recursive mutex
+// is being held and that it is in an ISR context.
+extern "C" void log_output(char* buf, int size)
+{
+    const std::lock_guard<std::mutex> lock(log_mux);
+    // drop null/short messages
+    if (size <= 0) return;
+
+    // no error checking is done here, any error check logs would get lost if
+    // there was a failure at this point anyway.
+    fwrite(buf, 1, size, stdout);
+    fputc('\n', stdout);
 }
