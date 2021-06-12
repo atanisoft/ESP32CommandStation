@@ -238,8 +238,8 @@ extern "C" void app_main()
                             cfg.seg().thermal(),
                             (adc1_channel_t)TEMPSENSOR_ADC_CHANNEL);
 #endif
-    turnout_manager.emplace(stack->node(), stack->service());
     esp32cs::init_dcc(stack->node(), stack->service(), cfg.seg().track());
+    turnout_manager.emplace(stack->node(), stack->service());
 
     // Create / update CDI, if the CDI is out of date a factory reset will be
     // forced.
