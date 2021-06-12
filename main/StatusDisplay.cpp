@@ -118,7 +118,7 @@ StateFlowBase::Action StatusDisplay::init()
   info("ESP32-CS: v%s", openlcb::SNIP_STATIC_DATA.software_version);
   if (nvs_->wifi_mode() != WIFI_MODE_NULL)
   {
-    wifi_mgr->register_network_init_callback(
+    wifi_->register_network_init_callback(
         [&](esp_network_interface_t interface)
         {
           if (interface == esp_network_interface_t::STATION_INTERFACE)
@@ -130,7 +130,7 @@ StateFlowBase::Action StatusDisplay::init()
             wifi("SSID: %s", nvs_->softap_ssid());
           }
         });
-    wifi_mgr->register_network_up_callback(
+    wifi_->register_network_up_callback(
         [&](esp_network_interface_t interface, uint32_t ip)
         {
           if (interface == esp_network_interface_t::STATION_INTERFACE)
@@ -138,7 +138,7 @@ StateFlowBase::Action StatusDisplay::init()
             wifi("IP: %s", ipv4_to_string(ip).c_str());
           }
         });
-    wifi_mgr->register_network_down_callback(
+    wifi_->register_network_down_callback(
         [&](esp_network_interface_t interface)
         {
           wifi("Disconnected");
