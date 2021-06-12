@@ -26,7 +26,57 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <hal/gpio_types.h>
 #include <hal/rmt_types.h>
 
-#if CONFIG_OLED_RESET_PIN
+// Validate configured pins are defined and if not disable the feature.
+
+#ifndef CONFIG_RAILCOM_TRIGGER_PIN
+#define CONFIG_RAILCOM_TRIGGER_PIN -1
+#undef CONFIG_RAILCOM_DISABLED
+#define CONFIG_RAILCOM_DISABLED 1
+#endif
+
+#ifndef CONFIG_RAILCOM_DATA_PIN
+#define CONFIG_RAILCOM_DATA_PIN -1
+#endif
+
+#ifndef CONFIG_RAILCOM_DIRECTION_PIN
+#define CONFIG_RAILCOM_DIRECTION_PIN -1
+#endif
+
+#ifndef CONFIG_OLED_RESET_PIN
+#define CONFIG_OLED_RESET_PIN -1
+#endif
+
+#ifndef TEMPSENSOR_ADC_CHANNEL
+#define TEMPSENSOR_ADC_CHANNEL -1
+#endif
+
+// Sanity check that the preamble bits are within the supported range.
+#ifndef CONFIG_OPS_DCC_PREAMBLE_BITS
+#warning CONFIG_OPS_DCC_PREAMBLE_BITS is not defined and has been set to 11.
+#define CONFIG_OPS_DCC_PREAMBLE_BITS 11
+#elif CONFIG_OPS_DCC_PREAMBLE_BITS < 11
+#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low and has been reset to 11.
+#undef CONFIG_OPS_DCC_PREAMBLE_BITS
+#define CONFIG_OPS_DCC_PREAMBLE_BITS 11
+#elif CONFIG_OPS_DCC_PREAMBLE_BITS < 16 && !defined(CONFIG_RAILCOM_DISABLED)
+#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low and has been reset to 16.
+#undef CONFIG_OPS_DCC_PREAMBLE_BITS
+#define CONFIG_OPS_DCC_PREAMBLE_BITS 16
+#elif CONFIG_OPS_DCC_PREAMBLE_BITS > 20
+#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too high and has been reset to 20.
+#undef CONFIG_OPS_DCC_PREAMBLE_BITS
+#define CONFIG_OPS_DCC_PREAMBLE_BITS 20
+#endif
+
+// Sanity check that the preamble bits are within range.
+#ifndef CONFIG_PROG_DCC_PREAMBLE_BITS
+#define CONFIG_PROG_DCC_PREAMBLE_BITS 22
+#elif CONFIG_PROG_DCC_PREAMBLE_BITS < 22 || CONFIG_PROG_DCC_PREAMBLE_BITS > 75
+#undef CONFIG_PROG_DCC_PREAMBLE_BITS
+#define CONFIG_PROG_DCC_PREAMBLE_BITS 22
+#endif
+
+#if CONFIG_OLED_RESET_PIN != -1
 /// OLED Reset signal pin.
 GPIO_PIN(OLED_RESET, GpioOutputSafeHigh, CONFIG_OLED_RESET_PIN);
 #else
@@ -52,7 +102,7 @@ GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_TRACK_ENABLE_PIN);
 typedef DummyPin PROG_ENABLE_Pin;
 #endif // DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_PROG_ONLY
 
-#if CONFIG_RAILCOM_DISABLED
+#if CONFIG_RAILCOM_DISABLED || CONFIG_RAILCOM_TRIGGER_PIN == -1
 /// RailCom detector enable pin.
 typedef DummyPin RAILCOM_TRIGGER_Pin;
 #else // !CONFIG_RAILCOM_DISABLED
@@ -81,36 +131,6 @@ typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin,
                         DCC_SIGNAL_Pin, OPS_ENABLE_Pin, PROG_ENABLE_Pin,
                         FACTORY_RESET_BUTTON_Pin, BOOTLOADER_BUTTON_Pin> GpioInit;
 
-// Sanity check that the preamble bits are within the supported range.
-#ifndef CONFIG_OPS_DCC_PREAMBLE_BITS
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is not defined and has been set to 11.
-#define CONFIG_OPS_DCC_PREAMBLE_BITS 11
-#elif CONFIG_OPS_DCC_PREAMBLE_BITS < 11
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low and has been reset to 11.
-#undef CONFIG_OPS_DCC_PREAMBLE_BITS
-#define CONFIG_OPS_DCC_PREAMBLE_BITS 11
-#elif CONFIG_OPS_DCC_PREAMBLE_BITS > 20
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too high and has been reset to 20.
-#undef CONFIG_OPS_DCC_PREAMBLE_BITS
-#define CONFIG_OPS_DCC_PREAMBLE_BITS 20
-#endif
-
-// Sanity check that the preamble bits are within range.
-#ifndef CONFIG_PROG_DCC_PREAMBLE_BITS
-#define CONFIG_PROG_DCC_PREAMBLE_BITS 22
-#elif CONFIG_PROG_DCC_PREAMBLE_BITS < 22 || CONFIG_PROG_DCC_PREAMBLE_BITS > 75
-#undef CONFIG_PROG_DCC_PREAMBLE_BITS
-#define CONFIG_PROG_DCC_PREAMBLE_BITS 22
-#endif
-
-#ifndef CONFIG_RAILCOM_DATA_PIN
-#define CONFIG_RAILCOM_DATA_PIN -1
-#endif
-
-#ifndef CONFIG_RAILCOM_DIRECTION_PIN
-#define CONFIG_RAILCOM_DIRECTION_PIN -1
-#endif
-
 struct DccHwDefs
 {
   /// DCC signal output pin.
@@ -134,7 +154,7 @@ struct DccHwDefs
   static const size_t PACKET_Q_SIZE = CONFIG_PACKET_QUEUE_SIZE;
 
   /// RailCom detector enable pin
-  using RAILCOM_TRIGGER_Pin = InvertedGpio<::RAILCOM_TRIGGER_Pin>;
+  using RAILCOM_TRIGGER_Pin = ::RAILCOM_TRIGGER_Pin;
   typedef DummyPin PROG_RAILCOM_TRIGGER_Pin;
   /// RailCom data pin
   static constexpr gpio_num_t RAILCOM_DATA_PIN =

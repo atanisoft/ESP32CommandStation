@@ -101,7 +101,7 @@ menu "Pin Configuration"
             default 7 if PROGTRACK_ADC_CHANNEL_7
     endmenu
     menu "RailCom"
-        depends on RAILCOM_FULL
+        depends on RAILCOM_FULL || RAILCOM_CUTOUT_ONLY
         config RAILCOM_TRIGGER_PIN
             int "RailCom Enable pin"
             default 12
@@ -112,12 +112,14 @@ menu "Pin Configuration"
             int "RailCom data pin"
             default 26
             range 0 33
+            depends on RAILCOM_FULL
             help
                 This pin is used for the RailCom UART RX pin.
         config RAILCOM_DIRECTION_PIN
             int "RailCom direction pin"
             default 25
             range 0 33
+            depends on RAILCOM_FULL
             help
                 This pin is used to indicate the direction of travel when
                 RailCom data is received.
@@ -199,7 +201,7 @@ menu "Pin Configuration"
                 connected CAN transceiver IC.
     endmenu
     menu "Thermal Sensor"
-        choice TEMP_SENSOR_PIN
+        choice TEMPSENSOR_ADC_CHANNEL
             bool "OPS Track current sense pin"
             help
                 This is used for short circuit detection.
@@ -220,15 +222,15 @@ menu "Pin Configuration"
                 bool "ADC1 Channel 7 (GPIO 35)"
         endchoice
 
-        config TEMP_SENSOR_ADC
+        config TEMPSENSOR_ADC_CHANNEL
             int
-            default -1 if TEMPSENSOR_DISABLED
             default 0 if TEMPSENSOR_ADC_CHANNEL_0
             default 3 if TEMPSENSOR_ADC_CHANNEL_3
             default 4 if TEMPSENSOR_ADC_CHANNEL_4
             default 5 if TEMPSENSOR_ADC_CHANNEL_5
             default 6 if TEMPSENSOR_ADC_CHANNEL_6
             default 7 if TEMPSENSOR_ADC_CHANNEL_7
+            default -1
     endmenu
     menu "SD Card"
         config SD_MISO
@@ -598,8 +600,8 @@ menu "DCC Signal Configuration"
         config OPS_DCC_PREAMBLE_BITS
             int "DCC packet preamble bits"
             range 11 20
-            default 16 if RAILCOM
-            default 11 if !RAILCOM
+            default 16 if !RAILCOM_DISABLED
+            default 11
             help
                 This controls the number of "1" bits to be transmitted
                 before the payload of the DCC packet. If RailCom is enabled
