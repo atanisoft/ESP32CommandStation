@@ -123,7 +123,10 @@ public:
                 esp32cs::event_id_to_string(warningEvent_).c_str(),
                 shutdownTemp_.round(),
                 esp32cs::event_id_to_string(shutdownEvent_).c_str());
-            start_flow(STATE(sleep));
+            if (is_terminated())
+            {
+                start_flow(STATE(sleep));
+            }
         }
         else if (!enabled)
         {
