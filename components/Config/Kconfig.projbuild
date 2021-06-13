@@ -150,6 +150,7 @@ menu "Pin Configuration"
                 Command Station.
     endmenu
     menu "Status Display"
+        depends on DISPLAY_TYPE_OLED
         config OLED_RESET_PIN
             int "OLED Reset Pin"
             default 0
@@ -399,13 +400,6 @@ menu "Status Display"
                 is 128 (out of 255).
             default 128
             range 0 255
-        config DISPLAY_OLED_RESET_PIN
-            int "OLED Reset pin"
-            default -1
-            range -1 33
-            help
-                This optional pin can be used if the OLED display uses a
-                dedicated pin for reset.
     endmenu
 
     config DISPLAY_LINE_COUNT
