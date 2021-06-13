@@ -198,14 +198,25 @@ public:
     return -1;
   }
 
-
   /// RMT callback for transmit completion. This will be called via the ISR
   /// context but not from an IRAM restricted context.
   void rmt_transmit_complete()
   {
     BaseType_t woken = pdFALSE;
     encode_next_packet(&woken);
-    railcomDriver_->start_cutout();
+    if (DccHwDefs::Output1::should_be_enabled())
+    {
+      DccHwDefs::Output1::enable_output();
+    }
+
+    if (DccHwDefs::Output1::need_railcom_cutout())
+    {
+      railcomDriver_->start_cutout();
+    }
+    else
+    {
+      railcomDriver_->no_cutout();
+    }
 
     // NOTE: This is not using rmt_write_items as it is not safe within an ISR
     // context which this callback is invoked from.

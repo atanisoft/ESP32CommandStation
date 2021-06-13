@@ -61,19 +61,27 @@ public:
 
   openlcb::EventState get_current_state() override
   {
-    if (OPS_ENABLE_Pin::instance()->is_set())
+    if (DccHwDefs::Output1::should_be_enabled())
     {
       return openlcb::EventState::VALID;
     }
     return openlcb::EventState::INVALID;
   }
-  
+
   void set_state(bool new_value) override
   {
-    auto ops_track = get_dcc_output(DccOutput::Type::TRACK);
-    ops_track->override_disable_bit_for_reason(DccOutput::DisableReason::GLOBAL_EOFF, new_value);
-    // TODO remove this once RMTTrackDevice checks output status.
-    OPS_ENABLE_Pin::instance()->write(new_value);
+    if (new_value)
+    {
+      LOG(INFO,
+          "[Track] Clearing global emergency stop, enabling track output");
+      DccHwDefs::Output1::clear_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
+    }
+    else
+    {
+      LOG(INFO,
+          "[Track] Setting global emergency stop, disabling track output");
+      DccHwDefs::Output1::set_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
+    }
   }
 
   openlcb::Node *node()
@@ -131,7 +139,7 @@ public:
 
   void enable()
   {
-    //LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");
+    LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");
     // TODO: add helper method on AllTrainNodes for this.
     auto trains = Singleton<commandstation::AllTrainNodes>::instance();
     for (size_t id = 0; id < trains->size(); id++)
@@ -148,7 +156,7 @@ public:
 
   void disable()
   {
-    //LOG(INFO, "[eStop] Received eStop clear request.");
+    LOG(INFO, "[eStop] Received eStop clear request.");
     packet_processor_remove_refresh_source(this);
     enabled_ = false;
   }
@@ -174,7 +182,9 @@ static uninitialized<dcc::RailcomHubFlow> railcom_hub;
 static uninitialized<dcc::RailcomPrintfFlow> railcom_dumper;
 #endif
 static uninitialized<TrackPowerBit> track_power;
+static uninitialized<openlcb::BitEventConsumer> track_power_consumer;
 static uninitialized<EStopPacketSource> estop_packet_source;
+static uninitialized<openlcb::BitEventConsumer> estop_consumer;
 
 /// ESP32 VFS ::write() impl for the RMTTrackDevice.
 /// @param fd is the file descriptor being written to.
@@ -302,12 +312,17 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
 #endif
 #endif // CONFIG_OPS_RAILCOM
   track_power.emplace(node);
+  track_power_consumer.emplace(track_power.operator->());
   estop_packet_source.emplace(node);
+  estop_consumer.emplace(estop_packet_source.operator->());
 
   DccHwDefs::Output1::clear_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
 #if CONFIG_ENERGIZE_TRACK_ON_STARTUP
   DccHwDefs::Output1::enable_output();
+#else
+  DccHwDefs::Output1::set_disable_reason(
+    DccOutput::DisableReason::GLOBAL_EOFF);
 #endif // CONFIG_ENERGIZE_TRACK_ON_STARTUP
 }
 
