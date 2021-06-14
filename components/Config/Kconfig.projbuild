@@ -35,6 +35,14 @@ menu "Pin Configuration"
                 enabled and will be LOW when it should be disabled. This
                 pin should typically be connected to the PWM input of the
                 H-Bridge IC.
+        config OPS_TRACK_BRAKE_PIN
+            int "OPS Track brake pin"
+            default -1
+            range -1 33
+            help
+                This pin will be the inverse of the OPS enable pin. It can be
+                set to -1 to disable this output.
+
         choice OPS_TRACK_CURRENT_SENSE_ADC
             bool "OPS Track current sense pin"
             help

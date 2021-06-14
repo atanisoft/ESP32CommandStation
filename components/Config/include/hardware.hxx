@@ -36,6 +36,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <soc/timer_periph.h>
 
 // Validate configured pins are defined and if not disable the feature.
+#ifndef CONFIG_OPS_TRACK_BRAKE_PIN
+#define CONFIG_OPS_TRACK_BRAKE_PIN -1
+#endif
 
 #ifndef CONFIG_RAILCOM_TRIGGER_PIN
 #define CONFIG_RAILCOM_TRIGGER_PIN -1
@@ -102,9 +105,17 @@ GPIO_PIN(DCC_SIGNAL, GpioOutputSafeLow, CONFIG_DCC_TRACK_SIGNAL_PIN);
 #if CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG || CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
 /// Enables the OPS track output h-bridge.
 GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_TRACK_ENABLE_PIN);
+
+#if CONFIG_OPS_TRACK_BRAKE_PIN != -1
+/// OLED Reset signal pin.
+GPIO_PIN(OPS_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_TRACK_BRAKE_PIN);
+#endif // CONFIG_OPS_TRACK_BRAKE_PIN != -1
+
 #else // OPS DISABLED
 /// Enables the OPS track output h-bridge.
 typedef DummyPin OPS_ENABLE_Pin;
+/// Inverse of the OPS Track output enable pin.
+typedef DummyPin OPS_BRAKE_Pin;
 #endif // DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_OPS_ONLY
 
 #if CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG || CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
@@ -141,9 +152,9 @@ typedef DummyPinWithReadHigh BOOTLOADER_BUTTON_Pin;
 
 /// GPIO Pin initializer.
 typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin,
-                        DCC_SIGNAL_Pin, OPS_ENABLE_Pin, PROG_ENABLE_Pin,
-                        FACTORY_RESET_BUTTON_Pin, BOOTLOADER_BUTTON_Pin> GpioInit;
-
+                        DCC_SIGNAL_Pin, OPS_ENABLE_Pin, OPS_BRAKE_Pin,
+                        PROG_ENABLE_Pin, FACTORY_RESET_BUTTON_Pin,
+                        BOOTLOADER_BUTTON_Pin> GpioInit;
 
 /// RailCom hardware definition
 struct RailComHwDefs
@@ -225,6 +236,43 @@ struct DccHwDefs
   static constexpr gpio_num_t DCC_SIGNAL_PIN_NUM =
     (gpio_num_t)CONFIG_DCC_TRACK_SIGNAL_PIN;
 
+#if CONFIG_OPS_TRACK_BRAKE_PIN != -1
+  /// Wrapper which handles the 
+  struct BOOSTER_ENABLE_Pin
+  {
+      static void set(bool value)
+      {
+        if (value)
+        {
+          // disable the brake pin first
+          OPS_BRAKE_Pin::set(false);
+          // delay 1usec to allow h-bridge to catch up
+          ets_delay_us(1);
+          // enable the h-bridge output pin
+          OPS_ENABLE_Pin::set(true);
+        }
+        else
+        {
+          // disable the h-bridge output pin
+          OPS_ENABLE_Pin::set(false);
+          // delay 1usec to allow h-bridge to catch up
+          ets_delay_us(1);
+          // enable the h-bridge brake pin
+          OPS_BRAKE_Pin::set(true);
+        }
+      }
+
+      static void hw_init()
+      {
+        OPS_BRAKE_Pin::hw_init();
+        OPS_ENABLE_Pin::hw_init();
+        set(false);
+      }
+  };
+#else // BRAKE pin is not needed, directly use enable pin.
+  using BOOSTER_ENABLE_Pin = ::OPS_ENABLE_Pin;
+#endif // CONFIG_OPS_TRACK_BRAKE_PIN != -1
+
   /// The number of preamble bits to send exclusive of end of packet '1' bit
   /// for DCC packets that are not service mode.
   static constexpr uint32_t DCC_PREAMBLE_BITS = CONFIG_OPS_DCC_PREAMBLE_BITS;
@@ -242,7 +290,7 @@ struct DccHwDefs
 
   /// Track Booster output.
   using InternalBoosterOutput =
-    DccOutputHwReal<DccOutput::TRACK, OPS_ENABLE_Pin, RAILCOM_TRIGGER_Pin,
+    DccOutputHwReal<DccOutput::TRACK, BOOSTER_ENABLE_Pin, RAILCOM_TRIGGER_Pin,
                     RailComHwDefs::RAILCOM_START_PHASE1_DELAY_USEC,
                     RailComHwDefs::RAILCOM_START_PHASE2_DELAY_USEC,
                     RailComHwDefs::RAILCOM_STOP_DELAY_USEC>;
