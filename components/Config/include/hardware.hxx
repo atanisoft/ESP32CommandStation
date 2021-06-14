@@ -109,6 +109,9 @@ GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_TRACK_ENABLE_PIN);
 #if CONFIG_OPS_TRACK_BRAKE_PIN != -1
 /// OLED Reset signal pin.
 GPIO_PIN(OPS_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_TRACK_BRAKE_PIN);
+#else
+/// Inverse of the OPS Track output enable pin.
+typedef DummyPin OPS_BRAKE_Pin;
 #endif // CONFIG_OPS_TRACK_BRAKE_PIN != -1
 
 #else // OPS DISABLED
