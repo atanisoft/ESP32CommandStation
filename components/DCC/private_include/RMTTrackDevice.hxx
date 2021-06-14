@@ -33,6 +33,43 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 
 namespace esp32cs
 {
+#if CONFIG_DCC_RMT_HIGH_FIRST
+// This configures the first half of the bit to be sent as a high and second
+// half as low.
+static constexpr const char * const RMT_TRACK_DEVICE_DCC_WAVE_FMT =
+  "high,low";
+static constexpr uint8_t RMT_TRACK_DEVICE_DCC_TOP_HALF = 1;
+static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 0;
+#else
+// This configures the first half of the bit to be sent as a low and second
+// half as high.
+static constexpr const char * const RMT_TRACK_DEVICE_DCC_WAVE_FMT =
+  "low,high";
+static constexpr uint8_t RMT_TRACK_DEVICE_DCC_TOP_HALF = 0;
+static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 1;
+#endif // CONFIG_DCC_RMT_HIGH_FIRST
+
+///////////////////////////////////////////////////////////////////////////////
+// DCC ZERO bit pre-encoded in RMT format.
+///////////////////////////////////////////////////////////////////////////////
+static constexpr rmt_item32_t DCC_RMT_ZERO_BIT =
+{{{
+    CONFIG_DCC_RMT_TICKS_ZERO_PULSE, // number of microseconds for TOP half
+    RMT_TRACK_DEVICE_DCC_TOP_HALF,   // of the square wave.
+    CONFIG_DCC_RMT_TICKS_ZERO_PULSE, // number of microseconds for BOTTOM half
+    RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // of the square wave.
+}}};
+
+///////////////////////////////////////////////////////////////////////////////
+// DCC ONE bit pre-encoded in RMT format.
+///////////////////////////////////////////////////////////////////////////////
+static constexpr rmt_item32_t DCC_RMT_ONE_BIT =
+{{{
+    CONFIG_DCC_RMT_TICKS_ONE_PULSE,  // number of microseconds for TOP half
+    RMT_TRACK_DEVICE_DCC_TOP_HALF,   // of the square wave.
+    CONFIG_DCC_RMT_TICKS_ONE_PULSE,  // number of microseconds for BOTTOM half
+    RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // of the square wave.
+}}};
 
 ///////////////////////////////////////////////////////////////////////////////
 // The NMRA DCC Signal is sent as a square wave with each half having
@@ -107,16 +144,9 @@ public:
       rmt_driver_install(HW::RMT_CHANNEL, 0 /* rx count */, RMT_ISR_FLAGS));
 
     LOG(INFO, "[RMT] Starting signal generator");
-    rmt_item32_t value =
-    {{{
-      CONFIG_DCC_RMT_TICKS_ONE_PULSE,  // number of microseconds for first half
-      RMT_TRACK_DEVICE_DCC_TOP_HALF,   // of the square wave.
-      CONFIG_DCC_RMT_TICKS_ONE_PULSE,  // number of microseconds for second
-      RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // half of the square wave.
-    }}};
     // send one bit to kickstart the signal, remaining data will come from the
     // packet queue. We intentionally do not wait for the RMT TX complete here.
-    rmt_write_items(HW::RMT_CHANNEL, &value, 1, false);
+    rmt_write_items(HW::RMT_CHANNEL, &DCC_RMT_ONE_BIT, 1, false);
   }
 
   ~RMTTrackDevice()
@@ -244,84 +274,6 @@ private:
   static constexpr uint32_t RMT_MALLOC_CAPS = MALLOC_CAP_INTERNAL |
                                               MALLOC_CAP_8BIT;
 
-#if CONFIG_DCC_RMT_HIGH_FIRST
-  // This configures the first half of the bit to be sent as a high and second
-  // half as low.
-  static constexpr const char * const RMT_TRACK_DEVICE_DCC_WAVE_FMT =
-    "high,low";
-  static constexpr uint8_t RMT_TRACK_DEVICE_DCC_TOP_HALF = 1;
-  static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 0;
-#else
-  // This configures the first half of the bit to be sent as a low and second
-  // half as high.
-  static constexpr const char * const RMT_TRACK_DEVICE_DCC_WAVE_FMT =
-    "low,high";
-  static constexpr uint8_t RMT_TRACK_DEVICE_DCC_TOP_HALF = 0;
-  static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 1;
-#endif // CONFIG_DCC_RMT_HIGH_FIRST
-  #if CONFIG_DCC_RMT_EMC_SPREAD
-  /// Maximum number of microseconds that can be added to each bit pulse time.
-  ///
-  /// S-9.1 provides a maximum length of 105 and 61 microseconds for each half
-  /// wave
-  /// 
-  /// NOTE: the values below are one higher than maximum to allow for modulo
-  /// operation.
-  static constexpr uint8_t DCC_RMT_MAX_ZERO_BIT_SPREAD =
-    105 - CONFIG_DCC_RMT_TICKS_ZERO_PULSE + 1;
-  static constexpr uint8_t DCC_RMT_MAX_ONE_BIT_SPREAD =
-    61 - CONFIG_DCC_RMT_TICKS_ONE_PULSE + 1;
-  #endif // CONFIG_DCC_RMT_EMC_SPREAD
-
-  /// Marklin Motorola bit timing
-  /// https://people.zeelandnet.nl/zondervan/digispan.html
-  /// http://www.drkoenig.de/digital/motorola.htm
-  static constexpr uint32_t MARKLIN_ZERO_BIT_PULSE_HIGH_USEC = 182;
-  static constexpr uint32_t MARKLIN_ZERO_BIT_PULSE_LOW_USEC = 26;
-  static constexpr uint32_t MARKLIN_ONE_BIT_PULSE_HIGH_USEC = 26;
-  static constexpr uint32_t MARKLIN_ONE_BIT_PULSE_LOW_USEC = 182;
-  static constexpr uint32_t MARKLIN_PREAMBLE_BIT_PULSE_HIGH_USEC = 104;
-  static constexpr uint32_t MARKLIN_PREAMBLE_BIT_PULSE_LOW_USEC = 104;
-  #if CONFIG_DCC_RMT_EMC_SPREAD
-  // NOTE: the value below is one higher than maximum to allow for modulo
-  // operation.
-  static constexpr uint8_t MARKLIN_RMT_MAX_BIT_SPREAD = 3;
-  #endif // CONFIG_DCC_RMT_EMC_SPREAD
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Marklin Motorola ZERO bit pre-encoded in RMT format, sent as HIGH then LOW.
-  ///////////////////////////////////////////////////////////////////////////////
-  static constexpr rmt_item32_t MARKLIN_RMT_ZERO_BIT =
-  {{{
-      MARKLIN_ZERO_BIT_PULSE_HIGH_USEC  // number of microseconds for TOP half
-    , 1                                 // of the square wave.
-    , MARKLIN_ZERO_BIT_PULSE_LOW_USEC   // number of microseconds for BOTTOM half
-    , 0                                 // of the square wave.
-  }}};
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Marklin Motorola ONE bit pre-encoded in RMT format, sent as HIGH then LOW.
-  ///////////////////////////////////////////////////////////////////////////////
-  static constexpr rmt_item32_t MARKLIN_RMT_ONE_BIT =
-  {{{
-      MARKLIN_ZERO_BIT_PULSE_HIGH_USEC  // number of microseconds for TOP half
-    , 1                                 // of the square wave.
-    , MARKLIN_ZERO_BIT_PULSE_LOW_USEC   // number of microseconds for BOTTOM half
-    , 0                                 // of the square wave.
-  }}};
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Marklin Motorola preamble bit pre-encoded in RMT format, both top and bottom
-  // half of the wave are LOW.
-  ///////////////////////////////////////////////////////////////////////////////
-  static constexpr rmt_item32_t MARKLIN_RMT_PREAMBLE_BIT =
-  {{{
-      MARKLIN_PREAMBLE_BIT_PULSE_HIGH_USEC // number of microseconds for TOP half
-    , 0                                    // of the square wave.
-    , MARKLIN_PREAMBLE_BIT_PULSE_LOW_USEC  // number of microseconds for BOTTOM
-    , 0                                    // half of the square wave.
-  }}};
-
   ///////////////////////////////////////////////////////////////////////////////
   // Declare ISR flags for the RMT driver ISR.
   //
@@ -355,79 +307,19 @@ private:
 #error Unable to determine RMT bits per channel
 #endif
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // Generates the DCC bit timing, optionally with EMC spectrum spreading.
-  //
-  // This method provides an optional feature that can help with passing EMC
-  // certification. The observation is that if the output signal has may repeats
-  // of a certain period, then in the measured spectrum there will be a big spike
-  // in energy that might exceed the thresholds for compliance. However, by
-  // slightly varying the timing of the output signal, the energy will be spread
-  // across a wider spectrum, thus the peak of emission will be smaller.
-  //
-  // This feature is disabled by default and can be enabled via menuconfig under
-  // DCC Signal -> Advanced options -> EMC spectrum spreading.
-  ///////////////////////////////////////////////////////////////////////////////
-  static inline uint32_t packet_bit_time_dcc(uint32_t index, bool one)
-  {
-    if (one)
-    {
-      rmt_item32_t value =
-      {{{
-        CONFIG_DCC_RMT_TICKS_ONE_PULSE,  // number of microseconds for first half
-        RMT_TRACK_DEVICE_DCC_TOP_HALF,   // of the square wave.
-        CONFIG_DCC_RMT_TICKS_ONE_PULSE,  // number of microseconds for second
-        RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // half of the square wave.
-      }}};
-  #if CONFIG_DCC_RMT_EMC_SPREAD
-      value.duration0 += index % DCC_RMT_MAX_ONE_BIT_SPREAD;
-      value.duration1 += index % DCC_RMT_MAX_ONE_BIT_SPREAD;
-  #endif // CONFIG_DCC_RMT_EMC_SPREAD
-      return value.val;
-    }
-    else
-    {
-      rmt_item32_t value =
-      {{{
-          CONFIG_DCC_RMT_TICKS_ZERO_PULSE, // number of microseconds for first
-          RMT_TRACK_DEVICE_DCC_TOP_HALF,   // half of the square wave.
-          CONFIG_DCC_RMT_TICKS_ZERO_PULSE, // number of microseconds for second
-          RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // half of the square wave.
-      }}};
-  #if CONFIG_DCC_RMT_EMC_SPREAD
-      value.duration0 += index % DCC_RMT_MAX_ZERO_BIT_SPREAD;
-      value.duration1 += index % DCC_RMT_MAX_ZERO_BIT_SPREAD;
-  #endif // CONFIG_DCC_RMT_EMC_SPREAD
-      return value.val;
-    }
-    // end of packet marker
-    return 0;
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // Generates the Marklin Motorola bit timing, optionally with EMC spectrum
-  // spreading.
-  //
-  // This method provides an optional feature that can help with passing EMC
-  // certification. The observation is that if the output signal has may repeats
-  // of a certain period, then in the measured spectrum there will be a big spike
-  // in energy that might exceed the thresholds for compliance. However, by
-  // slightly varying the timing of the output signal, the energy will be spread
-  // across a wider spectrum, thus the peak of emission will be smaller.
-  //
-  // This feature is disabled by default and can be enabled via menuconfig under
-  // RMT DCC Signal -> Advanced options -> EMC spectrum spreading.
-  ///////////////////////////////////////////////////////////////////////////////
-  static inline uint32_t packet_bit_time_marklin(uint32_t index, bool one)
-  {
-    rmt_item32_t value = one ? MARKLIN_RMT_ONE_BIT : MARKLIN_RMT_ZERO_BIT;
-  #if CONFIG_DCC_RMT_EMC_SPREAD
-    value.duration0 += (index % MARKLIN_RMT_MAX_BIT_SPREAD);
-    value.duration1 += (index % MARKLIN_RMT_MAX_BIT_SPREAD);
-  #endif // CONFIG_DCC_RMT_EMC_SPREAD
-
-    return value.val;
-  }
+#if CONFIG_DCC_RMT_EMC_SPREAD
+  /// Maximum number of microseconds that can be added to each bit pulse time.
+  ///
+  /// S-9.1 provides a maximum length of 105 and 61 microseconds for each half
+  /// wave
+  /// 
+  /// NOTE: the values below are one higher than maximum to allow for modulo
+  /// operation.
+  static constexpr uint8_t DCC_RMT_MAX_ZERO_BIT_SPREAD =
+    105 - CONFIG_DCC_RMT_TICKS_ZERO_PULSE + 1;
+  static constexpr uint8_t DCC_RMT_MAX_ONE_BIT_SPREAD =
+    61 - CONFIG_DCC_RMT_TICKS_ONE_PULSE + 1;
+#endif // CONFIG_DCC_RMT_EMC_SPREAD
 
   void encode_next_packet(BaseType_t *woken)
   {
@@ -458,53 +350,74 @@ private:
     {
       n->notify_from_isr();
     }
-    /*if (packet.packet_header.is_marklin)
+    if (packet.packet_header.is_marklin)
     {
-      // TODO: add Marklin encoding
+      packet = dcc::Packet::DCC_IDLE();
     }
-    else*/
-    {
 #if CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
-      uint32_t preableBitCount = HW::DCC_SERVICE_MODE_PREAMBLE_BITS;
+    uint32_t preableBitCount = HW::DCC_SERVICE_MODE_PREAMBLE_BITS;
 #else
-      uint32_t preableBitCount = HW::DCC_PREAMBLE_BITS;
+    uint32_t preableBitCount = HW::DCC_PREAMBLE_BITS;
 #ifndef CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
-      if (packet.packet_header.send_long_preamble)
-      {
-        preableBitCount = HW::DCC_SERVICE_MODE_PREAMBLE_BITS;
-      }
+    if (packet.packet_header.send_long_preamble)
+    {
+      preableBitCount = HW::DCC_SERVICE_MODE_PREAMBLE_BITS;
+    }
 #endif // CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
 #endif // CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
-      // encode the preamble bits
-      for (pktLength_ = 0; pktLength_ < preableBitCount; pktLength_++)
-      {
-        packet_[pktLength_].val = packet_bit_time_dcc(pktLength_, true);
-      }
-      // start of payload marker
-      packet_[pktLength_].val = packet_bit_time_dcc(pktLength_, false);
-      pktLength_++;
-      // encode the packet bits
-      for (uint8_t dlc = 0; dlc < packet.dlc; dlc++)
-      {
-        for(uint8_t bit = 0; bit < 8; bit++, pktLength_++)
-        {
-          packet_[pktLength_].val =
-            packet_bit_time_dcc(pktLength_,
-                                packet.payload[dlc] & PACKET_BIT_MASK[bit]);
-        }
-        // end of byte marker
-        packet_[pktLength_].val = packet_bit_time_dcc(pktLength_, false);
-        pktLength_++;
-      }
-      // set the last bit of the encoded payload to be an end of packet marker
-      packet_[pktLength_ - 1].val = packet_bit_time_dcc(pktLength_, true);
-      // add an extra ONE bit to the end to prevent mangling of the last bit by
-      // the RMT
-      packet_[pktLength_].val = packet_bit_time_dcc(pktLength_, true);
-      // Add marker to the end of the DCC packet data to allow the RMT to know it
-      // can stop transmitting at this point.
-      packet_[++pktLength_].val = 0;
+    // encode the preamble bits
+    for (pktLength_ = 0; pktLength_ < preableBitCount; pktLength_++)
+    {
+      packet_[pktLength_].val = DCC_RMT_ONE_BIT.val;
     }
+    // start of payload marker
+    packet_[pktLength_++].val = DCC_RMT_ZERO_BIT.val;
+    // encode the packet bits
+    for (uint8_t dlc = 0; dlc < packet.dlc; dlc++)
+    {
+      for(uint8_t bit = 0; bit < 8; bit++, pktLength_++)
+      {
+        packet_[pktLength_].val = PACKET_BIT_MASK[bit] ?
+          DCC_RMT_ONE_BIT.val : DCC_RMT_ZERO_BIT.val;
+      }
+      // end of byte marker
+      packet_[pktLength_++].val = DCC_RMT_ZERO_BIT.val;
+    }
+    // set the last bit of the encoded payload to be an end of packet marker
+    packet_[pktLength_ - 1].val = DCC_RMT_ONE_BIT.val;
+    // add an extra ONE bit to the end to prevent mangling of the last bit by
+    // the RMT
+    packet_[pktLength_++].val = DCC_RMT_ONE_BIT.val;
+    // Add marker to the end of the DCC packet data to allow the RMT to know it
+    // can stop transmitting at this point.
+    packet_[pktLength_++].val = 0;
+
+#if CONFIG_DCC_RMT_EMC_SPREAD
+    // If the EMC spectrum spreading option is enabled, modify the DCC bit time
+    // to ensure no two sequential bits are identical. The modification of the
+    // bits is done in the simplest manner possible by adding a few
+    // microseconds to the two parts of the signal based on the packet bit
+    // index modulo the maximum bit spread (5usec for zero, 3usec for one).
+    // The first bit of the preamble is skipped as is the last entry in the
+    // packet which is an end-of-packet marker for the RMT peripheral and is
+    // not transmitted to the rails.
+    for (uint8_t idx = 1 idx < pktLength_; idx++)
+    {
+      if (packet_[idx].val == packet_[idx - 1].val)
+      {
+        if (packet_[idx].val == DCC_RMT_ZERO_BIT.val)
+        {
+          packet_[idx].duration0 += (idx % DCC_RMT_MAX_ZERO_BIT_SPREAD);
+          packet_[idx].duration1 += (idx % DCC_RMT_MAX_ZERO_BIT_SPREAD);
+        }
+        else
+        {
+          packet_[idx].duration0 += (idx % DCC_RMT_MAX_ONE_BIT_SPREAD);
+          packet_[idx].duration1 += (idx % DCC_RMT_MAX_ONE_BIT_SPREAD);
+        }
+      }
+    }
+#endif
     // record the repeat count
     pktRepeatCount_ = packet.packet_header.rept_count;
 
