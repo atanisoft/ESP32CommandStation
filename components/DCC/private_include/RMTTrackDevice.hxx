@@ -61,7 +61,7 @@ namespace esp32cs
 // https://www.nmra.org/sites/default/files/standards/sandrp/pdf/s-9.1_electrical_standards_2020.pdf
 //
 ///////////////////////////////////////////////////////////////////////////////
-template<class HW>
+template<class HW, class DCC_BOOSTER>
 class RMTTrackDevice
 {
 public:
@@ -204,18 +204,17 @@ public:
   {
     BaseType_t woken = pdFALSE;
     encode_next_packet(&woken);
-    if (DccHwDefs::Output1::should_be_enabled())
-    {
-      DccHwDefs::Output1::enable_output();
-    }
-
-    if (DccHwDefs::Output1::need_railcom_cutout())
+    if (DCC_BOOSTER::need_railcom_cutout())
     {
       railcomDriver_->start_cutout();
     }
     else
     {
       railcomDriver_->no_cutout();
+      if (DCC_BOOSTER::should_be_enabled())
+      {
+        DCC_BOOSTER::enable_output();
+      }
     }
 
     // NOTE: This is not using rmt_write_items as it is not safe within an ISR

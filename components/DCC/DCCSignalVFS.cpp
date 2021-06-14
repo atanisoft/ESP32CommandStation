@@ -15,8 +15,10 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
+#include "Esp32RailComDriver.hxx"
 #include "PrioritizedUpdateLoop.hxx"
 #include "TrackOutputDescriptor.hxx"
+#include "TrackPowerHandler.hxx"
 #include <hardware.hxx>
 #include <os/Gpio.hxx>
 
@@ -43,56 +45,30 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <RMTTrackDevice.hxx>
 #include <utils/GpioInitializer.hxx>
 #include <utils/logging.h>
+#include <StringUtils.hxx>
 
 namespace esp32cs
 {
-/// RMT channel to use for track output.
-static constexpr rmt_channel_t TRACK_RMT_CHANNEL = RMT_CHANNEL_0;
 
-class TrackPowerBit : public openlcb::BitEventInterface
+/// Disables the OPS track output and enables the PROG track output.
+static void enable_programming_track()
 {
-public:
-  TrackPowerBit(openlcb::Node *node)
-    : openlcb::BitEventInterface(openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT
-                               , openlcb::Defs::EMERGENCY_OFF_EVENT)
-    , node_(node)
+  if (DccHwDefs::InternalBoosterOutput::should_be_enabled())
   {
+    OPS_ENABLE_Pin::set(false);
+    PROG_ENABLE_Pin::set(true);
   }
+}
 
-  openlcb::EventState get_current_state() override
+/// Disables the PROG track output and enables the OPS track output.
+static void disable_programming_track()
+{
+  if (DccHwDefs::InternalBoosterOutput::should_be_enabled())
   {
-    if (DccHwDefs::Output1::should_be_enabled())
-    {
-      return openlcb::EventState::VALID;
-    }
-    return openlcb::EventState::INVALID;
+    PROG_ENABLE_Pin::set(false);
+    OPS_ENABLE_Pin::set(true);
   }
-
-  void set_state(bool new_value) override
-  {
-    if (new_value)
-    {
-      LOG(INFO,
-          "[Track] Clearing global emergency stop, enabling track output");
-      DccHwDefs::Output1::clear_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
-    }
-    else
-    {
-      LOG(INFO,
-          "[Track] Setting global emergency stop, disabling track output");
-      DccHwDefs::Output1::set_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
-    }
-  }
-
-  openlcb::Node *node()
-  {
-    return node_;
-  }
-
-private:
-  openlcb::Node *node_;
-};
-
+}
 
 // TODO: move this into TrainSearchProtocol
 class EStopPacketSource : public dcc::NonTrainPacketSource,
@@ -100,11 +76,15 @@ class EStopPacketSource : public dcc::NonTrainPacketSource,
 {
 public:
   EStopPacketSource(openlcb::Node *node)
-    : openlcb::BitEventInterface(openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT
-                               , openlcb::Defs::EMERGENCY_STOP_EVENT),
+    : openlcb::BitEventInterface(openlcb::Defs::EMERGENCY_STOP_EVENT
+                               , openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT),
     node_(node)
   {
+    LOG(INFO, "[eStop] Registering OpenLCB event consumer (On:%s, Off:%s)",
+        event_id_to_string(event_on()).c_str(),
+        event_id_to_string(event_off()).c_str());
   }
+
   bool is_enabled()
   {
     return enabled_;
@@ -112,53 +92,49 @@ public:
 
   openlcb::EventState get_current_state() override
   {
+    LOG(VERBOSE, "[eStop] Query event state: %d", is_enabled());
     if (is_enabled())
     {
+      LOG(VERBOSE, "[eStop] ON (%s)", event_id_to_string(event_on()).c_str());
       return openlcb::EventState::VALID;
     }
+      LOG(VERBOSE, "[eStop] OFF (%s)",
+          event_id_to_string(event_off()).c_str());
     return openlcb::EventState::INVALID;
   }
 
   void set_state(bool new_value) override
   {
-    enabled_ = new_value;
+    if (enabled_ == new_value)
+    {
+      // discard attempt to set the state to the current state
+      return;
+    }
     if (new_value)
     {
-      enable();
+      LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");
+      auto trains = Singleton<commandstation::AllTrainNodes>::instance();
+      for (size_t id = 0; id < trains->size(); id++)
+      {
+        auto node = trains->get_train_node_id_ext(id, false);
+        if (node)
+        {
+          trains->get_train_impl(node)->set_emergencystop();
+        }
+      }
+      packet_processor_add_refresh_source(this, dcc::UpdateLoopBase::ESTOP_PRIORITY);
     }
     else
     {
-      disable();
+      LOG(INFO, "[eStop] Received eStop clear request.");
+      packet_processor_remove_refresh_source(this);
     }
+    enabled_ = new_value;
   }
 
   openlcb::Node *node()
   {
     return node_;
-  }
-
-  void enable()
-  {
-    LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");
-    // TODO: add helper method on AllTrainNodes for this.
-    auto trains = Singleton<commandstation::AllTrainNodes>::instance();
-    for (size_t id = 0; id < trains->size(); id++)
-    {
-      auto node = trains->get_train_node_id_ext(id, false);
-      if (node)
-      {
-        trains->get_train_impl(node)->set_emergencystop();
-      }
-    }
-    packet_processor_add_refresh_source(this, dcc::UpdateLoopBase::ESTOP_PRIORITY);
-    enabled_ = true;
-  }
-
-  void disable()
-  {
-    LOG(INFO, "[eStop] Received eStop clear request.");
-    packet_processor_remove_refresh_source(this);
-    enabled_ = false;
   }
 
   void get_next_packet(unsigned code, dcc::Packet* packet)
@@ -171,20 +147,24 @@ private:
   openlcb::Node *node_;
 };
 
-/// RailCom driver instance.
+#if CONFIG_RAILCOM_DISABLED
 static NoRailcomDriver railComDriver;
-static esp32cs::RMTTrackDevice<DccHwDefs> track(&railComDriver);
+#else
+static uninitialized<dcc::RailcomHubFlow> railcom_hub;
+#if CONFIG_RAILCOM_DUMP_PACKETS
+static uninitialized<dcc::RailcomPrintfFlow> railcom_dumper;
+#endif // CONFIG_RAILCOM_DUMP_PACKETS
+static esp32cs::Esp32RailComDriver<RailComHwDefs, DccHwDefs::InternalBoosterOutput> railComDriver;
+#endif // CONFIG_RAILCOM_DISABLED
+static esp32cs::RMTTrackDevice<DccHwDefs, DccHwDefs::InternalBoosterOutput> track(&railComDriver);
 static uninitialized<dcc::LocalTrackIf> track_interface;
 static uninitialized<esp32cs::PrioritizedUpdateLoop> track_update_loop;
 static uninitialized<PoolToQueueFlow<Buffer<dcc::Packet>>> track_flow;
-static uninitialized<dcc::RailcomHubFlow> railcom_hub;
-#if CONFIG_OPS_RAILCOM_DUMP_PACKETS
-static uninitialized<dcc::RailcomPrintfFlow> railcom_dumper;
-#endif
-static uninitialized<TrackPowerBit> track_power;
+static uninitialized<TrackPowerBit<DccHwDefs::InternalBoosterOutput>> track_power;
 static uninitialized<openlcb::BitEventConsumer> track_power_consumer;
 static uninitialized<EStopPacketSource> estop_packet_source;
 static uninitialized<openlcb::BitEventConsumer> estop_consumer;
+static uninitialized<ProgrammingTrackBackend> prog_backend;
 
 /// ESP32 VFS ::write() impl for the RMTTrackDevice.
 /// @param fd is the file descriptor being written to.
@@ -304,24 +284,30 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   track_flow.emplace(svc, track_interface->pool()
                    , track_update_loop.get_mutable());
 
+#if !CONFIG_RAILCOM_DISABLED
   railcom_hub.emplace(svc);
-#if CONFIG_OPS_RAILCOM
-//  opsRailComDriver.hw_init(railcom_hub.operator->());
-#if CONFIG_OPS_RAILCOM_DUMP_PACKETS
+  railComDriver.hw_init(railcom_hub.operator->());
+#if CONFIG_RAILCOM_DUMP_PACKETS
   railcom_dumper.emplace(railcom_hub.operator->());
 #endif
-#endif // CONFIG_OPS_RAILCOM
+#endif // !CONFIG_RAILCOM_DISABLED
   track_power.emplace(node);
   track_power_consumer.emplace(track_power.operator->());
   estop_packet_source.emplace(node);
   estop_consumer.emplace(estop_packet_source.operator->());
+#if !CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
+  prog_backend.emplace(svc, enable_programming_track,
+                       disable_programming_track);
+#endif
 
-  DccHwDefs::Output1::clear_disable_reason(
+  // Clear the initialization pending flag
+  DccHwDefs::InternalBoosterOutput::clear_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
 #if CONFIG_ENERGIZE_TRACK_ON_STARTUP
-  DccHwDefs::Output1::enable_output();
+  DccHwDefs::InternalBoosterOutput::clear_disable_reason(
+    DccOutput::DisableReason::GLOBAL_EOFF);
 #else
-  DccHwDefs::Output1::set_disable_reason(
+  DccHwDefs::InternalBoosterOutput::set_disable_reason(
     DccOutput::DisableReason::GLOBAL_EOFF);
 #endif // CONFIG_ENERGIZE_TRACK_ON_STARTUP
 }
@@ -333,9 +319,7 @@ void shutdown_dcc()
   rmt_register_tx_end_callback(nullptr, nullptr);
 
   // Disable all track outputs
-  DccHwDefs::Output1::set_disable_reason(
-        DccOutput::DisableReason::INITIALIZATION_PENDING);
-  DccHwDefs::Output2::set_disable_reason(
+  DccHwDefs::InternalBoosterOutput::set_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
 }
 
@@ -347,7 +331,7 @@ DccOutput *get_dcc_output(DccOutput::Type type)
   switch (type)
   {
     case DccOutput::TRACK:
-      return DccOutputImpl<DccHwDefs::Output1>::instance();
+      return DccOutputImpl<DccHwDefs::InternalBoosterOutput>::instance();
     case DccOutput::PGM:
       return DccOutputImpl<DccHwDefs::Output2>::instance();
     case DccOutput::LCC:

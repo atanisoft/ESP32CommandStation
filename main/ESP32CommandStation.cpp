@@ -187,16 +187,7 @@ extern "C" void app_main()
       openlcb::SNIP_STATIC_DATA.software_version);
   uint8_t reset_reason = Esp32SocInfo::print_soc_info();
   GpioInit::hw_init();
-#if CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
-  DccHwDefs::Output1::set_disable_reason(
-        DccOutput::DisableReason::CONFIG_SETTING);
-#elif CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
-  DccHwDefs::Output2::set_disable_reason(
-        DccOutput::DisableReason::CONFIG_SETTING);
-#endif
-  DccHwDefs::Output1::set_disable_reason(
-        DccOutput::DisableReason::INITIALIZATION_PENDING);
-  DccHwDefs::Output2::set_disable_reason(
+  DccHwDefs::InternalBoosterOutput::set_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
   nvs.init(reset_reason);
 

@@ -8,6 +8,7 @@ set(CUSTOM_DEPS
     Config
     OpenMRNIDF
     TrainSearchProtocol
+    Utils
 )
 
 set(DCCVFS_SOURCE_FILES

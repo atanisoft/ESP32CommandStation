@@ -20,11 +20,20 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include "sdkconfig.h"
 #include <dcc/DccOutput.hxx>
+#include <driver/periph_ctrl.h>
+#include <esp_rom_gpio.h>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
 #include <utils/GpioInitializer.hxx>
 #include <hal/gpio_types.h>
 #include <hal/rmt_types.h>
+#include <hal/timer_types.h>
+#include <hal/uart_types.h>
+#include <soc/dport_reg.h>
+#include <soc/periph_defs.h>
+#include <soc/uart_struct.h>
+#include <soc/uart_reg.h>
+#include <soc/timer_periph.h>
 
 // Validate configured pins are defined and if not disable the feature.
 
@@ -131,6 +140,80 @@ typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin,
                         DCC_SIGNAL_Pin, OPS_ENABLE_Pin, PROG_ENABLE_Pin,
                         FACTORY_RESET_BUTTON_Pin, BOOTLOADER_BUTTON_Pin> GpioInit;
 
+
+/// RailCom hardware definition
+struct RailComHwDefs
+{
+#if CONFIG_RAILCOM_FULL
+#if CONFIG_RAILCOM_UART1
+  static constexpr uart_port_t UART = 1;
+  static constexpr uart_dev_t *UART_BASE = &UART1;
+  static constexpr periph_module_t UART_PERIPH = PERIPH_UART1_MODULE;
+  static constexpr int UART_ISR_SOURCE = ETS_UART1_INTR_SOURCE;
+  static constexpr uint32_t UART_MATRIX_IDX = U1RXD_IN_IDX;
+  static constexpr uint32_t UART_CLOCK_EN_BIT = DPORT_UART1_CLK_EN;
+  static constexpr uint32_t UART_RESET_BIT = DPORT_UART1_RST;
+#elif CONFIG_RAILCOM_UART2
+  static constexpr uart_port_t UART = 2;
+  static constexpr uart_dev_t *UART_BASE = &UART2;
+  static constexpr periph_module_t UART_PERIPH = PERIPH_UART2_MODULE;
+  static constexpr int UART_ISR_SOURCE = ETS_UART2_INTR_SOURCE;
+  static constexpr uint32_t UART_MATRIX_IDX = U2RXD_IN_IDX;
+  static constexpr uint32_t UART_CLOCK_EN_BIT = DPORT_UART2_CLK_EN;
+  static constexpr uint32_t UART_RESET_BIT = DPORT_UART2_RST;
+#else
+  #error Unsupported UART selected for OPS RailCom!
+#endif
+#endif // CONFIG_RAILCOM_FULL
+
+  /// RailCom detector enable pin
+  using RAILCOM_TRIGGER_Pin = ::RAILCOM_TRIGGER_Pin;
+  /// RailCom data pin
+  static constexpr gpio_num_t RAILCOM_DATA_PIN =
+    (gpio_num_t)CONFIG_RAILCOM_DATA_PIN;
+  /// RailCom direction pin
+  static constexpr gpio_num_t RAILCOM_DIRECTION_PIN =
+    (gpio_num_t)CONFIG_RAILCOM_DIRECTION_PIN;
+
+  /// Number of RailCom packets to queue
+  static constexpr size_t PACKET_Q_SIZE = CONFIG_RAILCOM_FEEDBACK_QUEUE;
+
+  static void hw_init()
+  {
+#if CONFIG_RAILCOM_FULL
+    // initialize the UART
+    periph_module_enable(UART_PERIPH);
+    gpio_pad_select_gpio(RAILCOM_DATA_PIN);
+    esp_rom_gpio_connect_in_signal(RAILCOM_DATA_PIN, UART_MATRIX_IDX, false);
+#endif // CONFIG_RAILCOM_FULL
+  }
+
+  static constexpr timg_dev_t *TIMER_BASE = &TIMERG0;
+  static constexpr timer_idx_t TIMER_IDX = TIMER_0;
+  static constexpr timer_group_t TIMER_GRP = TIMER_GROUP_0;
+  static constexpr periph_module_t TIMER_PERIPH = PERIPH_TIMG0_MODULE;
+  static constexpr int TIMER_ISR_SOURCE = ETS_TG0_T0_LEVEL_INTR_SOURCE + TIMER_IDX;
+
+  /// Number of microseconds to wait after the final packet bit completes
+  /// before disabling the ENABLE pin on the h-bridge.
+  static constexpr uint32_t RAILCOM_START_PHASE1_DELAY_USEC = 1;
+
+  /// Number of microseconds to wait after RAILCOM_PHASE1_DELAY_USEC before
+  /// starting the cut-out period.
+  static constexpr uint32_t RAILCOM_START_PHASE2_DELAY_USEC = 1;
+
+  /// Number of microseconds to wait at the end of the cut-out period.
+  static constexpr uint32_t RAILCOM_STOP_DELAY_USEC = 1;
+
+  /// Number of microseconds to wait for railcom data on channel 1.
+  static constexpr uint32_t RAILCOM_MAX_READ_DELAY_CH_1 =
+    177 - RAILCOM_START_PHASE1_DELAY_USEC - RAILCOM_START_PHASE2_DELAY_USEC;
+
+  /// Number of microseconds to wait for railcom data on channel 2.
+  static constexpr uint32_t RAILCOM_MAX_READ_DELAY_CH_2 =
+    454 - RAILCOM_MAX_READ_DELAY_CH_1 - RAILCOM_STOP_DELAY_USEC;
+}; // RailComHwDefs
+
 struct DccHwDefs
 {
   /// DCC signal output pin.
@@ -147,30 +230,21 @@ struct DccHwDefs
   static constexpr uint32_t DCC_SERVICE_MODE_PREAMBLE_BITS =
     CONFIG_PROG_DCC_PREAMBLE_BITS;
 
-  /// RMT Channel to use for the DCC Signal output
+  /// RMT Channel to use for the DCC Signal output.
   static const rmt_channel_t RMT_CHANNEL = RMT_CHANNEL_0;
 
-  /// number of outgoing messages we can queue
+  /// Number of outgoing DCC packets to allow in the queue.
   static const size_t PACKET_Q_SIZE = CONFIG_PACKET_QUEUE_SIZE;
 
-  /// RailCom detector enable pin
-  using RAILCOM_TRIGGER_Pin = ::RAILCOM_TRIGGER_Pin;
-  typedef DummyPin PROG_RAILCOM_TRIGGER_Pin;
-  /// RailCom data pin
-  static constexpr gpio_num_t RAILCOM_DATA_PIN =
-    (gpio_num_t)CONFIG_RAILCOM_DATA_PIN;
-  /// RailCom direction pin
-  static constexpr gpio_num_t RAILCOM_DIRECTION_PIN =
-    (gpio_num_t)CONFIG_RAILCOM_DIRECTION_PIN;
-
-  /// OPS track output
-  using Output1 =
-    DccOutputHwReal<DccOutput::TRACK, OPS_ENABLE_Pin, RAILCOM_TRIGGER_Pin, 0,
-                    0, 0>;
-  /// PROG track output
-  using Output2 =
-    DccOutputHwReal<DccOutput::PGM, PROG_ENABLE_Pin, PROG_RAILCOM_TRIGGER_Pin,
-                    0, 0, 0>;
+  /// Track Booster output.
+  using InternalBoosterOutput =
+    DccOutputHwReal<DccOutput::TRACK, OPS_ENABLE_Pin, RAILCOM_TRIGGER_Pin,
+                    RailComHwDefs::RAILCOM_START_PHASE1_DELAY_USEC,
+                    RailComHwDefs::RAILCOM_START_PHASE2_DELAY_USEC,
+                    RailComHwDefs::RAILCOM_STOP_DELAY_USEC>;
+  /// Fake output hardware for program track.
+  using Output2 = DccOutputHwDummy<DccOutput::PGM>;
+  /// Fake output hardware for LCC track.
   using Output3 = DccOutputHwDummy<DccOutput::LCC>;
 }; // DccHwDefs
 
