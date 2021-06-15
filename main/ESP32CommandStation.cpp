@@ -112,7 +112,9 @@ OVERRIDE_CONST(local_alias_cache_size, CONFIG_OLCB_LOCAL_NODE_COUNT);
 // instantiate the configuration layout. The argument of offset zero is ignored
 // and will be removed later.
 static constexpr esp32cs::ConfigDef cfg(0);
+#if CONFIG_OLCB_TWAI_ENABLED
 static Esp32HardwareTwai twai(CONFIG_OLCB_TWAI_RX_PIN, CONFIG_OLCB_TWAI_TX_PIN);
+#endif // CONFIG_OLCB_TWAI_ENABLED
 static esp32cs::NvsManager nvs;
 static esp32cs::StatusLED leds;
 static uninitialized<openlcb::SimpleCanStack> stack;
@@ -193,7 +195,9 @@ extern "C" void app_main()
 
   if (nvs.start_stack())
   {
+#if CONFIG_OLCB_TWAI_ENABLED
     twai.hw_init();
+#endif // CONFIG_OLCB_TWAI_ENABLED
 
     // Configure ADC1 up front to use 12 bit (0-4095) as we use it for all
     // monitored h-bridges.
@@ -201,15 +205,22 @@ extern "C" void app_main()
     adc1_config_width(ADC_WIDTH_BIT_12);
     bool using_sd = esp32cs::mount_fs(nvs.should_reset_config());
 
+#if CONFIG_OLCB_TWAI_ENABLED
+    // disable the hub and uplink by default.
+    uint8_t wifi_connection_mode = 0;
+#else
+    // use default mode (uplink)
+    uint8_t wifi_connection_mode = 1;
+#endif // CONFIG_OLCB_TWAI_ENABLED
     // initialize the OpenMRN stack and dependent components
     stack.emplace(nvs.node_id());
     wifi_manager.emplace(nvs.station_ssid(), nvs.station_password(),
                          stack.operator->(), cfg.seg().wifi(),
-                         nvs.wifi_mode(), nvs.hostname_prefix(),
-                         nvs.sntp_server(), nvs.timezone(),
-                         nvs.sntp_enabled(), nvs.softap_channel(),
-                         nvs.softap_auth(), nvs.softap_ssid(),
-                         nvs.softap_password());
+                         nvs.wifi_mode(), wifi_connection_mode,
+                         nvs.hostname_prefix(), nvs.sntp_server(),
+                         nvs.timezone(), nvs.sntp_enabled(),
+                         nvs.softap_channel(), nvs.softap_auth(),
+                         nvs.softap_ssid(), nvs.softap_password());
     leds.attach_callbacks(wifi_manager.operator->());
     node_id_memoryspace.emplace(stack.operator->(), &nvs);
     factory_reset_helper.emplace(cfg.userinfo());
@@ -257,13 +268,15 @@ extern "C" void app_main()
                            SEC_TO_USEC(CONFIG_OLCB_SD_FSYNC_SEC));
     }
 
+#if CONFIG_OLCB_TWAI_ENABLED
 #if CONFIG_OLCB_TWAI_SELECT
     LOG(INFO, "[TWAI] Enabling select() API");
     stack->add_can_port_select("/dev/twai/twai0");
-#else
+#else // async API
     LOG(INFO, "[TWAI] Enabling async API");
     stack->add_can_port_async("/dev/twai/twai0");
-#endif
+#endif // CONFIG_OLCB_TWAI_SELECT
+#endif // CONFIG_OLCB_TWAI_ENABLED
 
     init_webserver(stack.operator->(), wifi_manager.operator->(), &nvs,
                    memory_client.operator->());

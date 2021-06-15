@@ -363,12 +363,17 @@ namespace esp32cs
       LOG(INFO, "[NVS] Bootloader flag is false, start the stack");
       return true;
     }
+#if CONFIG_OLCB_TWAI_ENABLED
     LOG(INFO, "[NVS] Bootloader flag is true, start the bootloader");
     // automatic reset is diabled so we can reset the RTC persistent memory
     // flag used to indicate bootloader requested.
     esp32_bootloader_run(nvsConfig.node_id,
                          (gpio_num_t)CONFIG_OLCB_TWAI_RX_PIN,
                          (gpio_num_t)CONFIG_OLCB_TWAI_TX_PIN, false);
+#else
+    LOG_ERROR("[NVS] Bootloader requested but TWAI is not enabled!\n"
+              "Disabling flag and restarting!");
+#endif // CONFIG_OLCB_TWAI_ENABLED
     bootloader_request = esp32cs::RTC_BOOL_FALSE;
     esp_restart();
     return false;

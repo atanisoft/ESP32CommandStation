@@ -191,6 +191,7 @@ menu "Pin Configuration"
                 Set to -1 to disable this functionality.
     endmenu
     menu "TWAI (CAN)"
+        depends on OLCB_TWAI_ENABLED
         config OLCB_TWAI_RX_PIN
             int "TWAI RX Pin"
             range 0 39
@@ -266,6 +267,9 @@ menu "OpenLCB Configuration"
             range via:
             https://registry.openlcb.org/requestuniqueidrange
             The default node ID is part of a reserved range of ID values.
+    config OLCB_TWAI_ENABLED
+        bool "Enable TWAI (CAN) interface"
+        default y
     config OLCB_TWAI_SELECT
         bool "Use select() based TWAI driver"
         default y
