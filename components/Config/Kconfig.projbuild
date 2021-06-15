@@ -273,6 +273,7 @@ menu "OpenLCB Configuration"
     config OLCB_TWAI_SELECT
         bool "Use select() based TWAI driver"
         default y
+        depends on OLCB_TWAI_ENABLED
     config OLCB_MEMORY_SPACES
         int "MemoryConfig space limit"
         default 10
@@ -464,6 +465,12 @@ menu "WiFi Configuration"
         default 1 if WIFI_MODE_STATION
         default 2 if WIFI_MODE_SOFTAP
         default 3 if WIFI_MODE_SOFTAP_STATION
+    config WIFI_HOSTNAME_PREFIX
+        string "Hostname prefix"
+        default "esp32cs_"
+        help
+            The OpenLCB node identifier will be appended to this value, ie:
+            esp32cs_0502010300000.
     menu "Station Configuration"
         depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
         config WIFI_STATION_SSID
@@ -489,20 +496,14 @@ menu "WiFi Configuration"
                 than others. The best channels to pick from are: 1, 6, 11 since
                 these do not overlap with other channels.
     endmenu
-    config WIFI_HOSTNAME_PREFIX
-        string "Hostname prefix"
-        default "esp32cs_"
-        help
-            The OpenLCB node identifier will be appended to this value, ie:
-            esp32cs_0502010300000.
     menu "SNTP Configuration"
         depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
-    config SNTP
-        bool "Enable SNTP synchronization"
-        default n
-        help
-            By enabling this option the ESP32 will attempt to synchronize the
-            system time with an external SNTP server once per hour.
+        config SNTP
+            bool "Enable SNTP synchronization"
+            default n
+            help
+                By enabling this option the ESP32 will attempt to synchronize the
+                system time with an external SNTP server once per hour.
         config SNTP_SERVER
             string "SNTP Server"
             default "pool.ntp.org"
