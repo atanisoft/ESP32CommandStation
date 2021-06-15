@@ -16,6 +16,18 @@ if (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR LESS 3)
 endif()
 
 ###############################################################################
+# Verify submodules were checked out correctly
+###############################################################################
+
+if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/components/OpenMRNIDF/CMakeLists.txt)
+    message(FATAL_ERROR "${CMAKE_CURRENT_SOURCE_DIR}/components/OpenMRNIDF does not appear to have been checked out, please run 'git submodule update --init' from ${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
+
+if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/components/HttpServer/CMakeLists.txt)
+    message(FATAL_ERROR "${CMAKE_CURRENT_SOURCE_DIR}/components/HttpServer does not appear to have been checked out, please run 'git submodule update --init' from ${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
+
+###############################################################################
 # ESP32 Command Station only supports the ESP32 and not other variants at this
 # time. This may change in the future.
 ###############################################################################
