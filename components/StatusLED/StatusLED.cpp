@@ -15,8 +15,9 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "StatusLED.h"
+#include "StatusLED.hxx"
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
+#include <os/os.h>
 
 namespace esp32cs
 {
@@ -28,6 +29,17 @@ StatusLED::StatusLED()
     brightness_ = 8;
   }
   clear();
+}
+
+static void *led_update(void *arg)
+{
+  StatusLED *led = (StatusLED *)arg;
+  while(true)
+  {
+    vTaskDelay(pdMS_TO_TICKS(500));
+    led->refresh();
+  }
+  return nullptr;
 }
 
 void StatusLED::hw_init()
@@ -53,8 +65,9 @@ void StatusLED::hw_init()
   {
     bus_->ClearTo(color);
     bus_->Show();
-    vTaskDelay(pdMS_TO_TICKS(250));
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
+  os_thread_create(nullptr, "StatusLED", 0, 2048, led_update, this);
 #endif
 }
 

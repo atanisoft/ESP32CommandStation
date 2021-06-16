@@ -17,35 +17,36 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include "sdkconfig.h"
 
-#include "CDIClient.hxx"
-#include "NvsManager.hxx"
-
 #include <AllTrainNodes.hxx>
+#include <CDIClient.hxx>
 #include <cJSON.h>
 #include <dcc/Loco.hxx>
+#include <dcc/DccOutput.hxx>
 #include <Dnsd.h>
 #include <DCCSignalVFS.hxx>
 #include <DelayRebootHelper.hxx>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <EventBroadcastHelper.hxx>
-#include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 #include <Httpd.h>
 #include <mutex>
+#include <NvsManager.hxx>
 #include <openlcb/SimpleStack.hxx>
-#include <StatusLED.h>
+#include <OTAWatcher.hxx>
+#include <StatusLED.hxx>
 #include <StringUtils.hxx>
 #include <TrainDatabase.h>
 #include <Turnouts.h>
 #include <utils/FileUtils.hxx>
 #include <utils/SocketClientParams.hxx>
 #include <utils/StringPrintf.hxx>
-//#include "OTAMonitor.h"
 
 using commandstation::AllTrainNodes;
 using dcc::SpeedType;
+using esp32cs::Esp32TrainDatabase;
 using esp32cs::EventBroadcastHelper;
 using esp32cs::NvsManager;
+using esp32cs::OTAWatcherFlow;
 using esp32cs::StatusLED;
 using esp32cs::TurnoutManager;
 using esp32cs::TurnoutType;
@@ -92,7 +93,6 @@ static constexpr const char * const CAPTIVE_PORTAL_HTML = R"!^!(
 
 WEBSOCKET_STREAM_HANDLER(process_ws);
 HTTP_STREAM_HANDLER(process_ota);
-HTTP_HANDLER(process_prog);
 HTTP_HANDLER(process_turnouts);
 HTTP_HANDLER(process_loco);
 
@@ -127,17 +127,17 @@ extern const size_t spectreCssGz_size asm("spectre_min_css_gz_length");
 uninitialized<CDIClient> cdi_client;
 static NodeHandle cs_node_handle;
 static SimpleCanStack *stack;
-static Esp32WiFiManager *wifi;
 static NvsManager *nvs;
+static Esp32TrainDatabase *traindb;
 
 void init_webserver(SimpleCanStack *can_stack,
-                    Esp32WiFiManager *wifi_mgr,
                     NvsManager *nvs_mgr,
-                    MemoryConfigClient *mem_client)
+                    MemoryConfigClient *mem_client,
+                    Esp32TrainDatabase *train_db)
 {
   stack = can_stack;
-  wifi = wifi_mgr;
   nvs = nvs_mgr;
+  traindb = train_db;
   auto httpd = Singleton<Httpd>::instance();
   cs_node_handle = NodeHandle(stack->node()->node_id());
   cdi_client.emplace(stack->service(), mem_client);
@@ -152,7 +152,7 @@ void init_webserver(SimpleCanStack *can_stack,
   httpd->static_uri("/spectre.min.css", spectreCssGz, spectreCssGz_size
                   , MIME_TYPE_TEXT_CSS, HTTP_ENCODING_GZIP);
   httpd->websocket_uri("/ws", process_ws);
-  //httpd->uri("/update", HttpMethod::POST, nullptr, process_ota);
+  httpd->uri("/update", HttpMethod::POST, nullptr, process_ota);
   httpd->uri("/fs", HttpMethod::GET,
   [&](HttpRequest *request) -> AbstractHttpResponse *
   {
@@ -182,7 +182,6 @@ void init_webserver(SimpleCanStack *can_stack,
     request->set_status(HttpStatusCode::STATUS_NOT_FOUND);
     return nullptr;
   });
-  httpd->uri("/programmer", HttpMethod::GET | HttpMethod::POST, process_prog);
   httpd->uri("/turnouts"
            , HttpMethod::GET | HttpMethod::POST |
              HttpMethod::PUT | HttpMethod::DELETE
@@ -499,10 +498,9 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
           }
           else
           {
-            turnouts->createOrUpdateOlcb(address
-                                         , cJSON_GetObjectItem(root, "closed")->valuestring
-                                         , cJSON_GetObjectItem(root, "thrown")->valuestring
-                                         , type);
+            turnouts->createOrUpdateOlcb(address,
+              cJSON_GetObjectItem(root, "closed")->valuestring,
+              cJSON_GetObjectItem(root, "thrown")->valuestring, type);
           }
         }
         else if (action == "toggle")
@@ -531,11 +529,27 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
     else if (!strcmp(req_type->valuestring, "status"))
     {
       LOG(VERBOSE, "[WSJSON:%d] STATUS received", req_id->valueint);
-      // TODO: fix the track status so it retrieves from the actual track
-      // interface.
-      response =
-        StringPrintf(R"!^!({"res":"status","id":%d,"track":%s})!^!",
-                     req_id->valueint, "[{\"prog\":false, \"state\":\"Off\"}]");
+      auto track = get_dcc_output(DccOutput::Type::TRACK);
+      uint8_t track_status = track->get_disable_output_reasons();
+      if (track_status & (uint8_t)DccOutput::DisableReason::SHORTED ||
+          track_status & (uint8_t)DccOutput::DisableReason::THERMAL)
+      {
+        response =
+          StringPrintf(R"!^!({"res":"status","id":%d,"track":"Fault"})!^!",
+                       req_id->valueint);
+      }
+      else if (track_status != 0)
+      {
+        response =
+          StringPrintf(R"!^!({"res":"status","id":%d,"track":"Off"})!^!",
+                       req_id->valueint);
+      }
+      else
+      {
+        response =
+          StringPrintf(R"!^!({"res":"status","id":%d,"track":"On"})!^!",
+                       req_id->valueint);
+      }
     }
     else if (!strcmp(req_type->valuestring, "statusled"))
     {
@@ -555,7 +569,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
     socket->send_text(response);
   }
 }
-/*
+
 esp_ota_handle_t otaHandle;
 esp_partition_t *ota_partition = nullptr;
 HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length
@@ -570,26 +584,25 @@ HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length
     if (err != ESP_OK)
     {
       LOG_ERROR("[WebSrv] OTA start failed, aborting!");
-      Singleton<OTAMonitorFlow>::instance()->report_failure(err);
+      Singleton<OTAWatcherFlow>::instance()->report_failure(err);
       request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
       *abort_req = true;
       return nullptr;
     }
     LOG(INFO, "[WebSrv] OTA Update starting (%zu bytes, target:%s)...", size
       , ota_partition->label);
-    esp32cs::disable_track_outputs();
-    Singleton<OTAMonitorFlow>::instance()->report_start();
+    Singleton<OTAWatcherFlow>::instance()->report_start();
   }
   HASSERT(ota_partition);
   ESP_ERROR_CHECK(esp_ota_write(otaHandle, data, length));
-  Singleton<OTAMonitorFlow>::instance()->report_progress(length);
+  Singleton<OTAWatcherFlow>::instance()->report_progress(length);
   if (final)
   {
     esp_err_t err = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_end(otaHandle));
     if (err != ESP_OK)
     {
       LOG_ERROR("[WebSrv] OTA end failed, aborting!");
-      Singleton<OTAMonitorFlow>::instance()->report_failure(err);
+      Singleton<OTAWatcherFlow>::instance()->report_failure(err);
       request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
       *abort_req = true;
       return nullptr;
@@ -601,190 +614,16 @@ HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length
     if (err != ESP_OK)
     {
       LOG_ERROR("[WebSrv] OTA end failed, aborting!");
-      Singleton<OTAMonitorFlow>::instance()->report_failure(err);
+      Singleton<OTAWatcherFlow>::instance()->report_failure(err);
       request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
       *abort_req = true;
       return nullptr;
     }
     LOG(INFO, "[WebSrv] OTA Update Complete!");
-    Singleton<OTAMonitorFlow>::instance()->report_success();
+    Singleton<OTAWatcherFlow>::instance()->report_success();
     request->set_status(HttpStatusCode::STATUS_OK);
     return new StringResponse("OTA Upload Complete", MIME_TYPE_TEXT_PLAIN);
   }
-  return nullptr;
-}
-*/
-
-HTTP_HANDLER_IMPL(process_prog, request)
-{
-  request->set_status(HttpStatusCode::STATUS_OK);
-  /*
-  if (!request->has_param(JSON_PROG_ON_MAIN))
-  {
-    request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
-  }
-  else if (request->method() == HttpMethod::GET)
-  {
-    if (request->param(JSON_PROG_ON_MAIN, false))
-    {
-      request->set_status(HttpStatusCode::STATUS_NOT_ALLOWED);
-    }
-    else if (request->has_param(JSON_IDENTIFY_NODE))
-    {
-      int16_t decoderConfig = readCV(CV_NAMES::DECODER_CONFIG);
-      if (decoderConfig > 0)
-      {
-        uint16_t decoderAddress = 0;
-        string response = "{";
-        if ((decoderConfig & DECODER_CONFIG_BITS::DECODER_TYPE) == DECODER_CONFIG_BITS::DECODER_TYPE)
-        {
-          uint8_t decoderManufacturer = readCV(CV_NAMES::DECODER_MANUFACTURER);
-          int16_t addrMSB = readCV(CV_NAMES::ACCESSORY_DECODER_MSB_ADDRESS);
-          int16_t addrLSB = readCV(CV_NAMES::SHORT_ADDRESS);
-          if (addrMSB >= 0 && addrLSB >= 0)
-          {
-            if (decoderManufacturer == 0xA5)
-            {
-              // MERG uses 7 bit LSB
-              decoderAddress = (uint16_t)(((addrMSB & 0x07) << 7) | (addrLSB & 0x7F));
-            }
-            else if(decoderManufacturer == 0x19)
-            {
-              // Team Digital uses 8 bit LSB and 4 bit MSB
-              decoderAddress = (uint16_t)(((addrMSB & 0x0F) << 8) | addrLSB);
-            }
-            else
-            {
-              // NMRA spec shows 6 bit LSB
-              decoderAddress = (uint16_t)(((addrMSB & 0x07) << 6) | (addrLSB & 0x1F));
-            }
-            response += StringPrintf("\"address\":\"%s\",", JSON_VALUE_LONG_ADDRESS);
-          }
-          else
-          {
-            LOG(WARNING, "[WebSrv] Failed to read address MSB/LSB");
-            request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-          }
-        }
-        else
-        {
-          if ((decoderConfig & DECODER_CONFIG_BITS::SHORT_OR_LONG_ADDRESS) == DECODER_CONFIG_BITS::SHORT_OR_LONG_ADDRESS)
-          {
-            int16_t addrMSB = readCV(CV_NAMES::LONG_ADDRESS_MSB_ADDRESS);
-            int16_t addrLSB = readCV(CV_NAMES::LONG_ADDRESS_LSB_ADDRESS);
-            if (addrMSB >= 0 && addrLSB >= 0)
-            {
-              decoderAddress = (uint16_t)(((addrMSB & 0xFF) << 8) | (addrLSB & 0xFF));
-              response += StringPrintf("\"address\":\"%s\",", JSON_VALUE_LONG_ADDRESS);
-
-            }
-            else
-            {
-              LOG(WARNING, "[WebSrv] Unable to read address MSB/LSB");
-              request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-            }
-          }
-          else
-          {
-            int16_t shortAddr = readCV(CV_NAMES::SHORT_ADDRESS);
-            if (shortAddr > 0)
-            {
-              decoderAddress = shortAddr;
-              response += StringPrintf("\"address\":\"%s\",", JSON_VALUE_SHORT_ADDRESS);
-            }
-            else
-            {
-              LOG(WARNING, "[WebSrv] Unable to read short address CV");
-              request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-            }
-          }
-          response += StringPrintf("\"%s\":%s,", JSON_SPEED_TABLE_NODE
-                                 , (decoderConfig & DECODER_CONFIG_BITS::SPEED_TABLE) == DECODER_CONFIG_BITS::SPEED_TABLE ?
-                                           JSON_VALUE_ON : JSON_VALUE_OFF);
-        }
-        response += StringPrintf("\"address\":%d,", decoderAddress);
-        // if it is a mobile decoder *AND* we are requested to create it, send
-        // the decoder address to the train db to create an entry.
-        if (request->param(JSON_CREATE_NODE, false) &&
-           (decoderConfig & BIT(DECODER_CONFIG_BITS::DECODER_TYPE)) == 0)
-        {
-          auto traindb = Singleton<esp32cs::Esp32TrainDatabase>::instance();
-          traindb->create_if_not_found(decoderAddress);
-        }
-        response += "}";
-        return new JsonResponse(response);
-      }
-      else
-      {
-        LOG(WARNING, "[WebSrv] Failed to read decoder configuration");
-        request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-      }
-    }
-    else
-    {
-      uint16_t cvNumber = request->param(JSON_CV_NODE, 0);
-      if (cvNumber == 0)
-      {
-        request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
-      }
-      else
-      {
-        int16_t cvValue = readCV(cvNumber);
-        if (cvValue < 0)
-        {
-          request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-        }
-        else
-        {
-          return new JsonResponse(
-            StringPrintf("{\"%s\":%d,\"%s\":%d}", JSON_CV_NODE, cvNumber
-                      , JSON_VALUE_NODE, cvValue));
-        }
-      }
-    }
-  }
-  else if (request->method() == HttpMethod::POST)
-  {
-    uint16_t cv_num = request->param(JSON_CV_NODE, 0);
-    uint16_t cv_value = 0;
-    uint8_t cv_bit = request->param(JSON_CV_BIT_NODE, 0);
-    bool pom = request->param(JSON_PROG_ON_MAIN, false);
-    if (request->has_param(JSON_CV_BIT_NODE))
-    {
-      cv_value = request->param(JSON_VALUE_NODE, false);
-    }
-    else
-    {
-      cv_value = request->param(JSON_VALUE_NODE, 0);
-    }
-
-    if (cv_num == 0)
-    {
-      request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
-    }
-    else if (pom)
-    {
-      uint16_t address = request->param("address", 0);
-      if (request->has_param(JSON_CV_BIT_NODE))
-      {
-        writeOpsCVBit(address, cv_num, cv_bit, cv_value);
-      }
-      else
-      {
-        writeOpsCVByte(address, cv_num, cv_value);
-      }
-    }
-    else if (request->has_param(JSON_CV_BIT_NODE) &&
-             !writeProgCVBit(cv_num, cv_bit,cv_value))
-    {
-      request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-    }
-    else if (!writeProgCVByte(cv_num, cv_value))
-    {
-      request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-    }
-  }
-  */
   return nullptr;
 }
 
@@ -881,7 +720,6 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
 HTTP_HANDLER_IMPL(process_loco, request)
 {
   string url = request->uri();
-  auto traindb = Singleton<esp32cs::Esp32TrainDatabase>::instance();
   request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
 
   // check if we have an eStop command, we don't care how this gets sent to the

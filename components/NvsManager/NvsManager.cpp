@@ -25,7 +25,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <freertos_drivers/esp32/Esp32BootloaderHal.hxx>
 #include <nvs.h>
 #include <nvs_flash.h>
-#include <StatusLED.h>
+#include <StatusLED.hxx>
 using std::string;
 #include <utils/format_utils.hxx>
 #include <utils/logging.h>
@@ -237,12 +237,13 @@ namespace esp32cs
         BOOTLOADER_BUTTON_Pin::instance()->is_set())
     {
       // Set the LEDs in an on/off/on pattern for the blink
-      leds->set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN);
-      leds->set(StatusLED::LED::WIFI_AP, StatusLED::COLOR::OFF);
-      leds->set(StatusLED::LED::BOOTLOADER, StatusLED::COLOR::GREEN);
-      leds->set(StatusLED::LED::OPS_TRACK, StatusLED::COLOR::OFF);
-      leds->set(StatusLED::LED::PROG_TRACK, StatusLED::COLOR::GREEN);
-      leds->refresh();
+      leds->set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN_BLINK, true);
+      leds->set(StatusLED::LED::WIFI_AP, StatusLED::COLOR::GREEN_BLINK);
+      leds->set(StatusLED::LED::BOOTLOADER, StatusLED::COLOR::GREEN_BLINK,
+                true);
+      leds->set(StatusLED::LED::OPS_TRACK, StatusLED::COLOR::GREEN_BLINK);
+      leds->set(StatusLED::LED::PROG_TRACK, StatusLED::COLOR::GREEN_BLINK,
+                true);
 
       // Count down from the overall factory reset time.
       uint8_t hold_time = FACTORY_RESET_HOLD_TIME;
@@ -254,23 +255,19 @@ namespace esp32cs
           LOG(WARNING,
               "Event ID reset in %d seconds, factory reset in %d seconds.",
               hold_time - FACTORY_RESET_EVENTS_HOLD_TIME, hold_time);
-          leds->set(StatusLED::LED::WIFI_STA,
-                    (hold_time % 2) ? StatusLED::COLOR::GREEN : StatusLED::COLOR::OFF);
-          leds->set(StatusLED::LED::OPS_TRACK,
-                    (hold_time % 2) ? StatusLED::COLOR::OFF : StatusLED::COLOR::GREEN);
-          leds->set(StatusLED::LED::PROG_TRACK,
-                    (hold_time % 2) ? StatusLED::COLOR::OFF : StatusLED::COLOR::GREEN);
         }
         else
         {
-          leds->set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::OFF);
-          leds->set(StatusLED::LED::OPS_TRACK, StatusLED::COLOR::OFF);
-          leds->set(StatusLED::LED::PROG_TRACK,  StatusLED::COLOR::OFF);
+          leds->set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::BLUE_BLINK,
+                    true);
+          leds->set(StatusLED::LED::WIFI_AP, StatusLED::COLOR::BLUE_BLINK);
+          leds->set(StatusLED::LED::BOOTLOADER, StatusLED::COLOR::BLUE_BLINK,
+                    true);
+          leds->set(StatusLED::LED::OPS_TRACK, StatusLED::COLOR::BLUE_BLINK);
+          leds->set(StatusLED::LED::PROG_TRACK,  StatusLED::COLOR::BLUE_BLINK,
+                    true);
           LOG(WARNING, "Factory reset in %d seconds.", hold_time);
         }
-        leds->set(StatusLED::LED::BOOTLOADER,
-                  (hold_time % 2) ? StatusLED::COLOR::OFF : StatusLED::COLOR::GREEN);
-        leds->refresh();
         usleep(SEC_TO_USEC(1));
       }
       if (FACTORY_RESET_BUTTON_Pin::instance()->is_clr() && hold_time == 0)
@@ -305,10 +302,8 @@ namespace esp32cs
       // turn on both Bootloader and Activity LEDs, wait ~1sec, turn off
       // Bootloader LED, wait ~1sec, turn off Activity LED.
       leds->set(StatusLED::LED::BOOTLOADER, StatusLED::COLOR::RED);
-      leds->refresh();
-      usleep(SEC_TO_USEC(1));
+      vTaskDelay(pdMS_TO_TICKS(1000));
       leds->set(StatusLED::LED::BOOTLOADER, StatusLED::COLOR::OFF);
-      leds->refresh();
     }
 
     LOG(INFO, "[NVS] Loading configuration");
@@ -491,7 +486,6 @@ void bootloader_led(enum BootloaderLed led, bool value)
       auto leds = Singleton<esp32cs::StatusLED>::instance();
       leds->set(esp32cs::StatusLED::LED::BOOTLOADER,
                value ? esp32cs::StatusLED::COLOR::GREEN : esp32cs::StatusLED::COLOR::OFF);
-      leds->refresh();
     }
     else if (led == LED_REQUEST)
     {

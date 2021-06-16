@@ -48,7 +48,7 @@
           <div class="tooltip tooltip-left" data-tooltip="Connection status"><i id="ws-status"
               class="icon icon-wifi text-dark"></i></div>
           <div class="tooltip tooltip-left" data-tooltip="Click/tap to send emergency
-stop to all active locomotives"><i class="icon icon-stop text-error" onclick="send_estop(this);"></i></div>
+stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></div>
           <div class="tooltip tooltip-left" data-tooltip="Click/tap to turn on/off track power"><i
               class="icon icon-shutdown text-error" id="ops_track_power"></i><small id="ops_usage"></small></div>
           <div class="tooltip tooltip-left" data-tooltip="Click/tap to view currently active locomotives">
@@ -72,7 +72,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       <button class="btn btn-primary" onclick="showTab('#tab-throttle', this);">Throttle</button>
       <button class="btn btn-primary" onclick="showTab('#tab-turnouts', this);">Turnouts</button>
       <button class="btn btn-primary" onclick="showTab('#tab-roster', this);">Locomotive Roster</button>
-      <button class="btn btn-primary" onclick="showTab('#tab-prog', this);">Programmer</button>
       <button class="btn btn-primary" onclick="showTab('#tab-olcbconfig', this);">OpenLCB (LCC)
         Configuration</button>
       <button class="btn btn-primary" onclick="showTab('#tab-ota', this);">Firmware Update</button>
@@ -324,65 +323,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         </div>
       </div>
     </div>
-    <div class="container" style="display:none;" id="tab-prog">
-      <div class="columns">
-        <div class="column"><label for="cs-prog-action">Action:</label></div>
-        <div class="column"><select id="cs-prog-action">
-            <option value="write">Write</option>
-            <option value="read">Read</option>
-            <option value="identify">Identify Address</option>
-          </select>
-        </div>
-      </div>
-      <div class="columns" id="cs-prog-div-target">
-        <div class="column"><label for="cs-prog-target">Programming Mode:</label></div>
-        <div class="column"><select id="cs-prog-target">
-            <option value="prog">PROG</option>
-            <option value="ops">OPS</option>
-          </select></div>
-      </div>
-      <div class="columns" id="cs-prog-div-addr">
-        <div class="column"><label for="cs-prog-addr">DCC Address:</label></div>
-        <div class="column"><input type="number" pattern="[0-9]*" id="cs-prog-addr" value="1" min="1" max="16384">
-        </div>
-      </div>
-      <div class="columns" id="cs-prog-div-cv">
-        <div class="column"><label for="cs-prog-cv">CV:</label></div>
-        <div class="column"><input type="number" pattern="[0-9]*" id="cs-prog-cv" value="1" min="1" max="1024">
-        </div>
-      </div>
-      <div class="columns" id="cs-prog-div-mode">
-        <div class="column"><label for="cs-prog-mode">Mode:</label></div>
-        <div class="column"><select id="cs-prog-mode">
-            <option value="byte">Byte</option>
-            <option value="bit">Bit</option>
-          </select></div>
-      </div>
-      <div class="columns" id="cs-prog-div-value" style="display:none;">
-        <div class="column"><label for="cs-prog-cv-value">Value:</label></div>
-        <div class="column"><input type="number" pattern="[0-9]*" id="cs-prog-cv-value" value="1" min="1" max="255">
-        </div>
-      </div>
-      <div class="columns" id="cs-prog-div-bit" style="display:none;">
-        <div class="column"><label for="cs-prog-cv-bit">Bit:</label></div>
-        <div class="column"><input type="number" pattern="[0-7]*" id="cs-prog-cv-bit" value="0" min="0" max="7">
-        </div>
-        <div class="column" id="cs-prog-div-bit-value"><input type="checkbox" id="cs-prog-cv-bit-value"
-            data-role="flipswitch" data-off-text="Off" data-on-text="On"></div>
-      </div>
-      <div class="columns" id="cs-prog-div-create-roster" style="display:none;">
-        <div class="column"><label class="form-switch">
-            <input type="checkbox" id="cs-prog-create-roster">
-            <i class="form-icon"></i>Create Roster entry?
-          </label></div>
-      </div>
-      <div class="columns">
-        <div class="column"><button class="btn btn-primary" id="cs-prog-execute">Execute</button></div>
-      </div>
-      <div class="columns">
-        <div class="column column-12"><textarea id="cs-prog-result"></textarea></div>
-      </div>
-    </div>
     <div class="container" style="display:none;" id="tab-olcbconfig">
       <ul class="tab tab-block">
         <li class="tab-item">
@@ -490,11 +430,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
   </div>
   <script type="text/javascript">
     const ws_retry_connection_timeout_ms = 500;
-    const ws_ping_timeout_ms = 2000;
-    const ws_ping_interval_ms = 5000;
     const cs_status_interval_ms = 25000;
     const page_reload_delay_ms = 7500;
-    const fetch_timeout_ms = 10000;
+    const fetch_timeout_ms = 20000;
     const turnout_types = ["Left", "Right", "Wye", "Multi"];
     const turnout_states = ["Closed", "Thrown"];
     const turnout_states_tooltip = ["Throw", "Close"];
@@ -506,6 +444,8 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     ];
     const ops_track_off_evt = '01.00.00.00.00.00.FF.FF';
     const ops_track_on_evt = '01.00.00.00.00.00.FF.FE';
+    const estop_evt = '01.00.00.00.00.00.FF.FD';
+    const estop_clear_evt = '01.00.00.00.00.00.FF.FC';
     var ops_track_overcurrent_evt = '';
     var ops_track_shutdown_evt = '';
 
@@ -516,8 +456,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
     var s88SensorIDBase = 512;
     var cdi_loaded = false;
     var cdi_loaders = [];
-    var ws_ping_timer_id = 0;
-    var ws_ping_interval_timer_id = 0;
     var cs_status_interval_timer_id = 0;
 
     function get_ws_msg_id() {
@@ -591,6 +529,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           }
           toggleModal('#active-locos');
         }).catch(function (error) {
+          $(button).toggleClass('loading');
           showErrorDialog('Failed to retrieve active locomotive list', error);
           $('#active-locos-empty').show();
           $('#active-locos-table').hide();
@@ -608,7 +547,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       alert(text);
     }
     function reload_page() {
-      clearInterval(ws_ping_interval_timer_id);
       clearInterval(cs_status_interval_timer_id);
       ws_cleanup();
       setTimeout(function () { location.reload(); }, page_reload_delay_ms);
@@ -619,7 +557,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         ws.removeEventListener('message', ws_rx);
         ws.removeEventListener('error', ws_closed);
         ws.removeEventListener('close', ws_closed);
-        clearTimeout(ws_ping_timer_id);
         ws.close();
       }
     }
@@ -628,13 +565,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         ws.close();
       }
       connectWebSocket();
-    }
-    function ws_ping() {
-      ws_ping_timer_id = setTimeout(ws_dead, ws_ping_timeout_ms);
-      ws_tx(JSON.stringify({
-        req: 'ping',
-        id: get_ws_msg_id()
-      }));
     }
     function cs_status() {
       ws_tx(JSON.stringify({
@@ -657,17 +587,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
             $('#sw_version').text(json.snip_sw);
             $('#hw_version').text(json.snip_hw);
             $('#btn-save_node_id').removeClass('loading');
-            if (json.sensors === false) {
-              $('[id^=cs-sensors]').hide();
-            }
-            if (json.outputs === false) {
-              $('[id^=cs-outputs]').hide();
-            }
-            if (json.s88 === false) {
-              $('[id^=cs-sensors-s88]').hide();
-            } else {
-              s88SensorIDBase = json.sensorIDBase;
-            }
             if (json.statusLED === false) {
               $('#status_led').hide();
             } else {
@@ -677,7 +596,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
               $('#bootloader').hide();
             }
             cs_status();
-            ws_ping_interval_timer_id = setInterval(ws_ping, ws_ping_interval_ms);
             cs_status_interval_timer_id = setInterval(cs_status, cs_status_interval_ms);
           } else if (json.res === 'saved') {
             reset_cdi_buttons(json.tgt);
@@ -728,23 +646,18 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
               updateTrackPowerStatus(true, false);
             } else if (json.evt === ops_track_off_evt) {
               updateTrackPowerStatus(false, false);
-            /*} else if (json.evt === ops_track_overcurrent_evt) {
-              updateTrackPowerStatus(true, true);
-            } else if (json.evt === ops_track_shutdown_evt) {
-              updateTrackPowerStatus(true, true);*/
+            } else if (json.evt === estop_clear_evt) {
+              $('#ops_estop').removeClass('text-error');
+            } else if (json.evt === estop_evt) {
+              $('#ops_estop').addClass('text-error');
             }
           } else if (json.res === 'pong') {
-            clearTimeout(ws_ping_timer_id);
           } else if (json.res === 'status') {
-            json.track.forEach(track => {
-              if (!track.prog) {
-                updateTrackPowerStatus(track.state !== 'Off',
-                  (track.state === 'Fault' || track.state === 'Shutdown'));
-                if (track.state !== 'Off') {
-                  $('#ops_usage').text(String.format('{0} mA', track.usage));
-                }
-              }
-            });
+            updateTrackPowerStatus(json.track !== 'Off',
+              (json.track === 'Fault' || json.track === 'Shutdown'));
+            if (json.hasOwnProperty("usage") && json.track !== 'Off') {
+              $('#ops_usage').text(String.format('{0} mA', json.usage));
+            }
           }
         }
       });
@@ -773,7 +686,6 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
       console.warn('WS closed, reconnecting. Reason:', event.reason);
       $('#ws-status').addClass('text-dark');
       $('#ws-status').removeClass('text-success');
-      setTimeout(connectWebSocket, ws_retry_connection_timeout_ms);
     }
     function connectWebSocket() {
       if (!window.location.host.length) {
@@ -889,27 +801,33 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
         if ($(this).hasClass('text-error')) {
           ws_tx(JSON.stringify({
             req: 'event',
-            evt: '01.00.00.00.00.00.FF.FE',
+            evt: ops_track_on_evt,
             id: get_ws_msg_id()
           }));
         } else {
           ws_tx(JSON.stringify({
             req: 'event',
-            evt: '01.00.00.00.00.00.FF.FF',
+            evt: ops_track_off_evt,
             id: get_ws_msg_id()
           }));
         }
         $('this').toggleClass('loading');
       });
-    }
-    function send_estop(button) {
-      ws_tx(JSON.stringify({
-        req: 'event',
-        evt: '01.00.00.00.00.00.FF.FD',
-        id: get_ws_msg_id()
-      }));
-      // TODO: add ability to clear e-stop?
-      // ws_tx(JSON.stringify({r:'event', v:'01.00.00.00.00.00.FF.FC', id:get_ws_msg_id()}));
+      $('#ops_estop').on('click', function (event) {
+        if ($(this).hasClass('text-error')) {
+          ws_tx(JSON.stringify({
+            req: 'event',
+            evt: estop_clear_evt,
+            id: get_ws_msg_id()
+          }));
+        } else {
+          ws_tx(JSON.stringify({
+            req: 'event',
+            evt: estop_evt,
+            id: get_ws_msg_id()
+          }));
+        }
+      });
     }
     function showLocoSelect(button) {
       if (window.location.host.length) {
@@ -935,6 +853,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           }
           toggleModal('#loco-select');
         }).catch(function (error) {
+          $(button).toggleClass('loading');
           showErrorDialog('Failed to retrieve locomotive roster', error);
           $("#loco-list").hide();
           $("#loco-manual").show();
@@ -1041,6 +960,9 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           }
           $('#tab-turnouts').show();
         }).catch(function (error) {
+          if (button) {
+            $(button).toggleClass('loading');
+          }
           showErrorDialog('Failed to retrieve turnout list', error);
           $("#turnouts-table").hide();
           $("#turnouts-empty").show();
@@ -1118,15 +1040,15 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           }
           $('#tab-roster').show();
         }).catch(function (error) {
+          if (button) {
+            $(button).toggleClass('loading');
+          }
           showErrorDialog('Failed to retrieve turnout list', error);
           $("#roster-table").hide();
           $("#roster-empty").show();
           $('#tab-roster').show();
         });
       } else {
-        if (button) {
-          $(button).toggleClass('loading');
-        }
         $("#roster-table").hide();
         $("#roster-empty").show();
         $('#tab-roster').show();
@@ -1282,9 +1204,7 @@ stop to all active locomotives"><i class="icon icon-stop text-error" onclick="se
           req: 'bootloader',
           id: get_ws_msg_id()
         }));
-        clearInterval(ws_ping_interval_timer_id);
         clearInterval(cs_status_interval_timer_id);
-        clearTimeout(ws_ping_timer_id);
         ws.removeEventListener('error', ws_closed);
         ws.removeEventListener('close', ws_closed);
         alert('The request to enter the bootloader has sent.\n\nOnce the command station returns to normal operating mode, you will need to manually refresh this page.');

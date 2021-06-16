@@ -22,13 +22,9 @@ set(IDF_DEPS
     efuse
     esp_adc_cal
     esp_common
-    fatfs
     json
     nvs_flash
     soc
-    spi_flash
-    spiffs
-    vfs
 )
 
 set(CUSTOM_DEPS
@@ -38,6 +34,7 @@ set(CUSTOM_DEPS
     NeoPixelBus
     NvsManager
     OpenMRNIDF
+    StatusDisplay
     StatusLED
     TrainDatabase
     TrainSearchProtocol
@@ -47,14 +44,10 @@ set(CUSTOM_DEPS
 
 set(CS_SOURCE_FILES
     ESP32CommandStation.cpp
-    FileSystem.cpp
-    StatusDisplay.cpp
-    StatusDisplayOLED.cpp
-    StatusDisplayLCD.cpp
     WebServer.cpp
 )
 
-idf_component_register(SRCS "${CS_SOURCE_FILES}"
+idf_component_register(SRCS "WebServer.cpp" "ESP32CommandStation.cpp" "${CS_SOURCE_FILES}"
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 
 # export the project version as a define for the SNIP data, note it must be

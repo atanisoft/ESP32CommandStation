@@ -17,16 +17,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include "sdkconfig.h"
 #include "cdi.hxx"
-#include "DelayRebootHelper.hxx"
-#include "EventBroadcastHelper.hxx"
-#include "FactoryResetHelper.hxx"
-#include "FileSystem.hxx"
 #include "hardware.hxx"
-#include "HealthMonitor.hxx"
-#include "NodeIdMemoryConfigSpace.hxx"
-#include "NodeRebootHelper.hxx"
-#include "NvsManager.hxx"
-#include "StatusDisplay.hxx"
 #include "ThermalMonitorFlow.hxx"
 #include <AllTrainNodes.hxx>
 #include <CDIXMLGenerator.hxx>
@@ -34,17 +25,26 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <dcc/PacketSource.hxx>
 #include <dcc/UpdateLoop.hxx>
 #include <DCCSignalVFS.hxx>
+#include <DelayRebootHelper.hxx>
 #include <esp_adc_cal.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
+#include <FileSystem.hxx>
+#include <EventBroadcastHelper.hxx>
+#include <FactoryResetHelper.hxx>
 #include <freertos_drivers/esp32/Esp32SocInfo.hxx>
 #include <freertos_drivers/esp32/Esp32HardwareTwai.hxx>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
+#include <HealthMonitor.hxx>
 #include <Httpd.h>
 #include <mutex>
+#include <NodeIdMemoryConfigSpace.hxx>
+#include <NodeRebootHelper.hxx>
+#include <NvsManager.hxx>
 #include <openlcb/MemoryConfigClient.hxx>
 #include <openlcb/SimpleStack.hxx>
-#include <StatusLED.h>
+#include <StatusDisplay.hxx>
+#include <StatusLED.hxx>
 #include <TrainDatabase.h>
 #include <Turnouts.h>
 #include <utils/AutoSyncFileFlow.hxx>
@@ -168,9 +168,9 @@ namespace openlcb
 } // namespace openlcb
 
 void init_webserver(openlcb::SimpleCanStack *can_stack,
-                    Esp32WiFiManager *wifi_mgr,
                     esp32cs::NvsManager *nvs_mgr,
-                    openlcb::MemoryConfigClient *mem_client);
+                    openlcb::MemoryConfigClient *mem_client,
+                    esp32cs::Esp32TrainDatabase *train_db);
 
 extern "C" void app_main()
 {
@@ -278,8 +278,8 @@ extern "C" void app_main()
 #endif // CONFIG_OLCB_TWAI_SELECT
 #endif // CONFIG_OLCB_TWAI_ENABLED
 
-    init_webserver(stack.operator->(), wifi_manager.operator->(), &nvs,
-                   memory_client.operator->());
+    init_webserver(stack.operator->(), &nvs, memory_client.operator->(),
+                   train_db.operator->());
 
     // Start the stack in the background using it's own task.
     stack->start_executor_thread("OpenMRN", 0, 4096);
