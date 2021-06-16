@@ -33,79 +33,50 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 
 namespace esp32cs
 {
-#if CONFIG_DCC_RMT_HIGH_FIRST
-// This configures the first half of the bit to be sent as a high and second
-// half as low.
-static constexpr const char * const RMT_TRACK_DEVICE_DCC_WAVE_FMT =
-  "high,low";
-static constexpr uint8_t RMT_TRACK_DEVICE_DCC_TOP_HALF = 1;
-static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 0;
-#else
-// This configures the first half of the bit to be sent as a low and second
-// half as high.
-static constexpr const char * const RMT_TRACK_DEVICE_DCC_WAVE_FMT =
-  "low,high";
-static constexpr uint8_t RMT_TRACK_DEVICE_DCC_TOP_HALF = 0;
-static constexpr uint8_t RMT_TRACK_DEVICE_DCC_BOTTOM_HALF = 1;
-#endif // CONFIG_DCC_RMT_HIGH_FIRST
 
-///////////////////////////////////////////////////////////////////////////////
-// DCC ZERO bit pre-encoded in RMT format.
-///////////////////////////////////////////////////////////////////////////////
-static constexpr rmt_item32_t DCC_RMT_ZERO_BIT =
-{{{
-    CONFIG_DCC_RMT_TICKS_ZERO_PULSE, // number of microseconds for TOP half
-    RMT_TRACK_DEVICE_DCC_TOP_HALF,   // of the square wave.
-    CONFIG_DCC_RMT_TICKS_ZERO_PULSE, // number of microseconds for BOTTOM half
-    RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // of the square wave.
-}}};
-
-///////////////////////////////////////////////////////////////////////////////
-// DCC ONE bit pre-encoded in RMT format.
-///////////////////////////////////////////////////////////////////////////////
-static constexpr rmt_item32_t DCC_RMT_ONE_BIT =
-{{{
-    CONFIG_DCC_RMT_TICKS_ONE_PULSE,  // number of microseconds for TOP half
-    RMT_TRACK_DEVICE_DCC_TOP_HALF,   // of the square wave.
-    CONFIG_DCC_RMT_TICKS_ONE_PULSE,  // number of microseconds for BOTTOM half
-    RMT_TRACK_DEVICE_DCC_BOTTOM_HALF // of the square wave.
-}}};
-
-///////////////////////////////////////////////////////////////////////////////
-// The NMRA DCC Signal is sent as a square wave with each half having
-// identical timing (or nearly identical). Packet Bytes have a minimum of 11
-// preamble ONE bits in order to be considered valid by the decoder. For
-// RailCom support it is recommended to have at least 16 preamble bits. For the
-// Programming Track it is required to have a longer preamble of at least 22
-// bits. Packet data follows immediately after the preamble bits, between the
-// packet bytes a DCC ZERO is sent. After the last byte of packet data a DCC
-// ONE is sent.
-//
-// DCC ZERO:
-//    ----------------
-//    |     100      |
-// ---|     usec     |     100      ---
-//                   |     usec     |
-//                   ----------------
-// DCC ONE:
-//    --------
-//    |  58  |      
-// ---| usec |  58  ---
-//           | usec |
-//           --------
-//
-// NMRA S-9.1 reference:
-// https://www.nmra.org/sites/default/files/standards/sandrp/pdf/s-9.1_electrical_standards_2020.pdf
-//
-///////////////////////////////////////////////////////////////////////////////
+/// The NMRA DCC Signal is sent as a square wave with each half having
+/// identical timing (or nearly identical). Packet Bytes have a minimum of 11
+/// preamble ONE bits in order to be considered valid by the decoder. For
+/// RailCom support it is recommended to have at least 16 preamble bits. For
+/// the Programming Track it is required to have a longer preamble of at least
+/// 22 bits. Packet data follows immediately after the preamble bits, between
+/// the packet bytes a DCC ZERO is sent. After the last byte of packet data a
+/// DCC ONE is sent.
+///
+/// DCC ZERO:
+/// `
+///    ----------------
+///    |     100      |
+/// ---|     usec     |     100      ---
+///                   |     usec     |
+///                   ----------------
+/// `
+/// DCC ONE:
+/// `
+///    --------
+///    |  58  |      
+/// ---| usec |  58  ---
+///           | usec |
+///           --------
+/// `
+///
+/// NMRA S-9.1 reference:
+/// https://www.nmra.org/sites/default/files/standards/sandrp/pdf/s-9.1_electrical_standards_2020.pdf
 template<class HW, class DCC_BOOSTER>
 class RMTTrackDevice
 {
 public:
+  /// Constructor.
+  ///
+  /// @param railcomDriver @ref RailcomDriver instance to use for cut-out
+  /// generation.
   RMTTrackDevice(RailcomDriver *railcomDriver) : railcomDriver_(railcomDriver)
   {
   }
-  /// Hardware initialization routine
+
+  /// Hardware initialization routine.
+  /// NOTE: This must be called after other systems have started to enable the
+  /// RMT peripheral and to start generating the DCC signal.
   void hw_init()
   {
     // allocate buffer space for the packet queue items.
@@ -120,38 +91,47 @@ public:
                       , (uint8_t*)packetQueueBuf_, &packetQueue_);
     HASSERT(packetQueueHandle_ != NULL);
 
+    // calculate the maximum number of bits that can be transmitted in a single
+    // dcc packet, with the current configuration the maximum number of bits
+    // for a single dcc packet is 192 while using up to 50 preamble bits.
+    uint16_t maxBitCount =
+      std::max(HW::DCC_SERVICE_MODE_PREAMBLE_BITS, HW::DCC_PREAMBLE_BITS) +
+      1 + (dcc::Packet::MAX_PAYLOAD * 8) + dcc::Packet::MAX_PAYLOAD + 3;
+    HASSERT(maxBitCount <= MAX_RMT_ENCODED_BITS);
+    uint8_t memoryBlocks = (maxBitCount / RMT_MEM_ITEM_NUM) + 1;
+    HASSERT(memoryBlocks <= MAX_RMT_MEMORY_BLOCKS);
     LOG(INFO,
-        "[RMT] DCC config: zero:%duS, one:%duS, preamble-bits:%d/%d, wave:%s",
-        CONFIG_DCC_RMT_TICKS_ZERO_PULSE, CONFIG_DCC_RMT_TICKS_ONE_PULSE,
+        "[DCC-RMT-%d] DCC config: zero:%duS, one:%duS, preamble-bits:%d/%d, "
+        "wave:%s, signal pin:%d, RMT-mem:%d (blocks:%d), RMT-CLK:%s (%d)",
+        HW::RMT_CHANNEL, HW::DCC_ZERO_RMT_TICKS, HW::DCC_ONE_RMT_TICKS,
         HW::DCC_PREAMBLE_BITS, HW::DCC_SERVICE_MODE_PREAMBLE_BITS,
-        RMT_TRACK_DEVICE_DCC_WAVE_FMT);
-#if 0
-    LOG(INFO,
-        "[RMT] Marklin-Motorola config: zero: %duS (high), zero: %duS (low), "
-        "one: %duS (high), one: %duS (low), preamble: %duS (low)",
-        MARKLIN_ZERO_BIT_PULSE_HIGH_USEC, MARKLIN_ZERO_BIT_PULSE_LOW_USEC,
-        MARKLIN_ONE_BIT_PULSE_HIGH_USEC, MARKLIN_ONE_BIT_PULSE_LOW_USEC,
-        MARKLIN_PREAMBLE_BIT_PULSE_HIGH_USEC + MARKLIN_PREAMBLE_BIT_PULSE_LOW_USEC);
-#endif
-    LOG(INFO, "[RMT] signal pin: %d, RMT-%d", HW::DCC_SIGNAL_PIN_NUM,
-        HW::RMT_CHANNEL);
+        HW::RMT_WAVE_FMT, HW::DCC_SIGNAL_PIN_NUM, maxBitCount,
+        memoryBlocks, RMT_CLOCK_SOURCE[HW::RMT_CLOCK_SOURCE],
+        HW::RMT_CLOCK_SOURCE);
 
     // Configure the RMT channel for TX
-    rmt_config_t config =
-      RMT_DEFAULT_CONFIG_TX(HW::DCC_SIGNAL_PIN_NUM, HW::RMT_CHANNEL);
+    rmt_config_t config;
+    memset(&config, 0, sizeof(rmt_config_t));
+    config.rmt_mode = RMT_MODE_TX;
+    config.channel = HW::RMT_CHANNEL;
+    config.clk_div = CONFIG_DCC_RMT_CLOCK_DIVIDER;
+    config.gpio_num = HW::DCC_SIGNAL_PIN_NUM;
+    config.mem_block_num = memoryBlocks;
     ESP_ERROR_CHECK(rmt_config(&config));
     ESP_ERROR_CHECK(
       rmt_driver_install(HW::RMT_CHANNEL, 0 /* rx count */, RMT_ISR_FLAGS));
+    ESP_ERROR_CHECK(rmt_set_source_clk(HW::RMT_CHANNEL, HW::RMT_CLOCK_SOURCE));
 
-    LOG(INFO, "[RMT] Starting signal generator");
+    LOG(INFO, "[DCC-RMT-%d] Starting signal generator", HW::RMT_CHANNEL);
     // send one bit to kickstart the signal, remaining data will come from the
     // packet queue. We intentionally do not wait for the RMT TX complete here.
     rmt_write_items(HW::RMT_CHANNEL, &DCC_RMT_ONE_BIT, 1, false);
   }
 
+  /// Destructor.
   ~RMTTrackDevice()
   {
-    LOG(INFO, "[RMT] Shutting down signal generator");
+    LOG(INFO, "[DCC-RMT-%d] Shutting down signal generator", HW::RMT_CHANNEL);
     rmt_driver_uninstall(HW::RMT_CHANNEL);
     if (packetQueueHandle_)
     {
@@ -257,57 +237,42 @@ public:
 
     // if we need to wake up another task we can safely do it after sending the
     // packet off to be transmitted.
-    if (woken == pdTRUE)
-    {
-      portYIELD_FROM_ISR();
-    }
+    portYIELD_FROM_ISR(woken);
   }
 
 private:
-  // maximum number of RMT memory blocks (256 bytes each, 4 bytes per data bit)
-  // this will result in a max payload of 192 bits which is larger than any
-  // known DCC packet with the addition of up to 50 preamble bits.
+  /// Maximum number of RMT memory blocks to allow for the DCC signal
+  /// generation. With three memory blocks it is possible to send up to 192
+  /// bits per DCC packet with up to 50 preamble bits.
   static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = 3;
+
+  /// Maximum number of bits that can be transmitted as one packet.
+  static constexpr uint8_t MAX_RMT_ENCODED_BITS =
+    RMT_MEM_ITEM_NUM * MAX_RMT_MEMORY_BLOCKS;
 
   /// malloc() capabilities to use for the DCC packet queue. This is configured
   /// to use internal 8-bit capable memory only.
   static constexpr uint32_t RMT_MALLOC_CAPS = MALLOC_CAP_INTERNAL |
                                               MALLOC_CAP_8BIT;
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // Declare ISR flags for the RMT driver ISR.
-  //
-  // NOTE: ESP_INTR_FLAG_IRAM is *NOT* included in this bitmask so that we do not
-  // have a dependency on execution from IRAM and the related software
-  // limitations of execution from there.
-  ///////////////////////////////////////////////////////////////////////////////
+  /// Declare ISR flags for the RMT driver ISR.
+  ///
+  /// NOTE: ESP_INTR_FLAG_IRAM is *NOT* included in this bitmask so that we do
+  /// not have a dependency on execution from IRAM and the related software
+  /// limitations of execution from there.
   static constexpr uint32_t RMT_ISR_FLAGS =
   (
-      ESP_INTR_FLAG_LOWMED |            // ISR is implemented in C code
-      ESP_INTR_FLAG_SHARED              // ISR is shared across multiple handlers
+      ESP_INTR_FLAG_LOWMED |  // ISR is implemented in C code
+      ESP_INTR_FLAG_SHARED    // ISR is shared across multiple handlers
   );
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // Maximum amount of time to wait for the packet queue to have space available
-  // for another packet before giving up. Currently configured to not wait.
-  ///////////////////////////////////////////////////////////////////////////////
-  static constexpr BaseType_t MAX_PACKET_QUEUE_WAIT_TIME = 0;
-  RailcomDriver *railcomDriver_;
-  StaticQueue_t packetQueue_;
-  QueueHandle_t packetQueueHandle_{nullptr};
-  void *packetQueueBuf_{nullptr};
-  Notifiable* notifiable_{nullptr};
-  int8_t pktRepeatCount_{0};
-  uint32_t pktLength_{0};
-#ifdef SOC_RMT_CHANNEL_MEM_WORDS
-  rmt_item32_t packet_[SOC_RMT_CHANNEL_MEM_WORDS * MAX_RMT_MEMORY_BLOCKS];
-#elif defined(SOC_RMT_MEM_WORDS_PER_CHANNEL)
-  rmt_item32_t packet_[SOC_RMT_MEM_WORDS_PER_CHANNEL * MAX_RMT_MEMORY_BLOCKS];
-#else
-#error Unable to determine RMT bits per channel
-#endif
+  /// Visual names for the RMT Clock source.
+  static constexpr const char * const RMT_CLOCK_SOURCE[] =
+  {
+    "REF", // Reference clock, 1MHz.
+    "APB"  // APB clock, 80Mhz.
+  };
 
-#if CONFIG_DCC_RMT_EMC_SPREAD
   /// Maximum number of microseconds that can be added to each bit pulse time.
   ///
   /// S-9.1 provides a maximum length of 105 and 61 microseconds for each half
@@ -316,11 +281,54 @@ private:
   /// NOTE: the values below are one higher than maximum to allow for modulo
   /// operation.
   static constexpr uint8_t DCC_RMT_MAX_ZERO_BIT_SPREAD =
-    105 - CONFIG_DCC_RMT_TICKS_ZERO_PULSE + 1;
+    105 - HW::DCC_ZERO_RMT_TICKS + 1;
   static constexpr uint8_t DCC_RMT_MAX_ONE_BIT_SPREAD =
-    61 - CONFIG_DCC_RMT_TICKS_ONE_PULSE + 1;
-#endif // CONFIG_DCC_RMT_EMC_SPREAD
+    61 - HW::DCC_ONE_RMT_TICKS + 1;
 
+  /// DCC ZERO bit pre-encoded in RMT format.
+  static rmt_item32_t DCC_RMT_ZERO_BIT;
+
+  /// DCC ONE bit pre-encoded in RMT format.
+  static rmt_item32_t DCC_RMT_ONE_BIT;
+
+  /// Maximum amount of time to wait for the packet queue to have space
+  /// available for another packet before giving up. Currently configured to
+  /// not wait.
+  static constexpr BaseType_t MAX_PACKET_QUEUE_WAIT_TIME = 0;
+
+  /// @ref RailcomDriver instance to use for possibly generating the RailCom
+  /// cut-out period.
+  RailcomDriver *railcomDriver_;
+
+  /// Queue to use for DCC packets that are pending encoding for delivery.
+  StaticQueue_t packetQueue_;
+  
+  /// Handle to @ref packetQueue_.
+  QueueHandle_t packetQueueHandle_{nullptr};
+
+  /// Memory block used for @ref packetQueue_.
+  void *packetQueueBuf_{nullptr};
+
+  /// Notifiable to use when there is space available in @ref packetQueue_.
+  Notifiable* notifiable_{nullptr};
+
+  /// Number of repeats of the current packet to send.
+  int8_t pktRepeatCount_{0};
+  
+  /// Number of encoded bits in the current packet.
+  uint32_t pktLength_{0};
+
+  /// Encoded bits of the current packet.
+  rmt_item32_t packet_[MAX_RMT_ENCODED_BITS];
+
+  /// Encodes the next DCC packet for transmission by the RMT peripheral.
+  ///
+  /// @param woken will be set to pdTRUE if the ISR should transfer control to
+  /// another task.
+  ///
+  /// NOTE: this will only encode the next packet if the current packet has
+  /// reached the required number of repeats.
+  /// NOTE: Marklin packets will be converted to an IDLE packet.
   void encode_next_packet(BaseType_t *woken)
   {
     // Bit mask constants used as part of the packet translation layer.
@@ -336,7 +344,7 @@ private:
     {
       return;
     }
-    // attempt to fetch a packet from the queue or use an idle packet
+    // attempt to fetch a packet from the queue or use an idle packet.
     Notifiable* n = nullptr;
     dcc::Packet packet{dcc::Packet::DCC_IDLE()};
     
@@ -350,10 +358,13 @@ private:
     {
       n->notify_from_isr();
     }
+    // If the packet is using the Marklin format convert it over to an IDLE
+    // packet since Marklin-Motorola format is not supported.
     if (packet.packet_header.is_marklin)
     {
       packet = dcc::Packet::DCC_IDLE();
     }
+
 #if CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
     uint32_t preableBitCount = HW::DCC_SERVICE_MODE_PREAMBLE_BITS;
 #else
@@ -375,10 +386,11 @@ private:
     // encode the packet bits
     for (uint8_t dlc = 0; dlc < packet.dlc; dlc++)
     {
-      for(uint8_t bit = 0; bit < 8; bit++, pktLength_++)
+      for(uint8_t bit = 0; bit < 8; bit++)
       {
-        packet_[pktLength_].val = PACKET_BIT_MASK[bit] ?
-          DCC_RMT_ONE_BIT.val : DCC_RMT_ZERO_BIT.val;
+        packet_[pktLength_++].val =
+          packet.payload[dlc] & PACKET_BIT_MASK[bit] ?
+            DCC_RMT_ONE_BIT.val : DCC_RMT_ZERO_BIT.val;
       }
       // end of byte marker
       packet_[pktLength_++].val = DCC_RMT_ZERO_BIT.val;
@@ -405,27 +417,49 @@ private:
     {
       if (packet_[idx].val == packet_[idx - 1].val)
       {
-        if (packet_[idx].val == DCC_RMT_ZERO_BIT.val)
+        if (packet_[idx - 1].val == DCC_RMT_ZERO_BIT.val)
         {
-          packet_[idx].duration0 += (idx % DCC_RMT_MAX_ZERO_BIT_SPREAD);
-          packet_[idx].duration1 += (idx % DCC_RMT_MAX_ZERO_BIT_SPREAD);
+          packet_[idx - 1].duration0 += (idx % DCC_RMT_MAX_ZERO_BIT_SPREAD);
+          packet_[idx - 1].duration1 += (idx % DCC_RMT_MAX_ZERO_BIT_SPREAD);
         }
         else
         {
-          packet_[idx].duration0 += (idx % DCC_RMT_MAX_ONE_BIT_SPREAD);
-          packet_[idx].duration1 += (idx % DCC_RMT_MAX_ONE_BIT_SPREAD);
+          packet_[idx - 1].duration0 += (idx % DCC_RMT_MAX_ONE_BIT_SPREAD);
+          packet_[idx - 1].duration1 += (idx % DCC_RMT_MAX_ONE_BIT_SPREAD);
         }
       }
     }
-#endif
-    // record the repeat count
+#endif // CONFIG_DCC_RMT_EMC_SPREAD
+
+    // record the repeat count.
     pktRepeatCount_ = packet.packet_header.rept_count;
 
+    // Send the feedback key to the RailCom driver instance.
     railcomDriver_->set_feedback_key(packet.feedback_key);
   }
 
   DISALLOW_COPY_AND_ASSIGN(RMTTrackDevice);
 };
+
+/// DCC ZERO bit pre-encoded in RMT format.
+template<class HW, class DCC_BOOSTER>
+rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER>::DCC_RMT_ZERO_BIT =
+{{{
+    HW::DCC_ZERO_RMT_TICKS, // number of microseconds for the first half of the
+    HW::RMT_DCC_FIRST_HALF, // DCC signal wave format.
+    HW::DCC_ZERO_RMT_TICKS, // number of microseconds for the second half of
+    HW::RMT_DCC_SECOND_HALF // the DCC signal wave format.
+}}};
+
+/// DCC ONE bit pre-encoded in RMT format.
+template<class HW, class DCC_BOOSTER>
+rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER>::DCC_RMT_ONE_BIT =
+{{{
+    HW::DCC_ONE_RMT_TICKS,  // number of microseconds for the first half of the
+    HW::RMT_DCC_FIRST_HALF, // DCC signal wave format.
+    HW::DCC_ONE_RMT_TICKS,  // number of microseconds for the second half of
+    HW::RMT_DCC_SECOND_HALF // the DCC signal wave format.
+}}};
 
 } // namespace esp32cs
 

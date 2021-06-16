@@ -36,8 +36,8 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <soc/timer_periph.h>
 
 // Validate configured pins are defined and if not disable the feature.
-#ifndef CONFIG_OPS_TRACK_BRAKE_PIN
-#define CONFIG_OPS_TRACK_BRAKE_PIN -1
+#ifndef CONFIG_DCC_TRACK_BRAKE_PIN
+#define CONFIG_DCC_TRACK_BRAKE_PIN -1
 #endif
 
 #ifndef CONFIG_RAILCOM_TRIGGER_PIN
@@ -86,8 +86,10 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 // Sanity check that the preamble bits are within range.
 #ifndef CONFIG_PROG_DCC_PREAMBLE_BITS
+#warning CONFIG_PROG_DCC_PREAMBLE_BITS is not defined and has been set to 22.
 #define CONFIG_PROG_DCC_PREAMBLE_BITS 22
-#elif CONFIG_PROG_DCC_PREAMBLE_BITS < 22 || CONFIG_PROG_DCC_PREAMBLE_BITS > 75
+#elif CONFIG_PROG_DCC_PREAMBLE_BITS < 22 || CONFIG_PROG_DCC_PREAMBLE_BITS > 50
+#warning CONFIG_PROG_DCC_PREAMBLE_BITS is outside of supported range (22-50) and has been reset to 22.
 #undef CONFIG_PROG_DCC_PREAMBLE_BITS
 #define CONFIG_PROG_DCC_PREAMBLE_BITS 22
 #endif
@@ -102,23 +104,20 @@ typedef DummyPin OLED_RESET_Pin;
 
 /// DCC Signal output pin
 GPIO_PIN(DCC_SIGNAL, GpioOutputSafeLow, CONFIG_DCC_TRACK_SIGNAL_PIN);
+#if CONFIG_DCC_TRACK_BRAKE_PIN != -1
+/// H-Bridge BRAKE pin, inverse of the ENABLE pin.
+GPIO_PIN(DCC_BRAKE, GpioOutputSafeHigh, CONFIG_DCC_TRACK_BRAKE_PIN);
+#else
+/// H-Bridge BRAKE pin, inverse of the ENABLE pin.
+typedef DummyPin DCC_BRAKE_Pin;
+#endif // CONFIG_DCC_TRACK_BRAKE_PIN != -1
+
 #if CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG || CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
 /// Enables the OPS track output h-bridge.
 GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_TRACK_ENABLE_PIN);
-
-#if CONFIG_OPS_TRACK_BRAKE_PIN != -1
-/// OLED Reset signal pin.
-GPIO_PIN(OPS_BRAKE, GpioOutputSafeHigh, CONFIG_OPS_TRACK_BRAKE_PIN);
-#else
-/// Inverse of the OPS Track output enable pin.
-typedef DummyPin OPS_BRAKE_Pin;
-#endif // CONFIG_OPS_TRACK_BRAKE_PIN != -1
-
 #else // OPS DISABLED
 /// Enables the OPS track output h-bridge.
 typedef DummyPin OPS_ENABLE_Pin;
-/// Inverse of the OPS Track output enable pin.
-typedef DummyPin OPS_BRAKE_Pin;
 #endif // DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_OPS_ONLY
 
 #if CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG || CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY
@@ -155,7 +154,7 @@ typedef DummyPinWithReadHigh BOOTLOADER_BUTTON_Pin;
 
 /// GPIO Pin initializer.
 typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin,
-                        DCC_SIGNAL_Pin, OPS_ENABLE_Pin, OPS_BRAKE_Pin,
+                        DCC_SIGNAL_Pin, DCC_BRAKE_Pin, OPS_ENABLE_Pin,
                         PROG_ENABLE_Pin, FACTORY_RESET_BUTTON_Pin,
                         BOOTLOADER_BUTTON_Pin> GpioInit;
 
@@ -239,7 +238,7 @@ struct DccHwDefs
   static constexpr gpio_num_t DCC_SIGNAL_PIN_NUM =
     (gpio_num_t)CONFIG_DCC_TRACK_SIGNAL_PIN;
 
-#if CONFIG_OPS_TRACK_BRAKE_PIN != -1
+#if CONFIG_DCC_TRACK_BRAKE_PIN != -1
   /// Wrapper which handles the 
   struct BOOSTER_ENABLE_Pin
   {
@@ -248,7 +247,7 @@ struct DccHwDefs
         if (value)
         {
           // disable the brake pin first
-          OPS_BRAKE_Pin::set(false);
+          DCC_BRAKE_Pin::set(false);
           // delay 1usec to allow h-bridge to catch up
           ets_delay_us(1);
           // enable the h-bridge output pin
@@ -261,13 +260,13 @@ struct DccHwDefs
           // delay 1usec to allow h-bridge to catch up
           ets_delay_us(1);
           // enable the h-bridge brake pin
-          OPS_BRAKE_Pin::set(true);
+          DCC_BRAKE_Pin::set(true);
         }
       }
 
       static void hw_init()
       {
-        OPS_BRAKE_Pin::hw_init();
+        DCC_BRAKE_Pin::hw_init();
         OPS_ENABLE_Pin::hw_init();
         set(false);
       }
@@ -285,8 +284,43 @@ struct DccHwDefs
   static constexpr uint32_t DCC_SERVICE_MODE_PREAMBLE_BITS =
     CONFIG_PROG_DCC_PREAMBLE_BITS;
 
+  /// Number of RMT ticks for each half of the RMT encoded ZERO bit.
+  static constexpr uint8_t DCC_ZERO_RMT_TICKS =
+    CONFIG_DCC_RMT_TICKS_ZERO_PULSE;
+
+  /// Number of RMT ticks for each half of the RMT encoded ONE bit.
+  static constexpr uint8_t DCC_ONE_RMT_TICKS = CONFIG_DCC_RMT_TICKS_ONE_PULSE;
+
   /// RMT Channel to use for the DCC Signal output.
   static const rmt_channel_t RMT_CHANNEL = RMT_CHANNEL_0;
+
+#if CONFIG_DCC_RMT_HIGH_FIRST
+  /// Visual name of the DCC Wave pattern.
+  static constexpr const char * const RMT_WAVE_FMT = "high,low";
+
+  /// Voltage to output on the signal pin for the first half of the DCC signal
+  /// wave pattern.
+  static constexpr uint8_t RMT_DCC_FIRST_HALF = 1;
+
+  /// Voltage to output on the signal pin for the second half of the DCC
+  /// signal wave pattern.
+  static constexpr uint8_t RMT_DCC_SECOND_HALF = 0;
+#else
+  /// Visual name of the DCC Wave pattern.
+  static constexpr const char * const RMT_WAVE_FMT = "low,high";
+
+  /// Voltage to output on the signal pin for the first half of the DCC signal
+  /// wave pattern.
+  static constexpr uint8_t RMT_DCC_FIRST_HALF = 0;
+
+  /// Voltage to output on the signal pin for the second half of the DCC
+  /// signal wave pattern.
+  static constexpr uint8_t RMT_DCC_SECOND_HALF = 1;
+#endif // CONFIG_DCC_RMT_HIGH_FIRST
+
+  /// RMT Clock configuration.
+  static constexpr rmt_source_clk_t RMT_CLOCK_SOURCE =
+    (rmt_source_clk_t)CONFIG_DCC_RMT_CLOCK_SOURCE;
 
   /// Number of outgoing DCC packets to allow in the queue.
   static const size_t PACKET_Q_SIZE = CONFIG_PACKET_QUEUE_SIZE;
