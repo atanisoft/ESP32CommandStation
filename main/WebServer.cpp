@@ -690,7 +690,7 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
     return "{}";
   }
   string res =
-    StringPrintf("{\"address\":%d,\"speed\":%d,\"dir\":\"%s\",\"functions\":[",
+    StringPrintf("{\"addr\":%d,\"spd\":%d,\"dir\":\"%s\",\"functions\":[",
                  t->legacy_address(),(int)t->get_speed().mph(),
                  t->get_speed().direction() == dcc::SpeedType::REVERSE ? "REV" : "FWD");
   for (size_t funcID = 0; funcID < commandstation::DCC_MAX_FN; funcID++)
@@ -729,7 +729,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
     Singleton<EventBroadcastHelper>::instance()->send_event(openlcb::Defs::EMERGENCY_STOP_EVENT);
     request->set_status(HttpStatusCode::STATUS_OK);
   }
-  else if (url.find("/roster")  != string::npos)
+  else if (url.find("/roster") != string::npos)
   {
     if (request->method() == HttpMethod::GET &&
        !request->has_param("address"))

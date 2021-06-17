@@ -30,16 +30,17 @@ CDI_GROUP(ThermalConfiguration);
 CDI_GROUP_ENTRY(enable, openlcb::Uint8ConfigEntry,
     Min(0), Max(1),
 #if CONFIG_TEMPSENSOR_DISABLED
-    Default(0) /* disabled */,
+    Default(0), /* disabled */
 #else
-    Default(1) /* enabled */,
+    Default(1), /* enabled */
 #endif
     Name("Enable thermal monitoring"),
     Description("Enabling this option will allow the node to monitor an "
                 "external temperature sensor and emit events when configured "
                 "thresholds are breached."),
     MapValues("<relation><property>0</property><value>No</value></relation>"
-              "<relation><property>1</property><value>Yes</value></relation>"));
+              "<relation><property>1</property><value>Yes</value></relation>")
+);
 
 /// This is the warning temperature in celsius.
 CDI_GROUP_ENTRY(temperature_warning, openlcb::Int8ConfigEntry,

@@ -453,7 +453,6 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     var ws = null;
     var ws_pending_send = [];
     var ws_req_id = 0;
-    var s88SensorIDBase = 512;
     var cdi_loaded = false;
     var cdi_loaders = [];
     var cs_status_interval_timer_id = 0;
@@ -1030,7 +1029,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
                 data[idx].address);
               actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteLoco({0});"><i class="icon icon-delete"></i></button>',
                 data[idx].address);
-              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].address, data[idx].name, actions));
+              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].addr, data[idx].name, actions));
             }
             $("#roster-empty").hide();
             $("#roster-table").show();
@@ -1083,7 +1082,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     function saveLoco() {
       if (window.location.host.length) {
         toggleModal('#roster-editor');
-        fetchWithTimeout(String.format('/locomotive/roster?address={0}&name={1}&idleOnStartup={2}&defaultOnThrottles={3}',
+        fetchWithTimeout(String.format('/locomotive/roster?address={0}&name={1}&idle={2}&default={3}',
           $('#roster-addr').val(), $('#roster-name').val(), $('#roster-idle').prop('checked'), $('#roster-default').prop('checked'))).then(res => refreshRoster(null)).catch(function (error) {
             showErrorDialog('Failed to save roster entry', error);
           });

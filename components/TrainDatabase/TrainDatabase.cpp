@@ -82,9 +82,11 @@ using commandstation::AllTrainNodes;
 using openlcb::TractionDefs;
 
 constexpr const char * JSON_NAME_NODE = "name";
-constexpr const char * JSON_ADDRESS_NODE = "address";
-constexpr const char * JSON_IDLE_ON_STARTUP_NODE = "idleOnStartup";
-constexpr const char * JSON_DEFAULT_ON_THROTTLE_NODE = "defaultOnThrottles";
+constexpr const char * JSON_ID_NODE = "id";
+constexpr const char * JSON_TYPE_NODE = "type";
+constexpr const char * JSON_ADDRESS_NODE = "addr";
+constexpr const char * JSON_IDLE_ON_STARTUP_NODE = "idle";
+constexpr const char * JSON_DEFAULT_ON_THROTTLE_NODE = "default";
 constexpr const char * JSON_FUNCTIONS_NODE = "functions";
 constexpr const char * JSON_LOCOS_NODE = "locos";
 constexpr const char * JSON_LOCO_NODE = "loco";
@@ -754,24 +756,24 @@ string Esp32TrainDatabase::get_entry_as_json_locked(unsigned address)
     auto train = (*entry);
     json j =
     {
-      { "name", train->get_train_name() },
-      { "address", train->get_legacy_address() },
-      { "idleOnStartup", train->is_auto_idle() },
-      { "defaultOnThrottles", train->is_show_on_limited_throttles() },
-      { "mode",
+      { JSON_NAME_NODE, train->get_train_name() },
+      { JSON_ADDRESS_NODE, train->get_legacy_address() },
+      { JSON_IDLE_ON_STARTUP_NODE, train->is_auto_idle() },
+      { JSON_DEFAULT_ON_THROTTLE_NODE, train->is_show_on_limited_throttles() },
+      { JSON_MODE_NODE,
         {
-          { "name", static_cast<DccMode>(train->get_legacy_drive_mode()) },
-          { "type", train->get_legacy_drive_mode() }
+          { JSON_NAME_NODE, static_cast<DccMode>(train->get_legacy_drive_mode()) },
+          { JSON_TYPE_NODE, train->get_legacy_drive_mode() }
         }
       }
     };
     for (size_t idx = 0; idx < DCC_MAX_FN; idx++)
     {
-      j["functions"].push_back(
+      j[JSON_FUNCTIONS_NODE].push_back(
       {
-        { "id", idx },
-        { "name", static_cast<Symbols>(train->get_function_label(idx)) },
-        { "type", train->get_function_label(idx) }
+        { JSON_ID_NODE, idx },
+        { JSON_NAME_NODE, static_cast<Symbols>(train->get_function_label(idx)) },
+        { JSON_TYPE_NODE, train->get_function_label(idx) }
       });
     }
     return j.dump();
