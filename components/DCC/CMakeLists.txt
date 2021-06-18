@@ -2,6 +2,7 @@ set(IDF_DEPS
     driver
     vfs
     esp_adc_cal
+    esp_timer
 )
 
 set(CUSTOM_DEPS

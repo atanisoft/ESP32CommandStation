@@ -72,24 +72,18 @@ public:
 
 private:
   /// Flag to indicate that we have no high priority packet source.
-  static constexpr size_t NO_EXCLUSIVE_SOURCE = 0x7FF;
+  static constexpr uint16_t NO_EXCLUSIVE_SOURCE = 0x7FF;
 
   /// Tracking metrics for the update source.
   struct Metrics
   {
     /// OS timestamp of when the last packet was sent to this source. This is
     /// used to suppress sending a packet from this packet source too quickly.
-    long long lastPacketTimestamp;
+    uint64_t lastPacketTimestamp;
 
     /// Priority of this packet source.
     unsigned priority;
   };
-
-  /// Evaluates the packet sources to find the highest priority source for the
-  /// next update cycle.
-  ///
-  /// @return highest priority packet source.
-  dcc::PacketSource *recalculate_priorities();
 
   /// Track interface to send packets to.
   dcc::PacketFlowInterface *track_;
@@ -107,13 +101,14 @@ private:
   QList<1> updateSources_;
 
   /// Offset in the @ref sources_ vector for the next loco to send.
-  size_t nextIndex_{0};
+  uint16_t nextIndex_{0};
 
   /// Index into @ref sources_ for the highest priority packet source
   /// that is generating packets.
-  size_t exclusiveIndex_{NO_EXCLUSIVE_SOURCE};
+  uint16_t exclusiveIndex_{NO_EXCLUSIVE_SOURCE};
 
-  /// Lock used to protect @ref sources_ and @ref metrics_.
+  /// Lock used to protect @ref sources_, @ref metrics_ and
+  /// @ref updateSources_.
   std::mutex mux_;
 };
 
