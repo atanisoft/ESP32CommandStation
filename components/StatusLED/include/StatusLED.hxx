@@ -137,12 +137,16 @@ public:
     return brightness_;
   }
 
+  /// Refreshes the LEDs.
+  ///
+  /// NOTE: This is not intended to be called from outside of the StatuLED
+  /// module.
   void refresh();
+
 private:
   uninitialized<NeoPixelBrightnessBus<NEO_COLOR_MODE, NEO_METHOD>> bus_;
   NEO_COLOR_TYPE colors_[LED::MAX_LED];
   bool state_[LED::MAX_LED];
-  const uint64_t updateInterval_{MSEC_TO_NSEC(CONFIG_STATUS_LED_UPDATE_INTERVAL_MSEC)};
   uint8_t brightness_{CONFIG_STATUS_LED_BRIGHTNESS};
 
   NEO_COLOR_TYPE RGB_RED_{NEO_COLOR_TYPE(255, 0, 0)};

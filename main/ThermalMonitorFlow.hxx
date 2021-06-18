@@ -34,6 +34,10 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #define CONFIG_THERMALMONITOR_MV_PER_C 10
 #endif
 
+#ifndef CONFIG_TEMPSENSOR_ADC_CHANNEL
+#define CONFIG_TEMPSENSOR_ADC_CHANNEL -1
+#endif
+
 namespace esp32cs
 {
 
@@ -49,9 +53,9 @@ public:
     /// @param node is the @ref Node to use for producing events from.
     /// @param cfg is the configuration for the temperature sensor.
     ThermalMonitorFlow(Service *service, openlcb::Node *node,
-                       const ThermalConfiguration &cfg,
-                       const adc1_channel_t channel) : StateFlowBase(service),
-                       cfg_(cfg), channel_(channel),
+                       const ThermalConfiguration &cfg)
+                     : StateFlowBase(service),
+                       cfg_(cfg),
                        eventHandler_(
                            node, nullptr,
                            std::bind(&ThermalMonitorFlow::get_state, this,
@@ -77,6 +81,7 @@ public:
         AutoNotify n(done);
         ConfigUpdateListener::UpdateAction res = UPDATED;
 
+#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         bool enabled = CDI_READ_TRIM_DEFAULT(cfg_.enable, fd);
 
         // load the warning and shutdown temperature limits.
@@ -86,7 +91,6 @@ public:
         // load event IDs
         openlcb::EventId warningEvent = cfg_.event_warning().read(fd);
         openlcb::EventId shutdownEvent = cfg_.event_shutdown().read(fd);
-
         if (warningEvent_ != warningEvent || shutdownEvent_ != shutdownEvent)
         {
             // save the new event IDs for later use
@@ -107,7 +111,9 @@ public:
         // monitoring.
         if (enabled)
         {
-            adc1_config_channel_atten(channel_, ADC_ATTEN_DB_11);
+            adc1_config_channel_atten(
+                (adc1_channel_t)CONFIG_TEMPSENSOR_ADC_CHANNEL,
+                ADC_ATTEN_DB_11);
             esp_adc_cal_value_t calibration_type =
                 esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11
                                     , ADC_WIDTH_BIT_12, DEFAULT_ADC_VREF
@@ -133,6 +139,7 @@ public:
         {
             set_terminated();
         }
+#endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         return res;
     }
 
@@ -142,7 +149,11 @@ public:
     void factory_reset(int fd) override
     {
         LOG(VERBOSE, "[ThermalMonitor] factory_reset(%d)", fd);
+#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         CDI_FACTORY_RESET(cfg_.enable);
+#else
+        cfg_.enable().write(fd, 0);
+#endif
         CDI_FACTORY_RESET(cfg_.temperature_warning);
         CDI_FACTORY_RESET(cfg_.temperature_shutdown);
     }
@@ -151,17 +162,14 @@ private:
     /// Default ADC voltage reference value.
     static constexpr uint32_t DEFAULT_ADC_VREF = 1100;
 
-    /// Calculated millivolts per degree C.
-    static constexpr Fixed16 MV_PER_C = CONFIG_THERMALMONITOR_MV_PER_C / 10;
-
     /// Millivolts for zero degrees C.
     static constexpr uint32_t MV_AT_ZERO_C = CONFIG_THERMALMONITOR_ZERO_MV;
 
     /// Configuration to use for thermal monitoring.
     const ThermalConfiguration cfg_;
 
-    /// ADC channel used for thermal monitoring.
-    const adc1_channel_t channel_;
+    /// Calculated millivolts per degree C.
+    const Fixed16 MV_PER_C = CONFIG_THERMALMONITOR_MV_PER_C / 10;
 
     /// Celcius to Fahrenheit conversion
     const Fixed16 C_TO_F_FACTOR = 9 / 5;
@@ -203,6 +211,7 @@ private:
     openlcb::EventState get_state(const openlcb::EventRegistryEntry& entry,
                                   openlcb::EventReport* report)
     {
+#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         if (entry.user_arg == WARNING_BIT)
         {
             return openlcb::to_event_state(
@@ -213,23 +222,29 @@ private:
             return openlcb::to_event_state(
                 lastReading_.round() < shutdownTemp_.round());
         }
+#endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         return openlcb::EventState::UNKNOWN;
     }
 
+#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
     /// Reads the external temperature sensor of an ESP32-S2.
     Fixed16 read_external_temperature()
     {
         uint32_t temperature =
-            esp_adc_cal_raw_to_voltage(adc1_get_raw(channel_), &calibration_);
+            esp_adc_cal_raw_to_voltage(
+                adc1_get_raw((adc1_channel_t)CONFIG_TEMPSENSOR_ADC_CHANNEL),
+                             &calibration_);
         Fixed16 tempAtZero = temperature - MV_AT_ZERO_C;
         return tempAtZero / MV_PER_C;
     }
+#endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
 
     /// Reads the current temperature from the selected sensor and checks
     /// for change with the warning/shutdown limits. If the temperature results
     /// in a state change it will produce at least one event.
     Action check_temp()
     {
+#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         Fixed16 lastReading_ = read_external_temperature();
         Fixed16 F = lastReading_ * C_TO_F_FACTOR;
         F += 32;
@@ -244,6 +259,7 @@ private:
         {
             event_helper->send_event(warningEvent_);
         }
+#endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         return call_immediately(STATE(sleep));
     }
 

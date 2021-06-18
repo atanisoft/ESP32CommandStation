@@ -836,15 +836,23 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           $(button).toggleClass('loading');
           if (data.length) {
             var tbody = $('#loco-list tbody');
+            var count = 0;
             tbody.children().remove();
             for (var idx in data) {
-              if (data[idx].defaultOnThrottles) {
+              if (data[idx].default) {
+                count++;
                 $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({1});"><td>{0}</td><td>{1}</td></tr>',
-                  data[idx].name, data[idx].address));
+                  data[idx].name, data[idx].addr));
               }
             }
-            $("#loco-list").show();
-            $("#loco-select-add").show();
+            if (count > 0) {
+              $("#loco-list").show();
+              $("#loco-select-add").show();
+            } else {
+              $("#loco-list").hide();
+              $("#loco-manual").show();
+              $("#loco-select-add").hide();
+            }
           } else {
             $("#loco-list").hide();
             $("#loco-manual").show();
@@ -1026,9 +1034,9 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             tbody.children().remove();
             for (var idx in data) {
               var actions = String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editLoco({0});"><i class="icon icon-edit"></i></button>',
-                data[idx].address);
+                data[idx].addr);
               actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteLoco({0});"><i class="icon icon-delete"></i></button>',
-                data[idx].address);
+                data[idx].addr);
               $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].addr, data[idx].name, actions));
             }
             $("#roster-empty").hide();
@@ -1063,7 +1071,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       if (window.location.host.length) {
         fetchWithTimeout(String.format('/locomotive/roster?address={0}', address)).then(res => res.json()).then(data => {
           $('#roster-name').val(data.name);
-          $('#roster-addr').val(data.address);
+          $('#roster-addr').val(data.addr);
           $('#roster-idle').prop('checked', data.idle);
           $('#roster-default').prop('checked', data.default);
           toggleModal('#roster-editor');

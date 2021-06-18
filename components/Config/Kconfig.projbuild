@@ -507,7 +507,7 @@ menu "WiFi Configuration"
             string "SNTP Server"
             default "pool.ntp.org"
             depends on SNTP
-        config TIMEZONE
+        config SNTP_TIMEZONE
             string "Timezone"
             default "UTC0"
             depends on SNTP

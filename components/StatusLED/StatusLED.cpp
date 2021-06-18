@@ -17,6 +17,7 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 
 #include "StatusLED.hxx"
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
+#include <freertos_includes.h>
 #include <os/os.h>
 
 namespace esp32cs
@@ -31,15 +32,20 @@ StatusLED::StatusLED()
   clear();
 }
 
-static void *led_update(void *arg)
+static constexpr uint32_t LED_UPDATE_TASK_STACK = 2048;
+static constexpr BaseType_t LED_UPDATE_TASK_PRIORITY = 3;
+static constexpr BaseType_t LED_UPDATE_TASK_CORE = APP_CPU_NUM;
+static constexpr TickType_t LED_UPDATE_INTERVAL = 
+  pdMS_TO_TICKS(CONFIG_STATUS_LED_UPDATE_INTERVAL_MSEC);
+
+static void led_update(void *arg)
 {
   StatusLED *led = (StatusLED *)arg;
   while(true)
   {
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(LED_UPDATE_INTERVAL);
     led->refresh();
   }
-  return nullptr;
 }
 
 void StatusLED::hw_init()
@@ -67,7 +73,10 @@ void StatusLED::hw_init()
     bus_->Show();
     vTaskDelay(pdMS_TO_TICKS(100));
   }
-  os_thread_create(nullptr, "StatusLED", 0, 2048, led_update, this);
+
+  xTaskCreatePinnedToCore(led_update, "StatusLED", LED_UPDATE_TASK_STACK, this,
+                          LED_UPDATE_TASK_PRIORITY, nullptr /* task handle */,
+                          LED_UPDATE_TASK_CORE);
 #endif
 }
 
@@ -127,7 +136,6 @@ void StatusLED::set(const LED led, const COLOR color, const bool on)
 {
   colors_[led] = color;
   state_[led] = on;
-  //refresh();
 }
 
 void StatusLED::clear()
@@ -174,7 +182,7 @@ void StatusLED::refresh()
   {
     bus_->Show();
   }
-#endif
+#endif // CONFIG_STATUS_LED_DATA_PIN != -1
 }
 
 } // namespace esp32cs

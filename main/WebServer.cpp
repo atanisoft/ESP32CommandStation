@@ -28,10 +28,10 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <EventBroadcastHelper.hxx>
+#include <executor/Service.hxx>
 #include <Httpd.h>
 #include <mutex>
 #include <NvsManager.hxx>
-#include <openlcb/SimpleStack.hxx>
 #include <OTAWatcher.hxx>
 #include <StatusLED.hxx>
 #include <StringUtils.hxx>
@@ -42,6 +42,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <utils/StringPrintf.hxx>
 
 using commandstation::AllTrainNodes;
+using commandstation::DccMode;
 using dcc::SpeedType;
 using esp32cs::Esp32TrainDatabase;
 using esp32cs::EventBroadcastHelper;
@@ -75,7 +76,6 @@ using openlcb::MemoryConfigClient;
 using openlcb::MemoryConfigClientRequest;
 using openlcb::MemoryConfigDefs;
 using openlcb::NodeHandle;
-using openlcb::SimpleCanStack;
 
 // Captive Portal landing page
 static constexpr const char * const CAPTIVE_PORTAL_HTML = R"!^!(
@@ -108,39 +108,39 @@ extern const size_t cashJsGz_size asm("cash_min_js_gz_length");
 extern const uint8_t spectreCssGz[] asm("_binary_spectre_min_css_gz_start");
 extern const size_t spectreCssGz_size asm("spectre_min_css_gz_length");
 
-#define GET_LOCO_VIA_EXECUTOR(NAME, address)                                        \
-  openlcb::TrainImpl *NAME = nullptr;                                               \
-  stack->executor()->sync_run(                                                      \
-  ([&]()                                                                            \
-  {                                                                                 \
-    NAME = Singleton<commandstation::AllTrainNodes>::instance()->get_train_impl(    \
-                                      commandstation::DccMode::DCC_128, address);   \
+// TODO: add accessory method that wraps this usage
+#define GET_LOCO_VIA_EXECUTOR(NAME, address)                                  \
+  openlcb::TrainImpl *NAME = nullptr;                                         \
+  Singleton<AllTrainNodes>::instance()->train_service()->executor()->sync_run(\
+  ([&]()                                                                      \
+  {                                                                           \
+    NAME = Singleton<AllTrainNodes>::instance()->get_train_impl(              \
+                                      DccMode::DCC_128, address);             \
   }));
 
-#define REMOVE_LOCO_VIA_EXECUTOR(addr)                                              \
-  stack->executor()->sync_run(                                                      \
-  ([&]()                                                                            \
-  {                                                                                 \
-    Singleton<commandstation::AllTrainNodes>::instance()->remove_train_impl(addr);  \
+// TODO: add accessory method that wraps this usage
+#define REMOVE_LOCO_VIA_EXECUTOR(addr)                                        \
+  Singleton<AllTrainNodes>::instance()->train_service()->executor()->sync_run(\
+  ([&]()                                                                      \
+  {                                                                           \
+    Singleton<AllTrainNodes>::instance()->remove_train_impl(addr);            \
   }));
 
 uninitialized<CDIClient> cdi_client;
 static NodeHandle cs_node_handle;
-static SimpleCanStack *stack;
 static NvsManager *nvs;
 static Esp32TrainDatabase *traindb;
 
-void init_webserver(SimpleCanStack *can_stack,
+void init_webserver(Service *service,
                     NvsManager *nvs_mgr,
                     MemoryConfigClient *mem_client,
                     Esp32TrainDatabase *train_db)
 {
-  stack = can_stack;
   nvs = nvs_mgr;
   traindb = train_db;
   auto httpd = Singleton<Httpd>::instance();
-  cs_node_handle = NodeHandle(stack->node()->node_id());
-  cdi_client.emplace(stack->service(), mem_client);
+  cs_node_handle = NodeHandle(nvs->node_id());
+  cdi_client.emplace(service, mem_client);
   httpd->captive_portal(
     StringPrintf(CAPTIVE_PORTAL_HTML, esp_ota_get_app_description()->version));
   httpd->static_uri("/", indexHtmlGz, indexHtmlGz_size
@@ -244,16 +244,15 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
           openlcb::SNIP_STATIC_DATA.model_name,
           openlcb::SNIP_STATIC_DATA.hardware_version,
           openlcb::SNIP_STATIC_DATA.software_version,
-          uint64_to_string_hex(stack->node()->node_id()).c_str(),
+          uint64_to_string_hex(nvs->node_id()).c_str(),
           CONFIG_STATUS_LED_DATA_PIN != -1 ? "true" : "false",
           Singleton<StatusLED>::instance()->getBrightness(), req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "update-complete"))
     {
       BufferPtr<CDIClientRequest> b(cdi_client->alloc());
-      b->data()->reset(CDIClientRequest::UPDATE_COMPLETE,
-                       NodeHandle(stack->node()->node_id()), socket,
-                       req_id->valueint);
+      b->data()->reset(CDIClientRequest::UPDATE_COMPLETE, cs_node_handle,
+                       socket, req_id->valueint);
       b->data()->done.reset(EmptyNotifiable::DefaultInstance());
       LOG(VERBOSE, "[WSJSON:%d] Sending UPDATE_COMPLETE to queue",
           req_id->valueint);
