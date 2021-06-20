@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2021 Mike Dunston
+COPYRIGHT (c) 2017-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,25 @@ COPYRIGHT (c) 2021 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include <utils/constants.hxx>
+#ifndef TURNOUTS_HXX_
+#define TURNOUTS_HXX_
+
+#include <stdint.h>
+#include <string>
+#include "AccessoryDecoderDataTypes.hxx"
 
 namespace esp32cs
 {
-DEFAULT_CONST(dcc_turnout_packet_repeats, 3);
-}
+
+class DccAccessoryDecoder : public AccessoryBaseType
+{
+public:
+  DccAccessoryDecoder(uint16_t address, bool thrown = false,
+                      AccessoryType type = AccessoryType::UNKNOWN);
+  bool set(bool state, bool is_on) override;
+  std::string to_json(bool readable_strings = false) override;
+};
+
+} // namespace esp32cs
+
+#endif // TURNOUTS_HXX_

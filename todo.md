@@ -5,21 +5,24 @@
 ### Required for v2.0
 
 * [x] Adjust tasks to pin to specific cores:
+    * WiFi - PRO_CPU
+    * LwIP - APP_CPU
     * OpenMRN - PRO_CPU (inherit app_main)
     * Esp32WiFiManager - float priority 2
     * StatusLED - APP_CPU priority 3
     * HttpServer - APP_CPU priority 5
+    * TWAI - ISR APP_CPU, task float priority is one less than LwIP.
 * [ ] Investigate heap corruption issues.
 * [ ] DCC: ULP current sense / ACK.
-* [ ] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
+* [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
 * [ ] Deps: Remove nlohmann_json dependency in favor of cJSON.
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
 * [ ] TrainDB: reduce function types to: light, horn, bell, mute, coupler, generic. horn with momentary flag.
 * [ ] TrainDB: Remove Marklin support
-* [ ] TrainDB / TrainSearch: Ensure CDI edits are in sync with DB.
-* [ ] TurnoutDB: Verify all functionality (crashes if turnouts.json doesn't exist currently)
+* [ ] AccessoryDecoderDB: Verify all functionality
+* [x] AccessoryDecoderDB: Directly consume OpenLCB events.
 * [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
 * [ ] WebUI: Add function name/label editing via web interface.
 * [ ] WebUI: Test all endpoints.
@@ -29,6 +32,7 @@
 * RailCom: Migrate Esp32RailComDriver to use Timer and UART HAL APIs.
 * RailCom: Integrate RailCom hub with rest of stack (TrainSearch, Prog Backend, etc)
 * TrainDB: Configurable timeout for idle trains
+* TrainDB / TrainSearch: Enable editing via CDI.
 * TrainSearch: General code formatting / cleanup
 * TrainSearch: Move e-stop handling to this module rather than main.
 * WiThrottle support
@@ -41,7 +45,7 @@
 * StatusLED: Rework to depend on Esp32Ws2812 instead of NeoPixelBus.
 * TrainDB: CBOR data format?
 * TrainDB: Expose via Memory Space?
-* TurnoutDB: CBOR data format?
+* AccessoryDecoderDB: CBOR data format?
 * WebUI: compressed ws stream?
 * migrate to shared_ptr instead of raw pointers.
 

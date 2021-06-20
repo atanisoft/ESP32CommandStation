@@ -10,14 +10,15 @@ set(CUSTOM_DEPS
 )
 
 set(TURNOUT_SOURCE_FILES
-    turnout_constants.cpp
-    GenericTurnout.cpp
-    OpenLCBTurnout.cpp
-    TurnoutManager.cpp
+    AccessoryDecoderConstants.cpp
+    AccessoryDecoderDB.cpp
+    DccAccessoryDecoder.cpp
+    OpenLCBAccessoryDecoder.cpp
 )
 
 idf_component_register(SRCS "${TURNOUT_SOURCE_FILES}"
                        INCLUDE_DIRS "include"
+                       PRIV_INCLUDE_DIRS "private_include"
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 
-set_source_files_properties(TurnoutManager.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
+set_source_files_properties(AccessoryDecoderDB.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)

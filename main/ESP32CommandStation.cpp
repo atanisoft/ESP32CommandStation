@@ -46,7 +46,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <StatusDisplay.hxx>
 #include <StatusLED.hxx>
 #include <TrainDatabase.h>
-#include <Turnouts.h>
+#include <AccessoryDecoderDatabase.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 #include <utils/constants.hxx>
 
@@ -88,6 +88,11 @@ OVERRIDE_CONST(executor_select_prescaler,
 /// OpenLCB stack. This is needed to allow for virtual train nodes.
 OVERRIDE_CONST(local_nodes_count, CONFIG_OLCB_LOCAL_NODE_COUNT);
 OVERRIDE_CONST(local_alias_cache_size, CONFIG_OLCB_LOCAL_NODE_COUNT);
+
+#if CONFIG_OLCB_GC_NEWLINES
+/// Generate GridConnect frames with a newline appended to each frame.
+OVERRIDE_CONST_TRUE(gc_generate_newlines);
+#endif // CONFIG_OLCB_GC_NEWLINES
 
 /// CDI configuration for the ESP32 Commmand Station.
 /// Offset is set to zero and is likely to be removed in the future.
@@ -224,7 +229,7 @@ void app_main()
     esp32cs::ThermalMonitorFlow thermal_monitor(stack.service(), stack.node(),
                                                 cfg.seg().thermal());
     esp32cs::init_dcc(stack.node(), stack.service(), cfg.seg().track());
-    esp32cs::TurnoutManager turnout_manager(stack.node(), stack.service());
+    esp32cs::AccessoryDecoderDB accessory_db(stack.node(), stack.service());
 
     // Create / update CDI, if the CDI is out of date a factory reset will be
     // forced.
@@ -242,14 +247,14 @@ void app_main()
         stack.create_config_file_if_needed(cfg.seg().internal_config(),
                                            CDI_VERSION,
                                            openlcb::CONFIG_FILE_SIZE);
-    reboot_helper.reset(new esp32cs::NodeRebootHelper(&stack, config_fd));
+    reboot_helper = std::make_unique<esp32cs::NodeRebootHelper>(&stack, config_fd);
     if (using_sd)
     {
       LOG(INFO, "[FS] Configuring fsync of data to SD card ever %d seconds.",
           CONFIG_OLCB_SD_FSYNC_SEC);
-      sd_auto_sync.reset(
-        new AutoSyncFileFlow(stack.service(), config_fd,
-                             SEC_TO_USEC(CONFIG_OLCB_SD_FSYNC_SEC)));
+      sd_auto_sync =
+        std::make_unique<AutoSyncFileFlow>(stack.service(), config_fd,
+                                           SEC_TO_USEC(CONFIG_OLCB_SD_FSYNC_SEC));
     }
 
 #if CONFIG_OLCB_TWAI_ENABLED
@@ -268,6 +273,10 @@ void app_main()
     stack.add_can_port_async("/dev/twai/twai0");
 #endif // CONFIG_OLCB_TWAI_SELECT
 #endif // CONFIG_OLCB_TWAI_ENABLED
+
+#if CONFIG_OLCB_PRINT_ALL_PACKETS
+    stack.print_all_packets();
+#endif
 
     init_webserver(stack.service(), &nvs, &memory_client, &train_db);
 

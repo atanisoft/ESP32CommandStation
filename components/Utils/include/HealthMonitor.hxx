@@ -66,12 +66,15 @@ private:
         {
             return exit();
         }
-        LOG(INFO,
-            "%s:free heap:%.2fkB (max-block:%.2fkB), buf:%.2fkB, tasks:%d",
-            esp_log_system_timestamp(),
+        struct timeval tv;
+        struct tm ti;
+        gettimeofday(&tv, NULL);
+        localtime_r(&tv.tv_sec, &ti);
+        LOG(INFO, "%02d:%02d:%02d:%06ld: heap:%.2fkB/%.2fKb, buf:%.2fkB",
+            ti.tm_hour, ti.tm_min, ti.tm_sec, tv.tv_usec / 1000,
             heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0f,
-            heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024.0f,
-            mainBufferPool->total_size() / 1024.0f, uxTaskGetNumberOfTasks());
+            heap_caps_get_total_size(MALLOC_CAP_INTERNAL) / 1024.0f,
+            mainBufferPool->total_size() / 1024.0f);
         return sleep_and_call(&timer_, reportInterval_, STATE(update));
     }
 };

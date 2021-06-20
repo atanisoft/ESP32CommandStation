@@ -15,7 +15,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "Turnouts.h"
+#include "DccAccessoryDecoder.hxx"
 
 #include <utils/format_utils.hxx>
 #include <utils/StringPrintf.hxx>
@@ -24,33 +24,29 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 namespace esp32cs
 {
 
-void TurnoutBase::update(uint16_t address, TurnoutType type)
+DccAccessoryDecoder::DccAccessoryDecoder(uint16_t address, bool state,
+                                         AccessoryType type)
+                                       : AccessoryBaseType(address, state, type)
 {
-  address_ = address;
-  if (type != TurnoutType::NO_CHANGE)
-  {
-    type_ = type;
-  }
-  
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d] Updated type %s", address_,
-      TURNOUT_TYPE_STRINGS[type_]);
+  LOG(INFO,
+      "[DccAccessoryDecoder %d] Registered as type %s and initial state of %s",
+      address_, ACCESSORY_TYPE_STRINGS[type_], get() ? "Thrown" : "Closed");
 }
 
-Turnout::Turnout(uint16_t address, bool state, TurnoutType type)
-               : TurnoutBase(address, state, type)
-{
-  LOG(INFO, "[Turnout %d] Registered as type %s and initial state of %s",
-      address_, TURNOUT_TYPE_STRINGS[type_], state_ ? "Thrown" : "Closed");
-}
-
-string Turnout::to_json(bool readableStrings)
+string DccAccessoryDecoder::to_json(bool readableStrings)
 {
   string serialized =
-    StringPrintf("{\"address\":%d,\"type\":%d,\"state\":",
-                 address(), type());
+    StringPrintf("{\"address\":%d,\"type\":%d,\"state\":", address(), type());
   if (readableStrings)
   {
-    serialized += StringPrintf("\"%s\"", get() ? "Thrown" : "Closed");
+    if (get())
+    {
+      serialized += "\"Thrown\"";
+    }
+    else
+    {
+      serialized += "\"Closed\"";
+    }
   }
   else
   {
@@ -60,12 +56,12 @@ string Turnout::to_json(bool readableStrings)
   return serialized;
 }
 
-bool Turnout::set(bool thrown, bool send_event)
+bool DccAccessoryDecoder::set(bool state, bool is_on)
 {
-  TurnoutBase::set(thrown, send_event);
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[Turnout %d] Set to %s", address(),
-      get() ? "Thrown" : "Closed");
-  return send_event;
+  AccessoryBaseType::set(state, is_on);
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[DccAccessoryDecoder %d] Set to %s (%s)",
+      address(), get() ? "Thrown" : "Closed", is_on ? "On" : "Off");
+  return true;
 }
 
 } // namespace esp32cs

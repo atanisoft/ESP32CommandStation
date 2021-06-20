@@ -36,7 +36,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <StatusLED.hxx>
 #include <StringUtils.hxx>
 #include <TrainDatabase.h>
-#include <Turnouts.h>
+#include <AccessoryDecoderDatabase.hxx>
 #include <utils/FileUtils.hxx>
 #include <utils/SocketClientParams.hxx>
 #include <utils/StringPrintf.hxx>
@@ -49,8 +49,8 @@ using esp32cs::EventBroadcastHelper;
 using esp32cs::NvsManager;
 using esp32cs::OTAWatcherFlow;
 using esp32cs::StatusLED;
-using esp32cs::TurnoutManager;
-using esp32cs::TurnoutType;
+using esp32cs::AccessoryDecoderDB;
+using esp32cs::AccessoryType;
 using http::Httpd;
 using http::HttpMethod;
 using http::HttpRequest;
@@ -93,8 +93,9 @@ static constexpr const char * const CAPTIVE_PORTAL_HTML = R"!^!(
 
 WEBSOCKET_STREAM_HANDLER(process_ws);
 HTTP_STREAM_HANDLER(process_ota);
-HTTP_HANDLER(process_turnouts);
+HTTP_HANDLER(process_accessories);
 HTTP_HANDLER(process_loco);
+HTTP_HANDLER(process_fs);
 
 extern const uint8_t indexHtmlGz[] asm("_binary_index_html_gz_start");
 extern const size_t indexHtmlGz_size asm("index_html_gz_length");
@@ -153,51 +154,11 @@ void init_webserver(Service *service,
                   , MIME_TYPE_TEXT_CSS, HTTP_ENCODING_GZIP);
   httpd->websocket_uri("/ws", process_ws);
   httpd->uri("/update", HttpMethod::POST, nullptr, process_ota);
-  httpd->uri("/fs", HttpMethod::GET,
-  [&](HttpRequest *request) -> AbstractHttpResponse *
-  {
-    string path = request->param("path");
-    struct stat statbuf;
-    // verify that the requested path exists
-    if (!stat(path.c_str(), &statbuf))
-    {
-      string data = read_file_to_string(path);
-      string mimetype = http::MIME_TYPE_TEXT_PLAIN;
-      if (path.find(".xml") != string::npos)
-      {
-        mimetype = MIME_TYPE_TEXT_XML;
-        // CDI xml files have a trailing null, this can cause
-        // issues in browsers parsing/rendering the XML data.
-        if (request->param("remove_nulls", false))
-        {
-            std::replace(data.begin(), data.end(), '\0', ' ');
-        }
-      }
-      else if (path.find(".json") != string::npos)
-      {
-        mimetype = http::MIME_TYPE_APPLICATION_JSON;
-      }
-      return new StringResponse(data, mimetype);
-    }
-    request->set_status(HttpStatusCode::STATUS_NOT_FOUND);
-    return nullptr;
-  });
-  httpd->uri("/turnouts"
-           , HttpMethod::GET | HttpMethod::POST |
-             HttpMethod::PUT | HttpMethod::DELETE
-           , process_turnouts);
-  httpd->uri("/locomotive"
-           , HttpMethod::GET | HttpMethod::POST |
-             HttpMethod::PUT | HttpMethod::DELETE
-           , process_loco);
-  httpd->uri("/locomotive/roster"
-           , HttpMethod::GET | HttpMethod::POST |
-             HttpMethod::PUT | HttpMethod::DELETE
-           , process_loco);
-  httpd->uri("/locomotive/estop"
-           , HttpMethod::GET | HttpMethod::POST |
-             HttpMethod::PUT | HttpMethod::DELETE
-           , process_loco);
+  httpd->uri("/fs", HttpMethod::GET, process_fs);
+  httpd->uri("/accessories", process_accessories);
+  httpd->uri("/locomotive", process_loco);
+  httpd->uri("/locomotive/roster", process_loco);
+  httpd->uri("/locomotive/estop", process_loco);
 }
 
 WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
@@ -465,7 +426,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
                     , req_speed.direction() ? "true" : "false", req_id->valueint);
       }
     }
-    else if (!strcmp(req_type->valuestring, "turnout"))
+    else if (!strcmp(req_type->valuestring, "accessory"))
     {
       if (!cJSON_HasObjectItem(root, "addr") ||
           !cJSON_HasObjectItem(root, "act"))
@@ -478,44 +439,45 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
       }
       else
       {
-        auto turnouts = Singleton<TurnoutManager>::instance();
+        auto db = Singleton<AccessoryDecoderDB>::instance();
         uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
         string action = cJSON_GetObjectItem(root, "act")->valuestring;
         string target = cJSON_HasObjectItem(root, "tgt") ?
             cJSON_GetObjectItem(root, "tgt")->valuestring : "";
         if (action == "save")
         {
-          TurnoutType type =
-            cJSON_HasObjectItem(root, "type") ?
-              (TurnoutType)cJSON_GetObjectItem(root, "type")->valueint :
-              TurnoutType::NO_CHANGE;
-          LOG(VERBOSE, "[WSJSON:%d] Saving turnout %d as type %d",
-              req_id->valueint, address, type);
-          if (cJSON_IsFalse(cJSON_GetObjectItem(root, "olcb")))
+          AccessoryType type = AccessoryType::UNCHANGED;
+          if (cJSON_HasObjectItem(root, "type"))
           {
-            turnouts->createOrUpdateDcc(address, type);
+            type = (AccessoryType)cJSON_GetObjectItem(root, "type")->valueint;
+          }
+          LOG(VERBOSE, "[WSJSON:%d] Saving accessory %d as type %d",
+              req_id->valueint, address, type);
+          if (cJSON_IsTrue(cJSON_GetObjectItem(root, "olcb")))
+          {
+            db->createOrUpdateOlcb(address,
+              cJSON_GetObjectItem(root, "closed")->valuestring,
+              cJSON_GetObjectItem(root, "thrown")->valuestring, type);
           }
           else
           {
-            turnouts->createOrUpdateOlcb(address,
-              cJSON_GetObjectItem(root, "closed")->valuestring,
-              cJSON_GetObjectItem(root, "thrown")->valuestring, type);
+            db->createOrUpdateDcc(address, type);
           }
         }
         else if (action == "toggle")
         {
-          LOG(VERBOSE, "[WSJSON:%d] Toggling turnout %d", req_id->valueint,
+          LOG(VERBOSE, "[WSJSON:%d] Toggling accessory %d", req_id->valueint,
               address);
-          turnouts->toggle(address);
+          db->toggle(address);
         }
         else if (action == "delete")
         {
-          LOG(VERBOSE, "[WSJSON:%d] Deleting turnout %d", req_id->valueint,
+          LOG(VERBOSE, "[WSJSON:%d] Deleting accessory %d", req_id->valueint,
               address);
-          turnouts->remove(address);
+          db->remove(address);
         }
         response =
-            StringPrintf(R"!^!({"res":"turnout","act":"%s","addr":%d,"tgt":"%s","id":%d})!^!",
+            StringPrintf(R"!^!({"res":"accessory","act":"%s","addr":%d,"tgt":"%s","id":%d})!^!",
                         action.c_str(), address, target.c_str(), req_id->valueint);
       }
     }
@@ -626,24 +588,73 @@ HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length
   return nullptr;
 }
 
-// GET /turnouts - full list of turnouts, note that turnout state is STRING type for display
-// GET /turnouts?readbleStrings=[0,1] - full list of turnouts, turnout state will be returned as true/false (boolean) when readableStrings=0.
-// GET /turnouts?address=<address> - retrieve turnout by DCC address
-// PUT /turnouts?address=<address> - toggle turnout by DCC address
-// POST /turnouts?address=<address>&type=<type> - creates a new turnout
-// DELETE /turnouts?address=<address> - delete turnout by DCC address
+/// Filesystem access handler.
+///
+/// Accepted methods: GET
+/// URIs:
+///`
+///   /fs?path={path}                   - returns the referenced file as-is.
+///   /fs?path={path}&remove_nulls=true - returns the referenced file with null characters replaced with space.
+///`
+/// NOTE: At this time only text like files can be downloaded.
+HTTP_HANDLER_IMPL(process_fs, request)
+{
+  if (request->method() != HttpMethod::GET)
+  {
+    request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
+    return nullptr;
+  }
+  string path = request->param("path");
+  struct stat statbuf;
+  // verify that the requested path exists
+  if (!stat(path.c_str(), &statbuf))
+  {
+    string mimetype = http::MIME_TYPE_TEXT_PLAIN;
+    if (path.find(".xml") != string::npos)
+    {
+      mimetype = MIME_TYPE_TEXT_XML;
+    }
+    else if (path.find(".json") != string::npos)
+    {
+      mimetype = http::MIME_TYPE_APPLICATION_JSON;
+    }
+    else
+    {
+      // unknown file type, reject the request
+      request->set_status(HttpStatusCode::STATUS_NOT_ALLOWED);
+      return nullptr;
+    }
+    string data = read_file_to_string(path);
+    // CDI xml files have a trailing null, this can cause issues in the
+    // browser that is parsing/rendering the XML data.
+    if (request->param("remove_nulls", false))
+    {
+      std::replace(data.begin(), data.end(), '\0', ' ');
+    }
+    return new StringResponse(data, mimetype);
+  }
+  request->set_status(HttpStatusCode::STATUS_NOT_FOUND);
+  return nullptr;
+}
+
+// GET /accessories - full list of accessory decoders, note that accessory state is STRING type for display
+// GET /accessories?readbleStrings=[0,1] - full list of accessory decoders, accessory state will be returned as true/false (boolean) when readableStrings=0.
+// GET /accessories?address=<address> - retrieve accessory decoders by DCC address
+// PUT /accessories?address=<address> - toggle accessory decoders by DCC address
+// POST /accessories?address=<address>&type=<type> - creates a new accessory decoders
+// DELETE /accessories?address=<address> - delete accessory decoders by DCC address
 //
-// For successful requests the result code will be 200 and either an array of turnouts or single turnout will be returned.
+// For successful requests the result code will be 200 and either an array of accessory decoders or single accessory decoders will be returned.
 // For unsuccessful requests the result code will be 400 (bad request, missing args), 404 (not found), 500 (server failure).
 //
-HTTP_HANDLER_IMPL(process_turnouts, request)
+HTTP_HANDLER_IMPL(process_accessories, request)
 {
   bool readable = request->param("readbleStrings", false);
-  auto turnoutMgr = Singleton<TurnoutManager>::instance();
+  auto db = Singleton<AccessoryDecoderDB>::instance();
   if (request->method() == HttpMethod::GET &&
      !request->has_param("address"))
   {
-    return new JsonResponse(turnoutMgr->to_json(readable));
+    return new JsonResponse(db->to_json(readable));
   }
 
   uint16_t address = request->param("address", 0);
@@ -653,19 +664,20 @@ HTTP_HANDLER_IMPL(process_turnouts, request)
   }
   else if (request->method() == HttpMethod::GET)
   {
-    auto turnout = turnoutMgr->to_json(address, readable);
-    return new JsonResponse(turnout);
+    auto accessory = db->to_json(address, readable);
+    return new JsonResponse(accessory);
   }
   else if (request->method() == HttpMethod::POST)
   {
-    turnoutMgr->createOrUpdateDcc(address,
-      (TurnoutType)request->param("type", TurnoutType::LEFT));
-    auto turnout = turnoutMgr->to_json(address, readable);
-    return new JsonResponse(turnout);
+    AccessoryType type =
+      (AccessoryType)request->param("type", AccessoryType::UNKNOWN);
+    db->createOrUpdateDcc(address, type);
+    auto accessory = db->to_json(address, readable);
+    return new JsonResponse(accessory);
   }
   else if (request->method() == HttpMethod::DELETE)
   {
-    if (turnoutMgr->remove(address))
+    if (db->remove(address))
     {
       request->set_status(HttpStatusCode::STATUS_NO_CONTENT);
     }
@@ -676,7 +688,7 @@ HTTP_HANDLER_IMPL(process_turnouts, request)
   }
   else if (request->method() == HttpMethod::PUT)
   {
-    turnoutMgr->toggle(address);
+    db->toggle(address);
     request->set_status(HttpStatusCode::STATUS_NO_CONTENT);
   }
   return nullptr;

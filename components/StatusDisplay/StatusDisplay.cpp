@@ -246,11 +246,18 @@ StateFlowBase::Action StatusDisplay::update()
   {
     if (rotatingIndex_ == 0)
     {
-      status("Free Heap:%d", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+      status("Heap:%.2fkB/%.2fkB",
+             heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0f,
+             heap_caps_get_total_size(MALLOC_CAP_INTERNAL) / 1024.0f);
     }
     else if (rotatingIndex_ == 1)
     {
-      status(esp_log_system_timestamp());
+      struct timeval tv;
+      struct tm ti;
+      gettimeofday(&tv, NULL);
+      localtime_r(&tv.tv_sec, &ti);
+      status("%02d:%02d:%02d:%06ld", ti.tm_hour, ti.tm_min, ti.tm_sec,
+             tv.tv_usec / 1000);
     }
     else if (rotatingIndex_ == 2)
     {

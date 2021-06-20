@@ -70,10 +70,9 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
   <header class="navbar">
     <section class="navbar-section btn-group">
       <button class="btn btn-primary" onclick="showTab('#tab-throttle', this);">Throttle</button>
-      <button class="btn btn-primary" onclick="showTab('#tab-turnouts', this);">Turnouts</button>
+      <button class="btn btn-primary" onclick="showTab('#tab-accessories', this);">Accessory Decoders</button>
       <button class="btn btn-primary" onclick="showTab('#tab-roster', this);">Locomotive Roster</button>
-      <button class="btn btn-primary" onclick="showTab('#tab-olcbconfig', this);">OpenLCB (LCC)
-        Configuration</button>
+      <button class="btn btn-primary" onclick="showTab('#tab-olcbconfig', this);">OpenLCB Configuration</button>
       <button class="btn btn-primary" onclick="showTab('#tab-ota', this);">Firmware Update</button>
     </section>
   </header>
@@ -188,13 +187,13 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         </div>
       </div>
     </div>
-    <div class="container" style="display:none;" id="tab-turnouts">
-      <div class="empty bg-dark" id="turnouts-empty">
-        <div class="empty-title">No turnouts have been defined yet</div>
-        <div class="empty-subtitle">Click the add button below to define a turnout.</div>
+    <div class="container" style="display:none;" id="tab-accessories">
+      <div class="empty bg-dark" id="accessories-empty">
+        <div class="empty-title">No accesosry decoders have been registered yet</div>
+        <div class="empty-subtitle">Click the add button below to register an accessory decoder.</div>
       </div>
       <div class="container">
-        <table class="table table-stripped" id="turnouts-table">
+        <table class="table table-stripped" id="accessories-table">
           <thead>
             <tr>
               <th>Address</th>
@@ -208,61 +207,62 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         </table>
       </div>
       <div class="container">
-        <button id='turnout-create' title='Create' class='btn btn-lg btn-action btn-primary'><i
+        <button id='accessory-create' title='Create' class='btn btn-lg btn-action btn-primary'><i
             class="icon icon-plus"></i></button>
-        <button id='turnout-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'
-          onclick="$(this).toggleClass('loading');refreshTurnouts(this);"><i
+        <button id='accessory-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'
+          onclick="$(this).toggleClass('loading');refreshAccessories(this);"><i
             class="icon icon-refresh"></i></button>
       </div>
-      <div id="turnout-editor" class="modal">
-        <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#turnout-editor');"></a>
+      <div id="accessory-editor" class="modal">
+        <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#accessory-editor');"></a>
         <div class="modal-container">
           <div class="modal-header">
-            <div class="modal-title h5">Turnout Editor</div>
+            <div class="modal-title h5">Accessory Decoder Editor</div>
           </div>
           <div class="modal-body">
             <div class="columns">
               <div class="column">
-                <label class="form-label text-dark" for="turnout-address">Address:</label>
-                <input type="number" pattern="[0-9]*" id="turnout-address" value="1" min="1" max="2044">
+                <label class="form-label text-dark" for="accessory-address">Address:</label>
+                <input type="number" pattern="[0-9]*" id="accessory-address" value="1" min="1" max="2044">
               </div>
               <div class="column">
-                <label class="form-label text-dark" for="turnout-type">Type:</label>
-                <select id="turnout-type">
-                  <option value="0">Left</option>
-                  <option value="1">Right</option>
-                  <option value="2">Wye</option>
-                  <option value="3">Multi (threeway/etc)</option>
+                <label class="form-label text-dark" for="accessory-type">Type:</label>
+                <select id="accessory-type">
+                  <option value="0">Left diverging switch</option>
+                  <option value="1">Right diverging switch</option>
+                  <option value="2">Wye switch</option>
+                  <option value="3">Multi-directional switch</option>
+                  <option value="4">Other</option>
                 </select>
               </div>
             </div>
             <div class="columns">
               <div class="column-12">
                 <label class="form-switch">
-                  <input type="checkbox" id="turnout-olcb" onclick="toggleOpenLCBTurnout(this);">
+                  <input type="checkbox" id="accessory-olcb" onclick="toggleOpenLCBAccessoryDecoder(this);">
                   <i class="form-icon"></i><span class="text-dark">Send OpenLCB Event instead of DCC packet(s)?</span>
                 </label>
               </div>
             </div>
-            <div id="turnout-olcb-events" style="display:none;">
+            <div id="accessory-olcb-events" style="display:none;">
               <div class="columns">
                 <div class="column">
-                  <label class="form-label text-dark" for="turnout_evt_closed">Closed event(s):</label>
-                  <div id="turnout_evt_closed"></div>
-                  <button class="btn btn-primary" onclick="addEventRow('turnout_evt_closed');"><i class="icon icon-plus"></i></button>
+                  <label class="form-label text-dark" for="accessory_evt_closed">Closed event(s):</label>
+                  <div id="accessory_evt_closed"></div>
+                  <button class="btn btn-primary" onclick="addEventRow('accessory_evt_closed');"><i class="icon icon-plus"></i></button>
                 </div>
                 <div class="column">
-                  <label class="form-label text-dark" for="turnout_evt_thrown">Thrown event(s):</label>
-                  <div id="turnout_evt_thrown"></div>
-                  <button class="btn btn-primary" onclick="addEventRow('turnout_evt_thrown');"><i class="icon icon-plus"></i></button>
+                  <label class="form-label text-dark" for="accessory_evt_thrown">Thrown event(s):</label>
+                  <div id="accessory_evt_thrown"></div>
+                  <button class="btn btn-primary" onclick="addEventRow('accessory_evt_thrown');"><i class="icon icon-plus"></i></button>
                 </div>
               </div>
           </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#turnout-editor');"><i
+            <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#accessory-editor');"><i
                 class="icon icon-cross"></i></button>
-            <button id="turnout-save" class="btn btn-primary" title="Save"><i
+            <button id="accessory-save" class="btn btn-primary" title="Save"><i
                 class="icon icon-check"></i></button>
           </div>
         </div>
@@ -432,11 +432,11 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     const ws_retry_connection_timeout_ms = 500;
     const cs_status_interval_ms = 25000;
     const page_reload_delay_ms = 7500;
-    const fetch_timeout_ms = 20000;
-    const turnout_types = ["Left", "Right", "Wye", "Multi"];
-    const turnout_states = ["Closed", "Thrown"];
-    const turnout_states_tooltip = ["Throw", "Close"];
-    const turnout_icons = [
+    const fetch_timeout_ms = 30000;
+    const accessory_types = ['Left diverging switch', 'Right diverging switch', 'Wye switch', 'Multi-directional switch', 'Unknown type'];
+    const accessory_states = ['Closed', 'Thrown'];
+    const accessory_states_tooltip = ['Throw', 'Close'];
+    const accessory_icons = [
       "icon-arrow-right", "icon-arrow-left", // left
       "icon-arrow-left", "icon-arrow-right", // right
       "icon-arrow-right", "icon-arrow-left", // wye
@@ -484,9 +484,9 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       if (target === '#tab-olcbconfig') {
         $(button).toggleClass('loading');
         refreshCDI(button);
-      } else if (target === '#tab-turnouts') {
+      } else if (target === '#tab-accessories') {
         $(button).toggleClass('loading');
-        refreshTurnouts(button);
+        refreshAccessories(button);
       } else if (target === '#tab-roster') {
         $(button).toggleClass('loading');
         refreshRoster(button);
@@ -625,20 +625,22 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             if (json.state) {
               $(String.format('#funct_{0} i', json.fn)).addClass('icon-circle-check');
             }
-          } else if (json.res === 'turnout') {
+          } else if (json.res === 'accessory') {
             if (json.tgt !== '') {
               $('#' + json.tgt).removeClass('loading');
             }
-            $(String.format("#turnout_{0}_addr", json.addr)).text(json.addr);
-            $(String.format("#turnout_{0}_type", json.addr)).text(turnout_types[json.type]);
-            if (json.hasOwnProperty('state')) {
-              $(String.format("#turnout_{0}_toggle i", json.addr)).removeClass('icon-arrow-left icon-arrow-right');
-              $(String.format("#turnout_{0}_toggle i", json.addr)).addClass(turnout_icons[(json.type * 2) + json.state]);
-              $(String.format("#turnout_{0}_toggle", json.addr)).attr('data-tooltip', turnout_states_tooltip[json.state]);
-              $(String.format("#turnout_{0}_state", json.addr)).text(turnout_states[json.state]);
+            if (json.act === 'delete' || json.act === 'save') {
+              refreshAccessories(null);
             }
-            if (json.act === 'save') {
-              refreshTurnouts(null);
+            else {
+              $(String.format("#accessory_{0}_addr", json.addr)).text(json.addr);
+              $(String.format("#accessory_{0}_type", json.addr)).text(accessory_types[json.type]);
+              if (json.hasOwnProperty('state')) {
+                $(String.format("#accessory_{0}_toggle i", json.addr)).removeClass('icon-arrow-left icon-arrow-right');
+                $(String.format("#accessory_{0}_toggle i", json.addr)).addClass(accessory_icons[(json.type * 2) + json.state]);
+                $(String.format("#accessory_{0}_toggle", json.addr)).attr('data-tooltip', accessory_states_tooltip[json.state]);
+                $(String.format("#accessory_{0}_state", json.addr)).text(accessory_states[json.state]);
+              }
             }
           } else if (json.res === 'event') {
             if (json.evt === ops_track_on_evt) {
@@ -728,13 +730,13 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         window.addEventListener('beforeunload', ws_cleanup);
       }
       setupThrottle();
-      setupTurnouts();
+      setupAccessories();
     });
-    function toggleOpenLCBTurnout(toggle) {
+    function toggleOpenLCBAccessoryDecoder(toggle) {
       if ($(toggle).prop('checked')) {
-        $('#turnout-olcb-events').show();
+        $('#accessory-olcb-events').show();
       } else {
-        $('#turnout-olcb-events').hide();
+        $('#accessory-olcb-events').hide();
       }
     }
     function statusLEDChange(slider) {
@@ -885,21 +887,21 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         $('#' + target).append(String.format('<div class="input-group" id="{0}"><input type="text" class="form-input" maxlength="23" placeholder="00.00.00.00.00.00.00.00"><button class="btn btn-primary input-group-btn" onclick="removeEventRow(\'{0}\');"><i class="icon icon-cross"></i></button></div>', id));
       }
     }
-    function setupTurnouts() {
-      $('#turnout-create').on('click', function () {
-        $('#turnout-address').val(1);
-        $('#turnout-type').val(0);
-        $('#turnout-olcb').prop('checked', false);
-        $('#turnout_evt_closed').children().remove();
-        $('#turnout_evt_thrown').children().remove();
-        toggleOpenLCBTurnout($('#turnout-olcb'));
-        toggleModal('#turnout-editor');
+    function setupAccessories() {
+      $('#accessory-create').on('click', function () {
+        $('#accessory-address').val(1);
+        $('#accessory-type').val(0);
+        $('#accessory-olcb').prop('checked', false);
+        $('#accessory_evt_closed').children().remove();
+        $('#accessory_evt_thrown').children().remove();
+        toggleOpenLCBAccessoryDecoder($('#accessory-olcb'));
+        toggleModal('#accessory-editor');
       });
-      $('#turnout-save').on('click', function () {
-        if ($('#turnout-olcb').prop('checked')) {
+      $('#accessory-save').on('click', function () {
+        if ($('#accessory-olcb').prop('checked')) {
           var closed_events = '';
           var thrown_events = '';
-          $('#turnout_evt_closed input').each(function(idx, elem) {
+          $('#accessory_evt_closed input').each(function(idx, elem) {
             var value = $(elem).val();
             if (value.length) {
               if (closed_events.length) {
@@ -908,7 +910,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               closed_events += value;
             }
           });
-          $('#turnout_evt_thrown input').each(function(idx, elem) {
+          $('#accessory_evt_thrown input').each(function(idx, elem) {
             var value = $(elem).val();
             if (value.length) {
               if (thrown_events.length) {
@@ -918,105 +920,106 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             }
           });
           ws_tx(JSON.stringify({
-            req: 'turnout',
-            act: "save",
-            addr: parseInt($('#turnout-address').val()),
-            type: parseInt($('#turnout-type').val()),
-            olcb: $('#turnout-olcb').prop('checked'),
+            req: 'accessory',
+            act: 'save',
+            addr: parseInt($('#accessory-address').val()),
+            type: parseInt($('#accessory-type').val()),
+            olcb: true,
             closed: closed_events,
             thrown: thrown_events,
             id: get_ws_msg_id()
           }));
         } else {
           ws_tx(JSON.stringify({
-            req: 'turnout',
-            act: "save",
-            addr: parseInt($('#turnout-address').val()),
-            type: parseInt($('#turnout-type').val()),
-            olcb: $('#turnout-olcb').prop('checked'),
+            req: 'accessory',
+            act: 'save',
+            addr: parseInt($('#accessory-address').val()),
+            type: parseInt($('#accessory-type').val()),
+            olcb: false,
             id: get_ws_msg_id()
           }));
         }
-        toggleModal('#turnout-editor');
+        toggleModal('#accessory-editor');
       });
     }
-    function refreshTurnouts(button) {
+    function refreshAccessories(button) {
       if (window.location.host.length) {
-        fetchWithTimeout('/turnouts').then(res => res.json()).then(data => {
+        fetchWithTimeout('/accessories').then(res => res.json()).then(data => {
           if (button) {
             $(button).toggleClass('loading');
           }
           if (data.length) {
-            var tbody = $('#turnouts-table tbody');
+            var tbody = $('#accessories-table tbody');
             tbody.children().remove();
             for (var idx in data) {
-              var actions = String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editTurnout({0});"><i class="icon icon-edit"></i></button>',
+              var actions = String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editAccessory({0});"><i class="icon icon-edit"></i></button>',
                 data[idx].address);
-              actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteTurnout({0});"><i class="icon icon-delete"></i></button>',
+              actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteAccessory({0});"><i class="icon icon-delete"></i></button>',
                 data[idx].address);
-              actions += String.format('<button id="turnout_{0}_toggle" class="btn btn-primary btn-sm tooltip" data-tooltip="{1}" onclick="toggleTurnout({0},this);"><i class="icon {2}"></i></button>',
-                data[idx].address, turnout_states_tooltip[data[idx].state], turnout_icons[(data[idx].type * 2) + data[idx].state]);
-              $(tbody).append(String.format('<tr><td id="turnout_{0}_addr">{0}</td><td id="turnout_{0}_type">{1}</td><td id="turnout_{0}_state">{2}</td><td>{3}</td></tr>',
-                data[idx].address, turnout_types[data[idx].type], turnout_states[data[idx].state], actions));
+              actions += String.format('<button id="accessory_{0}_toggle" class="btn btn-primary btn-sm tooltip" data-tooltip="{1}" onclick="toggleAccessory({0},this);"><i class="icon {2}"></i></button>',
+                data[idx].address, accessory_states_tooltip[data[idx].state], accessory_icons[(data[idx].type * 2) + data[idx].state]);
+              $(tbody).append(String.format('<tr><td id="accessory_{0}_addr">{0}</td><td id="accessory_{0}_type">{1}</td><td id="accessory_{0}_state">{2}</td><td>{3}</td></tr>',
+                data[idx].address, accessory_types[data[idx].type], accessory_states[data[idx].state], actions));
             }
-            $("#turnouts-empty").hide();
-            $("#turnouts-table").show();
+            $("#accessories-empty").hide();
+            $("#accessories-table").show();
           } else {
-            $("#turnouts-table").hide();
-            $("#turnouts-empty").show();
+            $("#accessories-table").hide();
+            $("#accessories-empty").show();
           }
-          $('#tab-turnouts').show();
+          $('#tab-accessories').show();
         }).catch(function (error) {
           if (button) {
             $(button).toggleClass('loading');
           }
-          showErrorDialog('Failed to retrieve turnout list', error);
-          $("#turnouts-table").hide();
-          $("#turnouts-empty").show();
-          $('#tab-turnouts').show();
+          showErrorDialog('Failed to retrieve accessory decoder list', error);
+          $("#accessories-table").hide();
+          $("#accessories-empty").show();
+          $('#tab-accessories').show();
         });
       } else {
         $(button).toggleClass('loading');
-        $("#turnouts-table").hide();
-        $("#turnouts-empty").show();
-        $('#tab-turnouts').show();
+        $("#accessories-table").hide();
+        $("#accessories-empty").show();
+        $('#tab-accessories').show();
       }
     }
-    function editTurnout(address) {
-      fetchWithTimeout(String.format('/turnouts?address={0}', address)).then(res => res.json()).then(data => {
-        $('#turnout-address').val(data.address);
-        $('#turnout-type').val(data.type);
-        $('#turnout_evt_closed').children().remove();
-        $('#turnout_evt_thrown').children().remove();
-        if (data.hasOwnProperty('openlcb')) {
-          $('#turnout-olcb').prop('checked', true);
-          data.openlcb.closed.split(/,/).forEach(event => {
-            addEventRow('turnout_evt_closed', event);
+    function editAccessory(address) {
+      fetchWithTimeout(String.format('/accessories?address={0}', address)).then(res => res.json()).then(data => {
+        $('#accessory-address').val(data.address);
+        $('#accessory-type').val(data.type);
+        $('#accessory_evt_closed').children().remove();
+        $('#accessory_evt_thrown').children().remove();
+        if (data.hasOwnProperty('olcb')) {
+          $('#accessory-olcb').prop('checked', true);
+          data.olcb.closed.split(/,/).forEach(event => {
+            addEventRow('accessory_evt_closed', event);
           });
-          data.openlcb.thrown.split(/,/).forEach(event => {
-            addEventRow('turnout_evt_thrown', event);
+          data.olcb.thrown.split(/,/).forEach(event => {
+            addEventRow('accessory_evt_thrown', event);
           });
         } else {
-          $('#turnout-olcb').prop('checked', false);
+          $('#accessory-olcb').prop('checked', false);
         }
-        toggleOpenLCBTurnout($('#turnout-olcb'));
-        toggleModal('#turnout-editor');
+        toggleOpenLCBAccessoryDecoder($('#accessory-olcb'));
+        toggleModal('#accessory-editor');
       }).catch(function (error) {
-        showErrorDialog('Failed to retrieve turnout details', error);
+        showErrorDialog('Failed to retrieve accessory decoder details', error);
       });
     }
-    function deleteTurnout(address) {
-      if (window.location.host.length) {
-        fetchWithTimeout(String.format('/turnouts?address={0}', address), { method: 'DELETE' }).then(res => refreshTurnouts(null)).catch(function (error) {
-          showErrorDialog('Failed to delete turnout', error);
-        });
-      }
+    function deleteAccessory(address) {
+      ws_tx(JSON.stringify({
+        req: 'accessory',
+        addr: parseInt(address),
+        act: "delete",
+        id: get_ws_msg_id()
+      }));
     }
-    function toggleTurnout(address, button) {
+    function toggleAccessory(address, button) {
       var target = $(button).attr('id');
       $(button).toggleClass('loading');
       ws_tx(JSON.stringify({
-        req: 'turnout',
+        req: 'accessory',
         addr: parseInt(address),
         act: "toggle",
         tgt: target,
@@ -1050,7 +1053,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           if (button) {
             $(button).toggleClass('loading');
           }
-          showErrorDialog('Failed to retrieve turnout list', error);
+          showErrorDialog('Failed to retrieve accessory decoder list', error);
           $("#roster-table").hide();
           $("#roster-empty").show();
           $('#tab-roster').show();

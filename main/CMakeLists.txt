@@ -28,6 +28,7 @@ set(IDF_DEPS
 )
 
 set(CUSTOM_DEPS
+    AccessoryDecoderDB
     Config
     DCC
     HttpServer
@@ -38,7 +39,6 @@ set(CUSTOM_DEPS
     StatusLED
     TrainDatabase
     TrainSearchProtocol
-    TurnoutManager
     Utils
 )
 
