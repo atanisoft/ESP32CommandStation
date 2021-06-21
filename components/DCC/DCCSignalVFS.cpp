@@ -223,29 +223,6 @@ static void rmt_tx_callback(rmt_channel_t channel, void *ctx)
   }
 }
 
-/// Initializes the RMT based signal generation
-///
-/// @param param unused.
-///
-/// Note: this is necessary to ensure the RMT ISRs are started on the second
-/// core of the ESP32.
-static void init_rmt_outputs(void *param)
-{
-  Notifiable *notif = static_cast<Notifiable *>(param);
-
-  // Connect our callback into the RMT so we can queue up the next packet for
-  // transmission when needed.
-  rmt_register_tx_end_callback(rmt_tx_callback, nullptr);
-
-  track.hw_init();
-
-  // tell the main task that the RMT drivers are ready.
-  notif->notify();
-
-  // this is a one-time task, shutdown the task before returning
-  vTaskDelete(nullptr);
-}
-
 /// Initializes the ESP32 VFS adapter for the DCC track interface and the short
 /// detection devices.
 /// @param node is the OpenLCB node to bind to.
@@ -266,23 +243,20 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   LOG(INFO, "[Track] Registering %s VFS interface", CONFIG_DCC_VFS_MOUNT_POINT);
   ESP_ERROR_CHECK(esp_vfs_register(CONFIG_DCC_VFS_MOUNT_POINT, &vfs, nullptr));
 
-  SyncNotifiable notif;
-  // initialize the track signal generators on the second core so that the ISR
-  // is bound to that core instead of the first core.
-  xTaskCreatePinnedToCore(&init_rmt_outputs, "DCC RMT Init", 2048, &notif,
-                          uxTaskPriorityGet(NULL) + 1, nullptr, APP_CPU_NUM);
+  // Connect our callback into the RMT so we can queue up the next packet for
+  // transmission when needed.
+  rmt_register_tx_end_callback(rmt_tx_callback, nullptr);
 
-  // block until the RMT init task completes
-  notif.wait_for_notification();
+  // Initialize the RMT signal generator.
+  track.hw_init();
 
   track_interface.emplace(svc, CONFIG_DCC_PACKET_POOL_SIZE);
-  int track = ::open(CONFIG_DCC_VFS_MOUNT_POINT, O_WRONLY);
-  track_interface->set_fd(track);
-  track_update_loop.emplace(svc, track_interface.get_mutable());
+  track_interface->set_fd(open(CONFIG_DCC_VFS_MOUNT_POINT, O_WRONLY));
+  track_update_loop.emplace(svc, track_interface.operator->());
 
   // Attach the DCC update loop to the track interface
-  track_flow.emplace(svc, track_interface->pool()
-                   , track_update_loop.get_mutable());
+  track_flow.emplace(svc, track_interface->pool(),
+                     track_update_loop.operator->());
 
 #if !CONFIG_RAILCOM_DISABLED
   railcom_hub.emplace(svc);
