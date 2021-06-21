@@ -41,7 +41,7 @@ StatusDisplay::StatusDisplay(Service *service, Esp32WiFiManager *wifi_mgr,
 
 void StatusDisplay::clear()
 {
-#if !CONFIG_DISPLAY_TYPE_NONE
+#ifndef CONFIG_DISPLAY_TYPE_NONE
   LOG(VERBOSE, "[StatusDisplay] clear screen");
   for (int line = 0; line < CONFIG_DISPLAY_LINE_COUNT; line++)
   {
@@ -53,7 +53,7 @@ void StatusDisplay::clear()
 
 void StatusDisplay::info(const std::string &format, ...)
 {
-#if !CONFIG_DISPLAY_TYPE_NONE
+#ifndef CONFIG_DISPLAY_TYPE_NONE
   char buf[256] = {0};
   va_list args;
   va_start(args, format);
@@ -66,7 +66,7 @@ void StatusDisplay::info(const std::string &format, ...)
 
 void StatusDisplay::status(const std::string &format, ...)
 {
-#if !CONFIG_DISPLAY_TYPE_NONE
+#ifndef CONFIG_DISPLAY_TYPE_NONE
   char buf[256] = {0};
   va_list args;
   va_start(args, format);
@@ -79,7 +79,7 @@ void StatusDisplay::status(const std::string &format, ...)
 
 void StatusDisplay::wifi(const std::string &format, ...)
 {
-#if !CONFIG_DISPLAY_TYPE_NONE
+#ifndef CONFIG_DISPLAY_TYPE_NONE
   char buf[256] = {0};
   va_list args;
   va_start(args, format);
@@ -97,7 +97,7 @@ void StatusDisplay::wifi(const std::string &format, ...)
 
 void StatusDisplay::track_power(const std::string &format, ...)
 {
-#if !CONFIG_DISPLAY_TYPE_NONE && CONFIG_DISPLAY_LINE_COUNT > 2
+#if !defined(CONFIG_DISPLAY_TYPE_NONE) && CONFIG_DISPLAY_LINE_COUNT > 2
   char buf[256] = {0};
   va_list args;
   va_start(args, format);
@@ -110,12 +110,12 @@ void StatusDisplay::track_power(const std::string &format, ...)
 
 StateFlowBase::Action StatusDisplay::init()
 {
-#if !CONFIG_DISPLAY_TYPE_NONE
+#ifndef CONFIG_DISPLAY_TYPE_NONE
 #if CONFIG_DISPLAY_TYPE_OLED
   OLED_RESET_Pin::set(true);
 #endif
   clear();
-  info("ESP32-CS: v%s", openlcb::SNIP_STATIC_DATA.software_version);
+  info("ESP32-CS: %s", openlcb::SNIP_STATIC_DATA.software_version);
   if (nvs_->wifi_mode() != WIFI_MODE_NULL)
   {
     wifi_->register_network_init_callback(
@@ -234,6 +234,7 @@ StateFlowBase::Action StatusDisplay::init()
 
 StateFlowBase::Action StatusDisplay::update()
 {
+#ifndef CONFIG_DISPLAY_TYPE_NONE
   static uint8_t rotatingLineCount = 5;
   // switch to next status line detail set after 10 iterations
   if (++updateCount_ > 10)
@@ -287,6 +288,9 @@ StateFlowBase::Action StatusDisplay::update()
     lineChanged_[line] = false;
   }
   return sleep_and_call(&timer_, MSEC_TO_NSEC(450), STATE(update));
+#else
+  return exit();
+#endif // !CONFIG_DISPLAY_TYPE_NONE
 }
 
 } // namespace esp32cs

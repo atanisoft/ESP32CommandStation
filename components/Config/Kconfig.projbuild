@@ -154,7 +154,8 @@ menu "Pin Configuration"
             help
                 This pin is used to output a digital signal for Addressable
                 LEDs. Currently five LEDs are used to indicate status of the
-                Command Station.
+                Command Station. Set this pin to -1 to disable the usage of the
+                Status LEDs.
     endmenu
     menu "Status Display"
         depends on DISPLAY_TYPE_OLED
@@ -419,13 +420,13 @@ menu "Status Display"
         default 8 if DISPLAY_OLED_128x64
         default 4 if DISPLAY_OLED_128x32 || DISPLAY_LCD_20x4 || DISPLAY_LCD_16x4
         default 2 if DISPLAY_OLED_96x16 || DISPLAY_LCD_20x2 || DISPLAY_LCD_16x2
-        default 1
+        depends on !DISPLAY_TYPE_NONE
     config DISPLAY_COLUMN_COUNT
         int
-        default 20 if DISPLAY_LCD_20x4 || DISPLAY_LCD_16x4
+        default 20 if DISPLAY_LCD_20x4
         default 16 if DISPLAY_OLED_128x64 || DISPLAY_OLED_128x32 || DISPLAY_LCD_16x4 || DISPLAY_LCD_16x2
         default 12 if DISPLAY_OLED_96x16
-        default 1
+        depends on !DISPLAY_TYPE_NONE
     config DISPLAY_OLED_WIDTH
         int
         default 96 if DISPLAY_OLED_96x16

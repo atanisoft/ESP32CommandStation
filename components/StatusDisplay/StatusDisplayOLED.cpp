@@ -28,6 +28,12 @@ namespace esp32cs
 #define CONFIG_DISPLAY_OLED_WIDTH 128
 #define CONFIG_DISPLAY_OLED_HEIGHT 64
 #define CONFIG_DISPLAY_OLED_CONTRAST 128
+#ifndef CONFIG_DISPLAY_COLUMN_COUNT
+#define CONFIG_DISPLAY_COLUMN_COUNT 16
+#endif
+#ifndef CONFIG_DISPLAY_LINE_COUNT
+#define CONFIG_DISPLAY_LINE_COUNT 8
+#endif
 #endif
 
 #if CONFIG_DISPLAY_OLED_FONT_THIN
@@ -195,7 +201,7 @@ void StatusDisplay::renderOLED(uint8_t line)
   {
     i2c_master_write_byte(cmd, OLED_MEMORY_COLUMN_RANGE, true);
     i2c_master_write_byte(cmd, 0x00, true);
-    i2c_master_write_byte(cmd, CONFIG_DISPLAY_COLUMN_COUNT - 1, true);
+    i2c_master_write_byte(cmd, CONFIG_DISPLAY_OLED_WIDTH - 1, true);
   }
   i2c_master_stop(cmd);
   ESP_ERROR_CHECK_WITHOUT_ABORT(
@@ -212,7 +218,8 @@ void StatusDisplay::renderOLED(uint8_t line)
     // Check that the character is a renderable character.
     if (ch <= 0x7f)
     {
-      i2c_master_write(cmd, (uint8_t *)oled_font[(uint8_t)ch], OLED_FONT_WIDTH, true);
+      i2c_master_write(cmd, (uint8_t *)oled_font[(uint8_t)ch],
+                       OLED_FONT_WIDTH, true);
     }
     else
     {
