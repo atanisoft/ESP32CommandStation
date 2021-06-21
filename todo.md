@@ -12,6 +12,7 @@
     * StatusLED - APP_CPU priority 3
     * HttpServer - APP_CPU priority 5
     * TWAI - ISR APP_CPU, task float priority is one less than LwIP.
+    * RMT - ISR PRO_CPU
 * [ ] Investigate heap corruption issues.
 * [ ] DCC: ULP current sense / ACK.
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
@@ -26,6 +27,7 @@
 * [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
 * [ ] WebUI: Add function name/label editing via web interface.
 * [ ] WebUI: Test all endpoints.
+* [ ] FastClock: Re-add FastClock support
 
 ### Nice to have for v2.0
 
