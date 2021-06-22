@@ -20,6 +20,6 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 namespace esp32cs
 {
 
-DEFAULT_CONST(min_refresh_delay_us, 10000ULL);
+DEFAULT_CONST(min_refresh_delay_ms, 10);
 
 } // namespace esp32cs

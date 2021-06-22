@@ -21,7 +21,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <dcc/PacketFlowInterface.hxx>
 #include <dcc/UpdateLoop.hxx>
 #include <executor/StateFlow.hxx>
-#include <mutex>
+#include <Spinlock.hxx>
 
 namespace esp32cs
 {
@@ -79,7 +79,7 @@ private:
   {
     /// OS timestamp of when the last packet was sent to this source. This is
     /// used to suppress sending a packet from this packet source too quickly.
-    uint64_t lastPacketTimestamp;
+    uint64_t last_packet;
 
     /// Priority of this packet source.
     unsigned priority;
@@ -109,7 +109,7 @@ private:
 
   /// Lock used to protect @ref sources_, @ref metrics_ and
   /// @ref updateSources_.
-  std::mutex mux_;
+  Spinlock lock_;
 };
 
 } // namespace esp32cs

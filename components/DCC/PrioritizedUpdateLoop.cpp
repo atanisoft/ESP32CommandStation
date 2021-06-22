@@ -19,7 +19,8 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 
 #include <algorithm>
 #include <dcc/PacketSource.hxx>
-#include <esp_timer.h>
+#include <esp32/clk.h>
+#include <inttypes.h>
 #include <utils/constants.hxx>
 
 namespace esp32cs
@@ -29,7 +30,7 @@ using dcc::PacketSource;
 using dcc::PacketFlowInterface;
 using dcc::UpdateLoopBase;
 
-DECLARE_CONST(min_refresh_delay_us);
+DECLARE_CONST(min_refresh_delay_ms);
 
 struct UpdateRequest
 {
@@ -47,7 +48,6 @@ PrioritizedUpdateLoop::PrioritizedUpdateLoop(Service *service,
   : StateFlow<Buffer<dcc::Packet>, QList<1>>(service),
     track_(track)
 {
-
 }
 
 PrioritizedUpdateLoop::~PrioritizedUpdateLoop()
@@ -59,7 +59,7 @@ PrioritizedUpdateLoop::~PrioritizedUpdateLoop()
 bool PrioritizedUpdateLoop::add_refresh_source(PacketSource *source,
                                                unsigned priority)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
 
   // record the new packet source
   sources_.push_back(source);
@@ -67,7 +67,7 @@ bool PrioritizedUpdateLoop::add_refresh_source(PacketSource *source,
   // seed the tracking metrics
   auto &metrics = metrics_[source];
   metrics.priority = priority;
-  metrics.lastPacketTimestamp = 0;
+  metrics.last_packet = 0;
 
   if (priority > UpdateLoopBase::EXCLUSIVE_MIN_PRIORITY)
   {
@@ -94,7 +94,7 @@ bool PrioritizedUpdateLoop::add_refresh_source(PacketSource *source,
 
 void PrioritizedUpdateLoop::remove_refresh_source(PacketSource *source)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   sources_.erase(
     std::remove(sources_.begin(), sources_.end(), source), sources_.end());
   metrics_.erase(source);
@@ -130,21 +130,20 @@ void PrioritizedUpdateLoop::notify_update(PacketSource* source, unsigned code)
   buf->data()->reset(source, code);
 
   // lock the queue and insert the new update packet for processing
-  {
-    const std::lock_guard<std::mutex> lock(mux_);
-    updateSources_.insert(buf, 0);
-  }
+  SpinlockHolder lock(&lock_);
+  updateSources_.insert(buf, 0);
 }
 
 StateFlowBase::Action PrioritizedUpdateLoop::entry()
 {
-  {
-    dcc::PacketSource *source = nullptr;
-    uint64_t current_time = esp_timer_get_time();
-    uint64_t threshold = current_time - config_min_refresh_delay_us();
-    unsigned code = 0;
+  dcc::PacketSource *source = nullptr;
+  uint64_t now = esp_clk_rtc_time();
+  uint64_t min_refresh_time =
+    now - MSEC_TO_USEC(config_min_refresh_delay_ms());
+  unsigned code = 0;
 
-    const std::lock_guard<std::mutex> lock(mux_);
+  {
+    SpinlockHolder lock(&lock_);
     // if we have an exclusive source use it as the source otherwise check if
     // there is a priority update to send out.
     if (exclusiveIndex_ != NO_EXCLUSIVE_SOURCE)
@@ -165,7 +164,7 @@ StateFlowBase::Action PrioritizedUpdateLoop::entry()
         // packet source.
         update->unref();
       }
-      else if (metrics->second.lastPacketTimestamp > threshold)
+      else if (metrics->second.last_packet > min_refresh_time)
       {
         // we sent a packet to this source within the minimum refresh window
         // send this source back to the queue.
@@ -178,38 +177,47 @@ StateFlowBase::Action PrioritizedUpdateLoop::entry()
         source = update_source;
       }
     }
+  }
 
-    if (source == nullptr)
+  if (!source && !sources_.empty())
+  {
+    // default to general refresh.
+    code = 0;
+
+    // no priority updates or exclusive sources available, scan all registered
+    // sources to find the one that has not been updated recently.
+    size_t index = 0;
+    while (index++ < sources_.size() && !source)
     {
-      // scan all refresh sources to find which (if any) has not been recently
-      // refreshed.
-      for (size_t idx = 0; idx < sources_.size(); idx++)
       {
-        nextIndex_ %= sources_.size();
-        auto ref = sources_[nextIndex_++];
-        if (ref && metrics_[ref].lastPacketTimestamp < threshold)
+        SpinlockHolder lock(&lock_);
+        if (nextIndex_ >= sources_.size())
         {
-          // enough time has passed for this packet source, we can send to it.
-          code = 0;
-          source = ref;
-          break;
+          nextIndex_ = 0;
         }
+        source = sources_[nextIndex_++];
+      }
+      if (metrics_[source].last_packet > min_refresh_time)
+      {
+        // source is not yet ready for refresh.
+        source = nullptr;
       }
     }
+  }
 
-    if (source)
-    {
-      // we have a new source, get the next packet from the source
-      source->get_next_packet(code, message()->data());
+  if (source)
+  {
+    //ets_printf("%" PRIu64 ": source:%p, code:%d\n", now, source, code);
+    // we have a new source, get the next packet from the source
+    source->get_next_packet(code, message()->data());
 
-      // track that we have sent a packet to this source recently
-      metrics_[source].lastPacketTimestamp = current_time;
-    }
-    else
-    {
-      // no packet source generated a packet, convert the packet to idle.
-      message()->data()->set_dcc_idle();
-    }
+    // track that we have sent a packet to this source recently
+    metrics_[source].last_packet = now;
+  }
+  else
+  {
+    // no packet source generated a packet, convert the packet to idle.
+    message()->data()->set_dcc_idle();
   }
 
   // transfer the packet to the track interface
