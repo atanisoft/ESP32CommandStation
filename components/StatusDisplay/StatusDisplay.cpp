@@ -257,8 +257,7 @@ StateFlowBase::Action StatusDisplay::update()
       struct tm ti;
       gettimeofday(&tv, NULL);
       localtime_r(&tv.tv_sec, &ti);
-      status("%02d:%02d:%02d:%06ld", ti.tm_hour, ti.tm_min, ti.tm_sec,
-             tv.tv_usec / 1000);
+      status("%02d:%02d:%02d", ti.tm_hour, ti.tm_min, ti.tm_sec);
     }
     else if (rotatingIndex_ == 2)
     {
