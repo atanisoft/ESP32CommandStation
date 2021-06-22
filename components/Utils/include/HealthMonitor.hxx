@@ -70,7 +70,7 @@ private:
         struct tm ti;
         gettimeofday(&tv, NULL);
         localtime_r(&tv.tv_sec, &ti);
-        LOG(INFO, "%02d:%02d:%02d:%06ld: heap:%.2fkB/%.2fKb, buf:%.2fkB",
+        LOG(INFO, "%02d:%02d:%02d.%03ld: heap:%.2fkB/%.2fKb, buf:%.2fkB",
             ti.tm_hour, ti.tm_min, ti.tm_sec, tv.tv_usec / 1000,
             heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0f,
             heap_caps_get_total_size(MALLOC_CAP_INTERNAL) / 1024.0f,
