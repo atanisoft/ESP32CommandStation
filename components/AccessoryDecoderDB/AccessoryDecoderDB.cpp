@@ -63,7 +63,6 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service)
                  std::bind(&AccessoryDecoderDB::persist, this)),
     dirty_(false)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
   LOG(INFO, "[AccessoryDecoderDB] Initializing");
   struct stat statbuf;
   if (!stat(ACCESSORIES_JSON_FILE, &statbuf))
@@ -270,7 +269,7 @@ void AccessoryDecoderDB::handle_identify_consumer(const EventRegistryEntry &entr
 
 void AccessoryDecoderDB::clear()
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   for (auto & accessory : accessories_)
   {
     accessory.reset(nullptr);
@@ -281,7 +280,7 @@ void AccessoryDecoderDB::clear()
 
 void AccessoryDecoderDB::set(uint16_t address, bool thrown, bool on_off)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -306,7 +305,7 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
 {
   LOG(CONFIG_TURNOUT_LOG_LEVEL
     , "[AccessoryDecoderDB] Request to toggle turnout address %d", address);
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -338,7 +337,7 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
 
 string AccessoryDecoderDB::to_json(bool readable)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   return to_json_locked(readable);
 }
 
@@ -355,7 +354,7 @@ std::string AccessoryDecoderDB::to_json(const uint16_t address, bool readable)
 void AccessoryDecoderDB::createOrUpdateDcc(const uint16_t address,
                                            const AccessoryType type)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -382,7 +381,7 @@ void AccessoryDecoderDB::createOrUpdateOlcb(const uint16_t address,
                                             std::string thrown_events,
                                             const AccessoryType type)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -407,7 +406,7 @@ void AccessoryDecoderDB::createOrUpdateOlcb(const uint16_t address,
 
 bool AccessoryDecoderDB::remove(const uint16_t address)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -451,7 +450,7 @@ void AccessoryDecoderDB::get_next_packet(unsigned code, dcc::Packet* packet)
 
 AccessoryBaseType *AccessoryDecoderDB::get(const uint16_t address, bool silent)
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -483,7 +482,7 @@ string AccessoryDecoderDB::to_json_locked(bool readableStrings)
 
 void AccessoryDecoderDB::persist()
 {
-  const std::lock_guard<std::mutex> lock(mux_);
+  SpinlockHolder lock(&lock_);
   bool dirtyFlag = dirty_;
   dirty_ = false;
   // Check if we have any changes to persist, if not exit early.
