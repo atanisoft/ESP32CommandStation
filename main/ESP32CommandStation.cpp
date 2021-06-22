@@ -43,7 +43,6 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <NvsManager.hxx>
 #include <openlcb/MemoryConfigClient.hxx>
 #include <openlcb/SimpleStack.hxx>
-#include <Spinlock.hxx>
 #include <StatusDisplay.hxx>
 #include <StatusLED.hxx>
 #include <TrainDatabase.h>
@@ -307,7 +306,7 @@ ssize_t os_get_free_heap()
   return heap_caps_get_free_size(MALLOC_CAP_8BIT);
 }
 
-esp32cs::Spinlock log_lock;
+std::mutex log_mux;
 // OpenMRN log output method, overridden to add mutex guard around fwrite/fputc
 // due to what appears to be a bug in esp-idf where it thinks a recursive mutex
 // is being held and that it is in an ISR context.
@@ -315,7 +314,7 @@ void log_output(char* buf, int size)
 {
   if (size > 0)
   {
-    esp32cs::SpinlockHolder lock(&log_lock);
+    const std::lock_guard<std::mutex> lock(log_mux);
     buf[size] = '\0';
     printf("%s\n", buf);
   }
