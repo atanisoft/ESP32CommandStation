@@ -433,7 +433,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     const cs_status_interval_ms = 25000;
     const page_reload_delay_ms = 7500;
     const fetch_timeout_ms = 30000;
-    const accessory_types = ['Left diverging switch', 'Right diverging switch', 'Wye switch', 'Multi-directional switch', 'Unknown type'];
+    const accessory_types = ['Left diverging switch', 'Right diverging switch', 'Wye switch', 'Multi-directional switch', 'Other'];
     const accessory_states = ['Closed', 'Thrown'];
     const accessory_states_tooltip = ['Throw', 'Close'];
     const accessory_icons = [
@@ -441,6 +441,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       "icon-arrow-left", "icon-arrow-right", // right
       "icon-arrow-right", "icon-arrow-left", // wye
       "icon-arrow-right", "icon-arrow-left", // multi
+      "icon-arrow-right", "icon-arrow-left", // other/unknown
     ];
     const ops_track_off_evt = '01.00.00.00.00.00.FF.FF';
     const ops_track_on_evt = '01.00.00.00.00.00.FF.FE';
@@ -634,10 +635,16 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             }
             else {
               $(String.format("#accessory_{0}_addr", json.addr)).text(json.addr);
-              $(String.format("#accessory_{0}_type", json.addr)).text(accessory_types[json.type]);
+              if (json.hasOwnProperty('type') && json.type < accessory_types.length) {
+                console.debug('accessory type change', $(String.format("#accessory_{0}_type", json.addr)).data('type'),'->', json.type);
+                $(String.format("#accessory_{0}_type", json.addr)).text(accessory_types[json.type]);
+                $(String.format("#accessory_{0}_type", json.addr)).data('type', json.type);
+              }
               if (json.hasOwnProperty('state')) {
+                var type = parseInt($(String.format("#accessory_{0}_type", json.addr)).data('type'));
+                console.debug('accessory', json.addr, 'type', type, 'state', json.state, 'icon', accessory_icons[(type * 2) + json.state]);
                 $(String.format("#accessory_{0}_toggle i", json.addr)).removeClass('icon-arrow-left icon-arrow-right');
-                $(String.format("#accessory_{0}_toggle i", json.addr)).addClass(accessory_icons[(json.type * 2) + json.state]);
+                $(String.format("#accessory_{0}_toggle i", json.addr)).addClass(accessory_icons[(type * 2) + json.state]);
                 $(String.format("#accessory_{0}_toggle", json.addr)).attr('data-tooltip', accessory_states_tooltip[json.state]);
                 $(String.format("#accessory_{0}_state", json.addr)).text(accessory_states[json.state]);
               }
@@ -958,8 +965,8 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
                 data[idx].address);
               actions += String.format('<button id="accessory_{0}_toggle" class="btn btn-primary btn-sm tooltip" data-tooltip="{1}" onclick="toggleAccessory({0},this);"><i class="icon {2}"></i></button>',
                 data[idx].address, accessory_states_tooltip[data[idx].state], accessory_icons[(data[idx].type * 2) + data[idx].state]);
-              $(tbody).append(String.format('<tr><td id="accessory_{0}_addr">{0}</td><td id="accessory_{0}_type">{1}</td><td id="accessory_{0}_state">{2}</td><td>{3}</td></tr>',
-                data[idx].address, accessory_types[data[idx].type], accessory_states[data[idx].state], actions));
+              $(tbody).append(String.format('<tr><td id="accessory_{0}_addr">{0}</td><td id="accessory_{0}_type" data-type="{1}">{2}</td><td id="accessory_{0}_state">{3}</td><td>{4}</td></tr>',
+                data[idx].address, data[idx].type, accessory_types[data[idx].type], accessory_states[data[idx].state], actions));
             }
             $("#accessories-empty").hide();
             $("#accessories-table").show();

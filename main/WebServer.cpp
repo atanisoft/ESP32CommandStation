@@ -444,13 +444,14 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         string action = cJSON_GetObjectItem(root, "act")->valuestring;
         string target = cJSON_HasObjectItem(root, "tgt") ?
             cJSON_GetObjectItem(root, "tgt")->valuestring : "";
+        bool state = false;
+        AccessoryType type = AccessoryType::UNCHANGED;
+        if (cJSON_HasObjectItem(root, "type"))
+        {
+          type = (AccessoryType)cJSON_GetObjectItem(root, "type")->valueint;
+        }
         if (action == "save")
         {
-          AccessoryType type = AccessoryType::UNCHANGED;
-          if (cJSON_HasObjectItem(root, "type"))
-          {
-            type = (AccessoryType)cJSON_GetObjectItem(root, "type")->valueint;
-          }
           LOG(VERBOSE, "[WSJSON:%d] Saving accessory %d as type %d",
               req_id->valueint, address, type);
           if (cJSON_IsTrue(cJSON_GetObjectItem(root, "olcb")))
@@ -468,7 +469,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         {
           LOG(VERBOSE, "[WSJSON:%d] Toggling accessory %d", req_id->valueint,
               address);
-          db->toggle(address);
+          state = db->toggle(address);
         }
         else if (action == "delete")
         {
@@ -477,8 +478,9 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
           db->remove(address);
         }
         response =
-            StringPrintf(R"!^!({"res":"accessory","act":"%s","addr":%d,"tgt":"%s","id":%d})!^!",
-                        action.c_str(), address, target.c_str(), req_id->valueint);
+          StringPrintf(R"!^!({"res":"accessory","act":"%s","addr":%d,"tgt":"%s","state":%d,"type":%d,"id":%d})!^!",
+                      action.c_str(), address, target.c_str(), state, type,
+                      req_id->valueint);
       }
     }
     else if (!strcmp(req_type->valuestring, "ping"))
