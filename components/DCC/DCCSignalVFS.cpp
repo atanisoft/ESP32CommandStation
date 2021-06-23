@@ -19,8 +19,8 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include "PrioritizedUpdateLoop.hxx"
 #include "TrackOutputDescriptor.hxx"
 #include "TrackPowerHandler.hxx"
+#include "ulp_current_sense.h"
 #include <hardware.hxx>
-#include <os/Gpio.hxx>
 
 #include <AccessoryDecoderDatabase.hxx>
 #include <AllTrainNodes.hxx>
@@ -30,11 +30,14 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <dcc/RailCom.hxx>
 #include <dcc/RailcomHub.hxx>
 #include <dcc/RailcomPortDebug.hxx>
+#include <driver/adc.h>
 #include <driver/periph_ctrl.h>
+#include <driver/rtc_cntl.h>
 #include <driver/rmt.h>
 #include <driver/timer.h>
 #include <driver/uart.h>
 #include <esp_vfs.h>
+#include <esp32/ulp.h>
 #include <executor/PoolToQueueFlow.hxx>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
@@ -43,10 +46,12 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <openlcb/MemoryConfig.hxx>
 #include <openlcb/Node.hxx>
 #include <openlcb/RefreshLoop.hxx>
+#include <os/Gpio.hxx>
 #include <RMTTrackDevice.hxx>
+#include <soc/rtc_cntl_reg.h>
+#include <StringUtils.hxx>
 #include <utils/GpioInitializer.hxx>
 #include <utils/logging.h>
-#include <StringUtils.hxx>
 
 namespace esp32cs
 {
@@ -169,6 +174,7 @@ static uninitialized<ProgrammingTrackBackend> prog_backend;
 static uninitialized<esp32cs::AccessoryDecoderDB> accessory_db;
 
 /// ESP32 VFS ::write() impl for the RMTTrackDevice.
+///
 /// @param fd is the file descriptor being written to.
 /// @param data is the data to write.
 /// @param size is the size of data.
@@ -179,9 +185,11 @@ static ssize_t dcc_vfs_write(int fd, const void *data, size_t size)
 }
 
 /// ESP32 VFS ::open() impl for the RMTTrackDevice
+///
 /// @param path is the file location to be opened.
 /// @param flags is not used.
 /// @param mode is not used.
+///
 /// @returns file descriptor for the opened file location.
 static int dcc_vfs_open(const char *path, int flags, int mode)
 {
@@ -191,7 +199,9 @@ static int dcc_vfs_open(const char *path, int flags, int mode)
 }
 
 /// ESP32 VFS ::close() impl for the RMTTrackDevice.
+///
 /// @param fd is the file descriptor to close.
+///
 /// @returns the status of the close() operation, only returns zero.
 static int dcc_vfs_close(int fd)
 {
@@ -200,9 +210,11 @@ static int dcc_vfs_close(int fd)
 }
 
 /// ESP32 VFS ::ioctl() impl for the RMTTrackDevice.
+///
 /// @param fd is the file descriptor to operate on.
 /// @param cmd is the ioctl command to execute.
 /// @param args are the arguments to ioctl.
+///
 /// @returns the result of the ioctl command, zero on success, non-zero will
 /// set errno.
 static int dcc_vfs_ioctl(int fd, int cmd, va_list args)
@@ -225,8 +237,63 @@ static void rmt_tx_callback(rmt_channel_t channel, void *ctx)
   }
 }
 
+/// Current sense ULP program starting point.
+extern const uint8_t ulp_code_start[] asm("_binary_ulp_current_sense_bin_start");
+
+/// Current sense ULP program ending point.
+extern const uint8_t ulp_code_end[]   asm("_binary_ulp_current_sense_bin_end");
+
+#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
+    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
+/// OPS Track short threshold, approximately 90% of h-bridge limit.
+static constexpr uint32_t OPS_SHORT_THRESHOLD =
+  (((((CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS << 3) + CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 10) << 12) / CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS);
+#endif
+
+#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
+    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
+/// PROG Track ACK threshold, approximately 60mA.
+static constexpr uint32_t PROG_ACK_THRESHOLD =
+  (60 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
+
+/// PROG Track short threshold, approximately 250mA.
+static constexpr uint32_t PROG_SHORT_THRESHOLD =
+  (250 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
+#endif
+
+/// ULP wake-up callback
+///
+/// @param param unused.
+///
+/// NOTE: This is called from an ISR context!
+static void ulp_adc_wakeup(void *param)
+{
+#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
+    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
+  if (ulp_ops_last_reading > OPS_SHORT_THRESHOLD)
+  {
+    ets_printf("[ADC] OPS Short!!!\n");
+  }
+#endif
+#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
+    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
+  // check if there is a short prior to ack since it has a higher threshold.
+  if (ulp_prog_last_reading > PROG_SHORT_THRESHOLD)
+  {
+    ets_printf("[ADC] PROG SHORT!!!\n");
+    //prog_backend->notify_service_mode_short();
+  }
+  else if (ulp_prog_last_reading > PROG_ACK_THRESHOLD)
+  {
+    ets_printf("[ADC] PROG ACK!!!\n");
+    //prog_backend->notify_service_mode_ack();
+  }
+#endif
+}
+
 /// Initializes the ESP32 VFS adapter for the DCC track interface and the short
 /// detection devices.
+///
 /// @param node is the OpenLCB node to bind to.
 /// @param service is the OpenLCB @ref Service to use for recurring tasks.
 /// @param cfg is the CDI element for the track output.
@@ -276,6 +343,50 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
                        disable_programming_track);
 #endif
   accessory_db.emplace(node, svc, track_interface.operator->());
+
+  LOG(INFO, "[Track] Registering ULP Wakeup callback");
+  ESP_ERROR_CHECK(
+    rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_ULP_CP_INT_ENA));
+  // set bit to allow wakeup by the ULP
+  REG_SET_BIT(RTC_CNTL_INT_ENA_REG, RTC_CNTL_ULP_CP_INT_ENA);
+  LOG(INFO, "[Track] Loading ULP current sense monitoring code");
+  ESP_ERROR_CHECK(
+    ulp_load_binary(0, ulp_code_start,
+                    (ulp_code_end - ulp_code_start) / sizeof(uint32_t)));
+
+#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
+    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
+  ESP_ERROR_CHECK(
+    adc1_config_channel_atten((adc1_channel_t)CONFIG_OPS_TRACK_CURRENT_SENSE_ADC,
+                              ADC_ATTEN_DB_11));
+  ulp_ops_short_threshold = OPS_SHORT_THRESHOLD;
+  LOG(INFO, "[OPS] Short threshold: %u/4096 (%6.2f mA)", OPS_SHORT_THRESHOLD,
+      ((OPS_SHORT_THRESHOLD * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
+#endif
+#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
+    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
+  ESP_ERROR_CHECK(
+    adc1_config_channel_atten((adc1_channel_t)CONFIG_PROG_TRACK_CURRENT_SENSE_ADC,
+                              ADC_ATTEN_DB_11));
+  ulp_prog_ack_threshold = PROG_ACK_THRESHOLD;
+  ulp_prog_short_threshold = PROG_SHORT_THRESHOLD;
+  LOG(INFO,
+      "[PROG] Ack threshold: %u/4096 (%6.2f mA), "
+      "short threshold: %u/4096 (%6.2f mA)",
+      PROG_ACK_THRESHOLD,
+      ((PROG_ACK_THRESHOLD * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f),
+      PROG_SHORT_THRESHOLD,
+      ((PROG_SHORT_THRESHOLD * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
+#endif
+  // Enable ULP access to ADC1
+  adc1_ulp_enable();
+
+  // Default wakeup for ULP of ~2.5ms
+  ESP_ERROR_CHECK(ulp_set_wakeup_period(0, 2500UL));
+
+  LOG(INFO, "[Track] Starting background current sense monitoring");
+  // Start the ULP monitoring of the ADCs
+  ESP_ERROR_CHECK(ulp_run(&ulp_entry - RTC_SLOW_MEM));
 
   // Clear the initialization pending flag
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(

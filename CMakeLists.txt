@@ -141,3 +141,7 @@ endif()
 if (NOT CONFIG_LWIP_SO_RCVBUF)
     message(FATAL_ERROR "LwIP SO_RCVBUF is a required option in menuconfig.")
 endif()
+
+if (NOT CONFIG_ESP32_ULP_COPROC_ENABLED)
+    message(FATAL_ERROR "ULP Co-Processor must be enabled")
+endif()
