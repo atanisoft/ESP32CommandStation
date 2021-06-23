@@ -245,19 +245,23 @@ private:
     Action check_temp()
     {
 #if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
-        Fixed16 lastReading_ = read_external_temperature();
-        Fixed16 F = lastReading_ * C_TO_F_FACTOR;
-        F += 32;
-        LOG(INFO, "[ThermalMonitor] Current temperature: %dC (%dF)",
-            lastReading_.round(), F.round());
-        auto event_helper = Singleton<EventBroadcastHelper>::instance();
-        if (lastReading_ >= shutdownTemp_)
+        Fixed16 reading = read_external_temperature();
+        if (reading != lastReading_)
         {
-            event_helper->send_event(shutdownEvent_);
-        }
-        else if (lastReading_ >= warningTemp_)
-        {
-            event_helper->send_event(warningEvent_);
+            Fixed16 F = reading * C_TO_F_FACTOR;
+            F += 32;
+            LOG(INFO, "[ThermalMonitor] Current temperature: %dC (%dF)",
+                reading.round(), F.round());
+            auto event_helper = Singleton<EventBroadcastHelper>::instance();
+            if (reading >= shutdownTemp_)
+            {
+                event_helper->send_event(shutdownEvent_);
+            }
+            else if (reading >= warningTemp_)
+            {
+                event_helper->send_event(warningEvent_);
+            }
+            lastReading_ = reading;
         }
 #endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         return call_immediately(STATE(sleep));
