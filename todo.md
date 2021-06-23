@@ -5,14 +5,14 @@
 ### Required for v2.0
 
 * [x] Adjust tasks to pin to specific cores:
-    * WiFi - PRO_CPU
-    * LwIP - APP_CPU
-    * OpenMRN - PRO_CPU (inherit app_main)
-    * Esp32WiFiManager - float priority 2
-    * StatusLED - APP_CPU priority 3
-    * HttpServer - APP_CPU priority 5
-    * TWAI - ISR APP_CPU, task float priority is one less than LwIP.
-    * RMT - ISR PRO_CPU
+    - WiFi: PRO_CPU
+    - LwIP: APP_CPU
+    - OpenMRN: PRO_CPU (inherit app_main)
+    - Esp32WiFiManager: float priority 2
+    - StatusLED: APP_CPU priority 3
+    - HttpServer: APP_CPU priority 5
+    - TWAI: ISR APP_CPU, task float priority is one less than LwIP.
+    - RMT: ISR PRO_CPU
 * [ ] Investigate heap corruption issues.
 * [ ] DCC: ULP current sense / ACK.
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
@@ -21,24 +21,25 @@
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
 * [ ] TrainDB: reduce function types to: light, horn, bell, mute, coupler, generic. horn with momentary flag.
-* [ ] TrainDB: Remove Marklin support
-* [ ] AccessoryDecoderDB: Verify all functionality
+* [ ] TrainDB: Remove Marklin support.
+* [ ] AccessoryDecoderDB: Verify all functionality.
 * [x] AccessoryDecoderDB: Directly consume OpenLCB events.
+* [ ] AccessoryDecoderDB: Add name to decoder.
 * [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
-* [ ] WebUI: Add function name/label editing via web interface.
 * [ ] WebUI: Test all endpoints.
-* [ ] FastClock: Re-add FastClock support
+* [ ] FastClock: Re-add FastClock support.
 
 ### Nice to have for v2.0
 
 * RailCom: Migrate Esp32RailComDriver to use Timer and UART HAL APIs.
-* RailCom: Integrate RailCom hub with rest of stack (TrainSearch, Prog Backend, etc)
-* TrainDB: Configurable timeout for idle trains
+* RailCom: Integrate RailCom hub with rest of stack (TrainSearch, Prog Backend, etc).
+* TrainDB: Configurable timeout for idle trains.
 * TrainDB / TrainSearch: Enable editing via CDI.
 * TrainSearch: General code formatting / cleanup
 * TrainSearch: Move e-stop handling to this module rather than main.
-* WiThrottle support
+* WebServer: Document all endpoints and data formats (including WS)
 * WebUI: urldecode all field data from json.
+* WebUI: Add function name/label editing via web interface.
 
 ### Not required for v2.0
 
@@ -48,8 +49,10 @@
 * TrainDB: CBOR data format?
 * TrainDB: Expose via Memory Space?
 * AccessoryDecoderDB: CBOR data format?
+* AccessoryDecoderDB: Routes.
 * WebUI: compressed ws stream?
-* migrate to shared_ptr instead of raw pointers.
+* WiThrottle support.
+* Import roster/routes/accessories from JMRI
 
 ## OpenMRNIDF TODO list
 
