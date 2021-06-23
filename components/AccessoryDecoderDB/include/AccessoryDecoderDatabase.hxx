@@ -32,7 +32,6 @@ namespace esp32cs
 {
 
 class AccessoryDecoderDB : public Singleton<AccessoryDecoderDB>,
-                           public dcc::NonTrainPacketSource,
                            public openlcb::SimpleEventHandler
 {
 public:
@@ -41,7 +40,10 @@ public:
   /// @param node @ref openlcb::Node to use for the DCC Accessory events
   /// processing.
   /// @param service @ref Service to use for the background persistence task.
-  AccessoryDecoderDB(openlcb::Node *node, Service *service);
+  /// @param track @ref dcc::PacketFlowInterface to send DCC Accessory decoder
+  /// packets to.
+  AccessoryDecoderDB(openlcb::Node *node, Service *service,
+                     dcc::PacketFlowInterface *track);
 
   /// Destructor.
   ~AccessoryDecoderDB();
@@ -117,13 +119,6 @@ public:
   /// @return number of registered accessory decoders.
   uint16_t count();
 
-  /// Generates a DCC accessory decoder packet (if needed).
-  ///
-  /// @param code accessory decoder address (1-2048), when zero @param packet
-  /// is converted to an IDLE packet.
-  /// @param packet DCC packet to be populated.
-  void get_next_packet(unsigned code, dcc::Packet* packet) override;
-
   /// Handle requested identification message.
   /// @param entry registry entry for the event range
   /// @param event information about the incoming message
@@ -151,6 +146,9 @@ private:
   /// OpenLCB node to export the consumer on.
   openlcb::Node *node_;
 
+  /// Track interface to route DCC packets to.
+  dcc::PacketFlowInterface *track_;
+
   /// Background persistence flow for registered accessory decoders.
   AutoPersistFlow persistFlow_;
 
@@ -169,6 +167,15 @@ private:
 
   /// Persists all registered accessory decoders to storage.
   void persist();
+
+  /// Generates a DCC accessory decoder packet and sends it to the track.
+  ///
+  /// @param address accessory decoder address (1-2048).
+  /// @param thrown is the state to set the decoder to.
+  /// @param on_off controls the C bit (activate / deactivate) for the
+  /// generated DCC packets.
+  void generate_dcc_packet(const uint16_t address, bool thrown,
+                           bool on_off = true);
 
   /// Registered accessory decoder instances.
   std::vector<std::unique_ptr<AccessoryBaseType>> accessories_;

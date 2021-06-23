@@ -57,8 +57,9 @@ static constexpr uint64_t DB_PERSIST_INTERVAL =
     }                                                     \
   )
 
-AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service)
-  : node_(node),
+AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
+  dcc::PacketFlowInterface *track)
+  : node_(node), track_(track),
     persistFlow_(service, DB_PERSIST_INTERVAL,
                  std::bind(&AccessoryDecoderDB::persist, this)),
     dirty_(false)
@@ -130,7 +131,6 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service)
   }
   LOG(INFO, "[AccessoryDecoderDB] Loaded %d accessory decoder(s)",
       accessories_.size());
-  packet_processor_add_refresh_source(this);
 
   EventRegistry::instance()->register_handler(
       EventRegistryEntry(
@@ -286,18 +286,22 @@ void AccessoryDecoderDB::set(uint16_t address, bool thrown, bool on_off)
   {
     if ((*elem)->set(thrown, on_off))
     {
-      packet_processor_notify_update(this, (*elem)->address());
+      generate_dcc_packet(address, thrown, on_off);
     }
     dirty_ = true;
   }
 #if CONFIG_TURNOUT_CREATE_ON_DEMAND
-  // we didn't find it, create it and set it
-  accessories_.push_back(
-    std::make_unique<DccAccessoryDecoder>(address, address));
-  if (accessories_.back()->set(thrown, on_off))
+  else
   {
-    packet_processor_notify_update(this, accessories_.back()->address());
+    // we didn't find it, create it and set it
+    accessories_.push_back(
+      std::make_unique<DccAccessoryDecoder>(address, address));
+    if (accessories_.back()->set(thrown, on_off))
+    {
+      generate_dcc_packet(address, thrown, on_off);
+    }
   }
+  dirty_ = true;
 #endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
 }
 
@@ -313,10 +317,10 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
         "[AccessoryDecoderDB] Turnout found, toggling");
     if((*elem)->toggle())
     {
-      packet_processor_notify_update(this, (*elem)->address());
+      generate_dcc_packet(address, (*elem)->get(), true);
     }
     dirty_ = true;
-    return (*elem).get();
+    return (*elem)->get();
   }
 
 #if CONFIG_TURNOUT_CREATE_ON_DEMAND
@@ -327,11 +331,10 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
   accessories_.push_back(std::make_unique<DccAccessoryDecoder>(address));
   if(accessories_.back()->toggle())
   {
-    packet_processor_notify_update(this, accessories_.back()->address());
+    generate_dcc_packet(address, accessories_.back()->get());
   }
-  return accessories_.back().get();
-#else
-  return false;
+  dirty_ = true;
+  return accessories_.back()->get();
 #endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
 }
 
@@ -424,30 +427,6 @@ uint16_t AccessoryDecoderDB::count()
   return accessories_.size();
 }
 
-void AccessoryDecoderDB::get_next_packet(unsigned code, dcc::Packet* packet)
-{
-  // If the code is zero it is a general update packet which we do not use for
-  // turnouts, default it to an idle packet instead.
-  if (!code)
-  {
-    packet->set_dcc_idle();
-    return;
-  }
-
-  // retrieve the turnout based on the provided code (address).
-  auto turnout = get(code);
-
-  // shift address by one to account for the output pair state bit (thrown).
-  // decrement the address prior to shift to bring it into the 0-2047 range.
-  uint16_t addr = (((turnout->address() - 1) << 1) | turnout->get());
-
-  packet->add_dcc_basic_accessory(addr, turnout->is_on());
-  packet->packet_header.rept_count = config_dcc_accessory_packet_repeats();
-
-  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[TurnoutDB] Sending packet: %s",
-      packet_to_string(*packet, true).c_str());
-}
-
 AccessoryBaseType *AccessoryDecoderDB::get(const uint16_t address, bool silent)
 {
   SpinlockHolder lock(&lock_);
@@ -494,6 +473,20 @@ void AccessoryDecoderDB::persist()
   }
   LOG(INFO, "[TurnoutDB] Persisting %zu turnouts", accessories_.size());
   write_string_to_file(ACCESSORIES_JSON_FILE, to_json_locked(false));
+}
+
+void AccessoryDecoderDB::generate_dcc_packet(const uint16_t address,
+                                             bool thrown, bool on_off)
+{
+  const uint16_t addr = (((address - 1) << 1) | thrown);
+  dcc::PacketFlowInterface::message_type *pkt;
+  mainBufferPool->alloc(&pkt);
+  auto *packet = pkt->data();
+  packet->add_dcc_basic_accessory(addr, on_off);
+  packet->packet_header.rept_count = config_dcc_accessory_packet_repeats();
+  track_->send(pkt);
+  LOG(CONFIG_TURNOUT_LOG_LEVEL, "[AccessoryDecoderDB] Sending packet: %s",
+      packet_to_string(*(packet), true).c_str());
 }
 
 } // namespace esp32cs

@@ -22,6 +22,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <hardware.hxx>
 #include <os/Gpio.hxx>
 
+#include <AccessoryDecoderDatabase.hxx>
 #include <AllTrainNodes.hxx>
 #include <dcc/DccOutput.hxx>
 #include <dcc/LocalTrackIf.hxx>
@@ -165,6 +166,7 @@ static uninitialized<openlcb::BitEventConsumer> track_power_consumer;
 static uninitialized<EStopPacketSource> estop_packet_source;
 static uninitialized<openlcb::BitEventConsumer> estop_consumer;
 static uninitialized<ProgrammingTrackBackend> prog_backend;
+static uninitialized<esp32cs::AccessoryDecoderDB> accessory_db;
 
 /// ESP32 VFS ::write() impl for the RMTTrackDevice.
 /// @param fd is the file descriptor being written to.
@@ -273,6 +275,7 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   prog_backend.emplace(svc, enable_programming_track,
                        disable_programming_track);
 #endif
+  accessory_db.emplace(node, svc, track_interface.operator->());
 
   // Clear the initialization pending flag
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(

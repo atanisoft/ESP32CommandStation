@@ -46,7 +46,6 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <StatusDisplay.hxx>
 #include <StatusLED.hxx>
 #include <TrainDatabase.h>
-#include <AccessoryDecoderDatabase.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 #include <utils/constants.hxx>
 
@@ -229,7 +228,6 @@ void app_main()
     esp32cs::ThermalMonitorFlow thermal_monitor(stack.service(), stack.node(),
                                                 cfg.seg().thermal());
     esp32cs::init_dcc(stack.node(), stack.service(), cfg.seg().track());
-    esp32cs::AccessoryDecoderDB accessory_db(stack.node(), stack.service());
 
     // Create / update CDI, if the CDI is out of date a factory reset will be
     // forced.

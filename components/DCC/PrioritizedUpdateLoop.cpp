@@ -216,6 +216,7 @@ StateFlowBase::Action PrioritizedUpdateLoop::entry()
   }
   else
   {
+    //ets_printf("%" PRIu64 ": IDLE\n", now);
     // no packet source generated a packet, convert the packet to idle.
     message()->data()->set_dcc_idle();
   }
