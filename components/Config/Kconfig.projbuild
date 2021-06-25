@@ -60,14 +60,6 @@ menu "Pin Configuration"
             config OPSTRACK_ADC_CHANNEL_7
                 bool "ADC1 Channel 7 (GPIO 35)"
         endchoice
-        config OPS_TRACK_CURRENT_SENSE_ADC
-            int
-            default 0 if OPSTRACK_ADC_CHANNEL_0
-            default 3 if OPSTRACK_ADC_CHANNEL_3
-            default 4 if OPSTRACK_ADC_CHANNEL_4
-            default 5 if OPSTRACK_ADC_CHANNEL_5
-            default 6 if OPSTRACK_ADC_CHANNEL_6
-            default 7 if OPSTRACK_ADC_CHANNEL_7
     endmenu
     menu "PROG"
         depends on DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_PROG_ONLY
@@ -98,14 +90,6 @@ menu "Pin Configuration"
             config PROGTRACK_ADC_CHANNEL_7
                 bool "ADC1 Channel 7 (GPIO 35)"
         endchoice
-        config PROG_TRACK_CURRENT_SENSE_ADC
-            int
-            default 0 if PROGTRACK_ADC_CHANNEL_0
-            default 3 if PROGTRACK_ADC_CHANNEL_3
-            default 4 if PROGTRACK_ADC_CHANNEL_4
-            default 5 if PROGTRACK_ADC_CHANNEL_5
-            default 6 if PROGTRACK_ADC_CHANNEL_6
-            default 7 if PROGTRACK_ADC_CHANNEL_7
     endmenu
     menu "RailCom"
         depends on RAILCOM_FULL || RAILCOM_CUTOUT_ONLY
@@ -532,11 +516,21 @@ menu "DCC Signal Configuration"
         bool "Track Outputs"
         config DCC_TRACK_OUTPUTS_OPS_AND_PROG
             bool "OPS and PROG"
+            select OPS_TRACK_ENABLED
+            select PROG_TRACK_ENABLED
         config DCC_TRACK_OUTPUTS_OPS_ONLY
             bool "OPS Only"
+            select OPS_TRACK_ENABLED
         config DCC_TRACK_OUTPUTS_PROG_ONLY
             bool "PROG Only"
+            select PROG_TRACK_ENABLED
     endchoice
+    config OPS_TRACK_ENABLED
+        bool
+        default n
+    config PROG_TRACK_ENABLED
+        bool
+        default n
     config ENERGIZE_TRACK_ON_STARTUP
         bool "Energize track upon startup"
         default n

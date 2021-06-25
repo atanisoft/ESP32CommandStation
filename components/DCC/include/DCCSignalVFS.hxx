@@ -32,4 +32,6 @@ void init_dcc(openlcb::Node *node, Service *service,
 
 void shutdown_dcc();
 
+uint32_t last_current_sense_result();
+
 } // namespace esp32cs

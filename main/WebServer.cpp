@@ -510,8 +510,8 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
       else
       {
         response =
-          StringPrintf(R"!^!({"res":"status","id":%d,"track":"On"})!^!",
-                       req_id->valueint);
+          StringPrintf(R"!^!({"res":"status","id":%d,"track":"On","usage":%d})!^!",
+                       req_id->valueint, esp32cs::last_current_sense_result());
       }
     }
     else if (!strcmp(req_type->valuestring, "statusled"))

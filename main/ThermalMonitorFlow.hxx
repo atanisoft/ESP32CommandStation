@@ -21,6 +21,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <esp_adc_cal.h>
 #include <EventBroadcastHelper.hxx>
 #include <executor/StateFlow.hxx>
+#include <hardware.hxx>
 #include <openlcb/CallbackEventHandler.hxx>
 #include <StringUtils.hxx>
 #include <utils/ConfigUpdateListener.hxx>
@@ -32,10 +33,6 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 
 #ifndef CONFIG_THERMALMONITOR_MV_PER_C
 #define CONFIG_THERMALMONITOR_MV_PER_C 10
-#endif
-
-#ifndef CONFIG_TEMPSENSOR_ADC_CHANNEL
-#define CONFIG_TEMPSENSOR_ADC_CHANNEL -1
 #endif
 
 namespace esp32cs
@@ -81,7 +78,7 @@ public:
         AutoNotify n(done);
         ConfigUpdateListener::UpdateAction res = UPDATED;
 
-#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
+#if !CONFIG_TEMPSENSOR_DISABLED
         bool enabled = CDI_READ_TRIM_DEFAULT(cfg_.enable, fd);
 
         // load the warning and shutdown temperature limits.
@@ -111,13 +108,10 @@ public:
         // monitoring.
         if (enabled)
         {
-            adc1_config_channel_atten(
-                (adc1_channel_t)CONFIG_TEMPSENSOR_ADC_CHANNEL,
-                ADC_ATTEN_DB_11);
             esp_adc_cal_value_t calibration_type =
-                esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11
-                                    , ADC_WIDTH_BIT_12, DEFAULT_ADC_VREF
-                                    , &calibration_);
+                esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11,
+                                         ADC_WIDTH_BIT_12, DEFAULT_ADC_VREF,
+                                         &calibration_);
             LOG(INFO,
                 "[Thermal] Using vRef: %s (%d mV), mV/C: %.2f, 0C: %d mV",
                 calibration_type == ESP_ADC_CAL_VAL_EFUSE_VREF ? "eFuse" :
@@ -139,7 +133,7 @@ public:
         {
             set_terminated();
         }
-#endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
+#endif // !CONFIG_TEMPSENSOR_DISABLED
         return res;
     }
 
@@ -149,7 +143,7 @@ public:
     void factory_reset(int fd) override
     {
         LOG(VERBOSE, "[ThermalMonitor] factory_reset(%d)", fd);
-#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
+#if !CONFIG_TEMPSENSOR_DISABLED
         CDI_FACTORY_RESET(cfg_.enable);
 #else
         cfg_.enable().write(fd, 0);
@@ -211,7 +205,7 @@ private:
     openlcb::EventState get_state(const openlcb::EventRegistryEntry& entry,
                                   openlcb::EventReport* report)
     {
-#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
+#if !CONFIG_TEMPSENSOR_DISABLED
         if (entry.user_arg == WARNING_BIT)
         {
             return openlcb::to_event_state(
@@ -222,29 +216,26 @@ private:
             return openlcb::to_event_state(
                 lastReading_.round() < shutdownTemp_.round());
         }
-#endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
+#endif // !CONFIG_TEMPSENSOR_DISABLED
         return openlcb::EventState::UNKNOWN;
     }
 
-#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
+#if !CONFIG_TEMPSENSOR_DISABLED
     /// Reads the external temperature sensor of an ESP32-S2.
     Fixed16 read_external_temperature()
     {
         uint32_t temperature =
-            esp_adc_cal_raw_to_voltage(
-                adc1_get_raw((adc1_channel_t)CONFIG_TEMPSENSOR_ADC_CHANNEL),
-                             &calibration_);
+            esp_adc_cal_raw_to_voltage(THERMAL_SENSOR_Pin::sample(),
+                                       &calibration_);
         Fixed16 tempAtZero = temperature - MV_AT_ZERO_C;
         return tempAtZero / MV_PER_C;
     }
-#endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
 
     /// Reads the current temperature from the selected sensor and checks
     /// for change with the warning/shutdown limits. If the temperature results
     /// in a state change it will produce at least one event.
     Action check_temp()
     {
-#if CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         Fixed16 reading = read_external_temperature();
         if (reading != lastReading_)
         {
@@ -263,7 +254,6 @@ private:
             }
             lastReading_ = reading;
         }
-#endif // CONFIG_TEMPSENSOR_ADC_CHANNEL != -1
         return call_immediately(STATE(sleep));
     }
 
@@ -271,6 +261,8 @@ private:
     {
         return sleep_and_call(&timer_, SEC_TO_NSEC(10), STATE(check_temp));
     }
+#endif // !CONFIG_TEMPSENSOR_DISABLED
+
 };
 
 } // namespace esp32s2io

@@ -22,129 +22,153 @@ COPYRIGHT (c) 2021 Mike Dunston
 
     /* Configure the number of ADC samples to average on each measurement.
        Must be a power of 2. */
-    .set adc_sample_count_log, 4
+    .set adc_sample_count_log, 2
     .set adc_sample_count, (1 << adc_sample_count_log)
-
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
-    .set ops_adc_channel, CONFIG_OPS_TRACK_CURRENT_SENSE_ADC
-#endif
-
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
-    .set prog_adc_channel, CONFIG_PROG_TRACK_CURRENT_SENSE_ADC
-#endif
 
     /* Start of variable declaration section, all zero initialized. */
     .bss
 
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
-    /* OPS Short threshold. */
+    /* Count of samples taken by the ULP */
+    .global exec_count
+exec_count:
+    .long 0
+
+#if CONFIG_OPS_TRACK_ENABLED
+    /* OPS short threshold, configured by main CPU.
+       If the detected ADC value exceeds this the main CPU will be alerted to
+       wake up.
+     */
     .global ops_short_threshold
 ops_short_threshold:
     .long 0
 
-    /* OPS last reading */
+    /* OPS shutdown threshold, configured by main CPU.
+       If the detected ADC value exceeds this the main CPU will be alerted to
+       wake up.
+     */
+    .global ops_shutdown_threshold
+ops_shutdown_threshold:
+    .long 0
+
+    /* OPS warning threshold, configured by main CPU.
+       If the detected ADC value exceeds this the main CPU will be alerted to
+       wake up.
+     */
+    .global ops_warning_threshold
+ops_warning_threshold:
+    .long 0
+
+    /* last reading from the OPS ADC channel. */
     .global ops_last_reading
 ops_last_reading:
     .long 0
-#endif
+#endif // CONFIG_OPS_TRACK_ENABLED
 
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
-    /* PROG ACK threshold. */
+#if CONFIG_PROG_TRACK_ENABLED
+    /* PROG ack threshold, configured by main CPU.
+       If the detected ADC value exceeds this the main CPU will be alerted to
+       wake up.
+     */
     .global prog_ack_threshold
 prog_ack_threshold:
     .long 0
 
-    /* PROG Short threshold. */
+    /* PROG short threshold, configured by main CPU.
+       If the detected ADC value exceeds this the main CPU will be alerted to
+       wake up.
+     */
     .global prog_short_threshold
 prog_short_threshold:
     .long 0
 
-    /* PROG last reading */
+    /* last reading from the PROG ADC channel. */
     .global prog_last_reading
 prog_last_reading:
     .long 0
-#endif
+#endif // CONFIG_PROG_TRACK_ENABLED
 
-    /* Start of ULP code */
+    /* Main entry point of the ULP ADC reading code. */
     .text
     .global entry
 entry:
 
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
-    /* r0 will be used as accumulator for OPS */
+    /* Increment the number of executions. */
+    move r3, exec_count
+    ld r0, r3, 0
+    add r0, r0, 1
+    st r0, r3, 0
+
+    /* Reset accumulator registers to zero */
     move r0, 0
-#endif
-
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
-    /* r2 will be used as accumulator for PROG */
     move r2, 0
-#endif
 
-    /* initialize the loop counter */
+    /* initialize counter so we can loop through N samples */
     stage_rst
 
 measure:
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
+#if CONFIG_OPS_TRACK_ENABLED
     /* measure and add value to accumulator */
-    adc r1, 0, ops_adc_channel + 1
+#if CONFIG_OPSTRACK_ADC_CHANNEL_0
+    adc r1, 0, 1
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_3
+    adc r1, 0, 4
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_4
+    adc r1, 0, 5
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_5
+    adc r1, 0, 6
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_6
+    adc r1, 0, 7
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_7
+    adc r1, 0, 8
+#endif
     add r0, r0, r1
-#endif
+#endif // CONFIG_OPS_TRACK_ENABLED
 
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
+#if CONFIG_PROG_TRACK_ENABLED
     /* measure and add value to accumulator */
-    adc r3, 0, prog_adc_channel + 1
-    add r2, r2, r3
+#if CONFIG_PROGTRACK_ADC_CHANNEL_0
+    adc r3, 0, 1
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_3
+    adc r3, 0, 4
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_4
+    adc r3, 0, 5
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_5
+    adc r3, 0, 6
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_6
+    adc r3, 0, 7
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_7
+    adc r3, 0, 8
 #endif
+    add r2, r2, r3
+#endif // CONFIG_PROG_TRACK_ENABLED
 
-    /* increment loop counter and check exit condition */
+    /* increment loop count and check exit condition */
     stage_inc 1
     jumps measure, adc_sample_count, lt
-
-    /* reset stage counter */
     stage_rst
 
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
+#if CONFIG_OPS_TRACK_ENABLED
     /* divide accumulator value using bit shifting */
     rsh     r0, r0, adc_sample_count_log
-    /* store value for later usage */
+
+    /* store the value for usage by the main CPU */
     move    r3, ops_last_reading
 	st      r0, r3, 0
-#endif
-
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
-    /* divide accumulator value using bit shifting */
-    rsh     r2, r2, adc_sample_count_log
-    /* store value for later usage */
-    move    r3, prog_last_reading
-	st      r2, r3, 0
-#endif
-
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
-    move    r3, ops_last_reading
-    ld      r0, r3, 0
 
     /* Wakeup SoC if ops_last_reading > ops_short_threshold */
     move    r3, ops_short_threshold
     ld      r3, r3, 0
     sub     r3, r3, r0
     jump    wake_up, ov
-#endif
+#endif // CONFIG_OPS_TRACK_ENABLED
 
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
+#if CONFIG_PROG_TRACK_ENABLED
+    /* divide accumulator value using bit shifting */
+    rsh     r2, r2, adc_sample_count_log
+
+    /* store the value for usage by the main CPU */
     move    r3, prog_last_reading
-    ld      r0, r3, 0
+	st      r2, r3, 0
 
     /* Wakeup SoC if prog_last_reading > prog_ack_threshold.
     NOTE: prog_short_threshold is not checked as it should be higher than the
@@ -153,7 +177,7 @@ measure:
     ld      r3, r3, 0
     sub     r3, r3, r0
     jump    wake_up, ov
-#endif
+#endif // CONFIG_PROG_TRACK_ENABLED
 
     .global exit
 exit:
@@ -161,5 +185,6 @@ exit:
 
     .global wake_up
 wake_up:
+    /* Wake up the SoC, end program */
     wake
     halt

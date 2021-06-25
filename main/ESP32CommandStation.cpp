@@ -186,10 +186,6 @@ void app_main()
 
   if (nvs.start_stack())
   {
-    // Configure ADC1 up front to use 12 bit (0-4095) as we use it for all
-    // monitored h-bridges.
-    LOG(INFO, "[ADC] Configure 12-bit ADC resolution");
-    adc1_config_width(ADC_WIDTH_BIT_12);
     bool using_sd = esp32cs::mount_fs(nvs.should_reset_config());
 
     // initialize the OpenMRN stack and dependent components

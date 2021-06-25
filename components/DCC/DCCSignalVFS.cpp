@@ -56,6 +56,10 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 namespace esp32cs
 {
 
+/// The ULP uses only the lower 16 bits of the 32 bit variables. When reading
+/// the values on the ESP32 side we need to limit to only the lower 16 bits.
+#define ULP_VAR(var) (var & UINT16_MAX)
+
 /// Disables the OPS track output and enables the PROG track output.
 static void enable_programming_track()
 {
@@ -243,24 +247,6 @@ extern const uint8_t ulp_code_start[] asm("_binary_ulp_current_sense_bin_start")
 /// Current sense ULP program ending point.
 extern const uint8_t ulp_code_end[]   asm("_binary_ulp_current_sense_bin_end");
 
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
-/// OPS Track short threshold, approximately 90% of h-bridge limit.
-static constexpr uint32_t OPS_SHORT_THRESHOLD =
-  (((((CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS << 3) + CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 10) << 12) / CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS);
-#endif
-
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
-/// PROG Track ACK threshold, approximately 60mA.
-static constexpr uint32_t PROG_ACK_THRESHOLD =
-  (60 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
-
-/// PROG Track short threshold, approximately 250mA.
-static constexpr uint32_t PROG_SHORT_THRESHOLD =
-  (250 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
-#endif
-
 /// ULP wake-up callback
 ///
 /// @param param unused.
@@ -268,27 +254,91 @@ static constexpr uint32_t PROG_SHORT_THRESHOLD =
 /// NOTE: This is called from an ISR context!
 static void ulp_adc_wakeup(void *param)
 {
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
-  if (ulp_ops_last_reading > OPS_SHORT_THRESHOLD)
+#if CONFIG_OPS_TRACK_ENABLED
+  if (ULP_VAR(ulp_ops_last_reading) > ULP_VAR(ulp_ops_short_threshold))
   {
     ets_printf("[ADC] OPS Short!!!\n");
   }
 #endif
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
+#if CONFIG_PROG_TRACK_ENABLED
   // check if there is a short prior to ack since it has a higher threshold.
-  if (ulp_prog_last_reading > PROG_SHORT_THRESHOLD)
+  if (ULP_VAR(ulp_prog_last_reading) > ULP_VAR(ulp_prog_short_threshold))
   {
     ets_printf("[ADC] PROG SHORT!!!\n");
-    //prog_backend->notify_service_mode_short();
+    prog_backend->notify_service_mode_short();
   }
-  else if (ulp_prog_last_reading > PROG_ACK_THRESHOLD)
+  else if (ULP_VAR(ulp_prog_last_reading) > ULP_VAR(ulp_prog_ack_threshold))
   {
     ets_printf("[ADC] PROG ACK!!!\n");
-    //prog_backend->notify_service_mode_ack();
+    prog_backend->notify_service_mode_ack();
   }
 #endif
+}
+
+/// Initialize and start the ULP co-processor for monitoring current sense ADC
+/// inputs. When thresholds are breached the ULP will raise an interrupt to the
+/// ESP32 SoC. When the interrupt is triggered the ESP32 SoC will evaluate the
+/// current state and raise event(s) as needed.
+void initialize_ulp()
+{
+  LOG(INFO, "[Track] Registering ULP Wakeup callback");
+  // register ISR callback for ULP wake-up event.
+  ESP_ERROR_CHECK(
+    rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_ULP_CP_INT_ENA));
+
+  // set bit to allow wakeup by the ULP even though the main SoC is not in a
+  // deep sleep state.
+  REG_SET_BIT(RTC_CNTL_INT_ENA_REG, RTC_CNTL_ULP_CP_INT_ENA_M);
+  LOG(INFO, "[Track] Loading ULP current sense monitoring code");
+
+  // load the embedded ULP binary into the ULP reserved memory starting at the
+  // first valid address (zero) using 32bit memory blocks as default transfer
+  // size.
+  ESP_ERROR_CHECK(
+    ulp_load_binary(0, ulp_code_start,
+                    (ulp_code_end - ulp_code_start) / sizeof(uint32_t)));
+
+  // Initialize the execution count
+  ulp_exec_count = 0;
+
+#if CONFIG_OPS_TRACK_ENABLED
+  // Configure the short threshold to around 90% of the configured limit.
+  ulp_ops_short_threshold =
+    (((((CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS << 3) +
+         CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 10) << 12) /
+         CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS);
+  // Configure the warning limit to around 75% of the short limit.
+  ulp_ops_warning_threshold =
+    ((ULP_VAR(ulp_ops_short_threshold) << 1) +
+      ULP_VAR(ulp_ops_short_threshold)) >> 2;
+  // Configure the shutdown limit to near maximum value of the ADC.
+  ulp_ops_shutdown_threshold = 4090;
+  LOG(INFO, "[OPS] Short threshold: %u/4096 (%6.2f mA)",
+      ULP_VAR(ulp_ops_short_threshold),
+      ((ULP_VAR(ulp_ops_shutdown_threshold) * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
+#endif
+#if CONFIG_PROG_TRACK_ENABLED
+  // Configure the PROG track ACK limit to ~60mA
+  ulp_prog_ack_threshold = (60 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
+  // Configure the PROG track short limit to ~250mA
+  ulp_prog_short_threshold = (250 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
+  LOG(INFO,
+      "[PROG] Ack threshold: %u/4096 (%6.2f mA), "
+      "short threshold: %u/4096 (%6.2f mA)",
+      ULP_VAR(ulp_prog_ack_threshold),
+      ((ULP_VAR(ulp_prog_ack_threshold) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f),
+      ULP_VAR(ulp_prog_short_threshold),
+      ((ULP_VAR(ulp_prog_short_threshold) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
+#endif
+  // Enable ULP access to ADC1
+  adc1_ulp_enable();
+
+  // Default wakeup for ULP of ~2.5ms
+  ESP_ERROR_CHECK(ulp_set_wakeup_period(0, 2500UL));
+
+  LOG(INFO, "[Track] Starting background current sense monitoring");
+  // Start the ULP monitoring of the ADCs
+  ESP_ERROR_CHECK(ulp_run(&ulp_entry - RTC_SLOW_MEM));
 }
 
 /// Initializes the ESP32 VFS adapter for the DCC track interface and the short
@@ -338,55 +388,13 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   track_power_consumer.emplace(track_power.operator->());
   estop_packet_source.emplace(node);
   estop_consumer.emplace(estop_packet_source.operator->());
-#if !CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY
+#if CONFIG_PROG_TRACK_ENABLED
   prog_backend.emplace(svc, enable_programming_track,
                        disable_programming_track);
 #endif
   accessory_db.emplace(node, svc, track_interface.operator->());
 
-  LOG(INFO, "[Track] Registering ULP Wakeup callback");
-  ESP_ERROR_CHECK(
-    rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_ULP_CP_INT_ENA));
-  // set bit to allow wakeup by the ULP
-  REG_SET_BIT(RTC_CNTL_INT_ENA_REG, RTC_CNTL_ULP_CP_INT_ENA);
-  LOG(INFO, "[Track] Loading ULP current sense monitoring code");
-  ESP_ERROR_CHECK(
-    ulp_load_binary(0, ulp_code_start,
-                    (ulp_code_end - ulp_code_start) / sizeof(uint32_t)));
-
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_ONLY)
-  ESP_ERROR_CHECK(
-    adc1_config_channel_atten((adc1_channel_t)CONFIG_OPS_TRACK_CURRENT_SENSE_ADC,
-                              ADC_ATTEN_DB_11));
-  ulp_ops_short_threshold = OPS_SHORT_THRESHOLD;
-  LOG(INFO, "[OPS] Short threshold: %u/4096 (%6.2f mA)", OPS_SHORT_THRESHOLD,
-      ((OPS_SHORT_THRESHOLD * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
-#endif
-#if defined(CONFIG_DCC_TRACK_OUTPUTS_OPS_AND_PROG) || \
-    defined(CONFIG_DCC_TRACK_OUTPUTS_PROG_ONLY)
-  ESP_ERROR_CHECK(
-    adc1_config_channel_atten((adc1_channel_t)CONFIG_PROG_TRACK_CURRENT_SENSE_ADC,
-                              ADC_ATTEN_DB_11));
-  ulp_prog_ack_threshold = PROG_ACK_THRESHOLD;
-  ulp_prog_short_threshold = PROG_SHORT_THRESHOLD;
-  LOG(INFO,
-      "[PROG] Ack threshold: %u/4096 (%6.2f mA), "
-      "short threshold: %u/4096 (%6.2f mA)",
-      PROG_ACK_THRESHOLD,
-      ((PROG_ACK_THRESHOLD * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f),
-      PROG_SHORT_THRESHOLD,
-      ((PROG_SHORT_THRESHOLD * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
-#endif
-  // Enable ULP access to ADC1
-  adc1_ulp_enable();
-
-  // Default wakeup for ULP of ~2.5ms
-  ESP_ERROR_CHECK(ulp_set_wakeup_period(0, 2500UL));
-
-  LOG(INFO, "[Track] Starting background current sense monitoring");
-  // Start the ULP monitoring of the ADCs
-  ESP_ERROR_CHECK(ulp_run(&ulp_entry - RTC_SLOW_MEM));
+  initialize_ulp();
 
   // Clear the initialization pending flag
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(
@@ -409,6 +417,19 @@ void shutdown_dcc()
   // Disable all track outputs
   DccHwDefs::InternalBoosterOutput::set_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
+}
+
+uint32_t last_current_sense_result()
+{
+#if CONFIG_OPS_TRACK_ENABLED
+  LOG(INFO, "[Track] Usage: %d/%d, %d mA", 
+      ULP_VAR(ulp_ops_last_reading), ULP_VAR(ulp_ops_short_threshold),
+      (ULP_VAR(ulp_ops_last_reading) * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096);
+  return (ULP_VAR(ulp_ops_last_reading) * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096;
+#elif CONFIG_PROG_TRACK_ENABLED
+  return (ULP_VAR(ulp_prog_last_reading) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096;
+#endif
+  return -1;
 }
 
 } // namespace esp32cs

@@ -651,9 +651,9 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             }
           } else if (json.res === 'event') {
             if (json.evt === ops_track_on_evt) {
-              updateTrackPowerStatus(true, false);
+              cs_status();
             } else if (json.evt === ops_track_off_evt) {
-              updateTrackPowerStatus(false, false);
+              cs_status();
             } else if (json.evt === estop_clear_evt) {
               $('#ops_estop').removeClass('text-error');
             } else if (json.evt === estop_evt) {
