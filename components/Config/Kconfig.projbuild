@@ -196,9 +196,12 @@ menu "Pin Configuration"
     endmenu
     menu "Thermal Sensor"
         choice TEMPSENSOR_ADC_CHANNEL
-            bool "OPS Track current sense pin"
+            bool "Thermistor IC pin"
             help
-                This is used for short circuit detection.
+                This is used for connecting a thermistor to the ESP32 Command
+                Station, when the temperature is too high the ESP32 Command
+                Station will shutdown track output power until temperature has
+                dropped below configured levels.
             default TEMPSENSOR_ADC_CHANNEL_7
             config TEMPSENSOR_DISABLED
                 bool "Disabled"
@@ -848,7 +851,6 @@ menu "Thermal Monitor Configuration"
     depends on !TEMPSENSOR_DISABLED
     choice THERMALMONITOR_TYPE
         bool "Thermistor/IC"
-        depends on THERMALMONITOR
         config THERMALMONITOR_TYPE_MCP9700
             bool "MCP9700/MCP9700A"
         config THERMALMONITOR_TYPE_MCP9701
@@ -862,7 +864,6 @@ menu "Thermal Monitor Configuration"
         default 0
         default 500 if THERMALMONITOR_TYPE_MCP9700
         default 400 if THERMALMONITOR_TYPE_MCP9701
-        depends on THERMALMONITOR
         help
             This value is used as a correction to the calculated millivolts
             reading of the ADC pin as a 0C starting point. For the MCP9700 it
@@ -873,11 +874,25 @@ menu "Thermal Monitor Configuration"
         default 10
         default 100 if THERMALMONITOR_TYPE_MCP9700
         default 195 if THERMALMONITOR_TYPE_MCP9701
-        depends on THERMALMONITOR
         help
             This value is used to convert the raw millivolts value into degrees.
             NOTE: This value needs to be multiplied by 10 to account for the
             fractions of a degree per millivolt.
+    config THERMALMONITOR_WARNING
+        int "Warning temperature (C)"
+        range 0 125
+        default 50
+        help
+            When the temperature exceeds this limit the ESP32 Command Station
+            will emit an event to the OpenLCB (LCC) bus.
+    config THERMALMONITOR_SHUTDOWN
+        int "Shutdown temperature (C)"
+        range 0 125
+        default 80
+        help
+            When the temperature exceeds this limit the ESP32 Command Station
+            will emit an event to the OpenLCB (LCC) bus and shutdown all track
+            outputs.
 endmenu
 menu "Status LED Configuration"
     depends on STATUS_LED_DATA_PIN != -1

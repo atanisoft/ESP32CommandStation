@@ -21,6 +21,14 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include "sdkconfig.h"
 #include <openlcb/ConfigRepresentation.hxx>
 
+#ifndef CONFIG_THERMALMONITOR_WARNING
+#define CONFIG_THERMALMONITOR_WARNING 50
+#endif
+
+#ifndef CONFIG_THERMALMONITOR_SHUTDOWN
+#define CONFIG_THERMALMONITOR_SHUTDOWN 80
+#endif
+
 namespace esp32cs
 {
 /// Thermal Configuration for an external temperature sensor.
@@ -44,14 +52,14 @@ CDI_GROUP_ENTRY(enable, openlcb::Uint8ConfigEntry,
 
 /// This is the warning temperature in celsius.
 CDI_GROUP_ENTRY(temperature_warning, openlcb::Int8ConfigEntry,
-    Default(50), Min(0), Max(125),
+    Default(CONFIG_THERMALMONITOR_WARNING), Min(0), Max(125),
     Name("Warning Temperature"),
     Description("Temperature (in celsius) to use for thermal warning "
                 "threshold."));
 
 /// This is the shutdown temperature in celsius.
 CDI_GROUP_ENTRY(temperature_shutdown, openlcb::Int8ConfigEntry,
-    Default(80), Min(0), Max(125),
+    Default(CONFIG_THERMALMONITOR_SHUTDOWN), Min(0), Max(125),
     Name("Shutdown Temperature"),
     Description("Temperature (in celsius) to use for thermal shutdown "
                 "threshold."));
