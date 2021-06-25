@@ -20,7 +20,7 @@
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
-* [ ] TrainDB: reduce function types to: light, horn, bell, mute, coupler, generic. horn with momentary flag.
+* [ ] TrainDB: reduce function types to: light, horn (momentary), bell, mute, coupler, other, other (momentary).
 * [ ] TrainDB: Remove Marklin support.
 * [ ] AccessoryDecoderDB: Verify all functionality.
 * [x] AccessoryDecoderDB: Directly consume OpenLCB events.
@@ -34,6 +34,7 @@
 * RailCom: Migrate Esp32RailComDriver to use Timer and UART HAL APIs.
 * RailCom: Integrate RailCom hub with rest of stack (TrainSearch, Prog Backend, etc).
 * TrainDB: Configurable timeout for idle trains.
+* TrainDB: Customized function label names.
 * TrainDB / TrainSearch: Enable editing via CDI.
 * TrainSearch: General code formatting / cleanup
 * TrainSearch: Move e-stop handling to this module rather than main.

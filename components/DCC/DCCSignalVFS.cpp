@@ -49,6 +49,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <os/Gpio.hxx>
 #include <RMTTrackDevice.hxx>
 #include <soc/rtc_cntl_reg.h>
+#include <StatusDisplay.hxx>
 #include <StringUtils.hxx>
 #include <utils/GpioInitializer.hxx>
 #include <utils/logging.h>
@@ -177,6 +178,56 @@ static uninitialized<openlcb::BitEventConsumer> estop_consumer;
 static uninitialized<ProgrammingTrackBackend> prog_backend;
 static uninitialized<esp32cs::AccessoryDecoderDB> accessory_db;
 
+#if CONFIG_OPS_TRACK_ENABLED
+class TrackMonitorFlow : public StateFlowBase
+{
+public:
+  TrackMonitorFlow(Service *service) : StateFlowBase(service)
+  {
+    auto status = Singleton<StatusDisplay>::instance();
+    status->track_power("Track: Off");
+    start_flow(STATE(sleep));
+  }
+
+private:
+  StateFlowTimer timer_{this};
+  static constexpr uint64_t INTERVAL = SEC_TO_NSEC(15);
+
+  Action check()
+  {
+    auto status = Singleton<StatusDisplay>::instance();
+    uint16_t last_reading = ULP_VAR(ulp_ops_last_reading);
+    uint16_t short_limit = ULP_VAR(ulp_ops_short_threshold);
+    uint16_t warn_limit = ULP_VAR(ulp_ops_warning_threshold);
+    if (DccHwDefs::InternalBoosterOutput::should_be_enabled())
+    {
+      uint32_t usage =
+        (ULP_VAR(ulp_ops_last_reading) * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096;
+      LOG(INFO, "[Track] Usage: %d/%d, %d mA", last_reading, short_limit,
+          usage);
+      status->track_power("Track: %d mA%c", usage, 
+                          last_reading > warn_limit ? '!' : ' ');
+    }
+    else if (estop_packet_source->is_enabled())
+    {
+      status->track_power("Track: e-stop");
+    }
+    else
+    {
+      status->track_power("Track: Off");
+    }
+    return call_immediately(STATE(sleep));
+  }
+
+  Action sleep()
+  {
+      return sleep_and_call(&timer_, INTERVAL, STATE(check));
+  }
+};
+
+static uninitialized<TrackMonitorFlow> track_monitor;
+#endif // CONFIG_OPS_TRACK_ENABLED
+
 /// ESP32 VFS ::write() impl for the RMTTrackDevice.
 ///
 /// @param fd is the file descriptor being written to.
@@ -284,7 +335,7 @@ void initialize_ulp()
   LOG(INFO, "[Track] Registering ULP Wakeup callback");
   // register ISR callback for ULP wake-up event.
   ESP_ERROR_CHECK(
-    rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_ULP_CP_INT_ENA));
+    rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_SAR_INT_ST_M));
 
   // set bit to allow wakeup by the ULP even though the main SoC is not in a
   // deep sleep state.
@@ -362,6 +413,9 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   LOG(INFO, "[Track] Registering %s VFS interface", CONFIG_DCC_VFS_MOUNT_POINT);
   ESP_ERROR_CHECK(esp_vfs_register(CONFIG_DCC_VFS_MOUNT_POINT, &vfs, nullptr));
 
+  // Initialize the ULP which monitors the track current sense input(s).
+  initialize_ulp();
+
   // Connect our callback into the RMT so we can queue up the next packet for
   // transmission when needed.
   rmt_register_tx_end_callback(rmt_tx_callback, nullptr);
@@ -393,8 +447,9 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
                        disable_programming_track);
 #endif
   accessory_db.emplace(node, svc, track_interface.operator->());
-
-  initialize_ulp();
+#if CONFIG_OPS_TRACK_ENABLED
+  track_monitor.emplace(svc);
+#endif // CONFIG_OPS_TRACK_ENABLED
 
   // Clear the initialization pending flag
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(
@@ -414,17 +469,23 @@ void shutdown_dcc()
   // be sent to the tracks.
   rmt_register_tx_end_callback(nullptr, nullptr);
 
+  // TODO: disable RMT driver?
+  // TODO: disable VFS?
+
   // Disable all track outputs
   DccHwDefs::InternalBoosterOutput::set_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
+
+  // Disable ULP timer.
+  REG_CLR_BIT(RTC_CNTL_INT_ENA_REG, RTC_CNTL_ULP_CP_INT_ENA_M);
+
+  // deregister ISR callback for ULP wake-up event.
+  ESP_ERROR_CHECK(rtc_isr_deregister(ulp_adc_wakeup, NULL));
 }
 
 uint32_t last_current_sense_result()
 {
 #if CONFIG_OPS_TRACK_ENABLED
-  LOG(INFO, "[Track] Usage: %d/%d, %d mA", 
-      ULP_VAR(ulp_ops_last_reading), ULP_VAR(ulp_ops_short_threshold),
-      (ULP_VAR(ulp_ops_last_reading) * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096);
   return (ULP_VAR(ulp_ops_last_reading) * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096;
 #elif CONFIG_PROG_TRACK_ENABLED
   return (ULP_VAR(ulp_prog_last_reading) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096;

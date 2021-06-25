@@ -10,6 +10,7 @@ set(CUSTOM_DEPS
     Config
     AccessoryDecoderDB
     OpenMRNIDF
+    StatusDisplay
     TrainSearchProtocol
     Utils
 )
