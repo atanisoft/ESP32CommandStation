@@ -19,7 +19,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 
 #include <algorithm>
 #include <dcc/PacketSource.hxx>
-#include <esp32/clk.h>
+#include <esp_timer.h>
 #include <inttypes.h>
 #include <utils/constants.hxx>
 
@@ -137,7 +137,7 @@ void PrioritizedUpdateLoop::notify_update(PacketSource* source, unsigned code)
 StateFlowBase::Action PrioritizedUpdateLoop::entry()
 {
   dcc::PacketSource *source = nullptr;
-  uint64_t now = esp_clk_rtc_time();
+  uint64_t now = esp_timer_get_time();
   uint64_t min_refresh_time =
     now - MSEC_TO_USEC(config_min_refresh_delay_ms());
   unsigned code = 0;
