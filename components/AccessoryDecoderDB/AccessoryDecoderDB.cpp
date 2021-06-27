@@ -269,7 +269,7 @@ void AccessoryDecoderDB::handle_identify_consumer(const EventRegistryEntry &entr
 
 void AccessoryDecoderDB::clear()
 {
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   for (auto & accessory : accessories_)
   {
     accessory.reset(nullptr);
@@ -280,7 +280,7 @@ void AccessoryDecoderDB::clear()
 
 void AccessoryDecoderDB::set(uint16_t address, bool thrown, bool on_off)
 {
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -309,7 +309,7 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
 {
   LOG(CONFIG_TURNOUT_LOG_LEVEL
     , "[AccessoryDecoderDB] Request to toggle turnout address %d", address);
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -340,7 +340,7 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
 
 string AccessoryDecoderDB::to_json(bool readable)
 {
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   return to_json_locked(readable);
 }
 
@@ -357,7 +357,7 @@ std::string AccessoryDecoderDB::to_json(const uint16_t address, bool readable)
 void AccessoryDecoderDB::createOrUpdateDcc(const uint16_t address,
                                            const AccessoryType type)
 {
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -384,7 +384,7 @@ void AccessoryDecoderDB::createOrUpdateOlcb(const uint16_t address,
                                             std::string thrown_events,
                                             const AccessoryType type)
 {
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -409,7 +409,7 @@ void AccessoryDecoderDB::createOrUpdateOlcb(const uint16_t address,
 
 bool AccessoryDecoderDB::remove(const uint16_t address)
 {
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -429,7 +429,7 @@ uint16_t AccessoryDecoderDB::count()
 
 AccessoryBaseType *AccessoryDecoderDB::get(const uint16_t address, bool silent)
 {
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   auto const &elem = FIND_ACCESSORY(address);
   if (elem != accessories_.end())
   {
@@ -461,7 +461,7 @@ string AccessoryDecoderDB::to_json_locked(bool readableStrings)
 
 void AccessoryDecoderDB::persist()
 {
-  SpinlockHolder lock(&lock_);
+  OSMutexLock lock(&mux_);
   bool dirtyFlag = dirty_;
   dirty_ = false;
   // Check if we have any changes to persist, if not exit early.

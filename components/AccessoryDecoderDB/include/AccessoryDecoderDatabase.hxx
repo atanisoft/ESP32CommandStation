@@ -25,7 +25,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <mutex>
 #include <openlcb/DccAccyConsumer.hxx>
 #include <openlcb/EventHandlerTemplates.hxx>
-#include <Spinlock.hxx>
+#include <os/OS.hxx>
 #include <utils/Singleton.hxx>
 
 namespace esp32cs
@@ -184,8 +184,8 @@ private:
   /// persistence check.
   bool dirty_;
 
-  /// Spinlock protecting @ref accessories_.
-  Spinlock lock_;
+  /// @ref OSMutex protecting @ref accessories_.
+  OSMutex mux_;
 };
 
 } // namespace esp32cs

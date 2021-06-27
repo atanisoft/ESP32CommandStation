@@ -26,7 +26,6 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 #include <openlcb/SimpleInfoProtocol.hxx>
 #include <openlcb/TractionTrain.hxx>
 #include <os/OS.hxx>
-#include <Spinlock.hxx>
 #include <TrainDb.hxx>
 
 #include "AutoPersistCallbackFlow.h"
@@ -272,7 +271,7 @@ namespace esp32cs
     std::string get_entry_as_json_locked(unsigned address);
     openlcb::SimpleStackBase *stack_;
     bool entryDeleted_{false};
-    Spinlock lock_;
+    OSMutex mux_;
     std::vector<std::shared_ptr<Esp32TrainDbEntry>> knownTrains_;
     std::unique_ptr<openlcb::MemorySpace> trainCdiFile_;
     std::unique_ptr<openlcb::MemorySpace> tempTrainCdiFile_;
