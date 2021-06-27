@@ -167,6 +167,8 @@ namespace esp32cs
     {
       return persist_;
     }
+
+    std::string to_json(bool readable = true);
   private:
     void recalcuate_max_fn();
     Esp32PersistentTrainData data_;

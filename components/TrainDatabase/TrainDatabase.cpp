@@ -127,6 +127,115 @@ void Esp32TrainDbEntry::recalcuate_max_fn()
   }
 }
 
+std::string Esp32TrainDbEntry::to_json(bool readable)
+{
+  string json = R"!^!({"name":")!^!";
+  json += data_.name;
+  json += R"!^!(","addr":)!^!";
+  json += integer_to_string(data_.address);
+  json += R"!^!(,"idle":)!^!";
+  if (data_.automatic_idle)
+  {
+    json += R"!^!(true,)!^!";
+  }
+  else
+  {
+    json += R"!^!(true,)!^!";
+  }
+  json += R"!^!("mode":{"type":)!^!";
+  json += integer_to_string(data_.mode);
+  if (readable)
+  {
+    switch (data_.mode)
+    {
+      case DCCMODE_OLCBUSER:
+        json += R"!^!(,"name":"DCC-OlcbUser")!^!";
+        break;
+      case DCC_DEFAULT:
+        json += R"!^!(,"name":"DCC (auto speed step)")!^!";
+        break;
+      case DCC_14:
+        json += R"!^!(,"name":"DCC (14 speed step)")!^!";
+        break;
+      case DCC_14_LONG_ADDRESS:
+        json += R"!^!(,"name":"DCC (14 speed step, long address)")!^!";
+        break;
+      case DCC_28:
+        json += R"!^!(,"name":"DCC (28 speed step)")!^!";
+        break;
+      case DCC_28_LONG_ADDRESS:
+        json += R"!^!(,"name":"DCC (28 speed step, long address)")!^!";
+        break;
+      case DCC_128:
+        json += R"!^!(,"name":"DCC (128 speed step)")!^!";
+        break;
+      case DCC_128_LONG_ADDRESS:
+        json += R"!^!(,"name":"DCC (128 speed step, long address)")!^!";
+        break;
+      case DCCMODE_DEFAULT:
+      default:
+        json += R"!^!(,"name":"DCC (default)")!^!";
+        break;
+    }
+  }
+  json += R"!^!(},"fn":[)!^!";
+  for (size_t idx = 0; idx < DCC_MAX_FN; idx++)
+  {
+    if (idx > 0)
+    {
+      json += ",";
+    }
+    json += R"!^!({"id":)!^!";
+    json += integer_to_string(idx);
+    json += R"!^!(,"type":)!^!";
+    json += integer_to_string(data_.functions[idx]);
+    if (readable)
+    {
+      switch (data_.functions[idx])
+      {
+        case FN_NONEXISTANT:
+          json += R"!^!(,"name":"N/A")!^!";
+          break;
+        case LIGHT:
+          json += R"!^!(,"name":"Light")!^!";
+          break;
+        case HORN:
+          json += R"!^!(,"name":"Horn")!^!";
+          break;
+        case BELL:
+          json += R"!^!(,"name":"Bell")!^!";
+          break;
+        case WHISTLE:
+          json += R"!^!(,"name":"Whistle")!^!";
+          break;
+        case SHUNT:
+          json += R"!^!(,"name":"Shunting mode")!^!";
+          break;
+        case MOMENTUM:
+          json += R"!^!(,"name":"Momentum")!^!";
+          break;
+        case MUTE:
+          json += R"!^!(,"name":"Mute")!^!";
+          break;
+        case GENERIC:
+          json += R"!^!(,"name":"Function")!^!";
+          break;
+        case COUPLER:
+          json += R"!^!(,"name":"Coupler")!^!";
+          break;
+        case FN_UNKNOWN:
+        default:
+          json += R"!^!(,"name":"Unknown")!^!";
+          break;
+      }
+    }
+    json += R"!^!(})!^!";
+  }
+  json += R"!^!(]})!^!";
+  json.shrink_to_fit();
+  return json;
+}
+
 static constexpr const char * TRAIN_DB_JSON_FILE = "/fs/trains.json";
 static constexpr const char * PERSISTED_TRAIN_CDI = "/fs/train.xml";
 static constexpr const char * TEMP_TRAIN_CDI = "/fs/tmptrain.xml";
@@ -465,7 +574,7 @@ string Esp32TrainDatabase::get_all_entries_as_json()
     {
       res += ",";
     }
-    res += get_entry_as_json_locked(entry->get_legacy_address());
+    res += entry->to_json();
   }
   res += "]";
   return res;
@@ -483,99 +592,7 @@ string Esp32TrainDatabase::get_entry_as_json_locked(unsigned address, bool reada
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
   {
-    auto train = (*entry);
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "name", train->get_train_name().c_str());
-    cJSON_AddNumberToObject(root, "addr", train->get_legacy_address());
-    cJSON_AddBoolToObject(root, "idle", train->is_auto_idle());
-    cJSON *mode = cJSON_CreateObject();
-    if (readable)
-    {
-      switch (train->get_legacy_drive_mode())
-      {
-        case DCCMODE_OLCBUSER:
-          cJSON_AddStringToObject(mode, "name", "DCC-OlcbUser");
-          break;
-        case DCC_DEFAULT:
-          cJSON_AddStringToObject(mode, "name", "DCC (auto speed step)");
-          break;
-        case DCC_14:
-          cJSON_AddStringToObject(mode, "name", "DCC (14 speed step)");
-          break;
-        case DCC_14_LONG_ADDRESS:
-          cJSON_AddStringToObject(mode, "name", "DCC (14 speed step, long address)");
-          break;
-        case DCC_28:
-          cJSON_AddStringToObject(mode, "name", "DCC (28 speed step)");
-          break;
-        case DCC_28_LONG_ADDRESS:
-          cJSON_AddStringToObject(mode, "name", "DCC (28 speed step, long address)");
-          break;
-        case DCC_128:
-          cJSON_AddStringToObject(mode, "name", "DCC (128 speed step)");
-          break;
-        case DCC_128_LONG_ADDRESS:
-          cJSON_AddStringToObject(mode, "name", "DCC (128 speed step, long address)");
-          break;
-        case DCCMODE_DEFAULT:
-        default:
-          cJSON_AddStringToObject(mode, "name", "DCC (default)");
-          break;
-      }
-    }
-    cJSON_AddNumberToObject(mode, "type", train->get_legacy_drive_mode());
-    cJSON_AddItemToObject(root, "mode", mode);
-    cJSON *functions = cJSON_AddArrayToObject(root, "fn");
-    for (size_t idx = 0; idx < DCC_MAX_FN; idx++)
-    {
-      cJSON *function = cJSON_CreateObject();
-      cJSON_AddNumberToObject(function, "id", idx);
-      cJSON_AddNumberToObject(function, "type", train->get_function_label(idx));
-      if (readable)
-      {
-        switch (train->get_function_label(idx))
-        {
-          case FN_NONEXISTANT:
-            cJSON_AddStringToObject(function, "name", "N/A");
-            break;
-          case LIGHT:
-            cJSON_AddStringToObject(function, "name", "Light");
-            break;
-          case HORN:
-            cJSON_AddStringToObject(function, "name", "Horn");
-            break;
-          case BELL:
-            cJSON_AddStringToObject(function, "name", "Bell");
-            break;
-          case WHISTLE:
-            cJSON_AddStringToObject(function, "name", "Whistle");
-            break;
-          case SHUNT:
-            cJSON_AddStringToObject(function, "name", "Shunting mode");
-            break;
-          case MOMENTUM:
-            cJSON_AddStringToObject(function, "name", "Momentum");
-            break;
-          case MUTE:
-            cJSON_AddStringToObject(function, "name", "Mute");
-            break;
-          case GENERIC:
-            cJSON_AddStringToObject(function, "name", "Function");
-            break;
-          case COUPLER:
-            cJSON_AddStringToObject(function, "name", "Coupler");
-            break;
-          case FN_UNKNOWN:
-          default:
-            cJSON_AddStringToObject(function, "name", "Unknown");
-            break;
-        }
-      }
-      cJSON_AddItemToArray(functions, function);
-    }
-    serialized = cJSON_PrintUnformatted(root);
-    cJSON_free(root);
-    return serialized;
+    serialized = (*entry)->to_json(readable);
   }
   return serialized;
 }
@@ -598,11 +615,11 @@ void Esp32TrainDatabase::persist()
     {
       if (entry->is_persisted())
       {
-        if (serialized.length() > 1)
+        if (count)
         {
           serialized += ",";
         }
-        serialized += get_entry_as_json_locked(entry->get_legacy_address(), false);
+        serialized += entry->to_json(false);
         count++;
       }
       entry->reset_dirty();
