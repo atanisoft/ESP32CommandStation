@@ -134,10 +134,40 @@ void PrioritizedUpdateLoop::notify_update(PacketSource* source, unsigned code)
   updateSources_.insert(buf, 0);
 }
 
+#if CONFIG_ESP_TIMER_IMPL_TG0_LAC
+#include <soc/timer_group_reg.h>
+#define LACT_MODULE     0
+#define TICKS_PER_US    2
+#define COUNT_LO_REG    (TIMG_LACTLO_REG(LACT_MODULE))
+#define COUNT_HI_REG    (TIMG_LACTHI_REG(LACT_MODULE))
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      uint32_t lo;
+      uint32_t hi;
+    };
+    uint64_t val;
+  };
+} timer_64b_reg_t;
+
+uint64_t get_current_time()
+{
+  timer_64b_reg_t result;
+  result.lo = REG_READ(COUNT_LO_REG);
+  result.hi = REG_READ(COUNT_HI_REG);
+  return result.val / TICKS_PER_US;
+}
+#else
+unt64_t get_current_time() __attribute__((alias("esp_timer_get_time")));
+#endif
+
 StateFlowBase::Action PrioritizedUpdateLoop::entry()
 {
   dcc::PacketSource *source = nullptr;
-  uint64_t now = esp_timer_get_time();
+  uint64_t now = get_current_time();
   uint64_t min_refresh_time =
     now - MSEC_TO_USEC(config_min_refresh_delay_ms());
   unsigned code = 0;
