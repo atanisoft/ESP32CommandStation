@@ -10,7 +10,7 @@
     - OpenMRN: PRO_CPU (inherit app_main)
     - Esp32WiFiManager: float priority 2
     - StatusLED: APP_CPU priority 3
-    - HttpServer: APP_CPU priority 5
+    - HttpServer: Listener runs standalone, HttpServer leverages Esp32WiFiManager Executor.
     - TWAI: ISR APP_CPU, task float priority is one less than LwIP.
     - RMT: ISR PRO_CPU
 * [ ] Investigate heap corruption issues.
@@ -41,6 +41,7 @@
 * WebServer: Document all endpoints and data formats (including WS)
 * WebUI: urldecode all field data from json.
 * WebUI: Add function name/label editing via web interface.
+* WebUI: Roster edit / save via WS.
 
 ### Not required for v2.0
 
