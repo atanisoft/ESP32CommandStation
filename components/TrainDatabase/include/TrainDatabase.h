@@ -21,14 +21,14 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 #include <mutex>
 #include <vector>
 
+#include <AutoPersistCallbackFlow.h>
 #include <openlcb/Defs.hxx>
 #include <openlcb/MemoryConfig.hxx>
 #include <openlcb/SimpleInfoProtocol.hxx>
 #include <openlcb/TractionTrain.hxx>
 #include <os/OS.hxx>
 #include <TrainDb.hxx>
-
-#include "AutoPersistCallbackFlow.h"
+#include <utils/Uninitialized.hxx>
 
 #include "sdkconfig.h"
 
@@ -51,44 +51,26 @@ namespace esp32cs
     uint16_t address;
     std::string name;
     bool automatic_idle;
-    bool show_on_limited_throttles;
     uint8_t mode;
     std::vector<uint8_t> functions;
     Esp32PersistentTrainData()
     {
     }
-    Esp32PersistentTrainData(uint16_t address, std::string name="unknown"
-                           , DccMode mode=DccMode::DCC_128)
+    Esp32PersistentTrainData(uint16_t address, std::string name="unknown",
+                             DccMode mode=DccMode::DCC_128,
+                             bool idle = CONFIG_ROSTER_AUTO_IDLE_NEW_LOCOS)
     {
       this->address = address;
       this->name = name;
       this->mode = mode;
-      this->automatic_idle = CONFIG_ROSTER_AUTO_IDLE_NEW_LOCOS;
-      this->show_on_limited_throttles = false;
+      this->automatic_idle = idle;
       // set some defaults
-      if (this->mode & DccMode::DCC_ANY)
+      this->functions.push_back(Symbols::LIGHT);
+      this->functions.push_back(Symbols::BELL);
+      this->functions.push_back(Symbols::HORN);
+      while (this->functions.size() < DCC_MAX_FN)
       {
-        this->functions.push_back(Symbols::LIGHT);
-        this->functions.push_back(Symbols::BELL);
-        this->functions.push_back(Symbols::HORN);
-        while (this->functions.size() < DCC_MAX_FN)
-        {
-          this->functions.push_back(Symbols::FN_UNKNOWN);
-        }
-      }
-      else if (this->mode & DccMode::MARKLIN_ANY)
-      {
-        this->functions.push_back(Symbols::LIGHT);
         this->functions.push_back(Symbols::FN_UNKNOWN);
-        this->functions.push_back(Symbols::FN_UNKNOWN);
-        this->functions.push_back(Symbols::ABV);
-        if (this->mode & DccMode::MARKLIN_TWOADDR)
-        {
-          this->functions.push_back(Symbols::FN_UNKNOWN);
-          this->functions.push_back(Symbols::FN_UNKNOWN);
-          this->functions.push_back(Symbols::FN_UNKNOWN);
-          this->functions.push_back(Symbols::FN_UNKNOWN);
-        }
       }
     }
   };
@@ -166,10 +148,9 @@ namespace esp32cs
       dirty_ = true;
     }
 
-    void set_show_on_limited_throttles(bool show)
+    bool is_auto_idle()
     {
-      data_.show_on_limited_throttles = show;
-      dirty_ = true;
+      return data_.automatic_idle;
     }
 
     bool is_dirty()
@@ -186,17 +167,6 @@ namespace esp32cs
     {
       return persist_;
     }
-
-    bool is_auto_idle()
-    {
-      return data_.automatic_idle;
-    }
-
-    bool is_show_on_limited_throttles()
-    {
-      return data_.show_on_limited_throttles;
-    }
-
   private:
     void recalcuate_max_fn();
     Esp32PersistentTrainData data_;
@@ -243,38 +213,34 @@ namespace esp32cs
       openlcb::NodeID traction_node_id, unsigned hint = 0) override;
 
     unsigned add_dynamic_entry(uint16_t address, DccMode mode) override;
-
-    std::set<uint16_t> get_default_train_addresses(uint16_t limit);
-
     void set_train_name(unsigned address, std::string name);
     void set_train_auto_idle(unsigned address, bool idle);
-    void set_train_show_on_limited_throttle(unsigned address, bool show);
     void set_train_function_label(unsigned address, uint8_t fn_id, Symbols label);
     void set_train_drive_mode(unsigned address, DccMode mode);
 
     std::string get_all_entries_as_json();
-    std::string get_entry_as_json(unsigned address);
+    std::string get_entry_as_json(unsigned address, bool readable = true);
 
     openlcb::MemorySpace *get_train_cdi()
     {
-      return trainCdiFile_.get();
+      return trainCdiFile_.operator->();
     }
 
     openlcb::MemorySpace *get_temp_train_cdi()
     {
-      return tempTrainCdiFile_.get();
+      return tempTrainCdiFile_.operator->();
     }
 
     void persist();
 
   private:
-    std::string get_entry_as_json_locked(unsigned address);
+    std::string get_entry_as_json_locked(unsigned address, bool readable = true);
     openlcb::SimpleStackBase *stack_;
     bool entryDeleted_{false};
     OSMutex mux_;
     std::vector<std::shared_ptr<Esp32TrainDbEntry>> knownTrains_;
-    std::unique_ptr<openlcb::MemorySpace> trainCdiFile_;
-    std::unique_ptr<openlcb::MemorySpace> tempTrainCdiFile_;
+    uninitialized<openlcb::ROFileMemorySpace> trainCdiFile_;
+    uninitialized<openlcb::ROFileMemorySpace> tempTrainCdiFile_;
     uninitialized<AutoPersistFlow> persistFlow_;
   };
 

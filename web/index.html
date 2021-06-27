@@ -308,11 +308,6 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               <i class="form-icon"></i><span class="text-dark">Automatically add this locomotive to the "Active
                 Locomotives" list on Command Station startup?</span>
             </label>
-            <label class="form-switch">
-              <input type="checkbox" id="roster-default">
-              <i class="form-icon"></i><span class="text-dark">Include this locomotive in the Throttle locomotive
-                list?</span>
-            </label>
           </div>
           <div class="modal-footer">
             <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#roster-editor');"><i
@@ -1075,7 +1070,6 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       $('#roster-name').val("");
       $('#roster-addr').val(1);
       $('#roster-idle').prop('checked', false);
-      $('#roster-default').prop('checked', false);
     }
     function editLoco(address) {
       if (window.location.host.length) {
@@ -1083,7 +1077,6 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           $('#roster-name').val(data.name);
           $('#roster-addr').val(data.addr);
           $('#roster-idle').prop('checked', data.idle);
-          $('#roster-default').prop('checked', data.default);
           toggleModal('#roster-editor');
         }).catch(function (error) {
           showErrorDialog('Failed to retrieve roster entry', error);
@@ -1100,8 +1093,8 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     function saveLoco() {
       if (window.location.host.length) {
         toggleModal('#roster-editor');
-        fetchWithTimeout(String.format('/locomotive/roster?address={0}&name={1}&idle={2}&default={3}',
-          $('#roster-addr').val(), $('#roster-name').val(), $('#roster-idle').prop('checked'), $('#roster-default').prop('checked'))).then(res => refreshRoster(null)).catch(function (error) {
+        fetchWithTimeout(String.format('/locomotive/roster?address={0}&name={1}&idle={2}',
+          $('#roster-addr').val(), $('#roster-name').val(), $('#roster-idle').prop('checked'))).then(res => refreshRoster(null)).catch(function (error) {
             showErrorDialog('Failed to save roster entry', error);
           });
       }

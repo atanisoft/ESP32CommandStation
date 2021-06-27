@@ -48,21 +48,15 @@ static const char MOMENTARY_MAP[] =
 static const char FNDISPLAY_MAP[] =
     "<relation><property>0</property><value>Unavailable</value></relation>"
     "<relation><property>1</property><value>Light</value></relation>"
-    "<relation><property>2</property><value>Beamer</value></relation>"
-    "<relation><property>3</property><value>Bell</value></relation>"
-    "<relation><property>4</property><value>Horn</value></relation>"
+    "<relation><property>2</property><value>Bell</value></relation>"
+    "<relation><property>3</property><value>Horn</value></relation>"
+    "<relation><property>4</property><value>Whistle</value></relation>"
     "<relation><property>5</property><value>Shunting mode</value></relation>"
-    "<relation><property>6</property><value>Pantograph</value></relation>"
+    "<relation><property>6</property><value>Momentum</value></relation>"
     "<relation><property>7</property><value>Smoke</value></relation>"
-    "<relation><property>8</property><value>Momentum off</value></relation>"
-    "<relation><property>9</property><value>Whistle</value></relation>"
-    "<relation><property>10</property><value>Sound</value></relation>"
-    "<relation><property>11</property><value>F</value></relation>"
-    "<relation><property>12</property><value>Announce</value></relation>"
-    "<relation><property>13</property><value>Engine</value></relation>"
-    "<relation><property>14</property><value>Light1</value></relation>"
-    "<relation><property>15</property><value>Light2</value></relation>"
-    "<relation><property>17</property><value>Uncouple</value></relation>"
+    "<relation><property>8</property><value>Sound</value></relation>"
+    "<relation><property>9</property><value>Function</value></relation>"
+    "<relation><property>10</property><value>Uncouple</value></relation>"
     "<relation><property>255</property><value>Unavailable_</value></relation>";
 
 CDI_GROUP(TrainDbCdiFunctionGroup, Name("Functions"),

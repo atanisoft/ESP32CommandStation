@@ -780,11 +780,6 @@ HTTP_HANDLER_IMPL(process_loco, request)
         {
           traindb->set_train_auto_idle(address, request->param("idle", false));
         }
-        if (request->has_param("default"))
-        {
-          traindb->set_train_show_on_limited_throttle(address,
-                                                      request->param("default", false));
-        }
         // search for and remap functions if present
         for (uint8_t fn = 0; fn <= 28; fn++)
         {

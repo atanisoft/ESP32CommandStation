@@ -1,13 +1,14 @@
 set(CUSTOM_DEPS
     OpenMRNIDF
     TrainSearchProtocol
-    nlohmann_json
     Utils
 )
-
+set(IDF_DEPS
+    json
+)
 idf_component_register(SRCS TrainDatabase.cpp
                        INCLUDE_DIRS include
-                       REQUIRES "${CUSTOM_DEPS}")
+                       REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 
 idf_build_get_property(project_ver PROJECT_VER)
 string(SUBSTRING "${project_ver}" 0 20 SNIP_SW_VERSION)

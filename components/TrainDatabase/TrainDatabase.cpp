@@ -18,109 +18,23 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 #include "TrainDatabase.h"
 
 #include <AllTrainNodes.hxx>
-#include <json.hpp>
+#include <CDIXMLGenerator.hxx>
+#include <cJSON.h>
 #include <TrainDbCdi.hxx>
 #include <openlcb/SimpleStack.hxx>
 #include <StringUtils.hxx>
 #include <utils/FileUtils.hxx>
 
-namespace commandstation
-{
-// JSON serialization mappings for the commandstation::DccMode enum
-NLOHMANN_JSON_SERIALIZE_ENUM(DccMode,
-{
-  { DCCMODE_DEFAULT,     "DCC (default)" },
-  { DCCMODE_OLCBUSER,    "DCC-OlcbUser" },
-  { MARKLIN_DEFAULT,     "Marklin" },
-  { MARKLIN_OLD,         "Marklin (v1)" },
-  { MARKLIN_NEW,         "Marklin (v2, f0-f4)" },
-  { MARKLIN_TWOADDR,     "Marklin (v2, f0-f8)" },
-  { MFX,                 "Marklin (MFX)" },
-  { DCC_DEFAULT,         "DCC (auto speed step)"},
-  { DCC_14,              "DCC (14 speed step)"},
-  { DCC_28,              "DCC (28 speed step)"},
-  { DCC_128,             "DCC (128 speed step)"},
-  { DCC_14_LONG_ADDRESS, "DCC (14 speed step, long address)"},
-  { DCC_28_LONG_ADDRESS, "DCC (28 speed step, long address)"},
-  { DCC_128_LONG_ADDRESS,"DCC (128 speed step, long address)"},
-});
-
-// JSON serialization mappings for the commandstation::Symbols enum
-NLOHMANN_JSON_SERIALIZE_ENUM(Symbols,
-{
-  { FN_NONEXISTANT,   "N/A" },
-  { LIGHT,            "Light" },
-  { BEAMER,           "Beamer" },
-  { BELL,             "Bell" },
-  { HORN,             "Horn" },
-  { SHUNT,            "Shunting mode" },
-  { PANTO,            "Pantograph" },
-  { SMOKE,            "Smoke" },
-  { ABV,              "Momentum On/Off" },
-  { WHISTLE,          "Whistle" },
-  { SOUND,            "Sound" },
-  { FNT11,            "Generic Function" },
-  { SPEECH,           "Announce" },
-  { ENGINE,           "Engine" },
-  { LIGHT1,           "Light1" },
-  { LIGHT2,           "Light2" },
-  { TELEX,            "Coupler" },
-  { FN_UNKNOWN,       "Unknown" },
-  { MOMENTARY,        "momentary" },
-  { FNP,              "fnp" },
-  { SOUNDP,           "soundp" },
-  { FN_UNINITIALIZED, "uninit" },
-})
-}
-
 namespace esp32cs
 {
 
-using nlohmann::json;
 using commandstation::DccMode;
 using commandstation::AllTrainNodes;
 using openlcb::TractionDefs;
 
-constexpr const char * JSON_NAME_NODE = "name";
-constexpr const char * JSON_ID_NODE = "id";
-constexpr const char * JSON_TYPE_NODE = "type";
-constexpr const char * JSON_ADDRESS_NODE = "addr";
-constexpr const char * JSON_IDLE_ON_STARTUP_NODE = "idle";
-constexpr const char * JSON_DEFAULT_ON_THROTTLE_NODE = "default";
-constexpr const char * JSON_FUNCTIONS_NODE = "functions";
-constexpr const char * JSON_LOCOS_NODE = "locos";
-constexpr const char * JSON_LOCO_NODE = "loco";
-constexpr const char * JSON_MODE_NODE = "mode";
-constexpr const char * JSON_VALUE_OFF = "Off";
-constexpr const char * JSON_VALUE_ON = "On";
-
 // This should really be defined inside TractionDefs.hxx and used by the call
 // to TractionDefs::train_node_id_from_legacy().
 static constexpr uint64_t const OLCB_NODE_ID_USER = 0x050101010000ULL;
-
-// converts a Esp32PersistentTrainData to a json object
-void to_json(json& j, const Esp32PersistentTrainData& t)
-{
-  j = json({
-    { JSON_NAME_NODE, t.name },
-    { JSON_ADDRESS_NODE, t.address },
-    { JSON_IDLE_ON_STARTUP_NODE, t.automatic_idle },
-    { JSON_DEFAULT_ON_THROTTLE_NODE, t.show_on_limited_throttles },
-    { JSON_FUNCTIONS_NODE, t.functions },
-    { JSON_MODE_NODE, t.mode },
-  });
-}
-
-// converts a json payload to a Esp32PersistentTrainData object
-void from_json(const json& j, Esp32PersistentTrainData& t)
-{
-  j.at(JSON_NAME_NODE).get_to(t.name);
-  j.at(JSON_ADDRESS_NODE).get_to(t.address);
-  j.at(JSON_IDLE_ON_STARTUP_NODE).get_to(t.automatic_idle);
-  j.at(JSON_DEFAULT_ON_THROTTLE_NODE).get_to(t.show_on_limited_throttles);
-  j.at(JSON_FUNCTIONS_NODE).get_to(t.functions);
-  j.at(JSON_MODE_NODE).get_to(t.mode);
-}
 
 Esp32TrainDbEntry::Esp32TrainDbEntry(Esp32PersistentTrainData data,
                                      Esp32TrainDatabase *db, bool persist)
@@ -155,11 +69,6 @@ string Esp32TrainDbEntry::identifier()
     {
       return StringPrintf("dcc_128/%s/%d", prefix.c_str(), data_.address);
     }
-  }
-  else if (addrType == dcc::TrainAddressType::MM)
-  {
-    // TBD: should marklin types be explored further?
-    return StringPrintf("marklin/%d", data_.address);
   }
   return StringPrintf("unknown/%d", data_.address);
 }
@@ -219,246 +128,107 @@ void Esp32TrainDbEntry::recalcuate_max_fn()
 }
 
 static constexpr const char * TRAIN_DB_JSON_FILE = "/fs/trains.json";
-
-const char TRAIN_CDI_DATA[] = R"xmlpayload(<?xml version="1.0"?>
-<cdi xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://openlcb.org/schema/cdi/1/1/cdi.xsd">
-<identification>
-<manufacturer>github.com/atanisoft (Mike Dunston)</manufacturer>
-<model>Virtual train node</model>
-<hardwareVersion>)xmlpayload" SNIP_HW_VERSION R"xmlpayload(</hardwareVersion>
-<softwareVersion>)xmlpayload" SNIP_SW_VERSION R"xmlpayload(</softwareVersion>
-</identification>
-<segment space='253'>
-<group>
-<description>Configures a single train</description>
-<int size='2'>
-<name>Address</name>
-<description>Track protocol address of the train.</description>
-<default>0</default>
-</int>
-<int size='1'>
-<name>Protocol</name>
-<description>Protocol to use on the track for driving this train.</description>
-<default>10</default>
-<map><relation><property>0</property><value>Unused</value></relation><relation><property>10</property><value>DCC 28-step</value></relation><relation><property>11</property><value>DCC 128-step</value></relation><relation><property>5</property><value>Marklin-Motorola I</value></relation><relation><property>6</property><value>Marklin-Motorola II</value></relation><relation><property>14</property><value>DCC 28-step (forced long address)</value></relation><relation><property>15</property><value>DCC 128-step (forced long address)</value></relation></map>
-</int>
-<string size='16'>
-<name>Name</name>
-<description>Identifies the train node on the LCC bus.</description>
-</string>
-<group>
-<group>
-<name>F0</name>
-<description>F0 is permanently assigned to Light.</description>
-<group offset='2'/>
-</group>
-<group replication='28'>
-<name>Functions</name>
-<description>Defines what each function button does.</description>
-<repname>Fn</repname>
-<int size='1'>
-<name>Display</name>
-<description>Defines how throttles display this function.</description>
-<default>0</default>
-<map><relation><property>0</property><value>Unavailable</value></relation><relation><property>1</property><value>Light</value></relation><relation><property>2</property><value>Beamer</value></relation><relation><property>3</property><value>Bell</value></relation><relation><property>4</property><value>Horn</value></relation><relation><property>5</property><value>Shunting mode</value></relation><relation><property>6</property><value>Pantograph</value></relation><relation><property>7</property><value>Smoke</value></relation><relation><property>8</property><value>Momentum off</value></relation><relation><property>9</property><value>Whistle</value></relation><relation><property>10</property><value>Sound</value></relation><relation><property>11</property><value>F</value></relation><relation><property>12</property><value>Announce</value></relation><relation><property>13</property><value>Engine</value></relation><relation><property>14</property><value>Light1</value></relation><relation><property>15</property><value>Light2</value></relation><relation><property>17</property><value>Uncouple</value></relation><relation><property>255</property><value>Unavailable_</value></relation></map>
-</int>
-<int size='1'>
-<name>Momentary</name>
-<description>Momentary functions are automatically turned off when you release the respective button on the throttles.</description>
-<default>0</default>
-<map><relation><property>0</property><value>Latching</value></relation><relation><property>1</property><value>Momentary</value></relation></map>
-</int>
-</group>
-</group>
-</group>
-</segment>
-<segment space='248' origin='2131755008'>
-<name>Programming track operation</name>
-<description>Use this component to read and write CVs on the programming track of the command station.</description>
-<int size='4'>
-<name>Operating mode</name>
-<map>
-<relation><property>0</property><value>Disabled</value></relation>
-<relation><property>1</property><value>Direct mode</value></relation>
-<relation><property>2</property><value>POM mode</value></relation>
-<relation><property>10</property><value>Advanced mode</value></relation>
-</map>
-</int>
-<int size='4'>
-<name>CV number</name>
-<description>Number of CV to read or write (1..1024).</description>
-<min>0</min>
-<max>1024</max>
-<default>0</default>
-</int>
-<int size='4'>
-<name>CV value</name>
-<description>Set 'Operating mode' and 'CV number' first, then: hit 'Refresh' to read the entire CV, or enter a value and hit 'Write' to set the CV.</description>
-<min>0</min>
-<max>255</max>
-<default>0</default>
-</int>
-<int size='4'>
-<name>Bit change</name>
-<description>Set 'Operating mode' and 'CV number' first, then: write 1064 to set the single bit whose value is 64, or 2064 to clear that bit. Write 100 to 107 to set bit index 0 to 7, or 200 to 207 to clear bit 0 to 7. Values outside of these two ranges do nothing.</description>
-<min>100</min>
-<max>2128</max>
-<default>1000</default>
-</int>
-<string size='24'>
-<name>Read bits decomposition</name>
-<description>Hit Refresh on this line after reading a CV value to see which bits are set.</description>
-</string>
-<group>
-<name>Advanced settings</name>
-<int size='4'>
-<name>Repeat count for verify packets</name>
-<description>How many times a direct mode bit verify packet needs to be repeated for an acknowledgement to be generated.</description>
-<min>0</min>
-<max>255</max>
-<default>3</default>
-</int>
-<int size='4'>
-<name>Repeat count for reset packets after verify</name>
-<description>How many reset packets to send after a verify.</description>
-<min>0</min>
-<max>255</max>
-<default>6</default>
-</int>
-</group>
-</segment>
-</cdi>
-)xmlpayload";
-const size_t TRAIN_CDI_DATA_SIZE = sizeof(TRAIN_CDI_DATA);
-
-const char TEMP_TRAIN_CDI_DATA[] = R"xmlpayload(<?xml version="1.0"?>
-<cdi xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://openlcb.org/schema/cdi/1/1/cdi.xsd">
-<identification>
-<manufacturer>github.com/atanisoft (Mike Dunston)</manufacturer>
-<model>Virtual train node</model>
-<hardwareVersion>)xmlpayload" SNIP_HW_VERSION R"xmlpayload(</hardwareVersion>
-<softwareVersion>)xmlpayload" SNIP_SW_VERSION R"xmlpayload(</softwareVersion>
-</identification>
-<segment space='253'>
-<name>Non-stored train</name>
-<description>This train is not part of the train database, thus no configuration settings can be changed on it.</description>
-</segment>
-<segment space='248' origin='2131755008'>
-<name>Programming track operation</name>
-<description>Use this component to read and write CVs on the programming track of the command station.</description>
-<int size='4'>
-<name>Operating mode</name>
-<map>
-<relation><property>0</property><value>Disabled</value></relation>
-<relation><property>1</property><value>Direct mode</value></relation>
-<relation><property>2</property><value>POM mode</value></relation>
-<relation><property>10</property><value>Advanced mode</value></relation>
-</map>
-</int>
-<int size='4'>
-<name>CV number</name>
-<description>Number of CV to read or write (1..1024).</description>
-<min>0</min>
-<max>1024</max>
-<default>0</default>
-</int>
-<int size='4'>
-<name>CV value</name>
-<description>Set 'Operating mode' and 'CV number' first, then: hit 'Refresh' to read the entire CV, or enter a value and hit 'Write' to set the CV.</description>
-<min>0</min>
-<max>255</max>
-<default>0</default>
-</int>
-<int size='4'>
-<name>Bit change</name>
-<description>Set 'Operating mode' and 'CV number' first, then: write 1064 to set the single bit whose value is 64, or 2064 to clear that bit. Write 100 to 107 to set bit index 0 to 7, or 200 to 207 to clear bit 0 to 7. Values outside of these two ranges do nothing.</description>
-<min>100</min>
-<max>2128</max>
-<default>1000</default>
-</int>
-<string size='24'>
-<name>Read bits decomposition</name>
-<description>Hit Refresh on this line after reading a CV value to see which bits are set.</description>
-</string>
-<group>
-<name>Advanced settings</name>
-<int size='4'>
-<name>Repeat count for verify packets</name>
-<description>How many times a direct mode bit verify packet needs to be repeated for an acknowledgement to be generated.</description>
-<min>0</min>
-<max>255</max>
-<default>3</default>
-</int>
-<int size='4'>
-<name>Repeat count for reset packets after verify</name>
-<description>How many reset packets to send after a verify.</description>
-<min>0</min>
-<max>255</max>
-<default>6</default>
-</int>
-</group>
-</segment>
-</cdi>
-)xmlpayload";
-const size_t TEMP_TRAIN_CDI_DATA_SIZE = sizeof(TEMP_TRAIN_CDI_DATA);
+static constexpr const char * PERSISTED_TRAIN_CDI = "/fs/train.xml";
+static constexpr const char * TEMP_TRAIN_CDI = "/fs/tmptrain.xml";
 
 Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
 {
-  trainCdiFile_.reset(new openlcb::ReadOnlyMemoryBlock(TRAIN_CDI_DATA, TRAIN_CDI_DATA_SIZE));
-  tempTrainCdiFile_.reset(new openlcb::ReadOnlyMemoryBlock(TEMP_TRAIN_CDI_DATA, TEMP_TRAIN_CDI_DATA_SIZE));
-  persistFlow_.emplace(stack->service()
-                     , SEC_TO_NSEC(CONFIG_ROSTER_PERSISTENCE_INTERVAL_SEC)
-                     , std::bind(&Esp32TrainDatabase::persist, this));
-  LOG(INFO, "[TrainDB] Initializing...");
+  LOG(INFO, "[TrainDB] Refreshing train CDI files...");
+  commandstation::TrainConfigDef train_cfg(0);
+  commandstation::TrainTmpConfigDef temp_train_cfg(0);
+  CDIXMLGenerator::create_config_descriptor_xml(train_cfg, PERSISTED_TRAIN_CDI, nullptr);
+  CDIXMLGenerator::create_config_descriptor_xml(temp_train_cfg, TEMP_TRAIN_CDI, nullptr);
+  trainCdiFile_.emplace(PERSISTED_TRAIN_CDI);
+  tempTrainCdiFile_.emplace(TEMP_TRAIN_CDI);
   struct stat statbuf;
-
   if (!stat(TRAIN_DB_JSON_FILE, &statbuf))
   {
+    LOG(INFO, "[TrainDB] Loading database...");
     auto roster = read_file_to_string(TRAIN_DB_JSON_FILE);
-    json stored_trains = json::parse(roster, nullptr, false);
-    if (stored_trains.is_discarded())
+    cJSON *root = cJSON_ParseWithLength(roster.c_str(), roster.length());
+    if (!cJSON_IsArray(root))
     {
       LOG_ERROR("[TrainDB] database is corrupt, no trains loaded!");
       unlink(TRAIN_DB_JSON_FILE);
-      return;
     }
-    for (auto &entry : stored_trains)
+    else
     {
-      auto data = entry.get<Esp32PersistentTrainData>();
-      auto ent = std::find_if(knownTrains_.begin(), knownTrains_.end(),
-      [data](const auto &train)
+      cJSON *entry;
+      cJSON_ArrayForEach(entry, root)
       {
-        return train->get_legacy_address() == data.address;
-      });
-      if (ent == knownTrains_.end())
-      {
-        LOG(INFO, "[TrainDB] Registering %u - %s (idle: %s, limited: %s)"
-          , data.address, data.name.c_str()
-          , data.automatic_idle ? JSON_VALUE_ON : JSON_VALUE_OFF
-          , data.show_on_limited_throttles ? JSON_VALUE_ON : JSON_VALUE_OFF);
-        auto train = new Esp32TrainDbEntry(data, this);
-        train->reset_dirty();
-        if (train->is_auto_idle())
+        if (cJSON_HasObjectItem(entry, "name") &&
+            cJSON_HasObjectItem(entry, "addr") && 
+            cJSON_HasObjectItem(entry, "idle") &&
+            cJSON_HasObjectItem(entry, "mode"))
         {
-          uint16_t address = train->get_legacy_address();
-          stack->executor()->add(new CallbackExecutable([address]()
+          cJSON *mode = cJSON_GetObjectItem(entry, "mode");
+          Esp32PersistentTrainData data(
+            cJSON_GetObjectItem(entry, "addr")->valueint,
+            cJSON_GetObjectItem(entry, "name")->valuestring,
+            (DccMode)cJSON_GetObjectItem(mode, "type")->valueint,
+            cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle")));
+          if (cJSON_HasObjectItem(entry, "fn") &&
+              cJSON_IsArray(cJSON_GetObjectItem(entry, "fn")))
+          { 
+            cJSON *function;
+            cJSON_ArrayForEach(function, cJSON_GetObjectItem(entry, "fn"))
+            {
+              if (cJSON_HasObjectItem(function, "id") &&
+                  cJSON_HasObjectItem(function, "type"))
+              {
+                uint8_t id = cJSON_GetObjectItem(function, "id")->valueint;
+                uint8_t type = cJSON_GetObjectItem(function, "type")->valueint;
+                LOG(VERBOSE, "[Train: %d] function: %d -> %d", data.address,
+                    id, type);
+                data.functions[id] = type;
+              }
+              else
+              {
+                LOG_ERROR("[TrainDB] Loco %d (%s) has corrupt function "
+                          "entries which will be ignored.",
+                          data.address, data.name.c_str());
+              }
+            }
+          }
+          auto ent = std::find_if(knownTrains_.begin(), knownTrains_.end(),
+          [data](const auto &train)
           {
-            auto trainMgr = Singleton<AllTrainNodes>::instance();
-            trainMgr->allocate_node(DccMode::DCC_128, address);
-          }));
+            return train->get_legacy_address() == data.address;
+          });
+          if (ent == knownTrains_.end())
+          {
+            LOG(INFO, "[TrainDB] Registering %u - %s (auto-idle: %s)",
+                data.address, data.name.c_str(),
+                data.automatic_idle ? "On" : "Off");
+            auto train = new Esp32TrainDbEntry(data, this);
+            train->reset_dirty();
+            if (train->is_auto_idle())
+            {
+              uint16_t address = train->get_legacy_address();
+              stack->executor()->add(new CallbackExecutable([address]()
+              {
+                auto trainMgr = Singleton<AllTrainNodes>::instance();
+                trainMgr->allocate_node(DccMode::DCC_128, address);
+              }));
+            }
+            knownTrains_.emplace_back(train);
+          }
+          else
+          {
+            LOG_ERROR("[TrainDB] Duplicate roster entry detected for loco addr %u."
+                    , data.address);
+          }
         }
-        knownTrains_.emplace_back(train);
-      }
-      else
-      {
-        LOG_ERROR("[TrainDB] Duplicate roster entry detected for loco addr %u."
-                , data.address);
       }
     }
   }
 
   LOG(INFO, "[TrainDB] Found %d persistent roster entries."
     , knownTrains_.size());
+
+  persistFlow_.emplace(stack->service(),
+                       SEC_TO_NSEC(CONFIG_ROSTER_PERSISTENCE_INTERVAL_SEC),
+                       std::bind(&Esp32TrainDatabase::persist, this));
 }
 
 #define FIND_TRAIN(id)                                    \
@@ -520,7 +290,7 @@ bool Esp32TrainDatabase::is_train_id_known(openlcb::NodeID train_id)
     auto ent = FIND_TRAIN(addr);
     if (ent != knownTrains_.end())
     {
-      LOG(INFO, "[TrainDB] %s", (*ent)->identifier().c_str());
+      LOG(VERBOSE, "[TrainDB] %s", (*ent)->identifier().c_str());
     }
     return ent != knownTrains_.end();
   }
@@ -620,28 +390,6 @@ unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
   return index;
 }
 
-std::set<uint16_t> Esp32TrainDatabase::get_default_train_addresses(uint16_t limit)
-{
-  std::set<uint16_t> results;
-  OSMutexLock lock(&mux_);
-  for(auto entry : knownTrains_)
-  {
-    if (entry->get_data().show_on_limited_throttles)
-    {
-      if (limit)
-      {
-        results.insert(entry->get_legacy_address());
-        limit--;
-      }
-      else
-      {
-        break;
-      }
-    }
-  }
-  return results;
-}
-
 void Esp32TrainDatabase::set_train_name(unsigned address, std::string name)
 {
   OSMutexLock lock(&mux_);
@@ -665,30 +413,12 @@ void Esp32TrainDatabase::set_train_auto_idle(unsigned address, bool idle)
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
   {
-    LOG(INFO, "[TrainDB] Setting auto-idle: %s", idle ? JSON_VALUE_ON : JSON_VALUE_OFF);
+    LOG(INFO, "[TrainDB] Setting auto-idle: %s", idle ? "On" : "Off");
     (*entry)->set_auto_idle(idle);
   }
   else
   {
     LOG_ERROR("[TrainDB] train %u not found, unable to set idle state!"
-            , address);
-  }
-}
-
-void Esp32TrainDatabase::set_train_show_on_limited_throttle(unsigned address
-                                                          , bool show)
-{
-  OSMutexLock lock(&mux_);
-  LOG(INFO, "[TrainDB] Searching for train with address %u", address);
-  auto entry = FIND_TRAIN(address);
-  if (entry != knownTrains_.end())
-  {
-    LOG(INFO, "[TrainDB] Setting visible on limited throttes: %s", show ? JSON_VALUE_ON : JSON_VALUE_OFF);
-    (*entry)->set_show_on_limited_throttles(show);
-  }
-  else
-  {
-    LOG_ERROR("[TrainDB] train %u not found, unable to set limited throttle!"
             , address);
   }
 }
@@ -741,43 +471,113 @@ string Esp32TrainDatabase::get_all_entries_as_json()
   return res;
 }
 
-string Esp32TrainDatabase::get_entry_as_json(unsigned address)
+string Esp32TrainDatabase::get_entry_as_json(unsigned address, bool readable)
 {
   OSMutexLock lock(&mux_);
-  return get_entry_as_json_locked(address);
+  return get_entry_as_json_locked(address, readable);
 }
 
-string Esp32TrainDatabase::get_entry_as_json_locked(unsigned address)
+string Esp32TrainDatabase::get_entry_as_json_locked(unsigned address, bool readable)
 {
+  std::string serialized = "{}";
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
   {
     auto train = (*entry);
-    json j =
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "name", train->get_train_name().c_str());
+    cJSON_AddNumberToObject(root, "addr", train->get_legacy_address());
+    cJSON_AddBoolToObject(root, "idle", train->is_auto_idle());
+    cJSON *mode = cJSON_CreateObject();
+    if (readable)
     {
-      { JSON_NAME_NODE, train->get_train_name() },
-      { JSON_ADDRESS_NODE, train->get_legacy_address() },
-      { JSON_IDLE_ON_STARTUP_NODE, train->is_auto_idle() },
-      { JSON_DEFAULT_ON_THROTTLE_NODE, train->is_show_on_limited_throttles() },
-      { JSON_MODE_NODE,
-        {
-          { JSON_NAME_NODE, static_cast<DccMode>(train->get_legacy_drive_mode()) },
-          { JSON_TYPE_NODE, train->get_legacy_drive_mode() }
-        }
+      switch (train->get_legacy_drive_mode())
+      {
+        case DCCMODE_OLCBUSER:
+          cJSON_AddStringToObject(mode, "name", "DCC-OlcbUser");
+          break;
+        case DCC_DEFAULT:
+          cJSON_AddStringToObject(mode, "name", "DCC (auto speed step)");
+          break;
+        case DCC_14:
+          cJSON_AddStringToObject(mode, "name", "DCC (14 speed step)");
+          break;
+        case DCC_14_LONG_ADDRESS:
+          cJSON_AddStringToObject(mode, "name", "DCC (14 speed step, long address)");
+          break;
+        case DCC_28:
+          cJSON_AddStringToObject(mode, "name", "DCC (28 speed step)");
+          break;
+        case DCC_28_LONG_ADDRESS:
+          cJSON_AddStringToObject(mode, "name", "DCC (28 speed step, long address)");
+          break;
+        case DCC_128:
+          cJSON_AddStringToObject(mode, "name", "DCC (128 speed step)");
+          break;
+        case DCC_128_LONG_ADDRESS:
+          cJSON_AddStringToObject(mode, "name", "DCC (128 speed step, long address)");
+          break;
+        case DCCMODE_DEFAULT:
+        default:
+          cJSON_AddStringToObject(mode, "name", "DCC (default)");
+          break;
       }
-    };
+    }
+    cJSON_AddNumberToObject(mode, "type", train->get_legacy_drive_mode());
+    cJSON_AddItemToObject(root, "mode", mode);
+    cJSON *functions = cJSON_AddArrayToObject(root, "fn");
     for (size_t idx = 0; idx < DCC_MAX_FN; idx++)
     {
-      j[JSON_FUNCTIONS_NODE].push_back(
+      cJSON *function = cJSON_CreateObject();
+      cJSON_AddNumberToObject(function, "id", idx);
+      cJSON_AddNumberToObject(function, "type", train->get_function_label(idx));
+      if (readable)
       {
-        { JSON_ID_NODE, idx },
-        { JSON_NAME_NODE, static_cast<Symbols>(train->get_function_label(idx)) },
-        { JSON_TYPE_NODE, train->get_function_label(idx) }
-      });
+        switch (train->get_function_label(idx))
+        {
+          case FN_NONEXISTANT:
+            cJSON_AddStringToObject(function, "name", "N/A");
+            break;
+          case LIGHT:
+            cJSON_AddStringToObject(function, "name", "Light");
+            break;
+          case HORN:
+            cJSON_AddStringToObject(function, "name", "Horn");
+            break;
+          case BELL:
+            cJSON_AddStringToObject(function, "name", "Bell");
+            break;
+          case WHISTLE:
+            cJSON_AddStringToObject(function, "name", "Whistle");
+            break;
+          case SHUNT:
+            cJSON_AddStringToObject(function, "name", "Shunting mode");
+            break;
+          case MOMENTUM:
+            cJSON_AddStringToObject(function, "name", "Momentum");
+            break;
+          case MUTE:
+            cJSON_AddStringToObject(function, "name", "Mute");
+            break;
+          case GENERIC:
+            cJSON_AddStringToObject(function, "name", "Function");
+            break;
+          case COUPLER:
+            cJSON_AddStringToObject(function, "name", "Coupler");
+            break;
+          case FN_UNKNOWN:
+          default:
+            cJSON_AddStringToObject(function, "name", "Unknown");
+            break;
+        }
+      }
+      cJSON_AddItemToArray(functions, function);
     }
-    return j.dump();
+    serialized = cJSON_PrintUnformatted(root);
+    cJSON_free(root);
+    return serialized;
   }
-  return "{}";
+  return serialized;
 }
 
 void Esp32TrainDatabase::persist()
@@ -792,18 +592,23 @@ void Esp32TrainDatabase::persist()
   if (ent != knownTrains_.end() || entryDeleted_)
   {
     LOG(VERBOSE, "[TrainDB] At least one entry requires persistence.");
-    json j;
+    std::string serialized = "[";
     size_t count = 0;
     for (auto entry : knownTrains_)
     {
       if (entry->is_persisted())
       {
-        j.push_back(entry->get_data());
+        if (serialized.length() > 1)
+        {
+          serialized += ",";
+        }
+        serialized += get_entry_as_json_locked(entry->get_legacy_address(), false);
         count++;
       }
       entry->reset_dirty();
     }
-    write_string_to_file(TRAIN_DB_JSON_FILE, j.dump());
+    serialized += "]";
+    write_string_to_file(TRAIN_DB_JSON_FILE, serialized);
     LOG(INFO, "[TrainDB] Persisted %zu entries.", count);
     entryDeleted_ = false;
   }

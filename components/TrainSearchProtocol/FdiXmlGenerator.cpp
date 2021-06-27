@@ -58,23 +58,17 @@ struct FunctionLabel {
 };
 
 static const FunctionLabel labels[] = {  //
-    {LIGHT, "Light"},
-    {BEAMER, "Beamer"},
-    {BELL, "Bell"},
-    {HORN, "Horn"},
-    {SHUNT, "Shunt"},
-    {PANTO, "Pantgr"},
-    {SMOKE, "Smoke"},
-    {ABV, "Mom off"},
-    {WHISTLE, "Whistle"},
-    {SOUND, "Sound"},
-    // FNT11 is skipped, rendered as "F<n>"
-    {SPEECH, "Announce"},
-    {ENGINE, "Engine"},
-    {LIGHT1, "Light1"},
-    {LIGHT2, "Light2"},
-    {TELEX, "Coupler"},
-    {0, nullptr}};
+  {LIGHT, "Light"},
+  {BELL, "Bell"},
+  {HORN, "Horn"},
+  {WHISTLE, "Whistle"},
+  {SHUNT, "Shunt"},
+  {MOMENTUM, "Mom off"},
+  {SMOKE, "Smoke"},
+  {MUTE, "Sound"},
+  {COUPLER, "Coupler"},
+  {0, nullptr}
+};
 
 const char* label_for_function(uint8_t type) {
   const FunctionLabel* r = labels;
