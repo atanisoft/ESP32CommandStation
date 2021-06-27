@@ -514,7 +514,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             var tbody = $('#active-locos-table tbody');
             tbody.children().remove();
             for (var idx in data) {
-              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].address, data[idx].speed, data[idx].dir));
+              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].addr, data[idx].spd, data[idx].dir));
             }
             $('#active-locos-empty').hide();
             $('#active-locos-table').show();
