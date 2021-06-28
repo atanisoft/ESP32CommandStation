@@ -258,83 +258,81 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
     LOG(INFO, "[TrainDB] Loading database...");
     auto roster = read_file_to_string(TRAIN_DB_JSON_FILE);
     cJSON *root = cJSON_ParseWithLength(roster.c_str(), roster.length());
-    if (!cJSON_IsArray(root))
-    {
-      LOG_ERROR("[TrainDB] database is corrupt, no trains loaded!");
-      unlink(TRAIN_DB_JSON_FILE);
-    }
-    else
+    if (cJSON_IsArray(root))
     {
       cJSON *entry;
       cJSON_ArrayForEach(entry, root)
       {
-        if (cJSON_HasObjectItem(entry, "name") &&
-            cJSON_HasObjectItem(entry, "desc") &&
-            cJSON_HasObjectItem(entry, "addr") && 
-            cJSON_HasObjectItem(entry, "idle") &&
-            cJSON_HasObjectItem(entry, "mode"))
+        cJSON *mode = cJSON_GetObjectItem(entry, "mode");
+        Esp32PersistentTrainData data(
+          cJSON_GetObjectItem(entry, "addr")->valueint,
+          cJSON_GetObjectItem(entry, "name")->valuestring,
+          cJSON_GetObjectItem(entry, "desc")->valuestring,
+          (DccMode)cJSON_GetObjectItem(mode, "type")->valueint,
+          cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle")));
+        if (cJSON_HasObjectItem(entry, "fn") &&
+            cJSON_IsArray(cJSON_GetObjectItem(entry, "fn")))
+        { 
+          cJSON *function;
+          cJSON_ArrayForEach(function, cJSON_GetObjectItem(entry, "fn"))
+          {
+            if (cJSON_HasObjectItem(function, "id") &&
+                cJSON_HasObjectItem(function, "type"))
+            {
+              uint8_t id = cJSON_GetObjectItem(function, "id")->valueint;
+              uint8_t type = cJSON_GetObjectItem(function, "type")->valueint;
+              LOG(VERBOSE, "[Train: %d] function: %d -> %d", data.address,
+                  id, type);
+              data.functions[id] = type;
+            }
+            else
+            {
+              LOG_ERROR("[TrainDB] Loco %d (%s) has corrupt function "
+                        "entries which will be ignored.",
+                        data.address, data.name.c_str());
+            }
+          }
+        }
+        auto ent = std::find_if(knownTrains_.begin(), knownTrains_.end(),
+        [data](const auto &train)
         {
-          cJSON *mode = cJSON_GetObjectItem(entry, "mode");
-          Esp32PersistentTrainData data(
-            cJSON_GetObjectItem(entry, "addr")->valueint,
-            cJSON_GetObjectItem(entry, "name")->valuestring,
-            cJSON_GetObjectItem(entry, "desc")->valuestring,
-            (DccMode)cJSON_GetObjectItem(mode, "type")->valueint,
-            cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle")));
-          if (cJSON_HasObjectItem(entry, "fn") &&
-              cJSON_IsArray(cJSON_GetObjectItem(entry, "fn")))
-          { 
-            cJSON *function;
-            cJSON_ArrayForEach(function, cJSON_GetObjectItem(entry, "fn"))
+          return train->get_legacy_address() == data.address;
+        });
+        if (ent == knownTrains_.end())
+        {
+          LOG(INFO, "[TrainDB] Registering %u - %s (auto-idle: %s)",
+              data.address, data.name.c_str(),
+              data.automatic_idle ? "On" : "Off");
+          auto train = new Esp32TrainDbEntry(data, this);
+          train->reset_dirty();
+          if (train->is_auto_idle())
+          {
+            uint16_t address = train->get_legacy_address();
+            stack->executor()->add(new CallbackExecutable([address]()
             {
-              if (cJSON_HasObjectItem(function, "id") &&
-                  cJSON_HasObjectItem(function, "type"))
-              {
-                uint8_t id = cJSON_GetObjectItem(function, "id")->valueint;
-                uint8_t type = cJSON_GetObjectItem(function, "type")->valueint;
-                LOG(VERBOSE, "[Train: %d] function: %d -> %d", data.address,
-                    id, type);
-                data.functions[id] = type;
-              }
-              else
-              {
-                LOG_ERROR("[TrainDB] Loco %d (%s) has corrupt function "
-                          "entries which will be ignored.",
-                          data.address, data.name.c_str());
-              }
-            }
+              auto trainMgr = Singleton<AllTrainNodes>::instance();
+              trainMgr->allocate_node(DccMode::DCC_128, address);
+            }));
           }
-          auto ent = std::find_if(knownTrains_.begin(), knownTrains_.end(),
-          [data](const auto &train)
-          {
-            return train->get_legacy_address() == data.address;
-          });
-          if (ent == knownTrains_.end())
-          {
-            LOG(INFO, "[TrainDB] Registering %u - %s (auto-idle: %s)",
-                data.address, data.name.c_str(),
-                data.automatic_idle ? "On" : "Off");
-            auto train = new Esp32TrainDbEntry(data, this);
-            train->reset_dirty();
-            if (train->is_auto_idle())
-            {
-              uint16_t address = train->get_legacy_address();
-              stack->executor()->add(new CallbackExecutable([address]()
-              {
-                auto trainMgr = Singleton<AllTrainNodes>::instance();
-                trainMgr->allocate_node(DccMode::DCC_128, address);
-              }));
-            }
-            knownTrains_.emplace_back(train);
-          }
-          else
-          {
-            LOG_ERROR("[TrainDB] Duplicate roster entry detected for loco addr %u."
-                    , data.address);
-          }
+          knownTrains_.emplace_back(train);
+        }
+        else
+        {
+          LOG_ERROR("[TrainDB] Duplicate roster entry detected for loco addr %u."
+                  , data.address);
         }
       }
     }
+    else
+    {
+      LOG_ERROR("[TrainDB] Persistent storage is corrupt and will not be loaded!");
+    }
+    cJSON_Delete(root);
+  }
+  else
+  {
+    LOG(WARNING, "[TrainDB] %s does not exist, skipping loading.",
+        TRAIN_DB_JSON_FILE);
   }
 
   LOG(INFO, "[TrainDB] Found %d persistent roster entries."

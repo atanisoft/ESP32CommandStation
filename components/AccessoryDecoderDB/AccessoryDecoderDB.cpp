@@ -119,7 +119,7 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
         }
       }
     }
-    else if (cJSON_IsInvalid(root))
+    else
     {
       LOG_ERROR("[AccessoryDecoderDB] Persistent storage is corrupt and will "
                 "not be loaded!");
