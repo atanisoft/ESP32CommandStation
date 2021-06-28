@@ -42,6 +42,7 @@
 * WebUI: urldecode all field data from json.
 * WebUI: Add function name/label editing via web interface.
 * WebUI: Roster edit / save via WS.
+* WebUI: Show remaining characters for various text fields.
 
 ### Not required for v2.0
 
@@ -71,3 +72,7 @@
 
 * Add option for inline translation in Esp32Ws2812 rather than on-demand translation.
 * Add support for more LED types in Esp32Ws2812.
+
+## HttpServer TODO list
+
+* Expose HttpRequest::param(string name, string default)

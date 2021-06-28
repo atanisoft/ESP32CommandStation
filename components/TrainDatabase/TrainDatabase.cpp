@@ -129,18 +129,20 @@ void Esp32TrainDbEntry::recalcuate_max_fn()
 
 std::string Esp32TrainDbEntry::to_json(bool readable)
 {
-  string json = R"!^!({"name":")!^!";
-  json += data_.name;
-  json += R"!^!(","addr":)!^!";
+  string json = R"!^!({"addr":)!^!";
   json += integer_to_string(data_.address);
-  json += R"!^!(,"idle":)!^!";
+  json += R"!^!(,"name":")!^!";
+  json += data_.name;
+  json += R"!^!(","desc":")!^!";
+  json += data_.description;
+  json += R"!^!(","idle":)!^!";
   if (data_.automatic_idle)
   {
     json += R"!^!(true,)!^!";
   }
   else
   {
-    json += R"!^!(true,)!^!";
+    json += R"!^!(false,)!^!";
   }
   json += R"!^!("mode":{"type":)!^!";
   json += integer_to_string(data_.mode);
@@ -266,6 +268,7 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
       cJSON_ArrayForEach(entry, root)
       {
         if (cJSON_HasObjectItem(entry, "name") &&
+            cJSON_HasObjectItem(entry, "desc") &&
             cJSON_HasObjectItem(entry, "addr") && 
             cJSON_HasObjectItem(entry, "idle") &&
             cJSON_HasObjectItem(entry, "mode"))
@@ -274,6 +277,7 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
           Esp32PersistentTrainData data(
             cJSON_GetObjectItem(entry, "addr")->valueint,
             cJSON_GetObjectItem(entry, "name")->valuestring,
+            cJSON_GetObjectItem(entry, "desc")->valuestring,
             (DccMode)cJSON_GetObjectItem(mode, "type")->valueint,
             cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle")));
           if (cJSON_HasObjectItem(entry, "fn") &&
@@ -355,9 +359,8 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
              train->get_legacy_address() == id2;          \
     })
 
-std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::create_if_not_found(unsigned address
-                                                                    , string name
-                                                                    , DccMode mode)
+std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::create_or_update(
+  unsigned address, string name, string description, DccMode mode, bool idle)
 {
   OSMutexLock lock(&mux_);
   LOG(INFO, "[TrainDB] Searching for roster entry for address: %u", address);
@@ -365,11 +368,16 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::create_if_not_found(unsigned a
   if (entry != knownTrains_.end())
   {
     LOG(INFO, "[TrainDB] Found existing entry:%s.", (*entry)->identifier().c_str());
+    (*entry)->set_train_name(name);
+    (*entry)->set_train_description(description);
+    (*entry)->set_legacy_drive_mode(mode);
+    (*entry)->set_auto_idle(idle);
     return *entry;
   }
   auto index = knownTrains_.size();
   knownTrains_.emplace_back(
-    new Esp32TrainDbEntry(Esp32PersistentTrainData(address, name, mode), this));
+    new Esp32TrainDbEntry(
+      Esp32PersistentTrainData(address, name, description, mode, idle), this));
   LOG(INFO, "[TrainDB] No entry was found, created new entry:%s.",
       knownTrains_[index]->identifier().c_str());
   return knownTrains_[index];
@@ -482,7 +490,8 @@ unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
     // automatically persist.
     knownTrains_.emplace_back(
       new Esp32TrainDbEntry(
-        Esp32PersistentTrainData(address, std::to_string(address), mode), this));
+        Esp32PersistentTrainData(address, std::to_string(address),
+                                 std::to_string(address), mode), this));
 #else
     LOG(INFO
       , "[TrainDB] Adding temporary roster entry for locomotive %u."
@@ -492,8 +501,8 @@ unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
     // it will be marked as dirty and persisted at that point.
     knownTrains_.emplace_back(
       new Esp32TrainDbEntry(
-        Esp32PersistentTrainData(address, std::to_string(address), mode)
-      , this, false));
+        Esp32PersistentTrainData(address, std::to_string(address),
+                                 std::to_string(address), mode), this, false));
 #endif
   }
   return index;

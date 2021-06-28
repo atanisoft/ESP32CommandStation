@@ -166,6 +166,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               <thead>
                 <tr>
                   <th>Name</th>
+                  <th>Description</th>
                   <th>Address</th>
                 </tr>
               </thead>
@@ -279,6 +280,8 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             <tr>
               <th>Address</th>
               <th>Name</th>
+              <th>Description</th>
+              <th>Automatic Active</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -302,7 +305,9 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             <label class="form-label text-dark" for="roster-addr">Address:</label>
             <input type="number" pattern="[0-9]*" id="roster-addr" value="1" min="1" max="16384" />
             <label class="form-label text-dark" for="roster-name">Name:</label>
-            <input type="text" id="roster-name" value="" />
+            <input type="text" id="roster-name" value="" maxlength="63" />
+            <label class="form-label text-dark" for="roster-desc">Description:</label>
+            <input type="text" id="roster-desc" value="" maxlength="64" />
             <label class="form-switch">
               <input type="checkbox" id="roster-idle">
               <i class="form-icon"></i><span class="text-dark">Automatically add this locomotive to the "Active
@@ -845,8 +850,8 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             for (var idx in data) {
               if (data[idx].default) {
                 count++;
-                $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({1});"><td>{0}</td><td>{1}</td></tr>',
-                  data[idx].name, data[idx].addr));
+                $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({1});"><td>{0}</td><td>{1}</td><td>{2}</td></tr>',
+                  data[idx].name, data[idx].desc, data[idx].addr));
               }
             }
             if (count > 0) {
@@ -1042,7 +1047,8 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
                 data[idx].addr);
               actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteLoco({0});"><i class="icon icon-delete"></i></button>',
                 data[idx].addr);
-              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].addr, data[idx].name, actions));
+              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td><td><i class="icon icon-{3}"></i></td><td>{4}</td></tr>',
+                data[idx].addr, data[idx].name, data[idx].desc, data[idx].idle ? 'check' : 'cross', actions));
             }
             $("#roster-empty").hide();
             $("#roster-table").show();
@@ -1068,6 +1074,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     }
     function clearRosterEditor() {
       $('#roster-name').val("");
+      $('#roster-desc').val("");
       $('#roster-addr').val(1);
       $('#roster-idle').prop('checked', false);
     }
@@ -1075,6 +1082,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       if (window.location.host.length) {
         fetchWithTimeout(String.format('/locomotive/roster?address={0}', address)).then(res => res.json()).then(data => {
           $('#roster-name').val(data.name);
+          $('#roster-desc').val(data.desc);
           $('#roster-addr').val(data.addr);
           $('#roster-idle').prop('checked', data.idle);
           toggleModal('#roster-editor');
@@ -1093,8 +1101,8 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     function saveLoco() {
       if (window.location.host.length) {
         toggleModal('#roster-editor');
-        fetchWithTimeout(String.format('/locomotive/roster?address={0}&name={1}&idle={2}',
-          $('#roster-addr').val(), $('#roster-name').val(), $('#roster-idle').prop('checked'))).then(res => refreshRoster(null)).catch(function (error) {
+        fetchWithTimeout(String.format('/locomotive/roster?address={0}&name={1}&desc={2}&idle={3}',
+          $('#roster-addr').val(), $('#roster-name').val(), $('#roster-desc').val(), $('#roster-idle').prop('checked'))).then(res => refreshRoster(null)).catch(function (error) {
             showErrorDialog('Failed to save roster entry', error);
           });
       }

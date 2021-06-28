@@ -703,7 +703,7 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
     return "{}";
   }
   string res =
-    StringPrintf("{\"addr\":%d,\"spd\":%d,\"dir\":\"%s\",\"functions\":[",
+    StringPrintf(R"!^!({"addr":%d,"spd":%d,"dir":"%s","fn":[)!^!",
                  t->legacy_address(),(int)t->get_speed().mph(),
                  t->get_speed().direction() == dcc::SpeedType::REVERSE ? "REV" : "FWD");
   for (size_t funcID = 0; funcID < commandstation::DCC_MAX_FN; funcID++)
@@ -712,7 +712,8 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
     {
       res += ",";
     }
-    res += StringPrintf("{\"id\":%d,\"state\":%d}", funcID, t->get_fn(funcID));
+    res += StringPrintf(R"!^!({"id":%d,"state":%d})!^!", funcID,
+                        t->get_fn(funcID));
   }
   res += "]}";
   return res;
@@ -752,36 +753,46 @@ HTTP_HANDLER_IMPL(process_loco, request)
     else if (request->has_param("address"))
     {
       uint16_t address = request->param("address", 0);
-      if (request->method() == HttpMethod::DELETE)
+      if (address == 0 || address > 10239)
+      {
+        LOG_ERROR("[WebSrv] Invalid address provided: %d", address);
+        request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
+      }
+      else if (request->method() == HttpMethod::DELETE)
       {
         traindb->delete_entry(address);
         request->set_status(HttpStatusCode::STATUS_NO_CONTENT);
       }
       else
       {
-        traindb->create_if_not_found(address, std::to_string(address));
-        if (request->has_param("name"))
+        string name = request->param("name");
+        string description = request->param("desc");
+        DccMode mode = static_cast<commandstation::DccMode>(
+          request->param("mode", DccMode::DCC_128));
+        bool idle = request->param("idle", false);
+        if (name.empty())
         {
-          auto name = request->param("name");
-          if (name.length() > 16)
-          {
-            LOG_ERROR("[WebSrv] Received locomotive name that is too long, "
-                      "returning error.\n%s", request->to_string().c_str());
-            request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
-            return nullptr;
-          }
-          else if (name.empty())
-          {
-            name = integer_to_string(address);
-          }
-          traindb->set_train_name(address, name);
+          name = std::to_string(address);
         }
-        if (request->has_param("idle"))
+        else if (name.length() > 63)
         {
-          traindb->set_train_auto_idle(address, request->param("idle", false));
+          LOG_ERROR("[WebSrv] Truncating loco name: %s -> %s",
+                    name.c_str(), name.substr(0, 63).c_str());
+          name.resize(63);
         }
+        if (description.empty())
+        {
+          description = std::to_string(address);
+        }
+        else if (description.length() > 64)
+        {
+          LOG_ERROR("[WebSrv] Truncating loco description: %s -> %s",
+                    description.c_str(), description.substr(0, 64).c_str());
+          description.resize(64);
+        }
+        traindb->create_or_update(address, name, description, mode, idle);
         // search for and remap functions if present
-        for (uint8_t fn = 0; fn <= 28; fn++)
+        for (uint8_t fn = 1; fn < commandstation::DCC_MAX_FN; fn++)
         {
           string fArg = StringPrintf("f%d", fn);
           if (request->has_param(fArg.c_str()))
@@ -791,20 +802,6 @@ HTTP_HANDLER_IMPL(process_loco, request)
               request->param(fArg, commandstation::Symbols::FN_UNKNOWN));
             traindb->set_train_function_label(address, fn, label);
           }
-        }
-        if (request->has_param("mode"))
-        {
-          int8_t mode = request->param("mode", -1);
-          if (mode < 0)
-          {
-            LOG_ERROR("[WebSrv] Invalid parameters for setting mode:\n%s"
-                    , request->to_string().c_str());
-            request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
-            return nullptr;
-          }
-          commandstation::DccMode drive_mode =
-            static_cast<commandstation::DccMode>(mode);
-          traindb->set_train_drive_mode(address, drive_mode);
         }
         return new JsonResponse(traindb->get_entry_as_json(address));
       }
@@ -868,8 +865,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
         }
         else if (request->has_param("dir"))
         {
-          bool forward =
-            !request->param("dir").compare("FWD");
+          bool forward = !request->param("dir").compare("FWD");
           auto upd_speed = loco->get_speed();
           upd_speed.set_direction(forward ? dcc::SpeedType::FORWARD
                                           : dcc::SpeedType::REVERSE);

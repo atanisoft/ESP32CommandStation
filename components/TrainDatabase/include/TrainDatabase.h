@@ -50,18 +50,18 @@ namespace esp32cs
   {
     uint16_t address;
     std::string name;
+    std::string description;
     bool automatic_idle;
     uint8_t mode;
     std::vector<uint8_t> functions;
-    Esp32PersistentTrainData()
-    {
-    }
     Esp32PersistentTrainData(uint16_t address, std::string name="unknown",
+                             std::string description="unknown",
                              DccMode mode=DccMode::DCC_128,
                              bool idle = CONFIG_ROSTER_AUTO_IDLE_NEW_LOCOS)
     {
       this->address = address;
       this->name = name;
+      this->description = description;
       this->mode = mode;
       this->automatic_idle = idle;
       // set some defaults
@@ -92,6 +92,12 @@ namespace esp32cs
     void set_train_name(std::string name)
     {
       data_.name = std::move(name);
+      dirty_ = true;
+    }
+
+    void set_train_description(std::string description)
+    {
+      data_.description = std::move(description);
       dirty_ = true;
     }
 
@@ -203,9 +209,10 @@ namespace esp32cs
 
     bool is_train_id_known(openlcb::NodeID train_id) override;
 
-    std::shared_ptr<commandstation::TrainDbEntry> create_if_not_found(
-      unsigned address, std::string name="unknown"
-    , DccMode mode=DccMode::DCC_128);
+    std::shared_ptr<commandstation::TrainDbEntry> create_or_update(
+      unsigned address, std::string name = "unknown",
+      string desciption = "unknown", DccMode mode = DccMode::DCC_128,
+      bool idle = false);
 
     void delete_entry(unsigned address);
 
