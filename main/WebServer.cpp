@@ -488,6 +488,41 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
                       state, type, req_id->valueint);
       }
     }
+    else if (!strcmp(req_type->valuestring, "roster"))
+    {
+      if (!cJSON_HasObjectItem(root, "addr") ||
+          !cJSON_HasObjectItem(root, "act"))
+      {
+        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s",
+                  req_id->valueint, req.c_str());
+        response =
+          StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!",
+                       req_id->valueint);
+      }
+      else
+      {
+        uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
+        string action = cJSON_GetObjectItem(root, "act")->valuestring;
+        string target = cJSON_HasObjectItem(root, "tgt") ?
+            cJSON_GetObjectItem(root, "tgt")->valuestring : "";
+        if (action == "save")
+        {
+          traindb->set_train_name(address, cJSON_GetObjectItem(root, "name")->valuestring);
+          traindb->set_train_description(address, cJSON_GetObjectItem(root, "desc")->valuestring);
+          traindb->set_train_drive_mode(address, (DccMode)cJSON_GetObjectItem(root, "mode")->valueint);
+          traindb->set_train_auto_idle(address, cJSON_IsTrue(cJSON_GetObjectItem(root, "idle")));
+        }
+        else if (action == "delete")
+        {
+          LOG(VERBOSE, "[WSJSON:%d] Deleting accessory %d", req_id->valueint,
+              address);
+          traindb->delete_entry(address);
+        }
+        response =
+          StringPrintf(R"!^!({"res":"roster","act":"%s","tgt":"%s","id":%d})!^!",
+                      action.c_str(), target.c_str(), req_id->valueint);
+      }
+    }
     else if (!strcmp(req_type->valuestring, "ping"))
     {
       LOG(VERBOSE, "[WSJSON:%d] PING received", req_id->valueint);
@@ -733,8 +768,7 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
 // ANY /locomotive/estop - send emergency stop to all locomotives
 // GET /locomotive/roster - roster
 // GET /locomotive/roster?address=<address> - get roster entry
-// PUT /locomotive/roster?address=<address> - update roster entry
-// POST /locomotive/roster?address=<address> - create roster entry
+// PUT / POST /locomotive/roster?address=<address>&name=<name>&desc=<desc>&mode=<mode>&idle=[true|false] - create or update roster entry
 // DELETE /locomotive/roster?address=<address> - delete roster entry
 // GET /locomotive - get active locomotives
 // POST /locomotive?address=<address> - add locomotive to active management
@@ -773,6 +807,10 @@ HTTP_HANDLER_IMPL(process_loco, request)
         traindb->delete_entry(address);
         request->set_status(HttpStatusCode::STATUS_NO_CONTENT);
       }
+      else if (request->method() == HttpMethod::GET)
+      {
+        return new JsonResponse(traindb->get_entry_as_json(address));
+      }
       else
       {
         string name = request->param("name");
@@ -780,21 +818,13 @@ HTTP_HANDLER_IMPL(process_loco, request)
         DccMode mode = static_cast<commandstation::DccMode>(
           request->param("mode", DccMode::DCC_128));
         bool idle = request->param("idle", false);
-        if (name.empty())
-        {
-          name = std::to_string(address);
-        }
-        else if (name.length() > 63)
+        if (name.length() > 63)
         {
           LOG_ERROR("[WebSrv] Truncating loco name: %s -> %s",
                     name.c_str(), name.substr(0, 63).c_str());
           name.resize(63);
         }
-        if (description.empty())
-        {
-          description = std::to_string(address);
-        }
-        else if (description.length() > 64)
+        if (description.length() > 64)
         {
           LOG_ERROR("[WebSrv] Truncating loco description: %s -> %s",
                     description.c_str(), description.substr(0, 64).c_str());

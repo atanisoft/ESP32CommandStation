@@ -27,6 +27,7 @@
 * [x] AccessoryDecoderDB: Add name to decoder.
 * [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
 * [ ] WebUI: Test all endpoints.
+* [x] WebUI: Roster save via WS.
 * [ ] FastClock: Re-add FastClock support.
 
 ### Nice to have for v2.0
@@ -41,7 +42,6 @@
 * WebServer: Document all endpoints and data formats (including WS)
 * WebUI: urldecode all field data from json.
 * WebUI: Add function name/label editing via web interface.
-* WebUI: Roster edit / save via WS.
 * WebUI: Show remaining characters for various text fields.
 
 ### Not required for v2.0

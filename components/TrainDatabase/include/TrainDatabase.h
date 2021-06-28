@@ -223,6 +223,7 @@ namespace esp32cs
 
     unsigned add_dynamic_entry(uint16_t address, DccMode mode) override;
     void set_train_name(unsigned address, std::string name);
+    void set_train_description(unsigned address, std::string description);
     void set_train_auto_idle(unsigned address, bool idle);
     void set_train_function_label(unsigned address, uint8_t fn_id, Symbols label);
     void set_train_drive_mode(unsigned address, DccMode mode);

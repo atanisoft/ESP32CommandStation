@@ -309,6 +309,16 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           <div class="modal-body">
             <label class="form-label text-dark" for="roster-addr">Address:</label>
             <input type="number" pattern="[0-9]*" id="roster-addr" value="1" min="1" max="16384" />
+            <label class="form-label text-dark" for="roster-mode">Mode:</label>
+            <select id="roster-mode">
+              <option value="0">DCC (default, 128 speed steps)</option>
+              <option value="9">DCC (14 speed steps)</option>
+              <option value="13">DCC (14 speed steps, long address)</option>
+              <option value="10">DCC (28 speed steps)</option>
+              <option value="14">DCC (28 speed steps, long address)</option>
+              <option value="11">DCC (128 speed steps)</option>
+              <option value="15">DCC (128 speed steps, long address)</option>
+            </select>
             <label class="form-label text-dark" for="roster-name">Name:</label>
             <input type="text" id="roster-name" value="" maxlength="63" />
             <label class="form-label text-dark" for="roster-desc">Description:</label>
@@ -653,6 +663,13 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
                 $(String.format("#accessory_{0}_toggle", json.addr)).attr('data-tooltip', accessory_states_tooltip[json.state]);
                 $(String.format("#accessory_{0}_state", json.addr)).text(accessory_states[json.state]);
               }
+            }
+          } else if (json.res === 'roster') {
+            if (json.tgt !== '') {
+              $('#' + json.tgt).removeClass('loading');
+            }
+            if (json.act === 'delete' || json.act === 'save') {
+              refreshRoster(null);
             }
           } else if (json.res === 'event') {
             if (json.evt === ops_track_on_evt) {
@@ -1090,6 +1107,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       if (window.location.host.length) {
         fetchWithTimeout(String.format('/locomotive/roster?address={0}', address)).then(res => res.json()).then(data => {
           $('#roster-name').val(data.name);
+          $('#roster-mode').val(data.mode.type);
           $('#roster-desc').val(data.desc);
           $('#roster-addr').val(data.addr);
           $('#roster-idle').prop('checked', data.idle);
@@ -1108,11 +1126,17 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     }
     function saveLoco() {
       if (window.location.host.length) {
+        ws_tx(JSON.stringify({
+            req: 'roster',
+            act: 'save',
+            addr: parseInt($('#roster-addr').val()),
+            name: $('#roster-name').val(),
+            mode: parseInt($('#roster-mode').val()),
+            desc: $('#roster-desc').val(),
+            idle: $('#roster-idle').prop('checked'),
+            id: get_ws_msg_id()
+        }));
         toggleModal('#roster-editor');
-        fetchWithTimeout(String.format('/locomotive/roster?address={0}&name={1}&desc={2}&idle={3}',
-          $('#roster-addr').val(), $('#roster-name').val(), $('#roster-desc').val(), $('#roster-idle').prop('checked'))).then(res => refreshRoster(null)).catch(function (error) {
-            showErrorDialog('Failed to save roster entry', error);
-          });
       }
     }
     function enableLocoInputs() {

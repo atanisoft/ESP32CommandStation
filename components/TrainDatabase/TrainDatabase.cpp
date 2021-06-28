@@ -525,6 +525,22 @@ void Esp32TrainDatabase::set_train_name(unsigned address, std::string name)
   }
 }
 
+void Esp32TrainDatabase::set_train_description(unsigned address, std::string description)
+{
+  OSMutexLock lock(&mux_);
+  LOG(INFO, "[TrainDB] Searching for train with address %u", address);
+  auto entry = FIND_TRAIN(address);
+  if (entry != knownTrains_.end())
+  {
+    LOG(INFO, "[TrainDB] Setting train(%u) description: %s", address, description.c_str());
+    (*entry)->set_train_description(description);
+  }
+  else
+  {
+    LOG_ERROR("[TrainDB] train %u not found, unable to set the name!", address);
+  }
+}
+
 void Esp32TrainDatabase::set_train_auto_idle(unsigned address, bool idle)
 {
   OSMutexLock lock(&mux_);
