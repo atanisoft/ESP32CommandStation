@@ -270,57 +270,35 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
           cJSON_GetObjectItem(entry, "desc")->valuestring,
           (DccMode)cJSON_GetObjectItem(mode, "type")->valueint,
           cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle")));
-        if (cJSON_HasObjectItem(entry, "fn") &&
-            cJSON_IsArray(cJSON_GetObjectItem(entry, "fn")))
+        cJSON *functions = cJSON_GetObjectItem(entry, "fn");
+        if (cJSON_IsArray(functions))
         { 
           cJSON *function;
-          cJSON_ArrayForEach(function, cJSON_GetObjectItem(entry, "fn"))
+          cJSON_ArrayForEach(function, functions)
           {
-            if (cJSON_HasObjectItem(function, "id") &&
-                cJSON_HasObjectItem(function, "type"))
-            {
-              uint8_t id = cJSON_GetObjectItem(function, "id")->valueint;
-              uint8_t type = cJSON_GetObjectItem(function, "type")->valueint;
-              LOG(VERBOSE, "[Train: %d] function: %d -> %d", data.address,
-                  id, type);
-              data.functions[id] = type;
-            }
-            else
-            {
-              LOG_ERROR("[TrainDB] Loco %d (%s) has corrupt function "
-                        "entries which will be ignored.",
-                        data.address, data.name.c_str());
-            }
+            uint8_t id = cJSON_GetObjectItem(function, "id")->valueint;
+            uint8_t type = cJSON_GetObjectItem(function, "type")->valueint;
+            LOG(VERBOSE, "[TrainDB:%d] function: %d -> %d", data.address, id,
+                type);
+            data.functions[id] = type;
           }
         }
-        auto ent = std::find_if(knownTrains_.begin(), knownTrains_.end(),
-        [data](const auto &train)
+        LOG(INFO, "[TrainDB] Registering %u - name:%s, desc:%s, idle:%s",
+            data.address, data.name.c_str(), data.description.c_str(),
+            data.automatic_idle ? "On" : "Off");
+        auto train = std::make_shared<Esp32TrainDbEntry>(data, this);
+        train->reset_dirty();
+        if (train->is_auto_idle())
         {
-          return train->get_legacy_address() == data.address;
-        });
-        if (ent == knownTrains_.end())
-        {
-          LOG(INFO, "[TrainDB] Registering %u - %s (auto-idle: %s)",
-              data.address, data.name.c_str(),
-              data.automatic_idle ? "On" : "Off");
-          auto train = new Esp32TrainDbEntry(data, this);
-          train->reset_dirty();
-          if (train->is_auto_idle())
+          uint16_t address = train->get_legacy_address();
+          DccMode mode = train->get_legacy_drive_mode();
+          stack->executor()->add(new CallbackExecutable([address, mode]()
           {
-            uint16_t address = train->get_legacy_address();
-            stack->executor()->add(new CallbackExecutable([address]()
-            {
-              auto trainMgr = Singleton<AllTrainNodes>::instance();
-              trainMgr->allocate_node(DccMode::DCC_128, address);
-            }));
-          }
-          knownTrains_.emplace_back(train);
+            auto trainMgr = Singleton<AllTrainNodes>::instance();
+            trainMgr->allocate_node(mode, address);
+          }));
         }
-        else
-        {
-          LOG_ERROR("[TrainDB] Duplicate roster entry detected for loco addr %u."
-                  , data.address);
-        }
+        knownTrains_.emplace_back(train);
       }
     }
     else
