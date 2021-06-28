@@ -77,45 +77,34 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
       cJSON *accessory;
       cJSON_ArrayForEach(accessory, root)
       {
-        if (cJSON_HasObjectItem(accessory, "address") &&
-            cJSON_HasObjectItem(accessory, "name") &&
-            cJSON_HasObjectItem(accessory, "state") &&
-            cJSON_HasObjectItem(accessory, "type"))
+        uint16_t address = cJSON_GetObjectItem(accessory, "address")->valueint;
+        if (address < 1 || address > 2044)
         {
-          uint16_t address = cJSON_GetObjectItem(accessory, "address")->valueint;
-          if (address < 1 || address > 2044)
-          {
-            continue;
-          }
-          string name = cJSON_GetObjectItem(accessory, "name")->valuestring;
-          bool state = cJSON_IsTrue(cJSON_GetObjectItem(accessory, "state"));
-          AccessoryType type =
-            (AccessoryType)cJSON_GetObjectItem(accessory, "type")->valueint;
-          if (cJSON_HasObjectItem(accessory, "olcb"))
-          {
-            cJSON *events = cJSON_GetObjectItem(accessory, "olcb");
-            auto closed_events =
-              cJSON_GetObjectItem(events, "closed")->valuestring;
-            auto thrown_events =
-              cJSON_GetObjectItem(events, "thrown")->valuestring;
-            LOG(CONFIG_TURNOUT_LOG_LEVEL,
-                "[AccessoryDecoderDB %d] OpenLCB closed:%s, thrown:%s",
-                address, closed_events, thrown_events);
-            accessories_.push_back(
-              std::make_unique<OpenLCBAccessoryDecoder>(address, name, closed_events,
-                                                        thrown_events, type, state));
-          }
-          else
-          {
-            LOG(CONFIG_TURNOUT_LOG_LEVEL, "[AccessoryDecoderDB %d] DCC", address);
-            accessories_.push_back(
-              std::make_unique<DccAccessoryDecoder>(address, name, state, type));
-          }
+          continue;
+        }
+        string name = cJSON_GetObjectItem(accessory, "name")->valuestring;
+        bool state = cJSON_IsTrue(cJSON_GetObjectItem(accessory, "state"));
+        AccessoryType type =
+          (AccessoryType)cJSON_GetObjectItem(accessory, "type")->valueint;
+        if (cJSON_HasObjectItem(accessory, "olcb"))
+        {
+          cJSON *events = cJSON_GetObjectItem(accessory, "olcb");
+          auto closed_events =
+            cJSON_GetObjectItem(events, "closed")->valuestring;
+          auto thrown_events =
+            cJSON_GetObjectItem(events, "thrown")->valuestring;
+          LOG(CONFIG_TURNOUT_LOG_LEVEL,
+              "[AccessoryDecoderDB %d] OpenLCB closed:%s, thrown:%s",
+              address, closed_events, thrown_events);
+          accessories_.push_back(
+            std::make_unique<OpenLCBAccessoryDecoder>(address, name, closed_events,
+                                                      thrown_events, type, state));
         }
         else
         {
-          LOG_ERROR("[AccessoryDecoderDB] Entry is missing required data:\n%s",
-                    cJSON_Print(accessory));
+          LOG(CONFIG_TURNOUT_LOG_LEVEL, "[AccessoryDecoderDB %d] DCC", address);
+          accessories_.push_back(
+            std::make_unique<DccAccessoryDecoder>(address, name, state, type));
         }
       }
     }
