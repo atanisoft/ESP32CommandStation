@@ -16,15 +16,15 @@
 * [ ] Investigate heap corruption issues.
 * [ ] DCC: ULP current sense / ACK.
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
-* [ ] Deps: Remove nlohmann_json dependency in favor of cJSON.
+* [x] Deps: Remove nlohmann_json dependency in favor of cJSON.
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
-* [ ] TrainDB: reduce function types to: light, horn (momentary), bell, mute, coupler, other, other (momentary).
+* [x] TrainDB: reduce function types to: light, horn (momentary), bell, mute, coupler, other, other (momentary).
 * [ ] TrainDB: Remove Marklin support.
 * [ ] AccessoryDecoderDB: Verify all functionality.
 * [x] AccessoryDecoderDB: Directly consume OpenLCB events.
-* [ ] AccessoryDecoderDB: Add name to decoder.
+* [x] AccessoryDecoderDB: Add name to decoder.
 * [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
 * [ ] WebUI: Test all endpoints.
 * [ ] FastClock: Re-add FastClock support.

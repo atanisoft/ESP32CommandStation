@@ -28,7 +28,8 @@ namespace esp32cs
 class DccAccessoryDecoder : public AccessoryBaseType
 {
 public:
-  DccAccessoryDecoder(uint16_t address, bool thrown = false,
+  DccAccessoryDecoder(uint16_t address, std::string name,
+                      bool thrown = false,
                       AccessoryType type = AccessoryType::UNKNOWN);
   bool set(bool state, bool is_on) override;
   std::string to_json(bool readable_strings = false) override;

@@ -26,21 +26,18 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 namespace esp32cs
 {
 
-OpenLCBAccessoryDecoder::OpenLCBAccessoryDecoder(const uint16_t address,
-                                                 std::string closed_events,
-                                                 std::string thrown_events,
-                                                 AccessoryType type, bool state)
-                                               : AccessoryBaseType(address, state, type)
+OpenLCBAccessoryDecoder::OpenLCBAccessoryDecoder(
+  const uint16_t address, string name, string closed_events,
+  string thrown_events, AccessoryType type, bool state) :
+  AccessoryBaseType(address, name, state, type)
 {
-  LOG(INFO,
-      "[OpenLCBAccessoryDecoder %d] Registered as type %s and initial state "
-      "of %s", address, ACCESSORY_TYPE_STRINGS[type_],
-      state_ ? "Thrown" : "Closed");
+  LOG(INFO, "[OpenLCBAccessoryDecoder %d] Registered as %s with state of %s",
+      address, ACCESSORY_TYPE_STRINGS[type], state ? "Thrown" : "Closed");
   update_events(closed_events, thrown_events);
 }
 
-void OpenLCBAccessoryDecoder::update_events(std::string closed_events,
-                                            std::string thrown_events)
+void OpenLCBAccessoryDecoder::update_events(string closed_events,
+                                            string thrown_events)
 {
   vector<string> closed;
   vector<string> thrown;
@@ -87,8 +84,8 @@ bool OpenLCBAccessoryDecoder::set(bool state, bool is_on)
 
 std::string OpenLCBAccessoryDecoder::to_json(bool readableStrings)
 {
-  std::vector<string> closed_events;
-  std::vector<string> thrown_events;
+  vector<string> closed_events;
+  vector<string> thrown_events;
   for (auto event : closed_)
   {
     closed_events.push_back(uint64_to_string_hex(event));
@@ -98,8 +95,8 @@ std::string OpenLCBAccessoryDecoder::to_json(bool readableStrings)
     thrown_events.push_back(uint64_to_string_hex(event));
   }
   string serialized =
-    StringPrintf(R"!^!({"address":%d,"type":%d,"olcb":{"closed":"%s","thrown":"%s"},"state":)!^!",
-                 address(), type_,
+    StringPrintf(R"!^!({"address":%d,"name":"%s","type":%d,"olcb":{"closed":"%s","thrown":"%s"},"state":)!^!",
+                 address(), name().c_str(), type(),
                  http::string_join(closed_events, ",").c_str(),
                  http::string_join(thrown_events, ",").c_str());
   if (readableStrings)

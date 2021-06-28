@@ -93,20 +93,23 @@ public:
   /// Creates or update a single persistent DCC accessory decoder.
   ///
   /// @param address accessory decoder address (1-2048).
+  /// @param name accessory decoder name/description.
   /// @param type @ref AccessoryType for this accessory decoder.
-  void createOrUpdateDcc(const uint16_t address,
+  void createOrUpdateDcc(const uint16_t address, std::string name,
                          const AccessoryType type = AccessoryType::UNKNOWN);
 
   /// Creates or update a single persistent virtual DCC accessory decoder that
   /// broadcasts OpenLCB events for state changes rather than DCC packets.
   ///
   /// @param address accessory decoder address (1-2048).
+  /// @param name accessory decoder name/description.
   /// @param closed_events comma delimited list of events to be broadcast when
   /// this virtual accessory decode is set to a closed state.
   /// @param thrown_events comma delimited list of events to be broadcast when
   /// this virtual accessory decode is set to a thrown state.
   /// @param type @ref AccessoryType for this virtual accessory decoder.
   void createOrUpdateOlcb(const uint16_t address,
+                          std::string name,
                           std::string closed_events,
                           std::string thrown_events,
                           const AccessoryType = AccessoryType::UNKNOWN);

@@ -29,7 +29,8 @@ namespace esp32cs
 class OpenLCBAccessoryDecoder : public AccessoryBaseType
 {
 public:
-  OpenLCBAccessoryDecoder(const uint16_t address, std::string closed_events,
+  OpenLCBAccessoryDecoder(const uint16_t address, std::string name,
+                          std::string closed_events,
                           std::string thrown_events, AccessoryType type,
                           bool state);
   bool set(bool state, bool is_on) override;

@@ -78,7 +78,8 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
       cJSON_ArrayForEach(accessory, root)
       {
         if (cJSON_HasObjectItem(accessory, "address") &&
-            cJSON_HasObjectItem(accessory, "state") && 
+            cJSON_HasObjectItem(accessory, "name") &&
+            cJSON_HasObjectItem(accessory, "state") &&
             cJSON_HasObjectItem(accessory, "type"))
         {
           uint16_t address = cJSON_GetObjectItem(accessory, "address")->valueint;
@@ -86,6 +87,7 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
           {
             continue;
           }
+          string name = cJSON_GetObjectItem(accessory, "name")->valuestring;
           bool state = cJSON_IsTrue(cJSON_GetObjectItem(accessory, "state"));
           AccessoryType type =
             (AccessoryType)cJSON_GetObjectItem(accessory, "type")->valueint;
@@ -100,14 +102,14 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
                 "[AccessoryDecoderDB %d] OpenLCB closed:%s, thrown:%s",
                 address, closed_events, thrown_events);
             accessories_.push_back(
-              std::make_unique<OpenLCBAccessoryDecoder>(address, closed_events,
+              std::make_unique<OpenLCBAccessoryDecoder>(address, name, closed_events,
                                                         thrown_events, type, state));
           }
           else
           {
             LOG(CONFIG_TURNOUT_LOG_LEVEL, "[AccessoryDecoderDB %d] DCC", address);
             accessories_.push_back(
-              std::make_unique<DccAccessoryDecoder>(address, state, type));
+              std::make_unique<DccAccessoryDecoder>(address, name, state, type));
           }
         }
         else
@@ -295,7 +297,7 @@ void AccessoryDecoderDB::set(uint16_t address, bool thrown, bool on_off)
   {
     // we didn't find it, create it and set it
     accessories_.push_back(
-      std::make_unique<DccAccessoryDecoder>(address, address));
+      std::make_unique<DccAccessoryDecoder>(address, std::to_string(address)));
     if (accessories_.back()->set(thrown, on_off))
     {
       generate_dcc_packet(address, thrown, on_off);
@@ -328,7 +330,8 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
       "[AccessoryDecoderDB] Turnout not found, creating and toggling");
 
   // we didn't find it, create it and throw it
-  accessories_.push_back(std::make_unique<DccAccessoryDecoder>(address));
+  accessories_.push_back(
+    std::make_unique<DccAccessoryDecoder>(address, std::to_string(address)));
   if(accessories_.back()->toggle())
   {
     generate_dcc_packet(address, accessories_.back()->get());
@@ -355,6 +358,7 @@ std::string AccessoryDecoderDB::to_json(const uint16_t address, bool readable)
 }
 
 void AccessoryDecoderDB::createOrUpdateDcc(const uint16_t address,
+                                           string name,
                                            const AccessoryType type)
 {
   OSMutexLock lock(&mux_);
@@ -364,7 +368,7 @@ void AccessoryDecoderDB::createOrUpdateDcc(const uint16_t address,
     LOG(CONFIG_TURNOUT_LOG_LEVEL,
         "[AccessoryDecoderDB %d] Updated existing DCC decoder",
         address);
-    elem->get()->update(address, type);
+    elem->get()->update(address, name, type);
   }
   else
   {
@@ -373,15 +377,16 @@ void AccessoryDecoderDB::createOrUpdateDcc(const uint16_t address,
     // we didn't find it, create it!
     accessories_.push_back(
       std::make_unique<DccAccessoryDecoder>(
-        address, false,
+        address, name, false,
         type != AccessoryType::UNCHANGED ? type : AccessoryType::UNKNOWN));
   }
   dirty_ = true;
 }
 
 void AccessoryDecoderDB::createOrUpdateOlcb(const uint16_t address,
-                                            std::string closed_events,
-                                            std::string thrown_events,
+                                            string name,
+                                            string closed_events,
+                                            string thrown_events,
                                             const AccessoryType type)
 {
   OSMutexLock lock(&mux_);
@@ -391,7 +396,7 @@ void AccessoryDecoderDB::createOrUpdateOlcb(const uint16_t address,
     LOG(CONFIG_TURNOUT_LOG_LEVEL,
         "[AccessoryDecoderDB %d] Updated existing OpenLCB virtual decoder",
         address);
-    elem->get()->update(address, type);
+    elem->get()->update(address, name, type);
     static_cast<OpenLCBAccessoryDecoder *>(elem->get())->update_events(closed_events
                                                                      , thrown_events);
   }
@@ -401,7 +406,7 @@ void AccessoryDecoderDB::createOrUpdateOlcb(const uint16_t address,
         "[AccessoryDecoderDB %d] Created OpenLCB virtual decoder", address);
     // we didn't find it, create it!
     accessories_.push_back(
-      std::make_unique<OpenLCBAccessoryDecoder>(address, closed_events,
+      std::make_unique<OpenLCBAccessoryDecoder>(address, name, closed_events,
                                                 thrown_events, type, false));
   }
   dirty_ = true;

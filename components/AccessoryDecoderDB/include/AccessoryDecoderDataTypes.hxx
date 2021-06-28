@@ -50,9 +50,14 @@ static constexpr const char *ACCESSORY_TYPE_STRINGS[] =
 class AccessoryBaseType
 {
 public:
-  uint16_t address()
+  uint16_t address() const
   {
     return address_;
+  }
+
+  std::string name() const
+  {
+    return name_;
   }
 
   bool toggle()
@@ -60,12 +65,12 @@ public:
     return set(!get());
   }
 
-  bool get()
+  bool get() const
   {
     return state_;
   }
 
-  AccessoryType type()
+  AccessoryType type() const
   {
     return type_;
   }
@@ -92,9 +97,10 @@ public:
     return "{}";
   }
 
-  void update(uint16_t address, AccessoryType type)
+  void update(uint16_t address, std::string name, AccessoryType type)
   {
     address_ = address;
+    name_ = name;
     if (type != AccessoryType::UNCHANGED)
     {
       type_ = type;
@@ -105,13 +111,14 @@ public:
   }
 
 protected:
-  AccessoryBaseType(uint16_t address, bool state,
+  AccessoryBaseType(uint16_t address, std::string name, bool state,
                     AccessoryType type = AccessoryType::UNKNOWN)
-                  : address_(address), state_(state), type_(type)
+                  : address_(address), name_(name), state_(state), type_(type)
   {
   }
 
   uint16_t address_;
+  std::string name_;
   bool state_;
   bool isOn_;
   AccessoryType type_;

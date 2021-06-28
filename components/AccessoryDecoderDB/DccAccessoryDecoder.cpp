@@ -24,19 +24,19 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 namespace esp32cs
 {
 
-DccAccessoryDecoder::DccAccessoryDecoder(uint16_t address, bool state,
-                                         AccessoryType type)
-                                       : AccessoryBaseType(address, state, type)
+DccAccessoryDecoder::DccAccessoryDecoder(
+  uint16_t address, std::string name, bool state, AccessoryType type) :
+  AccessoryBaseType(address, name, state, type)
 {
-  LOG(INFO,
-      "[DccAccessoryDecoder %d] Registered as type %s and initial state of %s",
-      address_, ACCESSORY_TYPE_STRINGS[type_], get() ? "Thrown" : "Closed");
+  LOG(INFO, "[DccAccessoryDecoder %d] Registered as %s with state of %s",
+      address, ACCESSORY_TYPE_STRINGS[type], state ? "Thrown" : "Closed");
 }
 
 string DccAccessoryDecoder::to_json(bool readableStrings)
 {
   string serialized =
-    StringPrintf("{\"address\":%d,\"type\":%d,\"state\":", address(), type());
+    StringPrintf("{\"address\":%d,\"name\":\"%s\",\"type\":%d,\"state\":",
+    address(), name().c_str(), type());
   if (readableStrings)
   {
     if (get())

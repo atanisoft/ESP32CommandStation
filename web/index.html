@@ -198,6 +198,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           <thead>
             <tr>
               <th>Address</th>
+              <th>Name</th>
               <th>Type</th>
               <th>State</th>
               <th>Actions</th>
@@ -225,6 +226,10 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               <div class="column">
                 <label class="form-label text-dark" for="accessory-address">Address:</label>
                 <input type="number" pattern="[0-9]*" id="accessory-address" value="1" min="1" max="2044">
+              </div>
+              <div class="column">
+                <label class="form-label text-dark" for="accessory-name">Name:</label>
+                <input type="text" id="accessory-name" maxlength="64">
               </div>
               <div class="column">
                 <label class="form-label text-dark" for="accessory-type">Type:</label>
@@ -930,6 +935,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             req: 'accessory',
             act: 'save',
             addr: parseInt($('#accessory-address').val()),
+            name: $('#accessory-name').val(),
             type: parseInt($('#accessory-type').val()),
             olcb: true,
             closed: closed_events,
@@ -941,6 +947,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             req: 'accessory',
             act: 'save',
             addr: parseInt($('#accessory-address').val()),
+            name: $('#accessory-name').val(),
             type: parseInt($('#accessory-type').val()),
             olcb: false,
             id: get_ws_msg_id()
@@ -965,8 +972,8 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
                 data[idx].address);
               actions += String.format('<button id="accessory_{0}_toggle" class="btn btn-primary btn-sm tooltip" data-tooltip="{1}" onclick="toggleAccessory({0},this);"><i class="icon {2}"></i></button>',
                 data[idx].address, accessory_states_tooltip[data[idx].state], accessory_icons[(data[idx].type * 2) + data[idx].state]);
-              $(tbody).append(String.format('<tr><td id="accessory_{0}_addr">{0}</td><td id="accessory_{0}_type" data-type="{1}">{2}</td><td id="accessory_{0}_state">{3}</td><td>{4}</td></tr>',
-                data[idx].address, data[idx].type, accessory_types[data[idx].type], accessory_states[data[idx].state], actions));
+              $(tbody).append(String.format('<tr><td id="accessory_{0}_addr">{0}</td><td id="accessory_{0}_name">{1}</td><td id="accessory_{0}_type" data-type="{2}">{3}</td><td id="accessory_{0}_state">{4}</td><td>{5}</td></tr>',
+                data[idx].address, data[idx].name, data[idx].type, accessory_types[data[idx].type], accessory_states[data[idx].state], actions));
             }
             $("#accessories-empty").hide();
             $("#accessories-table").show();
@@ -994,6 +1001,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     function editAccessory(address) {
       fetchWithTimeout(String.format('/accessories?address={0}', address)).then(res => res.json()).then(data => {
         $('#accessory-address').val(data.address);
+        $('#accessory-name').val(data.name);
         $('#accessory-type').val(data.type);
         $('#accessory_evt_closed').children().remove();
         $('#accessory_evt_thrown').children().remove();

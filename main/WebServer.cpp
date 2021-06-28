@@ -441,6 +441,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
       {
         auto db = Singleton<AccessoryDecoderDB>::instance();
         uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
+        string name = std::to_string(address);
         string action = cJSON_GetObjectItem(root, "act")->valuestring;
         string target = cJSON_HasObjectItem(root, "tgt") ?
             cJSON_GetObjectItem(root, "tgt")->valuestring : "";
@@ -450,19 +451,23 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         {
           type = (AccessoryType)cJSON_GetObjectItem(root, "type")->valueint;
         }
+        if (cJSON_HasObjectItem(root, "name"))
+        {
+          name = cJSON_GetObjectItem(root, "name")->valuestring;
+        }
         if (action == "save")
         {
           LOG(VERBOSE, "[WSJSON:%d] Saving accessory %d as type %d",
               req_id->valueint, address, type);
           if (cJSON_IsTrue(cJSON_GetObjectItem(root, "olcb")))
           {
-            db->createOrUpdateOlcb(address,
+            db->createOrUpdateOlcb(address, name,
               cJSON_GetObjectItem(root, "closed")->valuestring,
               cJSON_GetObjectItem(root, "thrown")->valuestring, type);
           }
           else
           {
-            db->createOrUpdateDcc(address, type);
+            db->createOrUpdateDcc(address, name, type);
           }
         }
         else if (action == "toggle")
@@ -478,9 +483,9 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
           db->remove(address);
         }
         response =
-          StringPrintf(R"!^!({"res":"accessory","act":"%s","addr":%d,"tgt":"%s","state":%d,"type":%d,"id":%d})!^!",
-                      action.c_str(), address, target.c_str(), state, type,
-                      req_id->valueint);
+          StringPrintf(R"!^!({"res":"accessory","act":"%s","addr":%d,"name":"%s","tgt":"%s","state":%d,"type":%d,"id":%d})!^!",
+                      action.c_str(), address, name.c_str(), target.c_str(),
+                      state, type, req_id->valueint);
       }
     }
     else if (!strcmp(req_type->valuestring, "ping"))
@@ -643,7 +648,7 @@ HTTP_HANDLER_IMPL(process_fs, request)
 // GET /accessories?readbleStrings=[0,1] - full list of accessory decoders, accessory state will be returned as true/false (boolean) when readableStrings=0.
 // GET /accessories?address=<address> - retrieve accessory decoders by DCC address
 // PUT /accessories?address=<address> - toggle accessory decoders by DCC address
-// POST /accessories?address=<address>&type=<type> - creates a new accessory decoders
+// POST /accessories?address=<address>&name=<name>&type=<type> - creates a new accessory decoder
 // DELETE /accessories?address=<address> - delete accessory decoders by DCC address
 //
 // For successful requests the result code will be 200 and either an array of accessory decoders or single accessory decoders will be returned.
@@ -673,7 +678,12 @@ HTTP_HANDLER_IMPL(process_accessories, request)
   {
     AccessoryType type =
       (AccessoryType)request->param("type", AccessoryType::UNKNOWN);
-    db->createOrUpdateDcc(address, type);
+    string name = request->param("name");
+    if (name.empty())
+    {
+      name = std::to_string(address);
+    }
+    db->createOrUpdateDcc(address, name, type);
     auto accessory = db->to_json(address, readable);
     return new JsonResponse(accessory);
   }
