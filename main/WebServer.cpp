@@ -507,10 +507,11 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
             cJSON_GetObjectItem(root, "tgt")->valuestring : "";
         if (action == "save")
         {
-          traindb->set_train_name(address, cJSON_GetObjectItem(root, "name")->valuestring);
-          traindb->set_train_description(address, cJSON_GetObjectItem(root, "desc")->valuestring);
-          traindb->set_train_drive_mode(address, (DccMode)cJSON_GetObjectItem(root, "mode")->valueint);
-          traindb->set_train_auto_idle(address, cJSON_IsTrue(cJSON_GetObjectItem(root, "idle")));
+          traindb->create_or_update(address,
+                                    cJSON_GetObjectItem(root, "name")->valuestring,
+                                    cJSON_GetObjectItem(root, "desc")->valuestring,
+                                    (DccMode)cJSON_GetObjectItem(root, "mode")->valueint,
+                                    cJSON_IsTrue(cJSON_GetObjectItem(root, "idle")));
         }
         else if (action == "delete")
         {

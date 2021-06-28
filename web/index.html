@@ -1119,9 +1119,12 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     }
     function deleteLoco(address) {
       if (window.location.host.length) {
-        fetchWithTimeout(String.format('/locomotive/roster?address={0}', address), { method: 'DELETE' }).then(res => refreshRoster(null)).catch(function (error) {
-          showErrorDialog('Failed to delete roster entry', error);
-        });
+        ws_tx(JSON.stringify({
+            req: 'roster',
+            act: 'delete',
+            addr: parseInt($('#roster-addr').val()),
+            id: get_ws_msg_id()
+        }));
       }
     }
     function saveLoco() {
