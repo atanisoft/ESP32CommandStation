@@ -187,7 +187,7 @@ namespace esp32cs
   class Esp32TrainDatabase : public commandstation::TrainDb
   {
   public:
-    Esp32TrainDatabase(openlcb::SimpleStackBase *stack);
+    Esp32TrainDatabase(openlcb::SimpleStackBase *stack, Service *service);
 
     void stop()
     {

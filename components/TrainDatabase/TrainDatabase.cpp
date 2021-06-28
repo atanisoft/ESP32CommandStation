@@ -242,7 +242,8 @@ static constexpr const char * TRAIN_DB_JSON_FILE = "/fs/trains.json";
 static constexpr const char * PERSISTED_TRAIN_CDI = "/fs/train.xml";
 static constexpr const char * TEMP_TRAIN_CDI = "/fs/tmptrain.xml";
 
-Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
+Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
+                                       Service *service)
 {
   LOG(INFO, "[TrainDB] Refreshing train CDI files...");
   commandstation::TrainConfigDef train_cfg(0);
@@ -339,7 +340,7 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack)
   LOG(INFO, "[TrainDB] Found %d persistent roster entries."
     , knownTrains_.size());
 
-  persistFlow_.emplace(stack->service(),
+  persistFlow_.emplace(service,
                        SEC_TO_NSEC(CONFIG_ROSTER_PERSISTENCE_INTERVAL_SEC),
                        std::bind(&Esp32TrainDatabase::persist, this));
 }
