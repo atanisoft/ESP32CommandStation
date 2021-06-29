@@ -320,9 +320,9 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               <option value="15">DCC (128 speed steps, long address)</option>
             </select>
             <label class="form-label text-dark" for="roster-name">Name:</label>
-            <input type="text" id="roster-name" value="" maxlength="63" />
+            <input type="text" id="roster-name" value="" maxlength="62" />
             <label class="form-label text-dark" for="roster-desc">Description:</label>
-            <input type="text" id="roster-desc" value="" maxlength="64" />
+            <input type="text" id="roster-desc" value="" maxlength="63" />
             <label class="form-switch">
               <input type="checkbox" id="roster-idle">
               <i class="form-icon"></i><span class="text-dark">Automatically add this locomotive to the "Active
@@ -685,8 +685,10 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           } else if (json.res === 'status') {
             updateTrackPowerStatus(json.track !== 'Off',
               (json.track === 'Fault' || json.track === 'Shutdown'));
-            if (json.hasOwnProperty("usage") && json.track !== 'Off') {
+            if (json.hasOwnProperty("usage")) {
               $('#ops_usage').text(String.format('{0} mA', json.usage));
+            } else {
+              $('#ops_usage').text('');
             }
           }
         }

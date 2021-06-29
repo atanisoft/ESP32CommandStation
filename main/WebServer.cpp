@@ -507,11 +507,12 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
             cJSON_GetObjectItem(root, "tgt")->valuestring : "";
         if (action == "save")
         {
-          traindb->create_or_update(address,
-                                    cJSON_GetObjectItem(root, "name")->valuestring,
-                                    cJSON_GetObjectItem(root, "desc")->valuestring,
-                                    (DccMode)cJSON_GetObjectItem(root, "mode")->valueint,
-                                    cJSON_IsTrue(cJSON_GetObjectItem(root, "idle")));
+          string name = cJSON_GetObjectItem(root, "name")->valuestring;
+          string description = cJSON_GetObjectItem(root, "desc")->valuestring;
+          DccMode mode =
+            static_cast<DccMode>(cJSON_GetObjectItem(root, "mode")->valueint);
+          bool idle = cJSON_IsTrue(cJSON_GetObjectItem(root, "idle"));
+          traindb->create_or_update(address, name, description, mode, idle);
         }
         else if (action == "delete")
         {
@@ -819,18 +820,6 @@ HTTP_HANDLER_IMPL(process_loco, request)
         DccMode mode = static_cast<commandstation::DccMode>(
           request->param("mode", DccMode::DCC_128));
         bool idle = request->param("idle", false);
-        if (name.length() > 63)
-        {
-          LOG_ERROR("[WebSrv] Truncating loco name: %s -> %s",
-                    name.c_str(), name.substr(0, 63).c_str());
-          name.resize(63);
-        }
-        if (description.length() > 64)
-        {
-          LOG_ERROR("[WebSrv] Truncating loco description: %s -> %s",
-                    description.c_str(), description.substr(0, 64).c_str());
-          description.resize(64);
-        }
         traindb->create_or_update(address, name, description, mode, idle);
         // search for and remap functions if present
         for (uint8_t fn = 1; fn < commandstation::DCC_MAX_FN; fn++)

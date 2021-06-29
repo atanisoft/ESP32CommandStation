@@ -52,6 +52,8 @@ namespace commandstation
 {
 
 using openlcb::Defs;
+using openlcb::SimpleInfoDescriptor;
+using openlcb::SNIP_STATIC_DATA;
 using openlcb::TractionDefs;
 
 struct AllTrainNodes::Impl
@@ -244,12 +246,15 @@ class AllTrainNodes::TrainSnipHandler : public openlcb::IncomingMessageStateFlow
     if (entry.get())
     {
       snipName_ = entry->get_train_name();
+      snipDesc_ = entry->get_train_description();
     }
     else
     {
       snipName_.clear();
+      snipDesc_.clear();
     }
     snipResponse_[6].data = snipName_.c_str();
+    snipResponse_[7].data = snipDesc_.c_str();
     b->data()->reset(nmsg(), snipResponse_, Defs::MTI_IDENT_INFO_REPLY);
     // We must wait for the data to be sent out because we have a static member
     // that we are changing constantly.
@@ -270,22 +275,21 @@ class AllTrainNodes::TrainSnipHandler : public openlcb::IncomingMessageStateFlow
   AllTrainNodes::Impl* impl_;
   BarrierNotifiable n_;
   string snipName_;
-  static openlcb::SimpleInfoDescriptor snipResponse_[];
+  string snipDesc_;
+  static SimpleInfoDescriptor snipResponse_[];
 };
 
-openlcb::SimpleInfoDescriptor AllTrainNodes::TrainSnipHandler::snipResponse_[] =
+SimpleInfoDescriptor AllTrainNodes::TrainSnipHandler::snipResponse_[] =
 {
-  {openlcb::SimpleInfoDescriptor::LITERAL_BYTE, 4, 0, nullptr},
-  {openlcb::SimpleInfoDescriptor::C_STRING, 0, 0,
-  openlcb::SNIP_STATIC_DATA.manufacturer_name},
-  {openlcb::SimpleInfoDescriptor::C_STRING, 41, 0, "Virtual train node"},
-  {openlcb::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
-  {openlcb::SimpleInfoDescriptor::C_STRING, 0, 0,
-  openlcb::SNIP_STATIC_DATA.software_version},
-  {openlcb::SimpleInfoDescriptor::LITERAL_BYTE, 2, 0, nullptr},
-  {openlcb::SimpleInfoDescriptor::C_STRING, 63, 1, nullptr},
-  {openlcb::SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
-  {openlcb::SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}
+  {SimpleInfoDescriptor::LITERAL_BYTE, 4, 0, nullptr},
+  {SimpleInfoDescriptor::C_STRING, 0, 0, SNIP_STATIC_DATA.manufacturer_name},
+  {SimpleInfoDescriptor::C_STRING, 41, 0, "Virtual train node"},
+  {SimpleInfoDescriptor::C_STRING, 0, 0, "n/a"},
+  {SimpleInfoDescriptor::C_STRING, 0, 0, SNIP_STATIC_DATA.software_version},
+  {SimpleInfoDescriptor::LITERAL_BYTE, 2, 0, nullptr}, // version
+  {SimpleInfoDescriptor::C_STRING, 63, 1, nullptr},    // name
+  {SimpleInfoDescriptor::C_STRING, 64, 64, nullptr},   // description
+  {SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}
 };
 
 class AllTrainNodes::TrainPipHandler : public openlcb::IncomingMessageStateFlow

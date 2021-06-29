@@ -86,6 +86,35 @@ openlcb::NodeID Esp32TrainDbEntry::get_traction_node()
   }
 }
 
+void Esp32TrainDbEntry::set_train_name(string name)
+{
+  data_.name = std::move(name);
+  if (data_.name.length() > MAX_TRAIN_NAME_LEN)
+  {
+    LOG(WARNING,
+        "[Train:%d] Truncating name: %s -> %s", data_.address,
+        data_.name.c_str(),
+        data_.name.substr(0, MAX_TRAIN_NAME_LEN).c_str());
+    data_.name.resize(MAX_TRAIN_NAME_LEN);
+  }
+  dirty_ = true;
+}
+
+void Esp32TrainDbEntry::set_train_description(std::string description)
+{
+  data_.description = std::move(description);
+  if (data_.description.length() > MAX_TRAIN_DESC_LEN)
+  {
+    LOG(WARNING,
+        "[Train:%d] Truncating description: %s -> %s", data_.address,
+        data_.description.c_str(),
+        data_.description.substr(0, MAX_TRAIN_DESC_LEN).c_str());
+    data_.description.resize(MAX_TRAIN_DESC_LEN);
+  }
+  dirty_ = true;
+}
+
+
 unsigned Esp32TrainDbEntry::get_function_label(unsigned fn_id)
 {
   // if the function id is larger than our max list reject it

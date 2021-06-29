@@ -43,33 +43,35 @@ class ExternalTrainDbEntry : public TrainDbEntry {
  public:
   ExternalTrainDbEntry(const string& name, int address, DccMode mode = DCC_28) : name_(name), address_(address), mode_(mode) {}
 
-  /** Returns an internal identifier that uniquely defines where this traindb
-   * entry was allocated from. */
+  /// Returns an internal identifier that uniquely defines where this traindb
+  /// entry was allocated from.
   string identifier() override { return ""; }
 
-  /** Retrieves the NMRAnet NodeID for the virtual node that represents a
-   * particular train known to the database.
-   */
+  /// Retrieves the NMRAnet NodeID for the virtual node that represents a
+  /// particular train known to the database.
   openlcb::NodeID get_traction_node() override { return 0; }
 
-  /** Retrieves the name of the train. */
+  /// Retrieves the name of the train.
   string get_train_name() override { return name_; }
 
-  /** Retrieves the legacy address of the train. */
+  /// Retrieves the description of the train.
+  string get_train_description() override { return name_; }
+
+  /// Retrieves the legacy address of the train.
   int get_legacy_address() override { return address_; }
 
-  /** Retrieves the traction drive mode of the train. */
+  /// Retrieves the traction drive mode of the train.
   DccMode get_legacy_drive_mode() override { return mode_; }
 
-  /** Retrieves the label assigned to a given function, or FN_NONEXISTANT if
-      the function does not exist. */
+  /// Retrieves the label assigned to a given function, or FN_NONEXISTANT if
+  /// the function does not exist.
   unsigned get_function_label(unsigned fn_id) override { return 0; }
 
-  /** Returns the largest valid function ID for this train, or -1 if the train
-      has no functions. */
+  /// Returns the largest valid function ID for this train, or -1 if the train
+  /// has no functions.
   int get_max_fn() override { return 0; }
 
-  /** Setup for get_max_fn(). */
+  /// Setup for get_max_fn().
   void start_read_functions() override { }
   
   string name_;

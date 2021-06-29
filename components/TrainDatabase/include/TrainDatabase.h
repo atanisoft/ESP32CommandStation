@@ -89,16 +89,13 @@ namespace esp32cs
       return data_.name;
     }
 
-    void set_train_name(std::string name)
-    {
-      data_.name = std::move(name);
-      dirty_ = true;
-    }
+    void set_train_name(std::string name);
 
-    void set_train_description(std::string description)
+    void set_train_description(std::string description);
+
+    std::string get_train_description() override
     {
-      data_.description = std::move(description);
-      dirty_ = true;
+      return data_.description;
     }
 
     int get_legacy_address() override
@@ -176,6 +173,14 @@ namespace esp32cs
 
     std::string to_json(bool readable = true);
   private:
+    /// Maximum length of the train name, limit is determined by SNIP field
+    /// length with one space for null terminator.
+    static constexpr uint8_t MAX_TRAIN_NAME_LEN = 62;
+
+    /// Maximum length of the train description, limit is determined by SNIP
+    /// field length with one space for null terminator.
+    static constexpr uint8_t MAX_TRAIN_DESC_LEN = 63;
+
     void recalcuate_max_fn();
     Esp32PersistentTrainData data_;
     Esp32TrainDatabase *db_;
