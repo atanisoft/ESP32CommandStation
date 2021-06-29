@@ -202,18 +202,16 @@ void app_main()
                                   nvs.sntp_enabled(), nvs.softap_channel(),
                                   nvs.softap_auth(), nvs.softap_ssid(),
                                   nvs.softap_password());
-    // TODO: move this into Esp32WiFiManager once it starts using stateflows.
-    Service background_service(wifi_manager.executor());
     leds.attach_callbacks(&wifi_manager);
     esp32cs::NodeIdMemoryConfigSpace node_id_memoryspace(&stack, &nvs);
     esp32cs::FactoryResetHelper factory_reset_helper(cfg.userinfo());
     esp32cs::EventBroadcastHelper event_helper(&stack);
-    esp32cs::DelayRebootHelper delayed_reboot(&background_service);
-    esp32cs::HealthMonitor health_monitor(&background_service);
-    esp32cs::StatusDisplay status_display(&background_service,
+    esp32cs::DelayRebootHelper delayed_reboot(&wifi_manager);
+    esp32cs::HealthMonitor health_monitor(&wifi_manager);
+    esp32cs::StatusDisplay status_display(&wifi_manager,
                                           &wifi_manager, &nvs);
     openlcb::TrainService trainService(stack.iface());
-    esp32cs::Esp32TrainDatabase train_db(&stack, &background_service);
+    esp32cs::Esp32TrainDatabase train_db(&stack, &wifi_manager);
     commandstation::AllTrainNodes trains(&train_db, &trainService,
                                          stack.info_flow(),
                                          stack.memory_config_handler(),
@@ -223,7 +221,7 @@ void app_main()
     http::Httpd httpd(&wifi_manager, &mdns);
     openlcb::MemoryConfigClient memory_client(stack.node(),
                                               stack.memory_config_handler());
-    esp32cs::ThermalMonitorFlow thermal_monitor(&background_service,
+    esp32cs::ThermalMonitorFlow thermal_monitor(&wifi_manager,
                                                 stack.node(),
                                                 cfg.seg().thermal());
     esp32cs::init_dcc(stack.node(), stack.service(), cfg.seg().track());
@@ -250,7 +248,7 @@ void app_main()
       LOG(INFO, "[FS] Configuring fsync of data to SD card ever %d seconds.",
           CONFIG_OLCB_SD_FSYNC_SEC);
       sd_auto_sync =
-        std::make_unique<AutoSyncFileFlow>(&background_service, config_fd,
+        std::make_unique<AutoSyncFileFlow>(&wifi_manager, config_fd,
                                            SEC_TO_USEC(CONFIG_OLCB_SD_FSYNC_SEC));
     }
 
@@ -275,7 +273,7 @@ void app_main()
     stack.print_all_packets();
 #endif
 
-    init_webserver(&background_service, &nvs, &memory_client, &train_db);
+    init_webserver(&wifi_manager, &nvs, &memory_client, &train_db);
 
     // hand-off to the OpenMRN stack executor
     stack.loop_executor();

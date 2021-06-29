@@ -8,7 +8,7 @@
     - WiFi: PRO_CPU
     - LwIP: APP_CPU
     - OpenMRN: PRO_CPU (inherit app_main)
-    - Esp32WiFiManager: float priority 2
+    - Esp32WiFiManager: float priority 3
     - StatusLED: APP_CPU priority 3
     - HttpServer: Listener runs standalone, HttpServer leverages Esp32WiFiManager Executor.
     - TWAI: ISR APP_CPU, task float priority is one less than LwIP.
