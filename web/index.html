@@ -313,11 +313,11 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             <select id="roster-mode">
               <option value="0">DCC (default, 128 speed steps)</option>
               <option value="9">DCC (14 speed steps)</option>
-              <option value="13">DCC (14 speed steps, long address)</option>
               <option value="10">DCC (28 speed steps)</option>
-              <option value="14">DCC (28 speed steps, long address)</option>
               <option value="11">DCC (128 speed steps)</option>
-              <option value="15">DCC (128 speed steps, long address)</option>
+              <option value="13">DCC (14 speed steps, force long address)</option>
+              <option value="14">DCC (28 speed steps, force long address)</option>
+              <option value="15">DCC (128 speed steps, force long address)</option>
             </select>
             <label class="form-label text-dark" for="roster-name">Name:</label>
             <input type="text" id="roster-name" value="" maxlength="62" />
@@ -1118,13 +1118,13 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           showErrorDialog('Failed to retrieve roster entry', error);
         });
       }
-    }
+    }   
     function deleteLoco(address) {
       if (window.location.host.length) {
         ws_tx(JSON.stringify({
             req: 'roster',
             act: 'delete',
-            addr: parseInt($('#roster-addr').val()),
+            addr: parseInt(address),
             id: get_ws_msg_id()
         }));
       }

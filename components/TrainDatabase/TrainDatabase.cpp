@@ -40,9 +40,16 @@ Esp32TrainDbEntry::Esp32TrainDbEntry(Esp32PersistentTrainData data,
                                      Esp32TrainDatabase *db, bool persist)
   : data_(data), db_(db), dirty_(true), persist_(persist)
 {
+  // Set the mode to DCC-128 if the default was selected
+  if (data_.mode == DCCMODE_DEFAULT || data_.mode == DCC_DEFAULT)
+  {
+    data_.mode = DCC_128;
+  }
+  else if (data_.mode == DCC_DEFAULT_LONG_ADDRESS)
+  {
+    data_.mode = DCC_128_LONG_ADDRESS;
+  }
   recalcuate_max_fn();
-  LOG(VERBOSE, "[Loco:%s] Locomotive '%s' created", identifier().c_str()
-    , data_.name.c_str());
 }
 
 string Esp32TrainDbEntry::identifier()
@@ -312,11 +319,13 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
             data.functions[id] = type;
           }
         }
-        LOG(INFO, "[TrainDB] Registering %u - name:%s, desc:%s, idle:%s",
-            data.address, data.name.c_str(), data.description.c_str(),
-            data.automatic_idle ? "On" : "Off");
         auto train = std::make_shared<Esp32TrainDbEntry>(data, this);
         train->reset_dirty();
+        LOG(INFO, "[TrainDB-%zu] Registering %s, name:%s, desc:%s, idle:%s",
+            knownTrains_.size(), train->identifier().c_str(),
+            train->get_train_name().c_str(),
+            train->get_train_description().c_str(),
+            train->is_auto_idle() ? "On" : "Off");
         if (train->is_auto_idle())
         {
           uint16_t address = train->get_legacy_address();
