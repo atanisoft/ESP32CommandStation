@@ -674,6 +674,11 @@ size_t AllTrainNodes::size()
   return std::max(trains_.size(), db_->size());
 }
 
+size_t AllTrainNodes::active_locos()
+{
+  return trains_.size();
+}
+
 bool AllTrainNodes::is_valid_train_node(openlcb::Node *node)
 {
   return find_node(node) != nullptr;

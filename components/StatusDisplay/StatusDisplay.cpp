@@ -235,7 +235,7 @@ StateFlowBase::Action StatusDisplay::init()
 StateFlowBase::Action StatusDisplay::update()
 {
 #ifndef CONFIG_DISPLAY_TYPE_NONE
-  static uint8_t rotatingLineCount = 5;
+  static uint8_t rotatingLineCount = 4;
   // switch to next status line detail set after 10 iterations
   if (++updateCount_ > 10)
   {
@@ -262,7 +262,7 @@ StateFlowBase::Action StatusDisplay::update()
     else if (rotatingIndex_ == 2)
     {
       uint8_t loco_count =
-        Singleton<commandstation::AllTrainNodes>::instance()->size();
+        Singleton<commandstation::AllTrainNodes>::instance()->active_locos();
       status("Active Locos:%3d", loco_count);
     }
     else if (rotatingIndex_ == 3)

@@ -95,8 +95,11 @@ class AllTrainNodes : public AllTrainNodesInterface
   /// @return 0 if the allocation fails (invalid arguments)
   openlcb::NodeID allocate_node(DccMode drive_type, unsigned address) override;
 
-  /// Return the maximum number of locomotives currently being serviced.
+  /// Return the number of known locomotives or those being serviced.
   size_t size();
+
+  /// Returns the number of locomotives that are actively being serviced.
+  size_t active_locos();
 
   /// @return true if the provided node is a known/active train.
   bool is_valid_train_node(openlcb::Node *node);
