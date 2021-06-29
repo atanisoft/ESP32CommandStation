@@ -171,8 +171,13 @@ void AccessoryDecoderDB::handle_event_report(const EventRegistryEntry &entry,
     // decoder state bit added.
     uint16_t index =
       event->event - TractionDefs::ACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE;
+
     // drop the lowest bit to get the decoder address without the state bit
     uint16_t address = index >> 1;
+
+    // offset to DCC accessory decoder address 1
+    address -= 3;
+
     set(address, index & 0x01, true);
   }
   else if (event->event >= TractionDefs::INACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE &&
@@ -182,8 +187,13 @@ void AccessoryDecoderDB::handle_event_report(const EventRegistryEntry &entry,
     // decoder state bit added.
     uint16_t index =
       event->event - TractionDefs::INACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE;
+
     // drop the lowest bit to get the decoder address without the state bit
     uint16_t address = index >> 1;
+
+    // offset to DCC accessory decoder address 1
+    address -= 3;
+
     set(address, index & 0x01, false);
   }
 }
