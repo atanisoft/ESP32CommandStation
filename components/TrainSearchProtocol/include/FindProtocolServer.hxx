@@ -37,6 +37,7 @@
 
 #include "FindProtocolDefs.hxx"
 #include "AllTrainNodesInterface.hxx"
+#include "TrainDb.hxx"
 #include <openlcb/EventHandlerTemplates.hxx>
 #include <openlcb/TractionTrain.hxx>
 #include <StringUtils.hxx>
@@ -172,13 +173,15 @@ public:
     Action entry() override
     {
       eventId_ = message()->data()->event_;
+      LOG(VERBOSE, "event:%s", esp32cs::event_id_to_string(eventId_).c_str());
       release();
       if (eventId_ == REQUEST_GLOBAL_IDENTIFY)
       {
+        LOG(VERBOSE, "global REQUEST_GLOBAL_IDENTIFY");
         isGlobal_ = true;
         if (!parent_->pendingGlobalIdentify_)
         {
-          LOG(VERBOSE, "duplicate global identify");
+          LOG(VERBOSE, "duplicate global REQUEST_GLOBAL_IDENTIFY");
           // Duplicate global identify, or the previous one was already handled.
           return exit();
         }
@@ -186,9 +189,11 @@ public:
       }
       else if (eventId_ == IS_TRAIN_EVENT)
       {
+        LOG(VERBOSE, "global IS_TRAIN_EVENT");
         isGlobal_ = true;
         if (!parent_->pendingIsTrain_)
         {
+          LOG(VERBOSE, "duplicate global IS_TRAIN_EVENT");
           // Duplicate is_train, or the previous one was already handled.
           return exit();
         }
@@ -196,6 +201,7 @@ public:
       }
       else
       {
+        LOG(VERBOSE, "!REQUEST_GLOBAL_IDENTIFY && !IS_TRAIN_EVENT");
         isGlobal_ = false;
       }
       LOG(VERBOSE, "starting iteration");
@@ -206,14 +212,17 @@ public:
 
     Action iterate()
     {
+      LOG(VERBOSE, "iterate: %d", nextTrainId_);
       if (nextTrainId_ >= nodes()->size())
       {
+        LOG(VERBOSE, "iterate: finished");
         return call_immediately(STATE(iteration_done));
       }
       if (isGlobal_)
       {
         if (eventId_ == REQUEST_GLOBAL_IDENTIFY &&
             parent_->pendingGlobalIdentify_) {
+          LOG(VERBOSE, "iterate: REQUEST_GLOBAL_IDENTIFY reset count");
           // Another notification arrived. Start iteration from 0.
           nextTrainId_ = 0;
           parent_->pendingGlobalIdentify_ = false;
@@ -222,14 +231,18 @@ public:
         if (eventId_ == IS_TRAIN_EVENT &&
             parent_->pendingIsTrain_)
         {
+          LOG(VERBOSE, "iterate: IS_TRAIN_EVENT reset count");
           // Another notification arrived. Start iteration from 0.
           nextTrainId_ = 0;
           parent_->pendingIsTrain_ = false;
           return again();
         }
+        LOG(VERBOSE, "iterate: send_response %d: %s", nextTrainId_,
+            esp32cs::event_id_to_string(eventId_).c_str());
         return allocate_and_call(iface()->global_message_write_flow(),
                                  STATE(send_response));
       }
+      LOG(VERBOSE, "iterate: try_traindb_lookup");
       return call_immediately(STATE(try_traindb_lookup));
     }
 
@@ -250,10 +263,13 @@ public:
       if (db_entry && 
           FindProtocolDefs::match_query_to_node(eventId_, db_entry.get()))
       {
+        LOG(VERBOSE, "try_traindb_lookup: MATCH: %d:%s", nextTrainId_,
+            db_entry->identifier().c_str());
         hasMatches_ = true;
         return allocate_and_call(iface()->global_message_write_flow(),
                                  STATE(send_response));
       }
+      LOG(VERBOSE, "try_traindb_lookup: NOT MATCHED:%d", nextTrainId_);
       return yield_and_call(STATE(next_iterate));
     }
 

@@ -82,12 +82,7 @@ class AllTrainNodes : public AllTrainNodesInterface
                                                   Notifiable* done) override;
 
   /// Returns a node id or 0 if the id is not known to be a train.
-  openlcb::NodeID get_train_node_id(size_t id) override
-  {
-    return get_train_node_id_ext(id, true);
-  }
-
-  openlcb::NodeID get_train_node_id_ext(size_t id, bool allocate=true);
+  openlcb::NodeID get_train_node_id(size_t id) override;
 
   /// Creates a new train node based on the given address and drive mode.
   /// @param drive_type describes what kind of train node this should be
@@ -109,20 +104,20 @@ class AllTrainNodes : public AllTrainNodesInterface
 
  private:
   // ==== Interface for children ====
-  struct Impl;
+  class DelayedInitTrainNode;
 
   /// A child can look up if a local node is actually a Train node. If so, the
   /// Impl structure will be returned. If the node is not known (or not a train
   /// node maintained by this object), we return nullptr.
-  Impl* find_node(openlcb::Node* node);
+  DelayedInitTrainNode* find_node(openlcb::Node* node);
 
   /// Extension to the find_node implementation that exposes the option to not
   /// allocate a node when no existing node is found.
-  Impl* find_node(openlcb::NodeID node_id, bool allocate=true);
+  DelayedInitTrainNode* find_node(openlcb::NodeID node_id, bool allocate=true);
 
   /// Helper function to create lok objects. Adds a new Impl structure to
   /// trains_.
-  Impl* create_impl(int train_id, DccMode mode, int address);
+  DelayedInitTrainNode* create_impl(int train_id, DccMode mode, int address);
 
   // Externally owned.
   TrainDb* db_;
@@ -131,7 +126,7 @@ class AllTrainNodes : public AllTrainNodesInterface
   openlcb::MemorySpace* ro_tmp_train_cdi_;
 
   /// All train nodes that we know about.
-  std::vector<Impl*> trains_;
+  std::vector<DelayedInitTrainNode *> trains_;
   
   /// Lock to protect trains_.
   OSMutex trainsLock_;

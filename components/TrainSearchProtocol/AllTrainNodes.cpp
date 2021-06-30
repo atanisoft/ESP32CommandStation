@@ -51,46 +51,172 @@
 namespace commandstation
 {
 
+using dcc::Dcc128Train;
+using dcc::Dcc28Train;
+using dcc::DccLongAddress;
+using dcc::DccShortAddress;
+using dcc::MMAddress;
+using dcc::MMNewTrain;
+using dcc::MMOldTrain;
+
 using openlcb::Defs;
 using openlcb::SimpleInfoDescriptor;
 using openlcb::SNIP_STATIC_DATA;
 using openlcb::TractionDefs;
+using openlcb::TrainImpl;
+using openlcb::DefaultTrainNode;
+using openlcb::TrainService;
+using openlcb::SimpleInfoFlow;
+using openlcb::MemoryConfigHandler;
+using openlcb::MemorySpace;
+using openlcb::Node;
+using openlcb::NodeID;
+using openlcb::MemoryConfigDefs;
+using openlcb::IncomingMessageStateFlow;
+using openlcb::FileMemorySpace;
 
-struct AllTrainNodes::Impl
+using std::shared_ptr;
+
+class AllTrainNodes::DelayedInitTrainNode : public DefaultTrainNode
 {
- public:
-  ~Impl()
+public:
+  /// Constructor.
+  /// @param service the traction service object that will own this node.
+  /// @param id the @ref TrainDb assigned identifier for this node.
+  /// @param mode the @ref DccMode that this node should use.
+  /// @param address the address of this node.
+  DelayedInitTrainNode(TrainService *service, size_t id, DccMode mode,
+                       uint16_t address)
+    : DefaultTrainNode(service, nullptr), id_(id), mode_(mode),
+    address_(address)
   {
-    delete node_;
+    service->register_train(this);
+  }
+
+  /// Destructor.
+  ~DelayedInitTrainNode()
+  {
+    service_->unregister_train(this);
     delete train_;
   }
-  int id;
-  openlcb::Node* node_{nullptr};
-  openlcb::TrainImpl* train_{nullptr};
+
+  NodeID node_id() override
+  {
+    return TractionDefs::train_node_id_from_legacy(
+      dcc_mode_to_address_type(mode_, address_), address_);
+  }
+
+  uint16_t address()
+  {
+    return address_;
+  }
+
+  size_t id()
+  {
+    return id_;
+  }
+
+  void set_id(size_t id)
+  {
+    id_ = id;
+  }
+
+  bool is_allocated()
+  {
+    return train_ != nullptr;
+  }
+
+  TrainImpl *train() override
+  {
+    if (train_ == nullptr)
+    {
+      switch (mode_)
+      {
+        case MARKLIN_OLD:
+        {
+          LOG(INFO,
+              "[TrainSearch] Allocating New Marklin (old) train %d", address_);
+          train_ = new MMOldTrain(MMAddress(address_));
+          break;
+        }
+        case MARKLIN_DEFAULT:
+        case MARKLIN_NEW:
+        case MARKLIN_TWOADDR:
+        {
+          LOG(INFO, "[TrainSearch] Allocating New Marklin (new) train %d", address_);
+          train_ = new MMNewTrain(MMAddress(address_));
+          break;
+        }
+          /// @todo (balazs.racz) implement dcc 14 train drive mode.
+        case DCC_14:
+        case DCC_14_LONG_ADDRESS:
+        case DCC_28:
+        case DCC_28_LONG_ADDRESS:
+        {
+          LOG(INFO, "[TrainSearch] Allocating New DCC-14/28 train %d", address_);
+          if ((mode_ & DCC_LONG_ADDRESS) || address_ >= 128)
+          {
+            train_ = new Dcc28Train(DccLongAddress(address_));
+          }
+          else
+          {
+            train_ = new Dcc28Train(DccShortAddress(address_));
+          }
+          break;
+        }
+        case DCC_128:
+        case DCC_128_LONG_ADDRESS:
+        {
+          LOG(INFO, "[TrainSearch] Allocating New DCC-128 train %d", address_);
+          if ((mode_ & DCC_LONG_ADDRESS) || address_ >= 128)
+          {
+            train_ = new Dcc128Train(DccLongAddress(address_));
+          }
+          else
+          {
+            train_ = new Dcc128Train(DccShortAddress(address_));
+          }
+          break;
+        }
+        default:
+          train_ = nullptr;
+          LOG_ERROR("[TrainSearch] Unhandled train drive mode: %d.", mode_);
+      }
+    }
+    return train_;
+  }
+private:
+  size_t id_;
+  DccMode mode_;
+  uint16_t address_;
 };
 
 void AllTrainNodes::remove_train_impl(int address)
 {
   OSMutexLock l(&trainsLock_);
-  auto it = std::find_if(trains_.begin(), trains_.end(), [address](Impl *impl)
+  auto ent = std::find_if(trains_.begin(), trains_.end(),
+    [address](const auto &impl)
+    {
+      return impl->address() == address;
+    });
+  if (ent != trains_.end())
   {
-    return impl->train_->legacy_address() == address;
-  });
-  if (it != trains_.end())
-  {
-    Impl *impl = (*it);
-    impl->node_->iface()->delete_local_node(impl->node_);
+    DelayedInitTrainNode *impl = (*ent);
+    impl->iface()->delete_local_node(impl);
     delete impl;
-    trains_.erase(it);
+    trains_.erase(ent);
   }
 }
 
 openlcb::TrainImpl* AllTrainNodes::get_train_impl(openlcb::NodeID id, bool allocate)
 {
-  auto it = find_node(id, allocate);
-  if (it)
+  auto ent = find_node(id, allocate);
+  if (ent)
   {
-    return it->train_;
+    if (ent->is_allocated() || (!ent->is_allocated() && allocate))
+    {
+      return ent->train();
+    }
   }
   return nullptr;
 }
@@ -99,52 +225,61 @@ openlcb::TrainImpl* AllTrainNodes::get_train_impl(DccMode drive_type, int addres
 {
   {
     OSMutexLock l(&trainsLock_);
-    auto it = std::find_if(trains_.begin(), trains_.end(), [address](Impl *impl)
+    auto ent = std::find_if(trains_.begin(), trains_.end(),
+      [address](const auto &train)
+      {
+        return train->address() == address;
+      });
+    if (ent != trains_.end())
     {
-      return impl->train_->legacy_address() == address;
-    });
-    if (it != trains_.end())
-    {
-      return (*it)->train_;
+      return (*ent)->train();
     }
   }
-  return find_node(allocate_node(drive_type, address))->train_;
+  // no active train was found with the drive type and address, attempt to
+  // create a new one.
+  auto impl = find_node(allocate_node(drive_type, address));
+  if (impl)
+  {
+    return impl->train();
+  }
+  return nullptr;
 }
 
-AllTrainNodes::Impl* AllTrainNodes::find_node(openlcb::Node* node) 
+AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::find_node(openlcb::Node* node) 
 {
   {
     OSMutexLock l(&trainsLock_);
-    auto it = std::find_if(trains_.begin(), trains_.end(),
-      [node](Impl *impl)
+    auto ent = std::find_if(trains_.begin(), trains_.end(),
+      [node](const auto &train)
       {
-        return impl->node_ == node;
+        return train == node;
       });
-    if (it != trains_.end())
+    if (ent != trains_.end())
     {
-      return *it;
+      return *ent;
     }
   }
   // no active train was found with the provided node reference, try to find
   // one via the node-id instead.
-  if (node != nullptr && node->node_id())
+  if (node && node->node_id())
   {
     return find_node(node->node_id());
   }
-  return nullptr;  
+  return nullptr;
 }
 
-AllTrainNodes::Impl* AllTrainNodes::find_node(openlcb::NodeID node_id, bool allocate)
+AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::find_node(openlcb::NodeID node_id, bool allocate)
 {
   {
     OSMutexLock l(&trainsLock_);
-    auto it = std::find_if(trains_.begin(), trains_.end(), [node_id](Impl *impl)
+    auto ent = std::find_if(trains_.begin(), trains_.end(),
+      [node_id](const auto &train)
+      {
+        return train->node_id() == node_id;
+      });
+    if (ent != trains_.end())
     {
-      return impl->node_->node_id() == node_id;
-    });
-    if (it != trains_.end())
-    {
-      return *it;
+      return *ent;
     }
   }
   if (!allocate)
@@ -165,9 +300,8 @@ AllTrainNodes::Impl* AllTrainNodes::find_node(openlcb::NodeID node_id, bool allo
     if (train != nullptr)
     {
       LOG(INFO, "[TrainSearch] Matched %s", train->identifier().c_str());
-      return create_impl(train->file_offset()
-                      , train->get_legacy_drive_mode()
-                      , train->get_legacy_address());
+      return create_impl(train->file_offset(), train->get_legacy_drive_mode(),
+                         train->get_legacy_address());
     }
   }
 
@@ -176,48 +310,47 @@ AllTrainNodes::Impl* AllTrainNodes::find_node(openlcb::NodeID node_id, bool allo
 }
 
 /// Returns a traindb entry or nullptr if the id is too high.
-std::shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(
-  size_t id, Notifiable* done)
+shared_ptr<TrainDbEntry> AllTrainNodes::get_traindb_entry(size_t id, Notifiable* done)
 {
   AutoNotify n(done);
   return db_->get_entry(id);
 }
 
 /// Returns a node id or 0 if the id is not known to be a train.
-openlcb::NodeID AllTrainNodes::get_train_node_id_ext(size_t id, bool allocate)
+NodeID AllTrainNodes::get_train_node_id(size_t id)
 {
   {
     OSMutexLock l(&trainsLock_);
-    if (id < trains_.size() && trains_[id]->node_)
+    auto ent = std::find_if(trains_.begin(), trains_.end(),
+    [id](const auto &train)
     {
-      return trains_[id]->node_->node_id();
+      return train->id() == id;
+    });
+    if (ent != trains_.end())
+    {
+      return (*ent)->node_id();
     }
-  }
-  if (!allocate)
-  {
-    return 0;
   }
 
   LOG(INFO, "[TrainSearch] no active train with index %d, checking db", id);
-  auto db_entry = db_->get_entry(id);
-  if (db_entry != nullptr)
+  auto ent = db_->get_entry(id);
+  if (ent)
   {
     LOG(INFO, "[TrainSearch] found existing db entry %s, creating node %s",
-        db_entry->identifier().c_str(),
-        esp32cs::node_id_to_string(db_entry->get_traction_node()).c_str());
-    create_impl(id, db_entry->get_legacy_drive_mode()
-              , db_entry->get_legacy_address());
-    return db_entry->get_traction_node();
+        ent->identifier().c_str(),
+        esp32cs::node_id_to_string(ent->get_traction_node()).c_str());
+    create_impl(id, ent->get_legacy_drive_mode(), ent->get_legacy_address());
+    return ent->get_traction_node();
   }
 
   LOG(INFO, "[TrainSearch] no train node found for index %d, giving up", id);
   return 0;
 }
 
-class AllTrainNodes::TrainSnipHandler : public openlcb::IncomingMessageStateFlow
+class AllTrainNodes::TrainSnipHandler : public IncomingMessageStateFlow
 {
  public:
-  TrainSnipHandler(AllTrainNodes* parent, openlcb::SimpleInfoFlow* info_flow)
+  TrainSnipHandler(AllTrainNodes* parent, SimpleInfoFlow* info_flow)
       : IncomingMessageStateFlow(parent->train_service()->iface()),
         parent_(parent),
         responseFlow_(info_flow)
@@ -242,7 +375,7 @@ class AllTrainNodes::TrainSnipHandler : public openlcb::IncomingMessageStateFlow
   Action send_response_request()
   {
     auto* b = get_allocation_result(responseFlow_);
-    auto entry = parent_->db_->get_entry(impl_->id);
+    auto entry = parent_->db_->get_entry(impl_->id());
     if (entry.get())
     {
       snipName_ = entry->get_train_name();
@@ -271,8 +404,8 @@ class AllTrainNodes::TrainSnipHandler : public openlcb::IncomingMessageStateFlow
 
  private:
   AllTrainNodes* parent_;
-  openlcb::SimpleInfoFlow* responseFlow_;
-  AllTrainNodes::Impl* impl_;
+  SimpleInfoFlow* responseFlow_;
+  DelayedInitTrainNode* impl_;
   BarrierNotifiable n_;
   string snipName_;
   string snipDesc_;
@@ -292,7 +425,7 @@ SimpleInfoDescriptor AllTrainNodes::TrainSnipHandler::snipResponse_[] =
   {SimpleInfoDescriptor::END_OF_DATA, 0, 0, 0}
 };
 
-class AllTrainNodes::TrainPipHandler : public openlcb::IncomingMessageStateFlow
+class AllTrainNodes::TrainPipHandler : public IncomingMessageStateFlow
 {
  public:
   TrainPipHandler(AllTrainNodes* parent)
@@ -343,14 +476,14 @@ class AllTrainNodes::TrainPipHandler : public openlcb::IncomingMessageStateFlow
       Defs::TRACTION_FDI | Defs::CDI;
 };
 
-class AllTrainNodes::TrainFDISpace : public openlcb::MemorySpace
+class AllTrainNodes::TrainFDISpace : public MemorySpace
 {
  public:
   TrainFDISpace(AllTrainNodes* parent) : parent_(parent) {}
 
-  bool set_node(openlcb::Node* node) override
+  bool set_node(Node* node) override
   {
-    if (impl_ && impl_->node_ == node)
+    if (impl_ && impl_ == node)
     {
       // same node.
       return true;
@@ -400,7 +533,7 @@ class AllTrainNodes::TrainFDISpace : public openlcb::MemorySpace
  private:
   void reset_file()
   {
-    auto e = parent_->db_->get_entry(impl_->id);
+    auto e = parent_->db_->get_entry(impl_->id());
     e->start_read_functions();
     gen_.reset(std::move(e));
   }
@@ -408,18 +541,18 @@ class AllTrainNodes::TrainFDISpace : public openlcb::MemorySpace
   FdiXmlGenerator gen_;
   AllTrainNodes* parent_;
   // Train object structure.
-  Impl* impl_{nullptr};
+  DelayedInitTrainNode* impl_{nullptr};
 };
 
-class AllTrainNodes::TrainConfigSpace : public openlcb::FileMemorySpace
+class AllTrainNodes::TrainConfigSpace : public FileMemorySpace
 {
  public:
   TrainConfigSpace(int fd, AllTrainNodes* parent, size_t file_end)
       : FileMemorySpace(fd, file_end), parent_(parent) {}
 
-  bool set_node(openlcb::Node* node) override
+  bool set_node(Node* node) override
   {
-    if (impl_ && impl_->node_ == node)
+    if (impl_ && impl_ == node)
     {
       // same node.
       return true;
@@ -429,7 +562,7 @@ class AllTrainNodes::TrainConfigSpace : public openlcb::FileMemorySpace
     {
       return false;
     }
-    auto entry = parent_->db_->get_entry(impl_->id);
+    auto entry = parent_->db_->get_entry(impl_->id());
     if (!entry)
     {
       return false;
@@ -460,17 +593,17 @@ class AllTrainNodes::TrainConfigSpace : public openlcb::FileMemorySpace
   unsigned offset_;
   AllTrainNodes* parent_;
   // Train object structure.
-  Impl* impl_{nullptr};
+  DelayedInitTrainNode* impl_{nullptr};
 };
 
-class AllTrainNodes::TrainCDISpace : public openlcb::MemorySpace
+class AllTrainNodes::TrainCDISpace : public MemorySpace
 {
  public:
   TrainCDISpace(AllTrainNodes* parent) : parent_(parent) {}
 
-  bool set_node(openlcb::Node* node) override
+  bool set_node(Node* node) override
   {
-    if (impl_ && impl_->node_ == node)
+    if (impl_ && impl_ == node)
     {
       // same node.
       return true;
@@ -480,7 +613,7 @@ class AllTrainNodes::TrainCDISpace : public openlcb::MemorySpace
     {
       return false;
     }
-    auto entry = parent_->db_->get_entry(impl_->id);
+    auto entry = parent_->db_->get_entry(impl_->id());
     if (!entry) 
     {
       return false;
@@ -510,11 +643,11 @@ class AllTrainNodes::TrainCDISpace : public openlcb::MemorySpace
 
   AllTrainNodes* parent_;
   // Train object structure.
-  Impl* impl_{nullptr};
-  openlcb::MemorySpace* proxySpace_;
+  DelayedInitTrainNode* impl_{nullptr};
+  MemorySpace* proxySpace_;
 };
 
-class AllTrainNodes::TrainIdentifyHandler : public openlcb::IncomingMessageStateFlow
+class AllTrainNodes::TrainIdentifyHandler : public IncomingMessageStateFlow
 {
 public:
   TrainIdentifyHandler(AllTrainNodes *parent)
@@ -549,14 +682,14 @@ public:
         LOG(INFO, "[TrainIdent] matched a known train db entry");
         release();
         return allocate_and_call(iface()->global_message_write_flow(),
-                                STATE(send_train_ident));
+                                 STATE(send_train_ident));
       }
     }
     return release_and_exit();
   }
 private:
   AllTrainNodes *parent_;
-  openlcb::NodeID target_;
+  NodeID target_;
 
   IncomingMessageStateFlow::Action send_train_ident()
   {
@@ -571,11 +704,11 @@ private:
 };
 
 AllTrainNodes::AllTrainNodes(TrainDb* db,
-                             openlcb::TrainService* traction_service,
-                             openlcb::SimpleInfoFlow* info_flow,
-                             openlcb::MemoryConfigHandler* memory_config,
-                             openlcb::MemorySpace* ro_train_cdi,
-                             openlcb::MemorySpace* ro_tmp_train_cdi)
+                             TrainService* traction_service,
+                             SimpleInfoFlow* info_flow,
+                             MemoryConfigHandler* memory_config,
+                             MemorySpace* ro_train_cdi,
+                             MemorySpace* ro_tmp_train_cdi)
     : AllTrainNodesInterface(traction_service),
       db_(db),
       memoryConfigService_(memory_config),
@@ -591,82 +724,21 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
   HASSERT(ro_train_cdi_->read_only());
   HASSERT(ro_tmp_train_cdi_->read_only());
   memoryConfigService_->registry()->insert(
-      nullptr, openlcb::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+      nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
   memoryConfigService_->registry()->insert(
-      nullptr, openlcb::MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
+      nullptr, MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
 }
 
-AllTrainNodes::Impl* AllTrainNodes::create_impl(int train_id, DccMode mode,
-                                                int address)
+AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
+  int train_id, DccMode mode, int address)
 {
-  Impl* impl = new Impl;
-  impl->id = train_id;
-  switch (mode)
+  DelayedInitTrainNode *impl =
+    new DelayedInitTrainNode(train_service(), train_id, mode, address);
   {
-    case MARKLIN_OLD:
-    {
-      LOG(INFO, "[TrainSearch] Allocating New Marklin (old) train %d", address);
-      impl->train_ = new dcc::MMOldTrain(dcc::MMAddress(address));
-      break;
-    }
-    case MARKLIN_DEFAULT:
-    case MARKLIN_NEW:
-      /// @todo (balazs.racz) implement marklin twoaddr train drive mode.
-    case MARKLIN_TWOADDR:
-    {
-      LOG(INFO, "[TrainSearch] Allocating New Marklin (new) train %d", address);
-      impl->train_ = new dcc::MMNewTrain(dcc::MMAddress(address));
-      break;
-    }
-      /// @todo (balazs.racz) implement dcc 14 train drive mode.
-    case DCC_14:
-    case DCC_14_LONG_ADDRESS:
-    case DCC_28:
-    case DCC_28_LONG_ADDRESS:
-    {
-      LOG(INFO, "[TrainSearch] Allocating New DCC-14/28 train %d", address);
-      if ((mode & DCC_LONG_ADDRESS) || address >= 128)
-      {
-        impl->train_ = new dcc::Dcc28Train(dcc::DccLongAddress(address));
-      }
-      else
-      {
-        impl->train_ = new dcc::Dcc28Train(dcc::DccShortAddress(address));
-      }
-      break;
-    }
-    case DCC_128:
-    case DCC_128_LONG_ADDRESS:
-    {
-      LOG(INFO, "[TrainSearch] Allocating New DCC-128 train %d", address);
-      if ((mode & DCC_LONG_ADDRESS) || address >= 128)
-      {
-        impl->train_ = new dcc::Dcc128Train(dcc::DccLongAddress(address));
-      }
-      else
-      {
-        impl->train_ = new dcc::Dcc128Train(dcc::DccShortAddress(address));
-      }
-      break;
-    }
-    default:
-      impl->train_ = nullptr;
-      LOG_ERROR("[TrainSearch] Unhandled train drive mode: %d.", mode);
+    OSMutexLock l(&trainsLock_);
+    trains_.push_back(impl);
   }
-  if (impl->train_)
-  {
-    {
-      OSMutexLock l(&trainsLock_);
-      trains_.push_back(impl);
-    }
-    impl->node_ = new openlcb::TrainNodeForProxy(train_service(), impl->train_);
-    return impl;
-  }
-  else
-  {
-    delete impl;
-    return nullptr;
-  }
+  return impl;
 }
 
 size_t AllTrainNodes::size()
@@ -679,29 +751,30 @@ size_t AllTrainNodes::active_locos()
   return trains_.size();
 }
 
-bool AllTrainNodes::is_valid_train_node(openlcb::Node *node)
+bool AllTrainNodes::is_valid_train_node(Node *node)
 {
   return find_node(node) != nullptr;
 }
 
-bool AllTrainNodes::is_valid_train_node(openlcb::NodeID node_id, bool allocate)
+bool AllTrainNodes::is_valid_train_node(NodeID node_id, bool allocate)
 {
   return find_node(node_id, allocate) != nullptr;
 }
 
-openlcb::NodeID AllTrainNodes::allocate_node(DccMode drive_type,
+NodeID AllTrainNodes::allocate_node(DccMode drive_type,
                                              unsigned address)
 {
-  Impl* impl = create_impl(-1, drive_type, address);
+  DelayedInitTrainNode* impl = create_impl(-1, drive_type, address);
   if (!impl) return 0; // failed.
-  impl->id = db_->add_dynamic_entry(address, drive_type);
-  return impl->node_->node_id();
+  impl->set_id(db_->add_dynamic_entry(address, drive_type));
+  return impl->node_id();
 }
 
 AllTrainNodes::~AllTrainNodes()
 {
   OSMutexLock l(&trainsLock_);
-  for (auto* t : trains_) {
+  for (auto* t : trains_)
+  {
     delete t;
   }
   memoryConfigService_->registry()->erase(

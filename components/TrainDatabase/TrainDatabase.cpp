@@ -328,12 +328,11 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
             train->is_auto_idle() ? "On" : "Off");
         if (train->is_auto_idle())
         {
-          uint16_t address = train->get_legacy_address();
-          DccMode mode = train->get_legacy_drive_mode();
-          stack->executor()->add(new CallbackExecutable([address, mode]()
+          stack->executor()->add(new CallbackExecutable([train]()
           {
             auto trainMgr = Singleton<AllTrainNodes>::instance();
-            trainMgr->allocate_node(mode, address);
+            trainMgr->get_train_impl(train->get_legacy_drive_mode(),
+                                     train->get_legacy_address());
           }));
         }
         knownTrains_.emplace_back(train);

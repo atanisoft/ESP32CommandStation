@@ -195,15 +195,17 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
   auto desired_address_type = dcc_mode_to_address_type(mode, supplied_address);
   auto actual_address_type =
       dcc_mode_to_address_type(actual_drive_mode, legacy_address);
+  bool address_type_match =
+      (actual_address_type == dcc::TrainAddressType::UNSUPPORTED ||
+       desired_address_type == dcc::TrainAddressType::UNSPECIFIED ||
+       desired_address_type == actual_address_type);
   if (!match_event_to_drive_mode(event, actual_drive_mode)) {
     // The request specified a restriction on the locomotive mode and this
     // restriction does not match the current loco.
     return 0;
   }
   if (supplied_address == legacy_address) {
-    if (actual_address_type == dcc::TrainAddressType::UNSUPPORTED ||
-        desired_address_type == dcc::TrainAddressType::UNSPECIFIED ||
-        desired_address_type == actual_address_type) {
+    if (address_type_match) {
       // If the caller did not specify the drive mode, or the drive mode
       // matches.
       return MATCH_ANY | ADDRESS_ONLY | EXACT;
@@ -213,7 +215,7 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
     }
     has_address_prefix_match = ((event & EXACT) == 0);
   }
-  if ((event & EXACT) == 0) {
+  if (((event & EXACT) == 0) && address_type_match) {
     // Search for the supplied number being a prefix of the existing addresses.
     unsigned address_prefix = legacy_address / 10;
     while (address_prefix) {

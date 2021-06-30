@@ -83,10 +83,13 @@ OVERRIDE_CONST(gridconnect_bridge_max_incoming_packets,
 OVERRIDE_CONST(executor_select_prescaler,
                CONFIG_OLCB_EXECUTOR_SELECT_PRESCALER);
 
-/// This increases the number of local nodes and aliases available for the
-/// OpenLCB stack. This is needed to allow for virtual train nodes.
-OVERRIDE_CONST(local_nodes_count, CONFIG_OLCB_LOCAL_NODE_COUNT);
-OVERRIDE_CONST(local_alias_cache_size, CONFIG_OLCB_LOCAL_NODE_COUNT);
+/// Remove restriction on number of local nodes that the OpenLCB stack allows
+/// since the CS will host a number of virtual train nodes.
+OVERRIDE_CONST(local_nodes_count, 0);
+
+/// Increase the number of local aliases available for the OpenLCB stack so we
+/// have extras available for virtual train nodes.
+OVERRIDE_CONST(local_alias_cache_size, CONFIG_OLCB_LOCAL_ALIAS_COUNT);
 
 #if CONFIG_OLCB_GC_NEWLINES
 /// Generate GridConnect frames with a newline appended to each frame.

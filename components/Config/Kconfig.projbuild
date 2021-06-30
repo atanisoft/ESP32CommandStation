@@ -275,9 +275,9 @@ menu "OpenLCB Configuration"
             Executors will run this many Executables (if there is anything
             scheduled) before two calls to select. This helps in reducing the
             overhead of the select calls.
-    config OLCB_LOCAL_NODE_COUNT
-        int "Number of 'local' LCC nodes"
-        default 30
+    config OLCB_LOCAL_ALIAS_COUNT
+        int "Number of 'local' LCC aliases"
+        default 100
         help
             This controls how many trains will be supported concurrently by
             the command station.

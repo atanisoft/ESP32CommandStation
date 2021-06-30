@@ -850,7 +850,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
       auto trains = Singleton<commandstation::AllTrainNodes>::instance();
       for (size_t id = 0; id < trains->size(); id++)
       {
-        auto nodeid = trains->get_train_node_id_ext(id, false);
+        auto nodeid = trains->get_train_node_id(id);
         if (nodeid)
         {
           auto loco = trains->get_train_impl(nodeid, false);

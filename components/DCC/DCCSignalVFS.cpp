@@ -127,10 +127,14 @@ public:
       auto trains = Singleton<commandstation::AllTrainNodes>::instance();
       for (size_t id = 0; id < trains->size(); id++)
       {
-        auto node = trains->get_train_node_id_ext(id, false);
-        if (node)
+        auto nodeid = trains->get_train_node_id(id);
+        if (nodeid)
         {
-          trains->get_train_impl(node)->set_emergencystop();
+          auto loco = trains->get_train_impl(nodeid, false);
+          if (loco)
+          {
+            loco->set_emergencystop();
+          }
         }
       }
       packet_processor_add_refresh_source(this, dcc::UpdateLoopBase::ESTOP_PRIORITY);
