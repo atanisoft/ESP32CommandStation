@@ -17,7 +17,11 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include "FileSystem.hxx"
 #include "hardware.hxx"
+// extern "C" required due to https://github.com/espressif/esp-idf/issues/7204
+extern "C"
+{
 #include <dirent.h>
+}
 #include <driver/sdmmc_defs.h>
 #include <driver/sdmmc_host.h>
 #include <driver/sdmmc_types.h>
