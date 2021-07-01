@@ -142,7 +142,7 @@ public:
       {
         case MARKLIN_OLD:
         {
-          LOG(INFO,
+          LOG(CONFIG_TSP_LOGGING_LEVEL,
               "[TrainSearch] Allocating New Marklin (old) train %d", address_);
           train_ = new MMOldTrain(MMAddress(address_));
           break;
@@ -151,7 +151,8 @@ public:
         case MARKLIN_NEW:
         case MARKLIN_TWOADDR:
         {
-          LOG(INFO, "[TrainSearch] Allocating New Marklin (new) train %d", address_);
+          LOG(CONFIG_TSP_LOGGING_LEVEL,
+              "[TrainSearch] Allocating New Marklin (new) train %d", address_);
           train_ = new MMNewTrain(MMAddress(address_));
           break;
         }
@@ -161,7 +162,8 @@ public:
         case DCC_28:
         case DCC_28_LONG_ADDRESS:
         {
-          LOG(INFO, "[TrainSearch] Allocating New DCC-14/28 train %d", address_);
+          LOG(CONFIG_TSP_LOGGING_LEVEL,
+              "[TrainSearch] Allocating New DCC-14/28 train %d", address_);
           if ((mode_ & DCC_LONG_ADDRESS) || address_ >= 128)
           {
             train_ = new Dcc28Train(DccLongAddress(address_));
@@ -175,7 +177,8 @@ public:
         case DCC_128:
         case DCC_128_LONG_ADDRESS:
         {
-          LOG(INFO, "[TrainSearch] Allocating New DCC-128 train %d", address_);
+          LOG(CONFIG_TSP_LOGGING_LEVEL,
+              "[TrainSearch] Allocating New DCC-128 train %d", address_);
           if ((mode_ & DCC_LONG_ADDRESS) || address_ >= 128)
           {
             train_ = new Dcc128Train(DccLongAddress(address_));
@@ -302,12 +305,13 @@ AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::find_node(openlcb::NodeID no
   uint32_t addr =  0;
   if (TractionDefs::legacy_address_from_train_node_id(node_id, &type, &addr))
   {
-    LOG(INFO, "[TrainSearch] Checking db for node id: %s",
+    LOG(CONFIG_TSP_LOGGING_LEVEL, "[TrainSearch] Checking db for node id: %s",
         esp32cs::node_id_to_string(node_id).c_str());
     auto train = db_->find_entry(node_id, addr);
     if (train != nullptr)
     {
-      LOG(INFO, "[TrainSearch] Matched %s", train->identifier().c_str());
+      LOG(CONFIG_TSP_LOGGING_LEVEL, "[TrainSearch] Matched %s",
+          train->identifier().c_str());
       return create_impl(train->file_offset(), train->get_legacy_drive_mode(),
                          train->get_legacy_address());
     }
@@ -340,18 +344,21 @@ NodeID AllTrainNodes::get_train_node_id(size_t id)
     }
   }
 
-  LOG(INFO, "[TrainSearch] no active train with index %d, checking db", id);
+  LOG(CONFIG_TSP_LOGGING_LEVEL,
+      "[TrainSearch] no active train with index %d, checking db", id);
   auto ent = db_->get_entry(id);
   if (ent)
   {
-    LOG(INFO, "[TrainSearch] found existing db entry %s, creating node %s",
+    LOG(CONFIG_TSP_LOGGING_LEVEL,
+        "[TrainSearch] found existing db entry %s, creating node %s",
         ent->identifier().c_str(),
         esp32cs::node_id_to_string(ent->get_traction_node()).c_str());
     create_impl(id, ent->get_legacy_drive_mode(), ent->get_legacy_address());
     return ent->get_traction_node();
   }
 
-  LOG(INFO, "[TrainSearch] no train node found for index %d, giving up", id);
+  LOG(CONFIG_TSP_LOGGING_LEVEL,
+      "[TrainSearch] no train node found for index %d, giving up", id);
   return 0;
 }
 
@@ -531,7 +538,8 @@ class AllTrainNodes::TrainFDISpace : public MemorySpace
     }
     if (result == 0)
     {
-      LOG(VERBOSE, "[TrainFDI] Out-of-bounds read: %u, %zu", source, len);
+      LOG(CONFIG_TSP_LOGGING_LEVEL, "[TrainFDI] Out-of-bounds read: %u, %zu",
+          source, len);
       *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
     }
     else
@@ -616,8 +624,8 @@ private:
         case 2:
         {
           uint8_t label = train_->get_function_label(repeat + 1);
-          LOG(VERBOSE, "[FN: %d/%s] orig label: %d", repeat + 1,
-              train_->identifier().c_str(), label);
+          LOG(CONFIG_TSP_LOGGING_LEVEL, "[FN: %d/%s] orig label: %d",
+              repeat + 1, train_->identifier().c_str(), label);
           if (label == Symbols::FN_UNINITIALIZED ||
               label == Symbols::MOMENTARY)
           {
@@ -627,14 +635,14 @@ private:
           {
             label &= ~Symbols::MOMENTARY;
           }
-          LOG(VERBOSE, "[FN: %d/%s] returning label as: %d", repeat + 1,
-              train_->identifier().c_str(), label);
+          LOG(CONFIG_TSP_LOGGING_LEVEL, "[FN: %d/%s] returning label as: %d",
+              repeat + 1, train_->identifier().c_str(), label);
           return (T)label;
         }
         case 3:
         {
           uint8_t label = train_->get_function_label(repeat + 1);
-          LOG(VERBOSE, "[FN: %d/%s] label: %d", repeat + 1,
+          LOG(CONFIG_TSP_LOGGING_LEVEL, "[FN: %d/%s] label: %d", repeat + 1,
               train_->identifier().c_str(), label);
           if (label != Symbols::FN_UNKNOWN &&
               label != Symbols::FN_UNINITIALIZED &&
@@ -815,7 +823,8 @@ public:
     if (!m->payload.empty() && m->payload.size() == 6)
     {
       target_ = openlcb::buffer_to_node_id(m->payload);
-      LOG(INFO, "[TrainIdent] received global identify for node %s",
+      LOG(CONFIG_TSP_LOGGING_LEVEL,
+          "[TrainIdent] received global identify for node %s",
           esp32cs::node_id_to_string(target_).c_str());
       openlcb::NodeID masked = target_ & TractionDefs::NODE_ID_MASK;
       if ((masked == TractionDefs::NODE_ID_DCC ||
@@ -823,7 +832,8 @@ public:
            masked == 0x050100000000ULL) && // TODO: move this constant into TractionDefs
           parent_->find_node(target_) != nullptr)
       {
-        LOG(INFO, "[TrainIdent] matched a known train db entry");
+        LOG(CONFIG_TSP_LOGGING_LEVEL,
+            "[TrainIdent] matched a known train db entry");
         release();
         return allocate_and_call(iface()->global_message_write_flow(),
                                  STATE(send_train_ident));

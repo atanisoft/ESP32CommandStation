@@ -1018,3 +1018,18 @@ menu "Locomotive Roster"
         default 3 if ROSTER_LOGGING_VERBOSE
         default 5
 endmenu
+menu "Train Search Protocol"
+    choice TSP_LOGGING
+        bool "Turnout Manager logging"
+        default TSP_LOGGING_MINIMAL
+        config TSP_LOGGING_VERBOSE
+            bool "Verbose"
+        config TSP_LOGGING_MINIMAL
+            bool "Minimal"
+    endchoice
+    config TSP_LOGGING_LEVEL
+        int
+        default 4 if TSP_LOGGING_MINIMAL
+        default 3 if TSP_LOGGING_VERBOSE
+        default 5
+endmenu

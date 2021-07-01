@@ -210,8 +210,10 @@ uint8_t FindProtocolDefs::match_query_to_node(openlcb::EventId event,
       // matches.
       return MATCH_ANY | ADDRESS_ONLY | EXACT;
     } else {
-      LOG(INFO, "exact match failed due to mode: desired %d actual %d",
-          static_cast<int>(desired_address_type), static_cast<int>(actual_address_type));
+      LOG(CONFIG_TSP_LOGGING_LEVEL,
+          "exact match failed due to mode: desired %d actual %d",
+          static_cast<int>(desired_address_type),
+          static_cast<int>(actual_address_type));
     }
     has_address_prefix_match = ((event & EXACT) == 0);
   }
