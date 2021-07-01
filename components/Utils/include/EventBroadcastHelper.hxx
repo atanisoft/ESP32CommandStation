@@ -37,10 +37,7 @@ public:
 
     void send_event(uint64_t eventID)
     {
-        stack_->executor()->add(new CallbackExecutable([&]()
-        {
-            stack_->send_event(eventID);
-        }));
+        stack_->send_event(eventID);
     }
 private:
     openlcb::SimpleCanStack *stack_;
