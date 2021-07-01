@@ -94,15 +94,24 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
             train->get_train_name().c_str(),
             train->get_train_description().c_str(),
             train->is_auto_idle() ? "On" : "Off");
-        if (train->is_auto_idle())
+        stack->executor()->add(new CallbackExecutable([train]()
         {
-          stack->executor()->add(new CallbackExecutable([train]()
+          auto trainMgr = Singleton<AllTrainNodes>::instance();
+          if (train->is_auto_idle())
           {
-            auto trainMgr = Singleton<AllTrainNodes>::instance();
+            // allocate the node and retrieve the train instance so that it
+            // will be idling and ready-to-use.
             trainMgr->get_train_impl(train->get_legacy_drive_mode(),
                                      train->get_legacy_address());
-          }));
-        }
+          }
+          else
+          {
+            // allocate the node only so it shows up in OpenLCB node list. The
+            // train instance will be created upon first usage.
+            trainMgr->allocate_node(train->get_legacy_drive_mode(),
+                                    train->get_legacy_address());
+          }
+        }));
         trains_.emplace_back(train);
       }
     }
@@ -203,6 +212,8 @@ void Esp32TrainDatabase::delete_entry(uint16_t address)
   {
     LOG(INFO, "[TrainDB] Removing persistent entry for address %u", address);
     trains_.erase(entry);
+    // Remove the locomotive from the train node/instance manager
+    Singleton<AllTrainNodes>::instance()->remove_train_impl(address);
     entryDeleted_ = true;
   }
 }
