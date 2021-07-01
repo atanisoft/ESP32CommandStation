@@ -214,7 +214,7 @@ void app_main()
     leds.attach_callbacks(&wifi_manager);
     esp32cs::NodeIdMemoryConfigSpace node_id_memoryspace(&stack, &nvs);
     esp32cs::FactoryResetHelper factory_reset_helper(cfg.userinfo());
-    esp32cs::EventBroadcastHelper event_helper(&stack);
+    esp32cs::EventBroadcastHelper event_helper(stack.service(), stack.node());
     esp32cs::DelayRebootHelper delayed_reboot(&wifi_manager);
     esp32cs::HealthMonitor health_monitor(&wifi_manager);
     esp32cs::StatusDisplay status_display(&wifi_manager,

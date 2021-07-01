@@ -18,8 +18,11 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #ifndef EVENT_BROADCAST_HELPER_HXX_
 #define EVENT_BROADCAST_HELPER_HXX_
 
+#include <executor/CallableFlow.hxx>
+#include <executor/Service.hxx>
 #include <openlcb/SimpleStack.hxx>
 #include <utils/Singleton.hxx>
+#include <StringUtils.hxx>
 
 namespace esp32cs
 {
@@ -31,16 +34,52 @@ public:
     /// Constructor.
     ///
     /// @param service is the @ref Service that will execute this flow.
-    EventBroadcastHelper(openlcb::SimpleCanStack *stack) : stack_(stack)
+    EventBroadcastHelper(Service *service, openlcb::Node *node)
+        : flow_(service, node)
     {
     }
 
-    void send_event(uint64_t eventID)
+    void send_event(openlcb::EventId eventID)
     {
-        stack_->send_event(eventID);
+        BufferPtr<EventRequest> b(flow_.alloc());
+        b->data()->reset(eventID);
+        b->data()->done.reset(EmptyNotifiable::DefaultInstance());
+        flow_.send(b->ref());
     }
 private:
-    openlcb::SimpleCanStack *stack_;
+    struct EventRequest : public CallableFlowRequestBase
+    {
+        void reset(openlcb::EventId event)
+        {
+            reset_base();
+            this->eventID = event;
+        }
+        openlcb::EventId eventID;
+    };
+
+    class EventFlow : public CallableFlow<EventRequest>
+    {
+    public:
+        EventFlow(Service *service, openlcb::Node *node) :
+            CallableFlow<EventRequest>(service), node_(node)
+        {
+        }
+        StateFlowBase::Action entry() override
+        {
+            LOG(VERBOSE, "[EventHelper] Sending: %s",
+                esp32cs::event_id_to_string(request()->eventID).c_str());
+            writer_.WriteAsync(node_, openlcb::Defs::MTI_EVENT_REPORT,
+                               openlcb::WriteHelper::global(),
+                               openlcb::eventid_to_buffer(request()->eventID),
+                               this);
+            return wait_and_return_ok();
+        }
+    private:
+        openlcb::Node *node_;
+        openlcb::WriteHelper writer_;
+    };
+
+    EventFlow flow_;
 };
 
 } // namespace esp32cs
