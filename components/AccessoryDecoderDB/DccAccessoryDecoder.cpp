@@ -28,7 +28,8 @@ DccAccessoryDecoder::DccAccessoryDecoder(
   uint16_t address, std::string name, bool state, AccessoryType type) :
   AccessoryBaseType(address, name, state, type)
 {
-  LOG(INFO, "[DccAccessoryDecoder %d] Registered as %s with state of %s",
+  LOG(CONFIG_TURNOUT_LOG_LEVEL,
+      "[DccAccessoryDecoder %d] Registered as %s with state of %s",
       address, ACCESSORY_TYPE_STRINGS[type], state ? "Thrown" : "Closed");
 }
 

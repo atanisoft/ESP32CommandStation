@@ -31,7 +31,8 @@ OpenLCBAccessoryDecoder::OpenLCBAccessoryDecoder(
   string thrown_events, AccessoryType type, bool state) :
   AccessoryBaseType(address, name, state, type)
 {
-  LOG(INFO, "[OpenLCBAccessoryDecoder %d] Registered as %s with state of %s",
+  LOG(CONFIG_TURNOUT_LOG_LEVEL,
+      "[OpenLCBAccessoryDecoder %d] Registered as %s with state of %s",
       address, ACCESSORY_TYPE_STRINGS[type], state ? "Thrown" : "Closed");
   update_events(closed_events, thrown_events);
 }
@@ -46,16 +47,20 @@ void OpenLCBAccessoryDecoder::update_events(string closed_events,
   closed_.clear();
   for (auto event : closed)
   {
-    LOG(INFO, "[OpenLCBAccessoryDecoder %d] Closed event: %s", address(),
-        event.c_str());
-    closed_.push_back(string_to_uint64(event));
+    uint64_t evt = string_to_uint64(event);
+    LOG(CONFIG_TURNOUT_LOG_LEVEL,
+        "[OpenLCBAccessoryDecoder %d] Closed event: %s", address(),
+        event_id_to_string(evt).c_str());
+    closed_.push_back(evt);
   }
   thrown_.clear();
   for (auto event : thrown)
   {
-    LOG(INFO, "[OpenLCBAccessoryDecoder %d] Thrown event: %s", address(),
-        event.c_str());
-    thrown_.push_back(string_to_uint64(event));
+    uint64_t evt = string_to_uint64(event);
+    LOG(CONFIG_TURNOUT_LOG_LEVEL,
+        "[OpenLCBAccessoryDecoder %d] Thrown event: %s", address(),
+        event_id_to_string(evt).c_str());
+    thrown_.push_back(evt);
   }
 }
 

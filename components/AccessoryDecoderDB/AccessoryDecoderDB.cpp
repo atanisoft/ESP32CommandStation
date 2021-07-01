@@ -93,16 +93,12 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
             cJSON_GetObjectItem(events, "closed")->valuestring;
           auto thrown_events =
             cJSON_GetObjectItem(events, "thrown")->valuestring;
-          LOG(CONFIG_TURNOUT_LOG_LEVEL,
-              "[AccessoryDecoderDB %d] OpenLCB closed:%s, thrown:%s",
-              address, closed_events, thrown_events);
           accessories_.push_back(
             std::make_unique<OpenLCBAccessoryDecoder>(address, name, closed_events,
                                                       thrown_events, type, state));
         }
         else
         {
-          LOG(CONFIG_TURNOUT_LOG_LEVEL, "[AccessoryDecoderDB %d] DCC", address);
           accessories_.push_back(
             std::make_unique<DccAccessoryDecoder>(address, name, state, type));
         }
