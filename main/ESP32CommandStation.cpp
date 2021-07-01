@@ -159,6 +159,12 @@ static void twai_init(void *param)
   vTaskDelete(NULL);
 }
 
+bool validate_cdi(openlcb::SimpleStackBase *stack)
+{
+  return CDIXMLGenerator::create_config_descriptor_xml(
+    cfg, openlcb::CDI_FILENAME, stack);
+}
+
 extern "C"
 {
 
@@ -231,9 +237,7 @@ void app_main()
 
     // Create / update CDI, if the CDI is out of date a factory reset will be
     // forced.
-    if (CDIXMLGenerator::create_config_descriptor_xml(cfg,
-                                                      openlcb::CDI_FILENAME,
-                                                      &stack))
+    if (validate_cdi(&stack))
     {
       LOG(WARNING, "[CDI] Forcing factory reset due to CDI update");
       unlink(openlcb::CONFIG_FILENAME);
