@@ -59,7 +59,7 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
   struct stat statbuf;
   if (!stat(TRAIN_DB_JSON_FILE, &statbuf))
   {
-    LOG(INFO, "[TrainDB] Loading database...");
+    LOG(INFO, "[TrainDB] Loading %s...", TRAIN_DB_JSON_FILE);
     auto roster = read_file_to_string(TRAIN_DB_JSON_FILE);
     cJSON *root = cJSON_ParseWithLength(roster.c_str(), roster.length());
     if (cJSON_IsArray(root))
@@ -72,7 +72,7 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
           cJSON_GetObjectItem(entry, "addr")->valueint,
           cJSON_GetObjectItem(entry, "name")->valuestring,
           cJSON_GetObjectItem(entry, "desc")->valuestring,
-          (DccMode)cJSON_GetObjectItem(mode, "type")->valueint,
+          static_cast<DccMode>(cJSON_GetObjectItem(mode, "type")->valueint),
           cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle")));
         cJSON *functions = cJSON_GetObjectItem(entry, "fn");
         if (cJSON_IsArray(functions))
@@ -81,15 +81,18 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
           cJSON_ArrayForEach(function, functions)
           {
             uint8_t id = cJSON_GetObjectItem(function, "id")->valueint;
-            Symbols type = (Symbols)cJSON_GetObjectItem(function, "type")->valueint;
-            LOG(VERBOSE, "[TrainDB:%d] function: %d -> %d", data.address, id,
-                type);
+            Symbols type =
+              static_cast<Symbols>(
+                cJSON_GetObjectItem(function, "type")->valueint);
+            LOG(CONFIG_ROSTER_LOG_LEVEL,
+                "[TrainDB:%d] function: %d -> %d", data.address, id, type);
             data.functions[id] = type;
           }
         }
         auto train = std::make_shared<Esp32TrainDbEntry>(data, this);
         train->reset_dirty();
-        LOG(INFO, "[TrainDB-%zu] Registering %s, name:%s, desc:%s, idle:%s",
+        LOG(CONFIG_ROSTER_LOG_LEVEL,
+            "[TrainDB-%zu] Registering %s, name:%s, desc:%s, idle:%s",
             trains_.size(), train->identifier().c_str(),
             train->get_train_name().c_str(),
             train->get_train_description().c_str(),
@@ -153,7 +156,8 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::create_or_update(
   uint16_t address, string name, string description, DccMode mode, bool idle)
 {
   OSMutexLock lock(&mux_);
-  LOG(INFO, "[TrainDB] Searching for roster entry for address: %u", address);
+  LOG(CONFIG_ROSTER_LOG_LEVEL,
+      "[TrainDB] Searching for roster entry for address: %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
@@ -168,7 +172,8 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::create_or_update(
   trains_.emplace_back(
     new Esp32TrainDbEntry(
       Esp32PersistentTrainData(address, name, description, mode, idle), this));
-  LOG(INFO, "[TrainDB] No entry was found, created new entry:%s.",
+  LOG(CONFIG_ROSTER_LOG_LEVEL,
+      "[TrainDB] No entry was found, created new entry:%s.",
       trains_[index]->identifier().c_str());
   return trains_[index];
 }
@@ -186,7 +191,7 @@ int Esp32TrainDatabase::get_index(unsigned address)
 
 bool Esp32TrainDatabase::is_train_id_known(openlcb::NodeID train_id)
 {
-  LOG(INFO, "[TrainDB] searching for train with id: %s",
+  LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] searching for train with id: %s",
       esp32cs::node_id_to_string(train_id).c_str());
   dcc::TrainAddressType type;
   uint32_t addr =  0;
@@ -195,10 +200,6 @@ bool Esp32TrainDatabase::is_train_id_known(openlcb::NodeID train_id)
   {
     // only search with the address and discard the drive type (for now)
     auto ent = FIND_TRAIN(addr);
-    if (ent != trains_.end())
-    {
-      LOG(VERBOSE, "[TrainDB] %s", (*ent)->identifier().c_str());
-    }
     return ent != trains_.end();
   }
   return false;
@@ -210,7 +211,8 @@ void Esp32TrainDatabase::delete_entry(uint16_t address)
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
-    LOG(INFO, "[TrainDB] Removing persistent entry for address %u", address);
+    LOG(CONFIG_ROSTER_LOG_LEVEL,
+        "[TrainDB] Removing persistent entry for address %u", address);
     trains_.erase(entry);
     // Remove the locomotive from the train node/instance manager
     Singleton<AllTrainNodes>::instance()->remove_train_impl(address);
@@ -221,7 +223,8 @@ void Esp32TrainDatabase::delete_entry(uint16_t address)
 std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::get_entry(unsigned train_id)
 {
   OSMutexLock lock(&mux_);
-  LOG(VERBOSE, "[TrainDB] get_entry(%u) : %zu", train_id, trains_.size());
+  LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] get_entry(%u) : %zu", train_id,
+      trains_.size());
   if (train_id < trains_.size())
   {
     return trains_[train_id];
@@ -239,16 +242,17 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::find_entry(openlcb::NodeID nod
                                                            , unsigned hint)
 {
   OSMutexLock lock(&mux_);
-  LOG(INFO, "[TrainDB] Searching for Train Node:%s, Hint:%u",
+  LOG(CONFIG_ROSTER_LOG_LEVEL,
+      "[TrainDB] Searching for Train Node:%s, Hint:%u",
       esp32cs::node_id_to_string(node_id).c_str(), hint);
   auto entry = FIND_TRAIN_HINT(node_id, hint);
   if (entry != trains_.end())
   {
-    LOG(INFO, "[TrainDB] Found existing entry: %s."
+    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Found existing entry: %s."
       , (*entry)->identifier().c_str());
     return *entry;
   }
-  LOG(INFO, "[TrainDB] No entry found!");
+  LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] No entry found!");
   return nullptr;
 }
 
@@ -259,14 +263,15 @@ unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
   OSMutexLock lock(&mux_);
   size_t index = 0;
 
-  LOG(INFO, "[TrainDB] Searching for loco %d", address);
+  LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Searching for loco %d", address);
 
   // prevent duplicate entries in the roster
   auto ent = FIND_TRAIN(address);
   if (ent != trains_.end())
   {
     index = std::distance(trains_.begin(), ent);
-    LOG(INFO, "[TrainDB] Found existing entry (%zu)", index);
+    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Found existing entry (%zu)",
+        index);
   }
   else
   {
@@ -274,9 +279,9 @@ unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
     index = trains_.size();
 
 #ifdef CONFIG_ROSTER_AUTO_CREATE_ENTRIES
-    LOG(INFO
-      , "[TrainDB] Creating persistent roster entry for locomotive %d."
-      , address);
+    LOG(CONFIG_ROSTER_LOG_LEVEL,
+        "[TrainDB] Creating persistent roster entry for locomotive %d.",
+        address);
 
     // create the new entry, it will default to being marked dirty so it will
     // automatically persist.
@@ -303,7 +308,8 @@ unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
 void Esp32TrainDatabase::set_train_name(uint16_t address, std::string name)
 {
   OSMutexLock lock(&mux_);
-  LOG(INFO, "[TrainDB] Searching for train with address %d", address);
+  LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Searching for train with address %d",
+      address);
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
@@ -318,7 +324,8 @@ void Esp32TrainDatabase::set_train_name(uint16_t address, std::string name)
 void Esp32TrainDatabase::set_train_description(uint16_t address, std::string description)
 {
   OSMutexLock lock(&mux_);
-  LOG(INFO, "[TrainDB] Searching for train with address %u", address);
+  LOG(CONFIG_ROSTER_LOG_LEVEL,
+      "[TrainDB] Searching for train with address %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
@@ -333,7 +340,8 @@ void Esp32TrainDatabase::set_train_description(uint16_t address, std::string des
 void Esp32TrainDatabase::set_train_auto_idle(uint16_t address, bool idle)
 {
   OSMutexLock lock(&mux_);
-  LOG(INFO, "[TrainDB] Searching for train with address %u", address);
+  LOG(CONFIG_ROSTER_LOG_LEVEL,
+      "[TrainDB] Searching for train with address %u", address);
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
@@ -349,7 +357,8 @@ void Esp32TrainDatabase::set_train_auto_idle(uint16_t address, bool idle)
 void Esp32TrainDatabase::set_train_function_label(uint16_t address, uint8_t fn_id, Symbols label)
 {
   OSMutexLock lock(&mux_);
-  LOG(INFO, "[TrainDB] Searching for train with address %u", address);
+  LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Searching for train with address %u",
+      address);
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
@@ -365,7 +374,8 @@ void Esp32TrainDatabase::set_train_function_label(uint16_t address, uint8_t fn_i
 void Esp32TrainDatabase::set_train_drive_mode(uint16_t address, commandstation::DccMode mode)
 {
   OSMutexLock lock(&mux_);
-  LOG(INFO, "[TrainDB] Searching for train with address %u", address);
+  LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Searching for train with address %u",
+      address);
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
@@ -414,7 +424,8 @@ string Esp32TrainDatabase::get_entry_as_json_locked(uint16_t address, bool reada
 void Esp32TrainDatabase::persist()
 {
   OSMutexLock lock(&mux_);
-  LOG(VERBOSE, "[TrainDB] Checking if roster needs to be persisted...");
+  LOG(CONFIG_ROSTER_LOG_LEVEL,
+      "[TrainDB] Checking if roster needs to be persisted...");
   auto ent = std::find_if(trains_.begin(), trains_.end(),
     [](const auto &train)
     {
@@ -422,7 +433,8 @@ void Esp32TrainDatabase::persist()
     });
   if (ent != trains_.end() || entryDeleted_)
   {
-    LOG(VERBOSE, "[TrainDB] At least one entry requires persistence.");
+    LOG(CONFIG_ROSTER_LOG_LEVEL,
+        "[TrainDB] At least one entry requires persistence.");
     std::string serialized = "[";
     size_t count = 0;
     for (auto entry : trains_)
@@ -440,12 +452,12 @@ void Esp32TrainDatabase::persist()
     }
     serialized += "]";
     write_string_to_file(TRAIN_DB_JSON_FILE, serialized);
-    LOG(INFO, "[TrainDB] Persisted %zu entries.", count);
+    LOG(INFO, "[TrainDB] Persisted %zu roster entries.", count);
     entryDeleted_ = false;
   }
   else
   {
-    LOG(VERBOSE, "[TrainDB] No entries require persistence");
+    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] No entries require persistence");
   }
 }
 

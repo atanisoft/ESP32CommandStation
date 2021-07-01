@@ -1004,4 +1004,17 @@ menu "Locomotive Roster"
             this many seconds to persistant storage (SPIFFS or SD). This is
             done to minimize the number of write operations when roster entries
             are modified.
+    choice ROSTER_LOGGING
+        bool "Turnout Manager logging"
+        default ROSTER_LOGGING_MINIMAL
+        config ROSTER_LOGGING_VERBOSE
+            bool "Verbose"
+        config ROSTER_LOGGING_MINIMAL
+            bool "Minimal"
+    endchoice
+    config ROSTER_LOG_LEVEL
+        int
+        default 4 if ROSTER_LOGGING_MINIMAL
+        default 3 if ROSTER_LOGGING_VERBOSE
+        default 5
 endmenu
