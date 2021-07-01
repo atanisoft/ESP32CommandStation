@@ -507,6 +507,8 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
             cJSON_GetObjectItem(root, "tgt")->valuestring : "";
         if (action == "save")
         {
+          LOG(VERBOSE, "[WSJSON:%d] Creating/Updating roster entry %d",
+              req_id->valueint, address);
           string name = cJSON_GetObjectItem(root, "name")->valuestring;
           string description = cJSON_GetObjectItem(root, "desc")->valuestring;
           DccMode mode =
@@ -516,8 +518,8 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         }
         else if (action == "delete")
         {
-          LOG(VERBOSE, "[WSJSON:%d] Deleting accessory %d", req_id->valueint,
-              address);
+          LOG(VERBOSE, "[WSJSON:%d] Deleting roster entry %d",
+              req_id->valueint, address);
           traindb->delete_entry(address);
         }
         response =
