@@ -15,6 +15,9 @@
     - RMT: ISR PRO_CPU
 * [ ] Investigate heap corruption issues.
 * [ ] DCC: ULP current sense / ACK.
+    - [x] Implementation of ULP code to read ADC and wake main SoC when thresholds breached.
+    - [ ] Disable track when short occurs.
+    - [ ] Enable track when short has cleared.
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
 * [x] Deps: Remove nlohmann_json dependency in favor of cJSON.
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
@@ -22,6 +25,7 @@
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
 * [x] TrainDB: reduce function types to: light, horn (momentary), bell, mute, coupler, other, other (momentary).
 * [ ] TrainDB: Remove Marklin support.
+* [x] TrainDB: Enable editing via loco CDI.
 * [ ] AccessoryDecoderDB: Verify all functionality.
 * [x] AccessoryDecoderDB: Directly consume OpenLCB events.
 * [x] AccessoryDecoderDB: Add name to decoder.
@@ -35,16 +39,16 @@
 * RailCom: Migrate Esp32RailComDriver to use Timer and UART HAL APIs.
 * RailCom: Integrate RailCom hub with rest of stack (TrainSearch, Prog Backend, etc).
 * TrainDB: Configurable timeout for idle trains.
-* TrainDB: Customized function label names.
-* TrainDB / TrainSearch: Enable editing via CDI.
+* TrainDB: Customizable function label names.
 * TrainSearch: General code formatting / cleanup
 * TrainSearch: Move e-stop handling to this module rather than main.
 * WebServer: Document all endpoints and data formats (including WS)
 * WebUI: urldecode all field data from json.
 * WebUI: Add function name/label editing via web interface.
 * WebUI: Show remaining characters for various text fields.
+* WiThrottle support.
 
-### Not required for v2.0
+### Future planning
 
 * DCC: select() VFS API?
 * DCC: on-demand translation and drop tx complete hook?
@@ -54,7 +58,6 @@
 * AccessoryDecoderDB: CBOR data format?
 * AccessoryDecoderDB: Routes.
 * WebUI: compressed ws stream?
-* WiThrottle support.
 * Import roster/routes/accessories from JMRI
 
 ## OpenMRNIDF TODO list

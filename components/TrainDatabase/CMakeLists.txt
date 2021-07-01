@@ -3,16 +3,18 @@ set(CUSTOM_DEPS
     TrainSearchProtocol
     Utils
 )
+
 set(IDF_DEPS
     json
 )
-idf_component_register(SRCS TrainDatabase.cpp
+
+set(DB_SOURCE_FILES
+    Esp32TrainDatabase.cpp
+    Esp32TrainDbEntry.cpp
+)
+
+idf_component_register(SRCS "${DB_SOURCE_FILES}"
                        INCLUDE_DIRS include
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 
-idf_build_get_property(project_ver PROJECT_VER)
-string(SUBSTRING "${project_ver}" 0 20 SNIP_SW_VERSION)
-set(SNIP_HW_VERSION "1.0.0")
-
-set_source_files_properties(TrainDatabase.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
-set_source_files_properties(TrainDatabase.cpp PROPERTIES COMPILE_DEFINITIONS "SNIP_HW_VERSION=\"${SNIP_HW_VERSION}\"; SNIP_SW_VERSION=\"${SNIP_SW_VERSION}\"")
+set_source_files_properties(Esp32TrainDatabase.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)

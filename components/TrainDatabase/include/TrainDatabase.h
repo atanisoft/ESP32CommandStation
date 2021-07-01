@@ -185,7 +185,7 @@ namespace esp32cs
     // number of known trains
     size_t size() override
     {
-      return knownTrains_.size();
+      return trains_.size();
     }
 
     int get_index(unsigned address);
@@ -198,11 +198,11 @@ namespace esp32cs
     bool is_train_id_known(openlcb::NodeID train_id) override;
 
     std::shared_ptr<commandstation::TrainDbEntry> create_or_update(
-      unsigned address, std::string name = "unknown",
+      uint16_t address, std::string name = "unknown",
       string desciption = "unknown", DccMode mode = DccMode::DCC_128,
       bool idle = false);
 
-    void delete_entry(unsigned address);
+    void delete_entry(uint16_t address);
 
     std::shared_ptr<commandstation::TrainDbEntry> get_entry(unsigned train_id) override;
 
@@ -210,14 +210,14 @@ namespace esp32cs
       openlcb::NodeID traction_node_id, unsigned hint = 0) override;
 
     unsigned add_dynamic_entry(uint16_t address, DccMode mode) override;
-    void set_train_name(unsigned address, std::string name);
-    void set_train_description(unsigned address, std::string description);
-    void set_train_auto_idle(unsigned address, bool idle);
-    void set_train_function_label(unsigned address, uint8_t fn_id, Symbols label);
-    void set_train_drive_mode(unsigned address, DccMode mode);
+    void set_train_name(uint16_t address, std::string name);
+    void set_train_description(uint16_t address, std::string description);
+    void set_train_auto_idle(uint16_t address, bool idle);
+    void set_train_function_label(uint16_t address, uint8_t fn_id, Symbols label);
+    void set_train_drive_mode(uint16_t address, DccMode mode);
 
     std::string get_all_entries_as_json();
-    std::string get_entry_as_json(unsigned address, bool readable = true);
+    std::string get_entry_as_json(uint16_t address, bool readable = true);
 
     openlcb::MemorySpace *get_train_cdi()
     {
@@ -232,11 +232,11 @@ namespace esp32cs
     void persist();
 
   private:
-    std::string get_entry_as_json_locked(unsigned address, bool readable = true);
+    std::string get_entry_as_json_locked(uint16_t address, bool readable = true);
     openlcb::SimpleStackBase *stack_;
     bool entryDeleted_{false};
     OSMutex mux_;
-    std::vector<std::shared_ptr<Esp32TrainDbEntry>> knownTrains_;
+    std::vector<std::shared_ptr<Esp32TrainDbEntry>> trains_;
     uninitialized<openlcb::ROFileMemorySpace> trainCdiFile_;
     uninitialized<openlcb::ROFileMemorySpace> tempTrainCdiFile_;
     uninitialized<AutoPersistFlow> persistFlow_;
