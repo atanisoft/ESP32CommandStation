@@ -38,11 +38,13 @@
 #include "FindProtocolServer.hxx"
 #include "TrainDb.hxx"
 #include <dcc/Loco.hxx>
+#include <functional>
 #include <openlcb/EventHandlerTemplates.hxx>
 #include <openlcb/MemoryConfig.hxx>
 #include <openlcb/SimpleNodeInfo.hxx>
 #include <openlcb/TractionDefs.hxx>
 #include <openlcb/TractionTrain.hxx>
+#include <openlcb/VirtualMemorySpace.hxx>
 #include <StringUtils.hxx>
 #include <utils/format_utils.hxx>
 
@@ -74,6 +76,7 @@ using openlcb::NodeID;
 using openlcb::MemoryConfigDefs;
 using openlcb::IncomingMessageStateFlow;
 using openlcb::FileMemorySpace;
+using openlcb::VirtualMemorySpace;
 
 using std::shared_ptr;
 
@@ -109,6 +112,11 @@ public:
   uint16_t address()
   {
     return address_;
+  }
+
+  DccMode mode()
+  {
+    return mode_;
   }
 
   size_t id()
@@ -443,8 +451,10 @@ class AllTrainNodes::TrainPipHandler : public IncomingMessageStateFlow
   }
 
  private:
-  Action entry() override {
-    if (parent_->find_node(nmsg()->dstNode) == nullptr) {
+  Action entry() override
+  {
+    if (parent_->find_node(nmsg()->dstNode) == nullptr)
+    {
       return release_and_exit();
     }
 
@@ -452,7 +462,8 @@ class AllTrainNodes::TrainPipHandler : public IncomingMessageStateFlow
                              STATE(fill_response_buffer));
   }
 
-  Action fill_response_buffer() {
+  Action fill_response_buffer()
+  {
     // Grabs our allocated buffer.
     auto* b = get_allocation_result(iface()->addressed_message_write_flow());
     auto reply = pipReply_;
@@ -544,11 +555,25 @@ class AllTrainNodes::TrainFDISpace : public MemorySpace
   DelayedInitTrainNode* impl_{nullptr};
 };
 
-class AllTrainNodes::TrainConfigSpace : public FileMemorySpace
+class AllTrainNodes::TrainConfigSpace : public VirtualMemorySpace
 {
- public:
-  TrainConfigSpace(int fd, AllTrainNodes* parent, size_t file_end)
-      : FileMemorySpace(fd, file_end), parent_(parent) {}
+public:
+  TrainConfigSpace(AllTrainNodes* parent) : parent_(parent)
+  {
+    register_numeric(cfg_.train().train().address(), typed_reader<uint16_t>(0),
+                     typed_writer<uint16_t>(0));
+    register_numeric(cfg_.train().train().mode(), typed_reader<uint8_t>(1),
+                     typed_writer<uint8_t>(1));
+    register_string(cfg_.train().train().name(), string_reader(0),
+                    string_writer(0));
+    register_string(cfg_.train().train().description(), string_reader(1),
+                    string_writer(1));
+    register_numeric(cfg_.train().train().fn().all_functions().entry<0>().icon(),
+                     typed_reader<uint8_t>(2), typed_writer<uint8_t>(2));
+    register_numeric(cfg_.train().train().fn().all_functions().entry<0>().is_momentary(),
+                     typed_reader<uint8_t>(3), typed_writer<uint8_t>(3));
+    register_repeat(cfg_.train().train().fn().all_functions());
+  }
 
   bool set_node(Node* node) override
   {
@@ -562,38 +587,157 @@ class AllTrainNodes::TrainConfigSpace : public FileMemorySpace
     {
       return false;
     }
-    auto entry = parent_->db_->get_entry(impl_->id());
-    if (!entry)
+    train_ = parent_->db_->get_entry(impl_->id());
+    if (!train_)
     {
       return false;
     }
-    int offset = entry->file_offset();
+    int offset = train_->file_offset();
     if (offset < 0)
     {
       return false;
     }
-    offset_ = offset;
     return true;
   }
-
-  size_t read(address_t source, uint8_t* dst, size_t len, errorcode_t* error,
-              Notifiable* again) override
+private:
+  template <typename T>
+  typename std::function<T(unsigned repeat, BarrierNotifiable *done)>
+  typed_reader(int index)
   {
-    return FileMemorySpace::read(source + offset_, dst, len, error, again);
+    return [this, index](unsigned repeat, BarrierNotifiable *done)
+    {
+      done->notify();
+      switch(index)
+      {
+        case 0:
+          return (T)train_->get_legacy_address();
+        case 1:
+          return (T)train_->get_legacy_drive_mode();
+        case 2:
+        {
+          uint8_t label = train_->get_function_label(repeat + 1);
+          LOG(VERBOSE, "[FN: %d/%s] orig label: %d", repeat + 1,
+              train_->identifier().c_str(), label);
+          if (label == Symbols::FN_UNINITIALIZED ||
+              label == Symbols::MOMENTARY)
+          {
+            label = Symbols::FN_UNKNOWN;
+          }
+          else if (label != Symbols::FN_UNKNOWN)
+          {
+            label &= ~Symbols::MOMENTARY;
+          }
+          LOG(VERBOSE, "[FN: %d/%s] returning label as: %d", repeat + 1,
+              train_->identifier().c_str(), label);
+          return (T)label;
+        }
+        case 3:
+        {
+          uint8_t label = train_->get_function_label(repeat + 1);
+          LOG(VERBOSE, "[FN: %d/%s] label: %d", repeat + 1,
+              train_->identifier().c_str(), label);
+          if (label != Symbols::FN_UNKNOWN &&
+              label != Symbols::FN_UNINITIALIZED &&
+              label != Symbols::MOMENTARY)
+          {
+            if ((label & ~Symbols::MOMENTARY) != label)
+            {
+              return (T)1;
+            }
+          }
+          return (T)0;
+        }
+      }
+      return (T)0;
+    };
   }
 
-  size_t write(address_t destination, const uint8_t* data, size_t len,
-               errorcode_t* error, Notifiable* again) override
+  std::function<void(unsigned repeat, string *contents, BarrierNotifiable *done)>
+  string_reader(int index)
   {
-    return FileMemorySpace::write(destination + offset_, data, len, error,
-                                  again);
+    return [this, index](unsigned repeat, string *contents, BarrierNotifiable *done)
+    {
+      switch (index)
+      {
+        case 0:
+          *contents = train_->get_train_name();
+          break;
+        case 1:
+          *contents = train_->get_train_description();
+          break;
+      }
+      done->notify();
+    };
   }
-
- private:
-  unsigned offset_;
+  
+  template <typename T>
+  std::function<void(unsigned repeat, T contents, BarrierNotifiable *done)>
+  typed_writer(int index)
+  {
+    return [this, index](unsigned repeat, T contents, BarrierNotifiable *done)
+    {
+      switch(index)
+      {
+        case 0:
+          train_->set_legacy_address(contents);
+          break;
+        case 1:
+          train_->set_legacy_drive_mode(static_cast<DccMode>(contents));
+          break;
+        case 2:
+          train_->set_function_label(repeat + 1, static_cast<Symbols>(contents));
+          break;
+        case 3:
+          {
+            uint8_t label = train_->get_function_label(repeat + 1);
+            if (label != Symbols::FN_UNKNOWN &&
+                label != Symbols::FN_UNINITIALIZED &&
+                label != Symbols::MOMENTARY)
+            {
+              if (contents)
+              {
+                label |= Symbols::MOMENTARY;
+              }
+              else
+              {
+                label &= ~Symbols::MOMENTARY;
+              }
+              train_->set_function_label(repeat + 1, static_cast<Symbols>(label));
+            }
+          }
+          break;
+      }
+      done->notify();
+    };
+  }
+  
+  std::function<void(unsigned repeat, string contents, BarrierNotifiable *done)>
+  string_writer(int index)
+  {
+    return [this, index](
+      unsigned repeat, string contents, BarrierNotifiable *done)
+      {
+        // strip off nulls (if found)
+        contents.erase(
+          std::remove(contents.begin(), contents.end(), '\0'), contents.end());
+        switch(index)
+        {
+          case 0:
+            train_->set_train_name(contents);
+            break;
+          case 1:
+            train_->set_train_description(contents);
+            break;
+        }
+        done->notify();
+    };
+  }
+  
   AllTrainNodes* parent_;
   // Train object structure.
   DelayedInitTrainNode* impl_{nullptr};
+  std::shared_ptr<commandstation::TrainDbEntry> train_;
+  TrainConfigDef cfg_{0};
 };
 
 class AllTrainNodes::TrainCDISpace : public MemorySpace
@@ -718,6 +862,7 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
       snipHandler_(new TrainSnipHandler(this, info_flow)),
       pipHandler_(new TrainPipHandler(this)),
       fdiSpace_(new TrainFDISpace(this)),
+      configSpace_(new TrainConfigSpace(this)),
       cdiSpace_(new TrainCDISpace(this)),
       trainIdentHandler_(new TrainIdentifyHandler(this))
 {
@@ -727,6 +872,8 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
       nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
   memoryConfigService_->registry()->insert(
       nullptr, MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
+  memoryConfigService_->registry()->insert(
+      nullptr, MemoryConfigDefs::SPACE_CONFIG, configSpace_.get());
 }
 
 AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
@@ -761,8 +908,7 @@ bool AllTrainNodes::is_valid_train_node(NodeID node_id, bool allocate)
   return find_node(node_id, allocate) != nullptr;
 }
 
-NodeID AllTrainNodes::allocate_node(DccMode drive_type,
-                                             unsigned address)
+NodeID AllTrainNodes::allocate_node(DccMode drive_type, unsigned address)
 {
   DelayedInitTrainNode* impl = create_impl(-1, drive_type, address);
   if (!impl) return 0; // failed.

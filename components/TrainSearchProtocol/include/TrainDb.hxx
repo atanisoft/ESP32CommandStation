@@ -60,18 +60,33 @@ public:
   /// Retrieves the name of the train.
   virtual string get_train_name() = 0;
 
+  /// Sets the name of the train.
+  virtual void set_train_name(string name) = 0;
+
   /// Retrieves the description of the train.
   virtual string get_train_description() = 0;
 
+  /// Sets the description of the train.
+  virtual void set_train_description(string description) = 0;
+
   /// Retrieves the legacy address of the train.
-  virtual int get_legacy_address() = 0;
+  virtual uint16_t get_legacy_address() = 0;
+
+  /// Sets the legacy address of the train.
+  virtual void set_legacy_address(uint16_t address) = 0;
 
   /// Retrieves the traction drive mode of the train.
   virtual DccMode get_legacy_drive_mode() = 0;
 
+  /// Sets the traction drive mode of the train.
+  virtual void set_legacy_drive_mode(DccMode mode) = 0;
+
   /// Retrieves the label assigned to a given function, or FN_NONEXISTANT if
   /// the function does not exist.
-  virtual unsigned get_function_label(unsigned fn_id) = 0;
+  virtual Symbols get_function_label(unsigned fn_id) = 0;
+
+  /// Sets the label assigned to a given function.
+  virtual void set_function_label(unsigned fn_id, Symbols label) = 0;
 
   /// Returns the largest valid function ID for this train, or -1 if the train
   /// has no functions.

@@ -52,8 +52,8 @@ namespace esp32cs
     std::string name;
     std::string description;
     bool automatic_idle;
-    uint8_t mode;
-    std::vector<uint8_t> functions;
+    DccMode mode;
+    std::vector<Symbols> functions;
     Esp32PersistentTrainData(uint16_t address, std::string name="unknown",
                              std::string description="unknown",
                              DccMode mode=DccMode::DCC_128,
@@ -89,44 +89,38 @@ namespace esp32cs
       return data_.name;
     }
 
-    void set_train_name(std::string name);
+    void set_train_name(std::string name) override;
 
-    void set_train_description(std::string description);
+    void set_train_description(std::string description) override;
 
     std::string get_train_description() override
     {
       return data_.description;
     }
 
-    int get_legacy_address() override
+    uint16_t get_legacy_address() override
     {
       return data_.address;
     }
 
-    void set_legacy_address(int address)
-    {
-      data_.address = address;
-      dirty_ = true;
-    }
+    void set_legacy_address(uint16_t address) override;
 
     DccMode get_legacy_drive_mode() override
     {
-      return (DccMode)data_.mode;
+      return data_.mode;
     }
 
-    void set_legacy_drive_mode(DccMode mode)
-    {
-      data_.mode = mode;
-      dirty_ = true;
-    }
+    void set_legacy_drive_mode(DccMode mode) override;
 
-    unsigned get_function_label(unsigned fn_id) override;
+    Symbols get_function_label(unsigned fn_id) override;
 
-    void set_function_label(unsigned fn_id, Symbols label)
+    void set_function_label(unsigned fn_id, Symbols label) override;
+
+    void set_auto_idle(bool idle);
+
+    bool is_auto_idle()
     {
-      data_.functions[fn_id] = label;
-      dirty_ = true;
-      recalcuate_max_fn();
+      return data_.automatic_idle;
     }
 
     int get_max_fn() override
@@ -143,17 +137,6 @@ namespace esp32cs
     Esp32PersistentTrainData get_data()
     {
       return data_;
-    }
-
-    void set_auto_idle(bool idle)
-    {
-      data_.automatic_idle = idle;
-      dirty_ = true;
-    }
-
-    bool is_auto_idle()
-    {
-      return data_.automatic_idle;
     }
 
     bool is_dirty()

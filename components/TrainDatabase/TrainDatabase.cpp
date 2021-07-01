@@ -95,34 +95,60 @@ openlcb::NodeID Esp32TrainDbEntry::get_traction_node()
 
 void Esp32TrainDbEntry::set_train_name(string name)
 {
-  data_.name = std::move(name);
-  if (data_.name.length() > MAX_TRAIN_NAME_LEN)
+  if (data_.name.compare(name))
   {
-    LOG(WARNING,
-        "[Train:%d] Truncating name: %s -> %s", data_.address,
-        data_.name.c_str(),
-        data_.name.substr(0, MAX_TRAIN_NAME_LEN).c_str());
-    data_.name.resize(MAX_TRAIN_NAME_LEN);
+    if (name.length() > MAX_TRAIN_NAME_LEN)
+    {
+      LOG(WARNING,
+          "[Train:%d] Truncating name: %s -> %s", data_.address,
+          name.c_str(),
+          name.substr(0, MAX_TRAIN_NAME_LEN).c_str());
+      name.resize(MAX_TRAIN_NAME_LEN);
+    }
+    LOG(INFO, "[Train:%d] Setting name:%s", data_.address, name.c_str());
+    data_.name = std::move(name);
+    dirty_ = true;
   }
-  dirty_ = true;
 }
 
 void Esp32TrainDbEntry::set_train_description(std::string description)
 {
-  data_.description = std::move(description);
-  if (data_.description.length() > MAX_TRAIN_DESC_LEN)
+  
+  if (description.length() > MAX_TRAIN_DESC_LEN)
   {
     LOG(WARNING,
         "[Train:%d] Truncating description: %s -> %s", data_.address,
-        data_.description.c_str(),
-        data_.description.substr(0, MAX_TRAIN_DESC_LEN).c_str());
-    data_.description.resize(MAX_TRAIN_DESC_LEN);
+        description.c_str(),
+        description.substr(0, MAX_TRAIN_DESC_LEN).c_str());
+    description.resize(MAX_TRAIN_DESC_LEN);
   }
+  LOG(INFO, "[Train:%d] Setting description:%s", data_.address,
+      description.c_str());
+  data_.description = std::move(description);
   dirty_ = true;
 }
 
+void Esp32TrainDbEntry::set_legacy_address(uint16_t address)
+{
+  if (data_.address != address)
+  {
+    LOG(INFO, "[Train:%d] Updating address to:%d", data_.address, address);
+    data_.address = address;
+    dirty_ = true;
+  }
+}
 
-unsigned Esp32TrainDbEntry::get_function_label(unsigned fn_id)
+void Esp32TrainDbEntry::set_legacy_drive_mode(DccMode mode)
+{
+  if (data_.mode != mode)
+  {
+    LOG(INFO, "[Train:%d] Updating drive mode to:%d", data_.address, mode);
+    data_.mode = mode;
+    dirty_ = true;
+  }
+}
+
+Symbols Esp32TrainDbEntry::get_function_label(unsigned fn_id)
 {
   // if the function id is larger than our max list reject it
   if (fn_id > maxFn_)
@@ -131,6 +157,28 @@ unsigned Esp32TrainDbEntry::get_function_label(unsigned fn_id)
   }
   // return the mapping for the function
   return data_.functions[fn_id];
+}
+
+void Esp32TrainDbEntry::set_function_label(unsigned fn_id, Symbols label)
+{
+  if (data_.functions[fn_id] != label)
+  {
+    LOG(INFO, "[Train:%d] Setting fn:%d to %d", data_.address, fn_id, label);
+    data_.functions[fn_id] = label;
+    dirty_ = true;
+    recalcuate_max_fn();
+  }
+}
+
+void Esp32TrainDbEntry::set_auto_idle(bool idle)
+{
+  if (data_.automatic_idle != idle)
+  {
+    LOG(INFO, "[Train:%d] Setting auto-idle: %s", data_.address,
+        idle ? "On" : "Off");
+    data_.automatic_idle = idle;
+    dirty_ = true;
+  }
 }
 
 int Esp32TrainDbEntry::file_offset()
@@ -278,14 +326,24 @@ static constexpr const char * TRAIN_DB_JSON_FILE = "/fs/trains.json";
 static constexpr const char * PERSISTED_TRAIN_CDI = "/fs/train.xml";
 static constexpr const char * TEMP_TRAIN_CDI = "/fs/tmptrain.xml";
 
+void validate_train_cdi()
+{
+  commandstation::TrainConfigDef train_cfg(0);
+  CDIXMLGenerator::create_config_descriptor_xml(train_cfg, PERSISTED_TRAIN_CDI, nullptr);
+}
+
+void validate_temp_train_cdi()
+{
+  commandstation::TrainTmpConfigDef temp_train_cfg(0);
+  CDIXMLGenerator::create_config_descriptor_xml(temp_train_cfg, TEMP_TRAIN_CDI, nullptr);
+}
+
 Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
                                        Service *service)
 {
   LOG(INFO, "[TrainDB] Refreshing train CDI files...");
-  commandstation::TrainConfigDef train_cfg(0);
-  commandstation::TrainTmpConfigDef temp_train_cfg(0);
-  CDIXMLGenerator::create_config_descriptor_xml(train_cfg, PERSISTED_TRAIN_CDI, nullptr);
-  CDIXMLGenerator::create_config_descriptor_xml(temp_train_cfg, TEMP_TRAIN_CDI, nullptr);
+  validate_train_cdi();
+  validate_temp_train_cdi();
   trainCdiFile_.emplace(PERSISTED_TRAIN_CDI);
   tempTrainCdiFile_.emplace(TEMP_TRAIN_CDI);
   struct stat statbuf;
@@ -313,7 +371,7 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
           cJSON_ArrayForEach(function, functions)
           {
             uint8_t id = cJSON_GetObjectItem(function, "id")->valueint;
-            uint8_t type = cJSON_GetObjectItem(function, "type")->valueint;
+            Symbols type = (Symbols)cJSON_GetObjectItem(function, "type")->valueint;
             LOG(VERBOSE, "[TrainDB:%d] function: %d -> %d", data.address, id,
                 type);
             data.functions[id] = type;
@@ -529,7 +587,6 @@ void Esp32TrainDatabase::set_train_name(unsigned address, std::string name)
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
   {
-    LOG(INFO, "[TrainDB] Setting train(%u) name: %s", address, name.c_str());
     (*entry)->set_train_name(name);
   }
   else
@@ -545,7 +602,6 @@ void Esp32TrainDatabase::set_train_description(unsigned address, std::string des
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
   {
-    LOG(INFO, "[TrainDB] Setting train(%u) description: %s", address, description.c_str());
     (*entry)->set_train_description(description);
   }
   else
@@ -561,7 +617,6 @@ void Esp32TrainDatabase::set_train_auto_idle(unsigned address, bool idle)
   auto entry = FIND_TRAIN(address);
   if (entry != knownTrains_.end())
   {
-    LOG(INFO, "[TrainDB] Setting auto-idle: %s", idle ? "On" : "Off");
     (*entry)->set_auto_idle(idle);
   }
   else

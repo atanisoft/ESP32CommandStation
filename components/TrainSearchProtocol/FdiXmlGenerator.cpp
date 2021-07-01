@@ -105,7 +105,7 @@ void FdiXmlGenerator::generate_more() {
           state_ = STATE_NO_MORE_FN;
           continue;
         }
-        if (entry_->get_function_label(nextFunction_) & 0x80) {
+        if (entry_->get_function_label(nextFunction_) & Symbols::MOMENTARY) {
           add_to_output(from_const_string(kFdiXmlMomentaryFunction));
         } else {
           add_to_output(from_const_string(kFdiXmlBinaryFunction));

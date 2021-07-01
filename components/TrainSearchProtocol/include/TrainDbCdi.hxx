@@ -46,7 +46,7 @@ static const char MOMENTARY_MAP[] =
     "<relation><property>1</property><value>Momentary</value></relation>";
 
 static const char FNDISPLAY_MAP[] =
-    "<relation><property>0</property><value>Unavailable</value></relation>"
+    "<relation><property>0</property><value>Not Available</value></relation>"
     "<relation><property>1</property><value>Light</value></relation>"
     "<relation><property>2</property><value>Bell</value></relation>"
     "<relation><property>3</property><value>Horn</value></relation>"
@@ -57,7 +57,7 @@ static const char FNDISPLAY_MAP[] =
     "<relation><property>8</property><value>Sound</value></relation>"
     "<relation><property>9</property><value>Function</value></relation>"
     "<relation><property>10</property><value>Uncouple</value></relation>"
-    "<relation><property>255</property><value>Unavailable_</value></relation>";
+    "<relation><property>127</property><value>Unknown</value></relation>";
 
 CDI_GROUP(TrainDbCdiFunctionGroup, Name("Functions"),
           Description("Defines what each function button does."));
@@ -85,17 +85,12 @@ CDI_GROUP_ENTRY(all_functions, TrainDbCdiRepFunctionGroup, RepName("Fn"));
 CDI_GROUP_END();
 
 static const char DCC_DRIVE_MODE_MAP[] =
-    "<relation><property>0</property><value>Unused</value></relation>"
-    "<relation><property>10</property><value>DCC 28-step</value></relation>"
-    "<relation><property>11</property><value>DCC 128-step</value></relation>"
-    "<relation><property>5</property><value>Marklin-Motorola "
-    "I</value></relation>"
-    "<relation><property>6</property><value>Marklin-Motorola "
-    "II</value></relation>"
-    "<relation><property>14</property><value>DCC 28-step (forced long "
-    "address)</value></relation>"
-    "<relation><property>15</property><value>DCC 128-step (forced long "
-    "address)</value></relation>";
+    "<relation><property>9</property><value>DCC (14 speed steps)</value></relation>"
+    "<relation><property>10</property><value>DCC (28 speed steps)</value></relation>"
+    "<relation><property>11</property><value>DCC (128 speed steps)</value></relation>"
+    "<relation><property>13</property><value>DCC (14 speed steps, force long address)</value></relation>"
+    "<relation><property>14</property><value>DCC (28 speed steps, force long address)</value></relation>"
+    "<relation><property>15</property><value>DCC (128 speed steps, force long address)</value></relation>";
 
 CDI_GROUP(TrainDbCdiEntry, Description("Configures a single train"));
 CDI_GROUP_ENTRY(address, openlcb::Uint16ConfigEntry, Name("Address"),
@@ -104,13 +99,16 @@ CDI_GROUP_ENTRY(address, openlcb::Uint16ConfigEntry, Name("Address"),
 CDI_GROUP_ENTRY(
     mode, openlcb::Uint8ConfigEntry, Name("Protocol"),
     Description("Protocol to use on the track for driving this train."),
-    MapValues(DCC_DRIVE_MODE_MAP), Default(DCC_28));
-CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<16>, Name("Name"),
+    MapValues(DCC_DRIVE_MODE_MAP), Default(DCC_128));
+CDI_GROUP_ENTRY(name, openlcb::StringConfigEntry<63>, Name("Name"),
                 Description("Identifies the train node on the LCC bus."));
-CDI_GROUP_ENTRY(functions, TrainDbCdiAllFunctionGroup);
+CDI_GROUP_ENTRY(description, openlcb::StringConfigEntry<64>, Name("Description"),
+                Description("Describes the train node on the LCC bus."));
+CDI_GROUP_ENTRY(fn, TrainDbCdiAllFunctionGroup);
 CDI_GROUP_END();
 
-CDI_GROUP(TrainSegment, Segment(openlcb::MemoryConfigDefs::SPACE_CONFIG));
+CDI_GROUP(TrainSegment, Segment(openlcb::MemoryConfigDefs::SPACE_CONFIG),
+          Name("Train Settings"));
 CDI_GROUP_ENTRY(train, TrainDbCdiEntry);
 CDI_GROUP_END();
 
@@ -119,7 +117,7 @@ CDI_GROUP(TrainConfigDef, MainCdi());
 // information in here because both of these vary train by train.
 CDI_GROUP_ENTRY(ident, openlcb::Identification, Model("Virtual train node"));
 CDI_GROUP_ENTRY(train, TrainSegment);
-CDI_GROUP_ENTRY(cv, ProgrammingTrackSpaceConfig);
+//CDI_GROUP_ENTRY(cv, ProgrammingTrackSpaceConfig);
 CDI_GROUP_END();
 
 CDI_GROUP(TmpTrainSegment, Segment(openlcb::MemoryConfigDefs::SPACE_CONFIG),
@@ -135,7 +133,7 @@ CDI_GROUP_END();
 CDI_GROUP(TrainTmpConfigDef, MainCdi());
 CDI_GROUP_ENTRY(ident, openlcb::Identification, Model("Virtual train node"));
 CDI_GROUP_ENTRY(train, TmpTrainSegment);
-CDI_GROUP_ENTRY(cv, ProgrammingTrackSpaceConfig);
+//CDI_GROUP_ENTRY(cv, ProgrammingTrackSpaceConfig);
 CDI_GROUP_END();
 
 }  // namespace commandstation

@@ -39,43 +39,106 @@
 
 namespace commandstation {
 
-class ExternalTrainDbEntry : public TrainDbEntry {
+class ExternalTrainDbEntry : public TrainDbEntry
+{
  public:
-  ExternalTrainDbEntry(const string& name, int address, DccMode mode = DCC_28) : name_(name), address_(address), mode_(mode) {}
+  ExternalTrainDbEntry(
+    const string& name, uint16_t address, DccMode mode = DCC_128)
+    : name_(name), description_(name), address_(address), mode_(mode)
+  {
+
+  }
 
   /// Returns an internal identifier that uniquely defines where this traindb
   /// entry was allocated from.
-  string identifier() override { return ""; }
+  string identifier() override
+  {
+    return "";
+  }
 
   /// Retrieves the NMRAnet NodeID for the virtual node that represents a
   /// particular train known to the database.
-  openlcb::NodeID get_traction_node() override { return 0; }
+  openlcb::NodeID get_traction_node() override
+  {
+    return 0;
+  }
 
   /// Retrieves the name of the train.
-  string get_train_name() override { return name_; }
+  string get_train_name() override
+  {
+    return name_;
+  }
+
+  /// Sets the name of the train.
+  void set_train_name(string name) override
+  {
+    name_ = name;
+  }
 
   /// Retrieves the description of the train.
-  string get_train_description() override { return name_; }
+  string get_train_description() override
+  {
+    return description_;
+  }
+
+  /// Sets the description of the train.
+  void set_train_description(string description) override
+  {
+    description_ = description;
+  }
 
   /// Retrieves the legacy address of the train.
-  int get_legacy_address() override { return address_; }
+  uint16_t get_legacy_address() override
+  {
+    return address_;
+  }
+
+  /// Sets the legacy address of the train.
+  void set_legacy_address(uint16_t address) override
+  {
+    address_ = address;
+  }
 
   /// Retrieves the traction drive mode of the train.
-  DccMode get_legacy_drive_mode() override { return mode_; }
+  DccMode get_legacy_drive_mode() override
+  {
+    return mode_;
+  }
+
+  /// Retrieves the traction drive mode of the train.
+  void set_legacy_drive_mode(DccMode mode) override
+  {
+    mode_ = mode;
+  }
 
   /// Retrieves the label assigned to a given function, or FN_NONEXISTANT if
   /// the function does not exist.
-  unsigned get_function_label(unsigned fn_id) override { return 0; }
+  Symbols get_function_label(unsigned fn_id) override
+  {
+    return FN_NONEXISTANT;
+  }
+
+  /// Sets the label assigned to a given function.
+  void set_function_label(unsigned fn_id, Symbols label) override
+  {
+  }
 
   /// Returns the largest valid function ID for this train, or -1 if the train
   /// has no functions.
-  int get_max_fn() override { return 0; }
+  int get_max_fn() override
+  {
+    return 0;
+  }
 
   /// Setup for get_max_fn().
-  void start_read_functions() override { }
+  void start_read_functions() override
+  {
+
+  }
   
   string name_;
-  int address_;
+  string description_;
+  uint16_t address_;
   DccMode mode_;
 };
 
