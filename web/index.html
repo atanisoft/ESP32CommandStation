@@ -312,10 +312,10 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             <label class="form-label text-dark" for="roster-mode">Mode:</label>
             <select id="roster-mode">
               <option value="0">DCC (default, 128 speed steps)</option>
-              <option value="9">DCC (14 speed steps)</option>
+              <!--option value="9">DCC (14 speed steps)</option -->
               <option value="10">DCC (28 speed steps)</option>
               <option value="11">DCC (128 speed steps)</option>
-              <option value="13">DCC (14 speed steps, force long address)</option>
+              <!-- option value="13">DCC (14 speed steps, force long address)</option -->
               <option value="14">DCC (28 speed steps, force long address)</option>
               <option value="15">DCC (128 speed steps, force long address)</option>
             </select>
@@ -1109,7 +1109,12 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       if (window.location.host.length) {
         fetchWithTimeout(String.format('/locomotive/roster?address={0}', address)).then(res => res.json()).then(data => {
           $('#roster-name').val(data.name);
-          $('#roster-mode').val(data.mode.type);
+          // 14 speed steps is not implemented, force type to DCC-128
+          if (data.mode.type === 9 || data.mode.type == 13) {
+            $('#roster-mode').val(11);
+          } else {
+            $('#roster-mode').val(data.mode.type);
+          }
           $('#roster-desc').val(data.desc);
           $('#roster-addr').val(data.addr);
           $('#roster-idle').prop('checked', data.idle);

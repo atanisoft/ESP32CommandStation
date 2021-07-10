@@ -24,7 +24,7 @@
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
 * [x] TrainDB: reduce function types to: light, horn (momentary), bell, mute, coupler, other, other (momentary).
-* [ ] TrainDB: Remove Marklin support.
+* [x] TrainDB: Remove Marklin support.
 * [x] TrainDB: Enable editing via loco CDI.
 * [ ] AccessoryDecoderDB: Verify all functionality.
 * [x] AccessoryDecoderDB: Directly consume OpenLCB events.
@@ -52,6 +52,7 @@
 
 * DCC: select() VFS API?
 * DCC: on-demand translation and drop tx complete hook?
+* DCC: DCC-14 speed step support (OpenMRN implementation needed)
 * StatusLED: Rework to depend on Esp32Ws2812 instead of NeoPixelBus.
 * TrainDB: CBOR data format?
 * TrainDB: Expose via Memory Space?

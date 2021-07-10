@@ -140,25 +140,9 @@ public:
     {
       switch (mode_)
       {
-        case MARKLIN_OLD:
-        {
-          LOG(CONFIG_TSP_LOGGING_LEVEL,
-              "[TrainSearch] Allocating New Marklin (old) train %d", address_);
-          train_ = new MMOldTrain(MMAddress(address_));
-          break;
-        }
-        case MARKLIN_DEFAULT:
-        case MARKLIN_NEW:
-        case MARKLIN_TWOADDR:
-        {
-          LOG(CONFIG_TSP_LOGGING_LEVEL,
-              "[TrainSearch] Allocating New Marklin (new) train %d", address_);
-          train_ = new MMNewTrain(MMAddress(address_));
-          break;
-        }
-          /// @todo (balazs.racz) implement dcc 14 train drive mode.
         case DCC_14:
         case DCC_14_LONG_ADDRESS:
+        // TODO: DCC-14 not implemented in OpenMRN (yet)
         case DCC_28:
         case DCC_28_LONG_ADDRESS:
         {
@@ -301,10 +285,17 @@ AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::find_node(openlcb::NodeID no
   // no active train was found having the provided node id, search for a train
   // in the db that should have the provided node id and return it instead if
   // found.
-  dcc::TrainAddressType type;
+  dcc::TrainAddressType type = dcc::TrainAddressType::UNSUPPORTED;
   uint32_t addr =  0;
   if (TractionDefs::legacy_address_from_train_node_id(node_id, &type, &addr))
   {
+    if (type == dcc::TrainAddressType::MM)
+    {
+      LOG(CONFIG_TSP_LOGGING_LEVEL,
+          "[TrainSearch] Ignoring search for unsupported drive type:%d.",
+          (int)type);
+      return nullptr;
+    }
     LOG(CONFIG_TSP_LOGGING_LEVEL, "[TrainSearch] Checking db for node id: %s",
         esp32cs::node_id_to_string(node_id).c_str());
     auto train = db_->find_entry(node_id, addr);
@@ -889,6 +880,14 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
 AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
   int train_id, DccMode mode, int address)
 {
+  // don't allocate any Marklin nodes
+  if (mode & MARKLIN_ANY)
+  {
+    LOG(CONFIG_TSP_LOGGING_LEVEL,
+        "[TrainSearch] Ignoring attempt to allocate unsupported locomotive "
+        "type: %d using address: %d", mode, address);
+    return nullptr;
+  }
   DelayedInitTrainNode *impl =
     new DelayedInitTrainNode(train_service(), train_id, mode, address);
   {

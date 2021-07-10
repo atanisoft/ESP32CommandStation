@@ -155,9 +155,8 @@ public:
 
     if (sourcePacket->packet_header.is_marklin)
     {
-      // drop marklin packets as unsupported for now.
-      errno = ENOTSUP;
-      return -1;
+      // drop Marklin packets.
+      return 1;
     }
 #if !CONFIG_PROG_TRACK_ENABLED
     if (sourcePacket->packet_header.send_long_preamble)
@@ -328,7 +327,6 @@ private:
   ///
   /// NOTE: this will only encode the next packet if the current packet has
   /// reached the required number of repeats.
-  /// NOTE: Marklin packets will be converted to an IDLE packet.
   void encode_next_packet(BaseType_t *woken)
   {
     // Bit mask constants used as part of the packet translation layer.
@@ -357,12 +355,6 @@ private:
     if (n)
     {
       n->notify_from_isr();
-    }
-    // If the packet is using the Marklin format convert it over to an IDLE
-    // packet since Marklin-Motorola format is not supported.
-    if (packet.packet_header.is_marklin)
-    {
-      packet = dcc::Packet::DCC_IDLE();
     }
 
 #if !CONFIG_OPS_TRACK_ENABLED
