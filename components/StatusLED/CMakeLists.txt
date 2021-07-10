@@ -4,11 +4,7 @@ set(CUSTOM_DEPS
     NeoPixelBus
 )
 
-set(LED_SOURCE_FILES
-    StatusLED.cpp
-)
-
-idf_component_register(SRCS "${LED_SOURCE_FILES}"
+idf_component_register(SRCS StatusLED.cpp
                        INCLUDE_DIRS "include"
                        REQUIRES "${CUSTOM_DEPS}")
 

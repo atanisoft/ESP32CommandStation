@@ -47,7 +47,7 @@ set(CS_SOURCE_FILES
     WebServer.cpp
 )
 
-idf_component_register(SRCS "WebServer.cpp" "ESP32CommandStation.cpp" "${CS_SOURCE_FILES}"
+idf_component_register(SRCS ESP32CommandStation.cpp WebServer.cpp
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 
 # export the project version as a define for the SNIP data, note it must be

@@ -8,12 +8,7 @@ set(IDF_DEPS
     json
 )
 
-set(DB_SOURCE_FILES
-    Esp32TrainDatabase.cpp
-    Esp32TrainDbEntry.cpp
-)
-
-idf_component_register(SRCS "${DB_SOURCE_FILES}"
+idf_component_register(SRCS Esp32TrainDatabase.cpp Esp32TrainDbEntry.cpp
                        INCLUDE_DIRS include
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 

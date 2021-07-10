@@ -15,13 +15,7 @@ set(CUSTOM_DEPS
     Utils
 )
 
-set(DCCVFS_SOURCE_FILES
-    DccConstants.cpp
-    DCCSignalVFS.cpp
-    PrioritizedUpdateLoop.cpp
-)
-
-idf_component_register(SRCS "${DCCVFS_SOURCE_FILES}"
+idf_component_register(SRCS DccConstants.cpp DCCSignalVFS.cpp PrioritizedUpdateLoop.cpp
                        INCLUDE_DIRS "include"
                        PRIV_INCLUDE_DIRS "private_include"
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")

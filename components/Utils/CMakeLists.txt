@@ -12,10 +12,6 @@ set(CUSTOM_DEPS
     StatusLED
 )
 
-set(UTILS_SOURCE_FILES
-    FileSystem.cpp
-)
-
-idf_component_register(SRCS "${UTILS_SOURCE_FILES}"
+idf_component_register(SRCS FileSystem.cpp
                        INCLUDE_DIRS include
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")

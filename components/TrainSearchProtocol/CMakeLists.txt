@@ -3,14 +3,7 @@ set(CUSTOM_DEPS
     Utils
 )
 
-set(TSP_SOURCE_FILES
-    AllTrainNodes.cpp
-    FdiXmlGenerator.cpp
-    FindProtocolDefs.cpp
-    XmlGenerator.cpp
-)
-
-idf_component_register(SRCS "${TSP_SOURCE_FILES}"
+idf_component_register(SRCS AllTrainNodes.cpp FdiXmlGenerator.cpp FindProtocolDefs.cpp XmlGenerator.cpp
                        INCLUDE_DIRS include
                        PRIV_INCLUDE_DIRS private_include
                        REQUIRES "${CUSTOM_DEPS}")

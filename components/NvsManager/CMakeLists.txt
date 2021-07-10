@@ -10,10 +10,6 @@ set(CUSTOM_DEPS
     Utils
 )
 
-set(NVS_SOURCE_FILES
-    NvsManager.cpp
-)
-
-idf_component_register(SRCS "${NVS_SOURCE_FILES}"
+idf_component_register(SRCS NvsManager.cpp
                        INCLUDE_DIRS "include"
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
