@@ -22,6 +22,10 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <esp_wifi_types.h>
 #include <string>
 
+namespace openlcb
+{
+  class BroadcastTimeServer;
+}
 namespace esp32cs
 {
 
@@ -35,6 +39,8 @@ public:
   void force_factory_reset();
   void force_reset_events();
   void set_led_brightness(uint8_t level);
+  void initialize_fast_clock(openlcb::BroadcastTimeServer *time_server);
+  void reconfigure_fast_clock(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t rate);
   
   uint64_t node_id();
   void node_id(uint64_t node_id);

@@ -32,7 +32,8 @@
 * [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
 * [ ] WebUI: Test all endpoints.
 * [x] WebUI: Roster save via WS.
-* [ ] FastClock: Re-add FastClock support.
+* [ ] WebUI: Expose FastClock configuration (non-realtime).
+* [x] FastClock: Re-add FastClock support.
 
 ### Nice to have for v2.0
 

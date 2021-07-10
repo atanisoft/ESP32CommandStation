@@ -816,21 +816,55 @@ menu "Fast Clock Configuration"
         help
             Enabling this option will cause the ESP32 Command Station to
             advertise itself as an LCC Fast Clock.
-    config FASTCLOCK_DEFAULT_ID
-        hex "FastClock Clock ID"
-        default 0x010100000100
+    menu "FastClock (non Real Time)"
         depends on FASTCLOCK_DEFAULT
-        help
-            This is the clock ID that will be created and advertised.
-            The default Fast Clock uses ID 0x010100000100.
-    config FASTCLOCK_RATE
-        hex "FastClock rate quarters"
-        default 4
-        range -512 511
-        depends on FASTCLOCK_DEFAULT
-        help
-            This is the clock ID that will be created and advertised.
-            The default Fast Clock uses ID 0x010100000100.
+        config FASTCLOCK_RATE
+            int "FastClock rate quarters"
+            default 4
+            range -512 511
+            help
+                This is the rate at which the fast clock will advance time.
+        config FASTCLOCK_START_YEAR
+            int "FastClock year"
+            default 1900
+            help
+                This is the year that will be used upon startup for the fast
+                clock.
+        config FASTCLOCK_START_MONTH
+            int "FastClock month"
+            default 1
+            range 1 12
+            help
+                This is the month that will be used upon startup for the fast
+                clock.
+        config FASTCLOCK_START_DAY
+            int "FastClock day"
+            default 1
+            range 1 31
+            help
+                This is the day of the month that will be used upon startup for
+                the fast clock.
+        config FASTCLOCK_START_HOUR
+            int "FastClock hour"
+            default 1
+            range 1 24
+            help
+                This is the hour of the day that will be used upon startup for
+                the fast clock.
+        config FASTCLOCK_START_MINUTE
+            int "FastClock minute"
+            default 1
+            range 1 60
+            help
+                This is the minute of the hour that will be used upon startup
+                for the fast clock.
+        config FASTCLOCK_DEFAULT_ID
+            hex "FastClock Clock ID"
+            default 0x010100000100
+            help
+                This is the clock ID that will be created and advertised.
+                The default Fast Clock uses ID 0x010100000100.
+    endmenu
     config FASTCLOCK_REALTIME
         bool "Enable real-time FastClock"
         default n
@@ -839,13 +873,15 @@ menu "Fast Clock Configuration"
         help
             Enabling this option will cause the ESP32 Command Station to
             advertise itself as an LCC real-time Fast Clock.
-    config FASTCLOCK_REALTIME_ID
-        hex "Real-time Clock ID"
-        default 0x010100000101
+    menu "Fast Clock (Real Time)"
         depends on FASTCLOCK_REALTIME
-        help
-            This is the clock ID that will be created and advertised.
-            Real-Time clock defaults to 0x010100000101.
+        config FASTCLOCK_REALTIME_ID
+            hex "Real-time Clock ID"
+            default 0x010100000101
+            help
+                This is the clock ID that will be created and advertised.
+                Real-Time clock defaults to 0x010100000101.
+    endmenu
 endmenu
 menu "Thermal Monitor Configuration"
     depends on !TEMPSENSOR_DISABLED

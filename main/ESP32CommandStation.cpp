@@ -41,6 +41,8 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <NodeIdMemoryConfigSpace.hxx>
 #include <NodeRebootHelper.hxx>
 #include <NvsManager.hxx>
+#include <openlcb/BroadcastTime.hxx>
+#include <openlcb/BroadcastTimeServer.hxx>
 #include <openlcb/MemoryConfigClient.hxx>
 #include <openlcb/SimpleStack.hxx>
 #include <StatusDisplay.hxx>
@@ -168,6 +170,14 @@ bool validate_cdi(openlcb::SimpleStackBase *stack)
 extern "C"
 {
 
+#ifndef CONFIG_FASTCLOCK_REALTIME_ID
+#define CONFIG_FASTCLOCK_REALTIME_ID openlcb::BroadcastTimeDefs::DEFAULT_REALTIME_CLOCK_ID
+#endif
+
+#ifndef CONFIG_FASTCLOCK_DEFAULT_ID
+#define CONFIG_FASTCLOCK_DEFAULT_ID openlcb::BroadcastTimeDefs::DEFAULT_FAST_CLOCK_ID
+#endif
+
 /// Application main entry point.
 void app_main()
 {
@@ -233,6 +243,35 @@ void app_main()
     esp32cs::ThermalMonitorFlow thermal_monitor(&wifi_manager,
                                                 stack.node(),
                                                 cfg.seg().thermal());
+#if CONFIG_FASTCLOCK_REALTIME
+    openlcb::BroadcastTimeServer realtime_server(stack.node(),
+                                                 CONFIG_FASTCLOCK_REALTIME_ID);
+    realtime_server.set_rate_quarters(4);
+    wifi_manager.register_network_time_callback(
+    [&](time_t sync_time)
+    {
+      LOG(INFO, "[FastClock] Time sync: %s", ctime(&sync_time));
+      struct tm timeinfo;
+      localtime_r(&sync_time, &timeinfo);
+      realtime_server.set_time(timeinfo.tm_hour, timeinfo.tm_min);
+      realtime_server.set_date(timeinfo.tm_mon + 1, timeinfo.tm_mday);
+      realtime_server.set_year(timeinfo.tm_year + 1900);
+      if (!realtime_server.is_running())
+      {
+        realtime_server.start();
+        LOG(INFO, "[FastClock] Starting real-time clock");
+      }
+      else
+      {
+        LOG(INFO, "[FastClock] real-time clock synced");
+      }
+    });
+#endif // CONFIG_FASTCLOCK_REALTIME
+#if CONFIG_FASTCLOCK_DEFAULT
+    openlcb::BroadcastTimeServer fastclock_server(stack.node(), 
+                                                  CONFIG_FASTCLOCK_DEFAULT_ID);
+    nvs.initialize_fast_clock(&fastclock_server);
+#endif // CONFIG_FASTCLOCK_DEFAULT
     esp32cs::init_dcc(stack.node(), stack.service(), cfg.seg().track());
 
     // Create / update CDI, if the CDI is out of date a factory reset will be
@@ -281,6 +320,10 @@ void app_main()
 #endif
 
     init_webserver(&wifi_manager, &nvs, &memory_client, &train_db);
+
+#if CONFIG_FASTCLOCK_DEFAULT
+    fastclock_server.start();
+#endif // CONFIG_FASTCLOCK_DEFAULT
 
     // hand-off to the OpenMRN stack executor
     stack.loop_executor();
