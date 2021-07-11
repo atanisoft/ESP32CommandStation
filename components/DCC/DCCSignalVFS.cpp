@@ -370,7 +370,7 @@ void initialize_ulp()
   ulp_ops_shutdown_threshold = 4090;
   LOG(INFO, "[OPS] Short threshold: %u/4096 (%6.2f mA)",
       ULP_VAR(ulp_ops_short_threshold),
-      ((ULP_VAR(ulp_ops_shutdown_threshold) * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
+      ((ULP_VAR(ulp_ops_shutdown_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f));
 #endif
 #if CONFIG_PROG_TRACK_ENABLED
   // Configure the PROG track ACK limit to ~60mA
