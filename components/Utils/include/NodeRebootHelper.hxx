@@ -50,8 +50,8 @@ public:
     ///
     /// @param stack is the @ref SimpleCanStack to shutdown.
     /// @param fd is the file handle for the configuration file.
-    NodeRebootHelper(openlcb::SimpleCanStack *stack, int fd)
-                   : stack_(stack), fd_(fd)
+    NodeRebootHelper(openlcb::SimpleCanStack *stack, NvsManager *nvs, int fd)
+                   : stack_(stack), nvs_(nvs), fd_(fd)
     {
     }
 
@@ -65,6 +65,7 @@ public:
         LOG(INFO, "[Reboot] Shutting down LCC executor...");
         stack_->executor()->sync_run([&]()
         {
+            nvs_->save_fast_clock_time();
             close(fd_);
             unmount_fs();
             // restart the node
@@ -75,6 +76,9 @@ public:
 private:
     /// @ref SimpleCanStack to be shutdown.
     openlcb::SimpleCanStack *stack_;
+
+    /// NVS instance used to persist fast clock time (if enabled).
+    NvsManager *nvs_;
 
     /// Configuration file descriptor to be closed prior to shutdown.
     int fd_;

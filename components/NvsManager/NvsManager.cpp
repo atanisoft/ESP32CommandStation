@@ -71,6 +71,39 @@ using std::string;
 #define CONFIG_FASTCLOCK_RATE 4
 #endif
 
+#ifndef CONFIG_FASTCLOCK_START_YEAR
+#define CONFIG_FASTCLOCK_START_YEAR 1900
+#endif
+
+#ifndef CONFIG_FASTCLOCK_START_MONTH
+#define CONFIG_FASTCLOCK_START_MONTH 1
+#endif
+
+#ifndef CONFIG_FASTCLOCK_START_DAY
+#define CONFIG_FASTCLOCK_START_DAY 1
+#endif
+
+#ifndef CONFIG_FASTCLOCK_START_HOUR
+#define CONFIG_FASTCLOCK_START_HOUR 1
+#endif
+
+#ifndef CONFIG_FASTCLOCK_START_MINUTE
+#define CONFIG_FASTCLOCK_START_MINUTE 1
+#endif
+
+static_assert(CONFIG_FASTCLOCK_RATE >= -2048 &&
+              CONFIG_FASTCLOCK_RATE <= 2048);
+static_assert(CONFIG_FASTCLOCK_START_YEAR >= 0 &&
+              CONFIG_FASTCLOCK_START_YEAR <= 4095);
+static_assert(CONFIG_FASTCLOCK_START_MONTH >= 1 &&
+              CONFIG_FASTCLOCK_START_MONTH <= 12);
+static_assert(CONFIG_FASTCLOCK_START_DAY >= 1 &&
+              CONFIG_FASTCLOCK_START_DAY <= 31);
+static_assert(CONFIG_FASTCLOCK_START_HOUR >= 0 &&
+              CONFIG_FASTCLOCK_START_HOUR <= 23);
+static_assert(CONFIG_FASTCLOCK_START_MINUTE >= 0 &&
+              CONFIG_FASTCLOCK_START_MINUTE <= 59);
+
 namespace esp32cs
 {
   typedef struct
@@ -94,12 +127,13 @@ namespace esp32cs
     uint8_t fastclock_day;     // 1-31
     uint8_t fastclock_hour;    // 0-23
     uint8_t fastclock_minute;  // 0-59
-    uint8_t reserved[21];
+    bool fastclock_enabled;
+    uint8_t reserved[20];
   } node_config_t;
 
   static node_config_t nvsConfig;
 
-  static openlcb::BroadcastTimeServer *fastclock;
+  static openlcb::BroadcastTimeServer *fastclock = nullptr;
 
   /// NVS Persistence namespace.
   static constexpr char NVS_NAMESPACE[] = "node";
@@ -172,17 +206,18 @@ namespace esp32cs
     nvsConfig.softap_auth = (wifi_auth_mode_t)CONFIG_WIFI_SOFTAP_AUTH;
 #if CONFIG_SNTP
     nvsConfig.sntp_enabled = true;
+#endif // CONFIG_SNTP
     str_populate(nvsConfig.sntp_server, CONFIG_SNTP_SERVER);
     str_populate(nvsConfig.timezone, CONFIG_SNTP_TIMEZONE);
-#endif // CONFIG_SNTP
-#if CONFIG_FASTCLOCK_DEFAULT
     nvsConfig.fastclock_rate = CONFIG_FASTCLOCK_RATE;
     nvsConfig.fastclock_year = CONFIG_FASTCLOCK_START_YEAR - 1900;
     nvsConfig.fastclock_month = CONFIG_FASTCLOCK_START_MONTH;
     nvsConfig.fastclock_day = CONFIG_FASTCLOCK_START_DAY;
     nvsConfig.fastclock_hour = CONFIG_FASTCLOCK_START_HOUR - 1;
     nvsConfig.fastclock_minute = CONFIG_FASTCLOCK_START_MINUTE - 1;
-#endif // CONFIG_FASTCLOCK_DEFAULT
+#if CONFIG_FASTCLOCK
+    nvsConfig.fastclock_enabled = true;
+#endif
   }
 
   static inline void display_nvs_configuration()
@@ -213,6 +248,17 @@ namespace esp32cs
     else
     {
       LOG(INFO, "SNTP: Off");
+    }
+    if (nvsConfig.fastclock_enabled)
+    {
+      LOG(INFO, "FastClock: %04d-%02d-%02d %02d:%02d",
+          nvsConfig.fastclock_year + 1900, nvsConfig.fastclock_month,
+          nvsConfig.fastclock_day, nvsConfig.fastclock_hour,
+          nvsConfig.fastclock_minute);
+    }
+    else
+    {
+      LOG(INFO, "FastClock: Disabled");
     }
   }
 
@@ -375,12 +421,39 @@ namespace esp32cs
   void NvsManager::initialize_fast_clock(openlcb::BroadcastTimeServer *server)
   {
     fastclock = server;
-    fastclock->set_rate_quarters(nvsConfig.fastclock_rate);
-    fastclock->set_year(nvsConfig.fastclock_year + 1900);
-    fastclock->set_date(nvsConfig.fastclock_month, nvsConfig.fastclock_day);
-    fastclock->set_time(nvsConfig.fastclock_hour, nvsConfig.fastclock_minute);
-    fastclock->update_subscribe_add(
-    []()
+    if (fastclock)
+    {
+      fastclock->set_rate_quarters(nvsConfig.fastclock_rate);
+      fastclock->set_year(nvsConfig.fastclock_year + 1900);
+      fastclock->set_date(nvsConfig.fastclock_month, nvsConfig.fastclock_day);
+      fastclock->set_time(nvsConfig.fastclock_hour, nvsConfig.fastclock_minute);
+    }
+  }
+
+  void NvsManager::reconfigure_fast_clock(uint8_t year, uint8_t month, uint8_t day,
+                                          uint8_t hour, uint8_t minute, uint8_t rate)
+  {
+    nvsConfig.fastclock_rate = rate;
+    nvsConfig.fastclock_year = year - 1900;
+    nvsConfig.fastclock_month = month;
+    nvsConfig.fastclock_day = day;
+    nvsConfig.fastclock_hour = hour - 1;
+    nvsConfig.fastclock_minute = minute - 1;
+    if (fastclock)
+    {
+      fastclock->set_rate_quarters(nvsConfig.fastclock_rate);
+      fastclock->set_year(nvsConfig.fastclock_year + 1900);
+      fastclock->set_date(nvsConfig.fastclock_month, nvsConfig.fastclock_day);
+      fastclock->set_time(nvsConfig.fastclock_hour, nvsConfig.fastclock_minute);
+      // restart the clock
+      fastclock->stop();
+      fastclock->start();
+    }
+  }
+
+  void NvsManager::save_fast_clock_time()
+  {
+    if (fastclock)
     {
       struct tm current_time;
       fastclock->gmtime_r(&current_time);
@@ -390,25 +463,8 @@ namespace esp32cs
       nvsConfig.fastclock_day = current_time.tm_mday;
       nvsConfig.fastclock_hour = current_time.tm_hour;
       nvsConfig.fastclock_minute = current_time.tm_min;
-      // if the clock is not running persist the updated values, otherwise it
-      // will persist if there are other config updates.
-      if (!fastclock->is_running())
-      {
-        persist_configuration();
-      }
-    });
-  }
-
-  void NvsManager::reconfigure_fast_clock(uint8_t year, uint8_t month, uint8_t day,
-                                          uint8_t hour, uint8_t minute, uint8_t rate)
-  {
-    fastclock->set_rate_quarters(rate);
-    fastclock->set_year(year);
-    fastclock->set_date(month, day);
-    fastclock->set_time(hour, minute);
-    // restart the clock
-    fastclock->stop();
-    fastclock->start();
+      persist_configuration();
+    }
   }
 
   bool NvsManager::start_stack()

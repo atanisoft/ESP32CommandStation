@@ -41,6 +41,7 @@ public:
   void set_led_brightness(uint8_t level);
   void initialize_fast_clock(openlcb::BroadcastTimeServer *time_server);
   void reconfigure_fast_clock(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t rate);
+  void save_fast_clock_time();
   
   uint64_t node_id();
   void node_id(uint64_t node_id);

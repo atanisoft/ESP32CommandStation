@@ -810,14 +810,14 @@ menu "RailCom Configuration"
             queue size.
 endmenu
 menu "Fast Clock Configuration"
-    config FASTCLOCK_DEFAULT
-        bool "Enable FastClock"
+    config FASTCLOCK
+        bool "Enable FastClock (fast)"
         default n
         help
             Enabling this option will cause the ESP32 Command Station to
             advertise itself as an LCC Fast Clock.
-    menu "FastClock (non Real Time)"
-        depends on FASTCLOCK_DEFAULT
+    menu "FastClock (fast)"
+        depends on FASTCLOCK
         config FASTCLOCK_RATE
             int "FastClock rate quarters"
             default 4
@@ -866,7 +866,7 @@ menu "Fast Clock Configuration"
                 The default Fast Clock uses ID 0x010100000100.
     endmenu
     config FASTCLOCK_REALTIME
-        bool "Enable real-time FastClock"
+        bool "Enable FastClock (real-time)"
         default n
         depends on !WIFI_MODE_DISABLED
         select SNTP

@@ -244,21 +244,21 @@ void app_main()
                                                 stack.node(),
                                                 cfg.seg().thermal());
 #if CONFIG_FASTCLOCK_REALTIME
-    openlcb::BroadcastTimeServer realtime_server(stack.node(),
-                                                 CONFIG_FASTCLOCK_REALTIME_ID);
-    realtime_server.set_rate_quarters(4);
+    openlcb::BroadcastTimeServer fastclock_realtime(stack.node(),
+                                                    CONFIG_FASTCLOCK_REALTIME_ID);
+    fastclock_realtime.set_rate_quarters(4);
     wifi_manager.register_network_time_callback(
     [&](time_t sync_time)
     {
       LOG(INFO, "[FastClock] Time sync: %s", ctime(&sync_time));
       struct tm timeinfo;
       localtime_r(&sync_time, &timeinfo);
-      realtime_server.set_time(timeinfo.tm_hour, timeinfo.tm_min);
-      realtime_server.set_date(timeinfo.tm_mon + 1, timeinfo.tm_mday);
-      realtime_server.set_year(timeinfo.tm_year + 1900);
-      if (!realtime_server.is_running())
+      fastclock_realtime.set_time(timeinfo.tm_hour, timeinfo.tm_min);
+      fastclock_realtime.set_date(timeinfo.tm_mon + 1, timeinfo.tm_mday);
+      fastclock_realtime.set_year(timeinfo.tm_year + 1900);
+      if (!fastclock_realtime.is_running())
       {
-        realtime_server.start();
+        fastclock_realtime.start();
         LOG(INFO, "[FastClock] Starting real-time clock");
       }
       else
@@ -267,11 +267,11 @@ void app_main()
       }
     });
 #endif // CONFIG_FASTCLOCK_REALTIME
-#if CONFIG_FASTCLOCK_DEFAULT
-    openlcb::BroadcastTimeServer fastclock_server(stack.node(), 
-                                                  CONFIG_FASTCLOCK_DEFAULT_ID);
-    nvs.initialize_fast_clock(&fastclock_server);
-#endif // CONFIG_FASTCLOCK_DEFAULT
+#if CONFIG_FASTCLOCK
+    openlcb::BroadcastTimeServer fastclock(stack.node(),
+                                           CONFIG_FASTCLOCK_DEFAULT_ID);
+    nvs.initialize_fast_clock(&fastclock);
+#endif // CONFIG_FASTCLOCK
     esp32cs::init_dcc(stack.node(), stack.service(), cfg.seg().track());
 
     // Create / update CDI, if the CDI is out of date a factory reset will be
@@ -288,7 +288,8 @@ void app_main()
         stack.create_config_file_if_needed(cfg.seg().internal_config(),
                                            CDI_VERSION,
                                            openlcb::CONFIG_FILE_SIZE);
-    reboot_helper = std::make_unique<esp32cs::NodeRebootHelper>(&stack, config_fd);
+    reboot_helper =
+      std::make_unique<esp32cs::NodeRebootHelper>(&stack, &nvs, config_fd);
     if (using_sd)
     {
       LOG(INFO, "[FS] Configuring fsync of data to SD card ever %d seconds.",
@@ -321,9 +322,9 @@ void app_main()
 
     init_webserver(&wifi_manager, &nvs, &memory_client, &train_db);
 
-#if CONFIG_FASTCLOCK_DEFAULT
-    fastclock_server.start();
-#endif // CONFIG_FASTCLOCK_DEFAULT
+#if CONFIG_FASTCLOCK
+    fastclock.start();
+#endif // CONFIG_FASTCLOCK
 
     // hand-off to the OpenMRN stack executor
     stack.loop_executor();
