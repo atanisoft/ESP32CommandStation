@@ -27,8 +27,9 @@ License along with NeoPixel.  If not, see
 
 #ifdef ARDUINO
 #include <Arduino.h>
-#endif
+#else
 #include <stdint.h>
+#endif
 
 struct RgbColor;
 struct HslColor;
@@ -71,11 +72,6 @@ struct RgbwColor
         W(0)
     {
     };
-
-    // ------------------------------------------------------------------------
-    // Construct a RgbwColor using HtmlColor
-    // ------------------------------------------------------------------------
-    RgbwColor(const HtmlColor& color);
 
     // ------------------------------------------------------------------------
     // Construct a RgbwColor using HslColor
@@ -211,21 +207,18 @@ struct RgbwColor
 private:
     inline static uint8_t _elementDim(uint8_t value, uint8_t ratio)
     {
-        return (static_cast<uint16_t>(value) * (static_cast<uint16_t>(ratio) + 1)) >> 8;
+        return (value * (ratio + 1)) >> 8;
     }
 
     inline static uint8_t _elementBrighten(uint8_t value, uint8_t ratio)
     {
-        uint16_t element = ((static_cast<uint16_t>(value) + 1) << 8) / (static_cast<uint16_t>(ratio) + 1);
+        uint16_t element = (value << 8) / (ratio + 1);
 
         if (element > 255)
         {
             element = 255;
         }
-        else
-        {
-            element -= 1;
-        }
+
         return element;
     }
 };
