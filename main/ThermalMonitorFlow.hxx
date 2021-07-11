@@ -129,7 +129,7 @@ public:
                 start_flow(STATE(sleep));
             }
         }
-        else if (!enabled)
+        else
         {
             set_terminated();
         }
