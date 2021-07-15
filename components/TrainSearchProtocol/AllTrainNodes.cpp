@@ -57,9 +57,6 @@ using dcc::Dcc128Train;
 using dcc::Dcc28Train;
 using dcc::DccLongAddress;
 using dcc::DccShortAddress;
-using dcc::MMAddress;
-using dcc::MMNewTrain;
-using dcc::MMOldTrain;
 
 using openlcb::Defs;
 using openlcb::SimpleInfoDescriptor;
@@ -147,7 +144,7 @@ public:
         case DCC_28_LONG_ADDRESS:
         {
           LOG(CONFIG_TSP_LOGGING_LEVEL,
-              "[TrainSearch] Allocating New DCC-14/28 train %d", address_);
+              "[Train:%d] Creating new DCC-14/28 instance", address_);
           if ((mode_ & DCC_LONG_ADDRESS) || address_ >= 128)
           {
             train_ = new Dcc28Train(DccLongAddress(address_));
@@ -162,7 +159,7 @@ public:
         case DCC_128_LONG_ADDRESS:
         {
           LOG(CONFIG_TSP_LOGGING_LEVEL,
-              "[TrainSearch] Allocating New DCC-128 train %d", address_);
+              "[Train:%d] Creating new DCC-128 instance", address_);
           if ((mode_ & DCC_LONG_ADDRESS) || address_ >= 128)
           {
             train_ = new Dcc128Train(DccLongAddress(address_));
@@ -175,7 +172,8 @@ public:
         }
         default:
           train_ = nullptr;
-          LOG_ERROR("[TrainSearch] Unhandled train drive mode: %d.", mode_);
+          LOG_ERROR("[Train:%d] Unhandled train drive mode: %d.", address_,
+                    mode_);
       }
     }
     return train_;
@@ -291,9 +289,9 @@ AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::find_node(openlcb::NodeID no
   {
     if (type == dcc::TrainAddressType::MM)
     {
-      LOG(CONFIG_TSP_LOGGING_LEVEL,
-          "[TrainSearch] Ignoring search for unsupported drive type:%d.",
-          (int)type);
+      LOG_ERROR("[TrainSearch] Node ID %s appears to be for an unsupported "
+                "drive type:%d.", esp32cs::node_id_to_string(node_id).c_str(),
+                static_cast<int>(type));
       return nullptr;
     }
     LOG(CONFIG_TSP_LOGGING_LEVEL, "[TrainSearch] Checking db for node id: %s",
@@ -883,9 +881,8 @@ AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
   // don't allocate any Marklin nodes
   if (mode & MARKLIN_ANY)
   {
-    LOG(CONFIG_TSP_LOGGING_LEVEL,
-        "[TrainSearch] Ignoring attempt to allocate unsupported locomotive "
-        "type: %d using address: %d", mode, address);
+    LOG_ERROR("[TrainSearch] Ignoring attempt to allocate unsupported drive "
+              "type:%d using address: %d", mode, address);
     return nullptr;
   }
   DelayedInitTrainNode *impl =
