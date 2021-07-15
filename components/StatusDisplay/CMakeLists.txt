@@ -9,10 +9,6 @@ set(CUSTOM_DEPS
     TrainSearchProtocol
 )
 
-set(LED_SOURCE_FILES
-    
-)
-
 idf_component_register(SRCS StatusDisplay.cpp StatusDisplayLCD.cpp StatusDisplayOLED.cpp
                        INCLUDE_DIRS "include"
                        PRIV_INCLUDE_DIRS "private_include"
