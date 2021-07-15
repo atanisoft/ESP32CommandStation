@@ -264,7 +264,7 @@ namespace esp32cs
 
   void NvsManager::init(uint8_t reset_reason)
   {
-    LOG(INFO, "NVS.init(%d)", reset_reason);
+    LOG(VERBOSE, "NVS.init(%d)", reset_reason);
     // If this is the first power up of the node we need to reset the flag
     // since it will not be initialized automatically.
     if (reset_reason == POWERON_RESET)
