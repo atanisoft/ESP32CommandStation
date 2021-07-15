@@ -22,6 +22,7 @@ set(IDF_DEPS
     efuse
     esp_adc_cal
     esp_common
+    espcoredump
     json
     nvs_flash
     soc
