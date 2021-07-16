@@ -85,7 +85,7 @@ CONFIG_FATFS_LFN_HEAP=y
 #
 # Core dump
 #
-ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
 
 #
 # pthread configuration
