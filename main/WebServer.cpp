@@ -37,6 +37,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <StringUtils.hxx>
 #include <TrainDatabase.h>
 #include <AccessoryDecoderDatabase.hxx>
+#include <UlpAdc.hxx>
 #include <utils/FileUtils.hxx>
 #include <utils/SocketClientParams.hxx>
 #include <utils/StringPrintf.hxx>
@@ -555,7 +556,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
       {
         response =
           StringPrintf(R"!^!({"res":"status","id":%d,"track":"On","usage":%d})!^!",
-                       req_id->valueint, esp32cs::last_current_sense_result());
+                       req_id->valueint, esp32cs::get_ops_load());
       }
     }
     else if (!strcmp(req_type->valuestring, "statusled"))

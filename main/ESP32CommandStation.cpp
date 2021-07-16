@@ -49,6 +49,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <StatusDisplay.hxx>
 #include <StatusLED.hxx>
 #include <TrainDatabase.h>
+#include <UlpAdc.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 #include <utils/constants.hxx>
 
@@ -334,6 +335,8 @@ void app_main()
   if (nvs.start_stack())
   {
     bool using_sd = esp32cs::mount_fs(nvs.should_reset_config());
+
+    esp32cs::initialize_ulp_adc();
 
     // initialize the OpenMRN stack and dependent components
     openlcb::SimpleCanStack stack(nvs.node_id());;

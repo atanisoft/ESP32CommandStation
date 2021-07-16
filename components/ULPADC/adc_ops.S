@@ -33,6 +33,13 @@ COPYRIGHT (c) 2021 Mike Dunston
 exec_count:
     .long 0
 
+#if !CONFIG_TEMPSENSOR_DISABLED
+    /* last reading from the TEMPSENSOR ADC channel. */
+    .global tempsensor_last_reading
+tempsensor_last_reading:
+    .long 0
+#endif // !CONFIG_TEMPSENSOR_DISABLED
+
 #if CONFIG_OPS_TRACK_ENABLED
     /* OPS short threshold, configured by main CPU.
        If the detected ADC value exceeds this the main CPU will be alerted to
@@ -100,32 +107,51 @@ entry:
 
     /* Reset accumulator registers to zero */
     move r0, 0
+    move r1, 0
     move r2, 0
 
     /* initialize counter so we can loop through N samples */
     stage_rst
 
 measure:
-#if CONFIG_OPS_TRACK_ENABLED
-    /* measure and add value to accumulator */
-#if CONFIG_OPSTRACK_ADC_CHANNEL_0
-    adc r1, 0, 1
-#elif CONFIG_OPSTRACK_ADC_CHANNEL_3
-    adc r1, 0, 4
-#elif CONFIG_OPSTRACK_ADC_CHANNEL_4
-    adc r1, 0, 5
-#elif CONFIG_OPSTRACK_ADC_CHANNEL_5
-    adc r1, 0, 6
-#elif CONFIG_OPSTRACK_ADC_CHANNEL_6
-    adc r1, 0, 7
-#elif CONFIG_OPSTRACK_ADC_CHANNEL_7
-    adc r1, 0, 8
+#if !CONFIG_TEMPSENSOR_DISABLED
+    /* measure and add value to accumulator R0 */
+#if CONFIG_TEMPSENSOR_ADC_CHANNEL_0
+    adc r3, 0, 1
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_3
+    adc r3, 0, 4
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_4
+    adc r3, 0, 5
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_5
+    adc r3, 0, 6
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_6
+    adc r3, 0, 7
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_7
+    adc r3, 0, 8
 #endif
-    add r0, r0, r1
+    add r0, r0, r3
+#endif // !CONFIG_TEMPSENSOR_DISABLED
+
+#if CONFIG_OPS_TRACK_ENABLED
+    /* measure and add value to accumulator R1 */
+#if CONFIG_OPSTRACK_ADC_CHANNEL_0
+    adc r3, 0, 1
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_3
+    adc r3, 0, 4
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_4
+    adc r3, 0, 5
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_5
+    adc r3, 0, 6
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_6
+    adc r3, 0, 7
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_7
+    adc r3, 0, 8
+#endif
+    add r1, r1, r3
 #endif // CONFIG_OPS_TRACK_ENABLED
 
 #if CONFIG_PROG_TRACK_ENABLED
-    /* measure and add value to accumulator */
+    /* measure and add value to accumulator R2 */
 #if CONFIG_PROGTRACK_ADC_CHANNEL_0
     adc r3, 0, 1
 #elif CONFIG_PROGTRACK_ADC_CHANNEL_3
@@ -147,19 +173,22 @@ measure:
     jumps measure, adc_sample_count, lt
     stage_rst
 
-#if CONFIG_OPS_TRACK_ENABLED
+#if !CONFIG_TEMPSENSOR_DISABLED
     /* divide accumulator value using bit shifting */
     rsh     r0, r0, adc_sample_count_log
 
     /* store the value for usage by the main CPU */
-    move    r3, ops_last_reading
-	st      r0, r3, 0
+    move    r3, tempsensor_last_reading
+    st      r0, r3, 0
+#endif // !CONFIG_TEMPSENSOR_DISABLED
 
-    /* Wakeup SoC if ops_last_reading > ops_short_threshold */
-    move    r3, ops_short_threshold
-    ld      r3, r3, 0
-    sub     r3, r3, r0
-    jump    wake_up, ov
+#if CONFIG_OPS_TRACK_ENABLED
+    /* divide accumulator value using bit shifting */
+    rsh     r1, r1, adc_sample_count_log
+
+    /* store the value for usage by the main CPU */
+    move    r3, ops_last_reading
+    st      r1, r3, 0
 #endif // CONFIG_OPS_TRACK_ENABLED
 
 #if CONFIG_PROG_TRACK_ENABLED
@@ -168,14 +197,24 @@ measure:
 
     /* store the value for usage by the main CPU */
     move    r3, prog_last_reading
-	st      r2, r3, 0
+    st      r2, r3, 0
+#endif // CONFIG_PROG_TRACK_ENABLED
 
+#if CONFIG_OPS_TRACK_ENABLED
+    /* Wakeup SoC if ops_last_reading > ops_short_threshold */
+    move    r3, ops_short_threshold
+    ld      r3, r3, 0
+    sub     r3, r3, r1
+    jump    wake_up, ov
+#endif // CONFIG_OPS_TRACK_ENABLED
+
+#if CONFIG_PROG_TRACK_ENABLED
     /* Wakeup SoC if prog_last_reading > prog_ack_threshold.
     NOTE: prog_short_threshold is not checked as it should be higher than the
           prog_ack_threshold value.*/
     move    r3, prog_ack_threshold
     ld      r3, r3, 0
-    sub     r3, r3, r0
+    sub     r3, r3, r2
     jump    wake_up, ov
 #endif // CONFIG_PROG_TRACK_ENABLED
 

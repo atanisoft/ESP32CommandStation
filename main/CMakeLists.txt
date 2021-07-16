@@ -40,6 +40,7 @@ set(CUSTOM_DEPS
     StatusLED
     TrainDatabase
     TrainSearchProtocol
+    ULPADC
     Utils
 )
 

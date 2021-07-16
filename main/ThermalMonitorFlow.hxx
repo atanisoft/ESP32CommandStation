@@ -24,6 +24,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <hardware.hxx>
 #include <openlcb/CallbackEventHandler.hxx>
 #include <StringUtils.hxx>
+#include <UlpAdc.hxx>
 #include <utils/ConfigUpdateListener.hxx>
 #include <utils/Fixed16.hxx>
 
@@ -221,11 +222,11 @@ private:
     }
 
 #if !CONFIG_TEMPSENSOR_DISABLED
-    /// Reads the external temperature sensor of an ESP32-S2.
+    /// Reads the external temperature sensor connected to an ADC pin.
     Fixed16 read_external_temperature()
     {
         uint32_t temperature =
-            esp_adc_cal_raw_to_voltage(THERMAL_SENSOR_Pin::sample(),
+            esp_adc_cal_raw_to_voltage(get_last_tempsensor_reading(),
                                        &calibration_);
         Fixed16 tempAtZero = temperature - MV_AT_ZERO_C;
         return tempAtZero / MV_PER_C;
