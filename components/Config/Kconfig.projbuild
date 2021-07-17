@@ -1073,8 +1073,6 @@ menu "Crash Behavior"
     config CRASH_COLLECT_CORE_DUMP
         bool "Collect core dump on crash"
         default y
-        select ESP_COREDUMP_ENABLE_TO_FLASH
-        select ESP_COREDUMP_DATA_FORMAT_ELF
     config CRASH_HALT_ON_STARTUP
         bool "Halt startup when core dump detected"
         default y
