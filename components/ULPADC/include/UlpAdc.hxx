@@ -42,6 +42,10 @@ uint32_t get_ops_load();
 /// disabled.
 uint16_t get_ops_short_threshold();
 
+/// @return the OPS track shutdown threshold. Will return 4095 if OPS track is
+/// disabled.
+uint16_t get_ops_shutdown_threshold();
+
 /// @return the OPS track warning threshold. Will return 4095 if OPS track is
 /// disabled.
 uint16_t get_ops_warning_threshold();

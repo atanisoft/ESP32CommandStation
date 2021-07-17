@@ -37,6 +37,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <driver/uart.h>
 #include <esp_vfs.h>
 #include <esp32/ulp.h>
+#include <EventBroadcastHelper.hxx>
 #include <executor/PoolToQueueFlow.hxx>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
@@ -183,18 +184,36 @@ static uninitialized<ProgrammingTrackBackend> prog_backend;
 static uninitialized<esp32cs::AccessoryDecoderDB> accessory_db;
 
 #if CONFIG_OPS_TRACK_ENABLED
-class TrackMonitorFlow : public StateFlowBase
+class TrackMonitorFlow : public StateFlowBase, public DefaultConfigUpdateListener
 {
 public:
-  TrackMonitorFlow(Service *service) : StateFlowBase(service)
+  TrackMonitorFlow(Service *service, const TrackOutputConfig &cfg)
+    : StateFlowBase(service), cfg_(cfg)
   {
     auto status = Singleton<StatusDisplay>::instance();
     status->track_power("Track: Off");
     start_flow(STATE(sleep));
   }
 
+  UpdateAction apply_configuration(int fd, bool initial_load,
+                                   BarrierNotifiable *done) override
+  {
+    AutoNotify n(done);
+    shortEvent_ = cfg_.event_short().read(fd);
+    shutdownEvent_ = cfg_.event_shutdown().read(fd);
+    return UPDATED;
+  }
+
+  void factory_reset(int fd) override
+  {
+    // no-op
+  }
+
 private:
   StateFlowTimer timer_{this};
+  TrackOutputConfig cfg_;
+  openlcb::EventId shortEvent_;
+  openlcb::EventId shutdownEvent_;
   static constexpr uint64_t INTERVAL = SEC_TO_NSEC(15);
 
   Action check()
@@ -202,6 +221,7 @@ private:
     auto status = Singleton<StatusDisplay>::instance();
     uint16_t last_reading = esp32cs::get_last_ops_reading();
     uint16_t short_limit = esp32cs::get_ops_short_threshold();
+    uint16_t shutdown_limit = esp32cs::get_ops_shutdown_threshold();
     uint16_t warn_limit = esp32cs::get_ops_warning_threshold();
     uint8_t disable_reason =
       DccHwDefs::InternalBoosterOutput::outputDisableReasons_;
@@ -216,20 +236,28 @@ private:
         DccOutput::DisableReason::SHORTED);
     }
 
-    if (DccHwDefs::InternalBoosterOutput::should_be_enabled())
+    if (last_reading > short_limit)
+    {
+      status->track_power("Track: Short!");
+      if (last_reading < shutdown_limit)
+      {
+        Singleton<esp32cs::EventBroadcastHelper>::instance()->send_event(shortEvent_);
+      }
+      else
+      {
+        Singleton<esp32cs::EventBroadcastHelper>::instance()->send_event(shutdownEvent_);
+      }
+    }
+    else if (estop_packet_source->is_enabled())
+    {
+      status->track_power("Track: e-stop");
+    }
+    else if (DccHwDefs::InternalBoosterOutput::should_be_enabled())
     {
       LOG(INFO, "[Track] Usage: %d/%d, %d mA", last_reading, short_limit,
           esp32cs::get_ops_load());
       status->track_power("Track: %d mA%c", esp32cs::get_ops_load(),
                           last_reading > warn_limit ? '!' : ' ');
-    }
-    else if (last_reading > short_limit)
-    {
-      status->track_power("Track: Short!");
-    }
-    else if (estop_packet_source->is_enabled())
-    {
-      status->track_power("Track: e-stop");
     }
     else
     {
@@ -364,7 +392,7 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
 #endif
   accessory_db.emplace(node, svc, track_interface.operator->());
 #if CONFIG_OPS_TRACK_ENABLED
-  track_monitor.emplace(svc);
+  track_monitor.emplace(svc, cfg);
 #endif // CONFIG_OPS_TRACK_ENABLED
 
   // Clear the initialization pending flag

@@ -14,15 +14,17 @@
     - TWAI: ISR APP_CPU, task float priority is one less than LwIP.
     - RMT: ISR PRO_CPU
 * [ ] Investigate heap corruption issues.
-* [x] DCC: ULP current sense / ACK.
+* [ ] DCC: ULP current sense / ACK.
     - [x] Implementation of ULP code to read ADC and wake main SoC when thresholds breached.
     - [x] Disable track when short occurs.
     - [x] Enable track when short has cleared.
+    - [x] Send short/shutdown events for OPS.
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
 * [x] Deps: Remove nlohmann_json dependency in favor of cJSON.
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
+* [ ] RailCom: Integrate RailCom hub with rest of stack (TrainSearch, Prog Backend, etc).
 * [x] TrainDB: reduce function types to: light, horn (momentary), bell, mute, coupler, other, other (momentary).
 * [x] TrainDB: Remove Marklin support.
 * [x] TrainDB: Enable editing via loco CDI.
@@ -38,7 +40,6 @@
 
 ### Nice to have for v2.0
 
-* RailCom: Integrate RailCom hub with rest of stack (TrainSearch, Prog Backend, etc).
 * TrainDB: Configurable timeout for idle trains.
 * TrainDB: Customizable function label names.
 * TrainSearch: General code formatting / cleanup
@@ -47,6 +48,7 @@
 * WebUI: urldecode all field data from json.
 * WebUI: Add function name/label editing via web interface.
 * WebUI: Show remaining characters for various text fields.
+* WebUI: Filtering of accessories/locos.
 * WiThrottle support.
 
 ### Future planning

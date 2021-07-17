@@ -219,6 +219,14 @@ uint16_t get_ops_short_threshold()
   return 4095;
 }
 
+uint16_t get_ops_shutdown_threshold()
+{
+#if CONFIG_OPS_TRACK_ENABLED
+  return ULP_VAR(ulp_ops_shutdown_threshold);
+#endif
+  return 4095;
+}
+
 uint16_t get_ops_warning_threshold()
 {
 #if CONFIG_OPS_TRACK_ENABLED
