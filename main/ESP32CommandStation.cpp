@@ -302,8 +302,6 @@ void app_main()
         stack.create_config_file_if_needed(cfg.seg().internal_config(),
                                            CDI_VERSION,
                                            openlcb::CONFIG_FILE_SIZE);
-    reboot_helper =
-      std::make_unique<esp32cs::NodeRebootHelper>(&stack, &nvs, config_fd);
     if (using_sd)
     {
       LOG(INFO, "[FS] Configuring fsync of data to SD card ever %d seconds.",
@@ -311,6 +309,15 @@ void app_main()
       sd_auto_sync =
         std::make_unique<AutoSyncFileFlow>(&wifi_manager, config_fd,
                                            SEC_TO_USEC(CONFIG_OLCB_SD_FSYNC_SEC));
+      reboot_helper =
+        std::make_unique<esp32cs::NodeRebootHelper>(
+          &stack, &nvs, config_fd, sd_auto_sync.get());
+    }
+    else
+    {
+      reboot_helper =
+        std::make_unique<esp32cs::NodeRebootHelper>(
+          &stack, &nvs, config_fd, nullptr);
     }
 
 #if CONFIG_OLCB_TWAI_ENABLED

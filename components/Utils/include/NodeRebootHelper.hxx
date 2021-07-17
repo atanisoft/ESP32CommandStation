@@ -32,10 +32,13 @@
  * @date 26 May 2021
  */
 
+#include <esp_system.h>
+#include <hal/wdt_hal.h>
 #include <openlcb/SimpleStack.hxx>
+#include <soc/rtc.h>
+#include <utils/AutoSyncFileFlow.hxx>
 #include <utils/logging.h>
 #include <utils/Singleton.hxx>
-#include <esp_system.h>
 
 #include "FileSystem.hxx"
 
@@ -49,9 +52,13 @@ public:
     /// Constructor.
     ///
     /// @param stack is the @ref SimpleCanStack to shutdown.
+    /// @param nvs is the @ref NvsManager instance to save the fastclock time
+    /// to (if enabled).
     /// @param fd is the file handle for the configuration file.
-    NodeRebootHelper(openlcb::SimpleCanStack *stack, NvsManager *nvs, int fd)
-                   : stack_(stack), nvs_(nvs), fd_(fd)
+    /// @param sync_flow is the background synchronization flow to shutdown.
+    NodeRebootHelper(openlcb::SimpleCanStack *stack, NvsManager *nvs, int fd,
+                     AutoSyncFileFlow *sync_flow)
+                   : stack_(stack), nvs_(nvs), fd_(fd), syncFlow_(sync_flow)
     {
     }
 
@@ -63,6 +70,17 @@ public:
         // will be a deadlock
         HASSERT(os_thread_self() != stack_->executor()->thread_handle());
         LOG(INFO, "[Reboot] Shutting down LCC executor...");
+
+        // Stop the background synchronization flow before attaching a reboot
+        // executable to the stack executor since it may still be running at
+        // this point.
+        if (syncFlow_)
+        {
+            SyncNotifiable notif;
+            syncFlow_->shutdown(&notif);
+            notif.wait_for_notification();
+        }
+
         stack_->executor()->sync_run([&]()
         {
             nvs_->save_fast_clock_time();
@@ -70,7 +88,40 @@ public:
             unmount_fs();
             // restart the node
             LOG(INFO, "[Reboot] Restarting!");
-            esp_restart();
+            // NOTE: This is not using esp_restart() since that will not force
+            // the RTC to be restarted. This code will instead force a restart
+            // via the RTC_WDT which will restart everything.
+            wdt_hal_context_t ctx =
+            {
+                .inst = WDT_RWDT,
+                .rwdt_dev = &RTCCNTL
+            };
+            // Calculate an approximate 50msec timeout.
+            uint32_t timeout = ((50) * (rtc_clk_slow_freq_get_hz() / 1000));
+            // Disable write protect on the WDT registers so we can modify the
+            // configuration.
+            wdt_hal_write_protect_disable(&ctx);
+            // Disable flashboot WDT protection.
+            wdt_hal_set_flashboot_en(&ctx, false);
+            // Enable write protect on WDT registers since we are done updating
+            // the config.
+            wdt_hal_write_protect_enable(&ctx);
+            // Initialize the RWDT
+            wdt_hal_init(&ctx, WDT_RWDT, 0, false);
+            // Disable write protect on the WDT registers so we arm the WDT.
+            wdt_hal_write_protect_disable(&ctx);
+            // Configure RWDT to force a restart after ~50msec.
+            wdt_hal_config_stage(&ctx, WDT_STAGE0, timeout,
+                                 WDT_STAGE_ACTION_RESET_RTC);
+            // Enable the RWDT
+            wdt_hal_enable(&ctx);
+            // Enable write protect on WDT registers.
+            wdt_hal_write_protect_enable(&ctx);
+            // Wait for WDT to kick in
+            for(;;)
+            {
+                // do nothing
+            }
         });
     }
 private:
@@ -82,6 +133,8 @@ private:
 
     /// Configuration file descriptor to be closed prior to shutdown.
     int fd_;
+
+    AutoSyncFileFlow *syncFlow_;
 };
 
 } // namespace esp32cs
