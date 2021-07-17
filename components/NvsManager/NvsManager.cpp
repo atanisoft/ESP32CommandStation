@@ -378,10 +378,44 @@ namespace esp32cs
     ESP_ERROR_CHECK(nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs));
     esp_err_t res = ESP_ERROR_CHECK_WITHOUT_ABORT(
         nvs_get_blob(nvs, NVS_CFG_KEY, &nvsConfig, &config_size));
+    bool need_persist = false;
     if (config_size != sizeof(node_config_t) || res != ESP_OK)
     {
       LOG_ERROR("[NVS] Configuration missing or corrupt, using defaults");
       reset_nvs_config_to_defaults();
+      need_persist = true;
+    }
+    else
+    {
+      // validate fast clock settings are valid
+      if (nvsConfig.fastclock_month < 1 || nvsConfig.fastclock_month > 12)
+      {
+        nvsConfig.fastclock_month = CONFIG_FASTCLOCK_START_MONTH;
+        need_persist = true;
+      }
+      if (nvsConfig.fastclock_day < 1 || nvsConfig.fastclock_day > 31)
+      {
+        nvsConfig.fastclock_day = CONFIG_FASTCLOCK_START_DAY;
+        need_persist = true;
+      }
+      if (nvsConfig.fastclock_year < 1)
+      {
+        nvsConfig.fastclock_year = CONFIG_FASTCLOCK_START_YEAR - 1900;
+        need_persist = true;
+      }
+      if (nvsConfig.fastclock_hour > 23)
+      {
+        nvsConfig.fastclock_hour = CONFIG_FASTCLOCK_START_HOUR - 1;
+        need_persist = true;
+      }
+      if (nvsConfig.fastclock_minute > 59)
+      {
+        nvsConfig.fastclock_minute = CONFIG_FASTCLOCK_START_MINUTE - 1;
+        need_persist = true;
+      }
+    }
+    if (need_persist)
+    {
       ESP_ERROR_CHECK(
           nvs_set_blob(nvs, NVS_CFG_KEY, &nvsConfig, sizeof(node_config_t)));
       ESP_ERROR_CHECK(nvs_commit(nvs));
