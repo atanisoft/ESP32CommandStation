@@ -1069,3 +1069,26 @@ menu "Train Search Protocol"
         default 3 if TSP_LOGGING_VERBOSE
         default 5
 endmenu
+menu "Crash Behavior"
+    config CRASH_COLLECT_CORE_DUMP
+        bool "Collect core dump on crash"
+        default y
+        select ESP_COREDUMP_ENABLE_TO_FLASH
+        select ESP_COREDUMP_DATA_FORMAT_ELF
+    config CRASH_HALT_ON_STARTUP
+        bool "Halt startup when core dump detected"
+        default y
+        depends on CRASH_COLLECT_CORE_DUMP
+        help
+            Enabling this option will cause the ESP32 Command Station to halt
+            normal startup when a core dump from a previous crash is detected.
+    config CRASH_CLEANUP_TIMEOUT_SEC
+        int "Number of seconds to allow clearing of old core dump"
+        default 15
+        range 1 60
+        depends on CRASH_COLLECT_CORE_DUMP
+        help
+            This option controls how long the ESP32 Command Station will wait
+            for the factory reset button to be pressed before halting or
+            deleting the core dump.
+endmenu

@@ -44,12 +44,7 @@ set(CUSTOM_DEPS
     Utils
 )
 
-set(CS_SOURCE_FILES
-    ESP32CommandStation.cpp
-    WebServer.cpp
-)
-
-idf_component_register(SRCS ESP32CommandStation.cpp WebServer.cpp
+idf_component_register(SRCS ESP32CommandStation.cpp Esp32CoreDumpUtil.cpp WebServer.cpp
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 
 # export the project version as a define for the SNIP data, note it must be
