@@ -65,7 +65,7 @@ menu "Pin Configuration"
         depends on DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_PROG_ONLY
         config PROG_TRACK_ENABLE_PIN
             int "PROG Track enable/pwm pin"
-            default 19
+            default 18
             range 0 33
             help
                 This pin will be HIGH when the H-Bridge output should be
