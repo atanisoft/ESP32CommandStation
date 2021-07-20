@@ -19,6 +19,7 @@
     - [x] Disable track when short occurs.
     - [x] Enable track when short has cleared.
     - [x] Send short/shutdown events for OPS.
+    - [x] Shunt support
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
 * [x] Deps: Remove nlohmann_json dependency in favor of cJSON.
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.

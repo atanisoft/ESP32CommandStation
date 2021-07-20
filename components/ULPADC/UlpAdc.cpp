@@ -23,6 +23,7 @@ COPYRIGHT (c) 2021 Mike Dunston
 #include <esp32/ulp.h>
 #include <hardware.hxx>
 #include <soc/rtc_cntl_reg.h>
+#include <utils/Fixed16.hxx>
 #include <utils/logging.h>
 #include <utils/Singleton.hxx>
 
@@ -101,6 +102,20 @@ void ulp_watchdog(void *param)
   vTaskDelete(nullptr);
 }
 
+#if CONFIG_CURRENTSENSE_SHUNT_20
+/// Approximate number of mA per ADC step.
+static constexpr float mAPerADCStep = 8.0566f;
+#elif CONFIG_CURRENTSENSE_SHUNT_50
+/// Approximate number of mA per ADC step.
+static constexpr float mAPerADCStep = 3.2226f;
+#elif CONFIG_CURRENTSENSE_SHUNT_100
+/// Approximate number of mA per ADC step.
+static constexpr float mAPerADCStep = 1.6129f;
+#elif CONFIG_CURRENTSENSE_SHUNT_200
+/// Approximate number of mA per ADC step.
+static constexpr float mAPerADCStep = 0.8056f;
+#endif
+
 /// Initialize and start the ULP co-processor for monitoring current sense ADC
 /// inputs. When thresholds are breached the ULP will raise an interrupt to the
 /// ESP32 SoC. When the interrupt is triggered the ESP32 SoC will evaluate the
@@ -128,26 +143,63 @@ void initialize_ulp_adc()
   ulp_exec_count = 0;
 
 #if CONFIG_OPS_TRACK_ENABLED
+#if CONFIG_CURRENTSENSE_USE_SHUNT
+  Fixed16 ops_threshold =
+    (float)CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS / mAPerADCStep;
+  ulp_ops_short_threshold = ops_threshold.round();
+#else
   // Configure the short threshold to around 90% of the configured limit.
   ulp_ops_short_threshold =
     (((((CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS << 3) +
          CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 10) << 12) /
          CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS);
+#endif // CONFIG_CURRENTSENSE_USE_SHUNT
   // Configure the warning limit to around 75% of the short limit.
   ulp_ops_warning_threshold =
     ((ULP_VAR(ulp_ops_short_threshold) << 1) +
       ULP_VAR(ulp_ops_short_threshold)) >> 2;
   // Configure the shutdown limit to near maximum value of the ADC.
   ulp_ops_shutdown_threshold = 4090;
+#if CONFIG_CURRENTSENSE_USE_SHUNT
   LOG(INFO,
       "[ULP-ADC] OPS Short threshold: %d/4095 (%6.2f mA), "
-      "Warning threshold: %d/4095 (%6.2f mA)",
+      "Warning threshold: %d/4095 (%6.2f mA), "
+      "Shutdown threshold: %d/4095 (%6.2f mA)",
       ULP_VAR(ulp_ops_short_threshold),
-      ((ULP_VAR(ulp_ops_shutdown_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f),
+      (ULP_VAR(ulp_ops_short_threshold) * mAPerADCStep),
       ULP_VAR(ulp_ops_warning_threshold),
-      ((ULP_VAR(ulp_ops_warning_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f));
-#endif
+      (ULP_VAR(ulp_ops_warning_threshold) * mAPerADCStep),
+      ULP_VAR(ulp_ops_shutdown_threshold),
+      (ULP_VAR(ulp_ops_shutdown_threshold) * mAPerADCStep));
+#else
+  LOG(INFO,
+      "[ULP-ADC] OPS Short threshold: %d/4095 (%6.2f mA), "
+      "Warning threshold: %d/4095 (%6.2f mA), "
+      "Shutdown threshold: %d/4095 (%6.2f mA)",
+      ULP_VAR(ulp_ops_short_threshold),
+      ((ULP_VAR(ulp_ops_short_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f),
+      ULP_VAR(ulp_ops_warning_threshold),
+      ((ULP_VAR(ulp_ops_warning_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f),
+      ULP_VAR(ulp_ops_shutdown_threshold),
+      ((ULP_VAR(ulp_ops_shutdown_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f));
+#endif // CONFIG_CURRENTSENSE_USE_SHUNT
+#endif // CONFIG_OPS_TRACK_ENABLED
 #if CONFIG_PROG_TRACK_ENABLED
+#if CONFIG_CURRENTSENSE_USE_SHUNT
+  Fixed16 prog_threshold = 60.0f / mAPerADCStep;
+  // Configure the PROG track ACK limit to ~60mA
+  ulp_prog_ack_threshold = prog_threshold.round();
+  prog_threshold = 250.0f / mAPerADCStep;
+  // Configure the PROG track short limit to ~250mA
+  ulp_prog_short_threshold = prog_threshold.round();
+  LOG(INFO,
+      "[ULP-ADC] PROG Ack threshold: %u/4095 (%6.2f mA), "
+      "Short threshold: %u/4095 (%6.2f mA)",
+      ULP_VAR(ulp_prog_ack_threshold),
+      ULP_VAR(ulp_prog_ack_threshold) * mAPerADCStep,
+      ULP_VAR(ulp_prog_short_threshold),
+      ULP_VAR(ulp_prog_short_threshold) * mAPerADCStep);
+#else
   // Configure the PROG track ACK limit to ~60mA
   ulp_prog_ack_threshold = (60 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
   // Configure the PROG track short limit to ~250mA
@@ -159,7 +211,8 @@ void initialize_ulp_adc()
       ((ULP_VAR(ulp_prog_ack_threshold) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f),
       ULP_VAR(ulp_prog_short_threshold),
       ((ULP_VAR(ulp_prog_short_threshold) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
-#endif
+#endif // CONFIG_CURRENTSENSE_USE_SHUNT
+#endif // CONFIG_PROG_TRACK_ENABLED
   // Enable ULP access to ADC1
   adc1_ulp_enable();
 
@@ -206,8 +259,12 @@ uint16_t get_last_ops_reading()
 uint32_t get_ops_load()
 {
 #if CONFIG_OPS_TRACK_ENABLED
+#if CONFIG_CURRENTSENSE_USE_SHUNT
+  return get_last_ops_reading() * mAPerADCStep;
+#else // no shunt
   return (get_last_ops_reading() * CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS) / 4096;
-#endif
+#endif // CONFIG_CURRENTSENSE_USE_SHUNT
+#endif // CONFIG_OPS_TRACK_ENABLED
   return -1;
 }
 

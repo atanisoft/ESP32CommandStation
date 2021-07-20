@@ -887,6 +887,7 @@ menu "Thermal Monitor Configuration"
     depends on !TEMPSENSOR_DISABLED
     choice THERMALMONITOR_TYPE
         bool "Thermistor/IC"
+        default THERMALMONITOR_TYPE_MCP9701
         config THERMALMONITOR_TYPE_MCP9700
             bool "MCP9700/MCP9700A"
         config THERMALMONITOR_TYPE_MCP9701
@@ -897,9 +898,9 @@ menu "Thermal Monitor Configuration"
     config THERMALMONITOR_ZERO_MV
         int "Millivolts at 0C"
         range 0 3300
-        default 0
         default 500 if THERMALMONITOR_TYPE_MCP9700
         default 400 if THERMALMONITOR_TYPE_MCP9701
+        default 0
         help
             This value is used as a correction to the calculated millivolts
             reading of the ADC pin as a 0C starting point. For the MCP9700 it
@@ -907,9 +908,9 @@ menu "Thermal Monitor Configuration"
     config THERMALMONITOR_MV_PER_C
         int "Millivolts per 1C"
         range 10 33000
-        default 10
         default 100 if THERMALMONITOR_TYPE_MCP9700
         default 195 if THERMALMONITOR_TYPE_MCP9701
+        default 10
         help
             This value is used to convert the raw millivolts value into degrees.
             NOTE: This value needs to be multiplied by 10 to account for the
@@ -1089,4 +1090,29 @@ menu "Crash Behavior"
             This option controls how long the ESP32 Command Station will wait
             for the factory reset button to be pressed before halting or
             deleting the core dump.
+endmenu
+menu "Current Sense"
+    config CURRENTSENSE_USE_SHUNT
+        bool "Use shunt for current sense"
+        default n
+        help
+            By default the raw ADC value will be used to convert directly to mA
+            by multiplying by the maximum mA for the h-bridge and divided by
+            4096 (max ADC value). Enabling this option will adjust this to be
+            calculated based on the shunt values instead. The ESP32 Command
+            Station PCB uses an INA2180, https://www.ti.com/lit/ds/symlink/ina2180.pdf
+            with a 0.0005Ohm shunt resistor.
+    choice CURRENTSENSE_SHUNT_TYPE
+        bool "Shunt Gain"
+        depends on CURRENTSENSE_USE_SHUNT
+        default CURRENTSENSE_SHUNT_100
+        config CURRENTSENSE_SHUNT_20
+            bool "20 V/V"
+        config CURRENTSENSE_SHUNT_50
+            bool "50 V/V"
+        config CURRENTSENSE_SHUNT_100
+            bool "100 V/V"
+        config CURRENTSENSE_SHUNT_200
+            bool "200 V/V"
+    endchoice
 endmenu
