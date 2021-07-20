@@ -225,41 +225,41 @@ namespace esp32cs
     // display current configuration settings.
     LOG(INFO, "[NVS] Node ID: %s",
         node_id_to_string(nvsConfig.node_id).c_str());
-    LOG(INFO, "[NVS] WiFi configuration:");
-    LOG(INFO, "Mode: %s (%d)", WIFI_MODES[nvsConfig.wifi_mode],
+    LOG(INFO, "[NVS] WiFi Mode: %s (%d)", WIFI_MODES[nvsConfig.wifi_mode],
         nvsConfig.wifi_mode);
-    LOG(INFO, "Hostname Prefix: %s", nvsConfig.hostname_prefix);
+    LOG(INFO, "[NVS] Hostname Prefix: %s", nvsConfig.hostname_prefix);
     if (nvsConfig.wifi_mode == WIFI_MODE_STA ||
         nvsConfig.wifi_mode == WIFI_MODE_APSTA)
     {
-      LOG(INFO, "Station SSID: %s", nvsConfig.station_ssid);
+      LOG(INFO, "[NVS] Station SSID: %s", nvsConfig.station_ssid);
     }
     if (nvsConfig.wifi_mode == WIFI_MODE_AP ||
         nvsConfig.wifi_mode == WIFI_MODE_APSTA)
     {
-      LOG(INFO, "SoftAP SSID: %s", nvsConfig.softap_ssid);
-      LOG(INFO, "SoftAP Auth: %s (%d)", WIFI_AUTH_MODES[nvsConfig.softap_auth],
+      LOG(INFO, "[NVS] SoftAP SSID: %s", nvsConfig.softap_ssid);
+      LOG(INFO, "[NVS] SoftAP Auth: %s (%d)", WIFI_AUTH_MODES[nvsConfig.softap_auth],
           nvsConfig.softap_auth);
     }
     if (nvsConfig.sntp_enabled)
     {
-      LOG(INFO, "SNTP: %s / %s", nvsConfig.sntp_server, nvsConfig.timezone);
+      LOG(INFO, "[NVS] SNTP: %s / %s", nvsConfig.sntp_server, nvsConfig.timezone);
     }
     else
     {
-      LOG(INFO, "SNTP: Off");
+      LOG(INFO, "[NVS] SNTP: Off");
     }
     if (nvsConfig.fastclock_enabled)
     {
-      LOG(INFO, "FastClock: %04d-%02d-%02d %02d:%02d",
+      LOG(INFO, "[NVS] FastClock: %04d-%02d-%02d %02d:%02d",
           nvsConfig.fastclock_year + 1900, nvsConfig.fastclock_month,
           nvsConfig.fastclock_day, nvsConfig.fastclock_hour,
           nvsConfig.fastclock_minute);
     }
     else
     {
-      LOG(INFO, "FastClock: Disabled");
+      LOG(INFO, "[NVS] FastClock: Disabled");
     }
+    LOG(INFO, "[NVS] LED brightness: %d", nvsConfig.led_brightness);
   }
 
   void NvsManager::init(uint8_t reset_reason)
@@ -398,11 +398,6 @@ namespace esp32cs
         nvsConfig.fastclock_day = CONFIG_FASTCLOCK_START_DAY;
         need_persist = true;
       }
-      if (nvsConfig.fastclock_year < 1)
-      {
-        nvsConfig.fastclock_year = CONFIG_FASTCLOCK_START_YEAR - 1900;
-        need_persist = true;
-      }
       if (nvsConfig.fastclock_hour > 23)
       {
         nvsConfig.fastclock_hour = CONFIG_FASTCLOCK_START_HOUR - 1;
@@ -411,6 +406,11 @@ namespace esp32cs
       if (nvsConfig.fastclock_minute > 59)
       {
         nvsConfig.fastclock_minute = CONFIG_FASTCLOCK_START_MINUTE - 1;
+        need_persist = true;
+      }
+      if (nvsConfig.led_brightness < 8)
+      {
+        nvsConfig.led_brightness = CONFIG_STATUS_LED_BRIGHTNESS;
         need_persist = true;
       }
     }
@@ -422,6 +422,7 @@ namespace esp32cs
     }
     nvs_close(nvs);
     display_nvs_configuration();
+    leds->setBrightness(nvsConfig.led_brightness);
   }
 
   bool NvsManager::should_reset_config()
