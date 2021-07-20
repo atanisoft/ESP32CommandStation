@@ -1,7 +1,8 @@
 /*-------------------------------------------------------------------------
-NeoPixel library helper functions for DotStars using general Pins (APA102/LPD8806).
+NeoPixel library helper functions for DotStars using ESP32's alternate SPI (HSPI) (APA102/LPD8806).
 
 Written by Michael C. Miller.
+Minor changes adapting TwoWireSpiImple to support HSPI by Louis Beaudoin (Pixelvation)
 
 I invest time and resources providing this open source code,
 please support me by dontating (see https://github.com/Makuna/NeoPixelBus)
@@ -26,73 +27,66 @@ License along with NeoPixel.  If not, see
 
 #pragma once
 
+#include <SPI.h>
 
-class TwoWireBitBangImple
+template<typename T_SPISPEED> class TwoWireHspiImple
 {
 public:
-    typedef NeoNoSettings SettingsObject;
+    typedef typename T_SPISPEED::SettingsObject SettingsObject;
 
-    TwoWireBitBangImple(uint8_t pinClock, uint8_t pinData) :
-        _pinClock(pinClock),
-        _pinData(pinData)
+    TwoWireHspiImple(uint8_t, uint8_t) // clock and data pins ignored for hardware SPI
     {
-        pinMode(pinClock, OUTPUT);
-        pinMode(pinData, OUTPUT);
+        _hspi = new SPIClass(HSPI);
     }
 
-    ~TwoWireBitBangImple()
+    ~TwoWireHspiImple()
     {
-        pinMode(_pinClock, INPUT);
-        pinMode(_pinData, INPUT);
+        _hspi->end();
+        delete _hspi;
     }
+
+#if defined(ARDUINO_ARCH_ESP32)
+    // for cases where hardware SPI can have pins changed
+    void begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss)
+    {
+        _hspi->begin(sck, miso, mosi, ss);
+    }
+#endif
 
     void begin()
     {
-        digitalWrite(_pinClock, LOW);
-        digitalWrite(_pinData, LOW);
+        _hspi->begin();
     }
 
     void beginTransaction()
     {
-
+        _hspi->beginTransaction(SPISettings(_speed.Clock, MSBFIRST, SPI_MODE0));
     }
 
     void endTransaction()
     {
-        digitalWrite(_pinData, LOW);
+        _hspi->endTransaction();
     }
 
     void transmitByte(uint8_t data)
     {
-        for (int bit = 7; bit >= 0; bit--)
-        {
-            // set data bit on pin
-            digitalWrite(_pinData, (data & 0x80) == 0x80 ? HIGH : LOW);
-
-            // set clock high as data is ready
-            digitalWrite(_pinClock, HIGH);
-
-            data <<= 1;
-
-            // set clock low as data pin is changed
-            digitalWrite(_pinClock, LOW);
-        }
+        _hspi->transfer(data);
     }
 
     void transmitBytes(const uint8_t* data, size_t dataSize)
     {
-        const uint8_t* endData = data + dataSize;
-        while (data < endData)
-        {
-            transmitByte(*data++);
-        }
+        // ESPs have a method to write without inplace overwriting the send buffer
+        // since we don't care what gets received, use it for performance
+        // FIX: but for what ever reason on Esp32, its not const
+        _hspi->writeBytes(const_cast<uint8_t*>(data), dataSize);
     }
 
     void applySettings(const SettingsObject& settings)
     {
+        _speed.applySettings(settings);
     }
 
 private:
-    const uint8_t  _pinClock;     // output pin number for clock line
-    const uint8_t  _pinData;      // output pin number for data line
+    SPIClass * _hspi = NULL;
+    T_SPISPEED _speed;
 };

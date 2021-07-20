@@ -28,6 +28,7 @@ License along with NeoPixel.  If not, see
 #ifdef ARDUINO
 #include <Arduino.h>
 #else
+#include "sdkconfig.h"
 #include <stdint.h>
 #ifndef PI
 #define PI 3.1415926535897932384626433832795
@@ -84,16 +85,22 @@ License along with NeoPixel.  If not, see
 #include "internal/NeoSettings.h"
 
 #include "internal/RgbColor.h"
+#include "internal/Rgb16Color.h"
+#include "internal/Rgb48Color.h"
+
 #include "internal/HslColor.h"
 #include "internal/HsbColor.h"
 //#include "internal/HtmlColor.h"
+
 #include "internal/RgbwColor.h"
 #include "internal/SegmentDigit.h"
 
 #include "internal/NeoColorFeatures.h"
 #include "internal/NeoTm1814ColorFeatures.h"
+#include "internal/NeoTm1914ColorFeatures.h"
 #include "internal/DotStarColorFeatures.h"
 #include "internal/Lpd8806ColorFeatures.h"
+#include "internal/Lpd6803ColorFeatures.h"
 #include "internal/P9813ColorFeatures.h"
 #include "internal/NeoSegmentFeatures.h"
 
@@ -113,12 +120,15 @@ License along with NeoPixel.  If not, see
 #include "internal/NeoEase.h"
 #include "internal/NeoGamma.h"
 
+#include "internal/NeoBusChannel.h"
+
 #if defined(ARDUINO)
 #include "internal/DotStarGenericMethod.h"
 #include "internal/Lpd8806GenericMethod.h"
+#include "internal/Lpd6803GenericMethod.h"
 #include "internal/Ws2801GenericMethod.h"
 #include "internal/P9813GenericMethod.h"
-#endif
+#endif // ARDUINO
 
 #if defined(ARDUINO_ARCH_ESP8266)
 
@@ -126,11 +136,12 @@ License along with NeoPixel.  If not, see
 #include "internal/NeoEsp8266UartMethod.h"
 #include "internal/NeoEspBitBangMethod.h"
 
-#elif defined(ARDUINO_ARCH_ESP32) || defined(ESP32)
+#elif defined(ARDUINO_ARCH_ESP32) || defined(CONFIG_IDF_TARGET)
 
 #include "internal/NeoEsp32I2sMethod.h"
 #include "internal/NeoEsp32RmtMethod.h"
-#include "internal/NeoEspBitBangMethod.h"
+//#include "internal/NeoEspBitBangMethod.h"
+//#include "internal/DotStarEsp32DmaSpiMethod.h"
 
 #elif defined(ARDUINO_ARCH_NRF52840) // must be before __arm__
 
@@ -149,8 +160,6 @@ License along with NeoPixel.  If not, see
 #endif
 
 
-
-
 template<typename T_COLOR_FEATURE, typename T_METHOD> class NeoPixelBus
 {
 public:
@@ -161,6 +170,13 @@ public:
         _countPixels(countPixels),
         _state(0),
         _method(pin, countPixels, T_COLOR_FEATURE::PixelSize, T_COLOR_FEATURE::SettingsSize)
+    {
+    }
+
+    NeoPixelBus(uint16_t countPixels, uint8_t pin, NeoBusChannel channel) :
+        _countPixels(countPixels),
+        _state(0),
+        _method(pin, countPixels, T_COLOR_FEATURE::PixelSize, T_COLOR_FEATURE::SettingsSize, channel)
     {
     }
 
@@ -191,14 +207,21 @@ public:
     void Begin()
     {
         _method.Initialize();
-        Dirty();
+        ClearTo(0);
     }
 
-    // used by DotStartSpiMethod if pins can be configured
+    // used by DotStarSpiMethod/DotStarEsp32DmaSpiMethod if pins can be configured
     void Begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss)
     {
         _method.Initialize(sck, miso, mosi, ss);
-        Dirty();
+        ClearTo(0);
+    }
+
+    // used by DotStarEsp32DmaSpiMethod if pins can be configured - reordered and extended version supporting quad SPI
+    void Begin(int8_t sck, int8_t dat0, int8_t dat1, int8_t dat2, int8_t dat3, int8_t ss)
+    {
+        _method.Initialize(sck, dat0, dat1, dat2, dat3, ss);
+        ClearTo(0);
     }
 
     void Show(bool maintainBufferConsistency = true)
@@ -400,6 +423,12 @@ public:
         T_COLOR_FEATURE::applySettings(_method.getData(), settings);
         Dirty();
     };
+
+    void SetMethodSettings(const typename T_METHOD::SettingsObject& settings)
+    {
+        _method.applySettings(settings);
+        Dirty();
+    };
  
     uint32_t CalcTotalMilliAmpere(const typename T_COLOR_FEATURE::ColorObject::SettingsObject& settings)
     {
@@ -499,5 +528,4 @@ protected:
         // intentional no dirty
     }
 };
-
 

@@ -147,7 +147,6 @@ public:
     typedef RgbwColor ColorObject;
 };
 
- 
 class Neo3ElementsNoSettings : public Neo3Elements
 {
 public:

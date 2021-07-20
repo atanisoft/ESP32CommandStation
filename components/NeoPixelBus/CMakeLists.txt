@@ -3,9 +3,3 @@ set(IDF_DEPS "driver")
 idf_component_register(SRC_DIRS "src/internal"
                        INCLUDE_DIRS "src"
                        REQUIRES "${IDF_DEPS}")
-
-###############################################################################
-# Add required compilation flags for NeoPixelBus
-###############################################################################
-
-target_compile_options(${COMPONENT_LIB} PUBLIC -DESP32)

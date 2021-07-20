@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------
-RgbwColor provides a color object that can be directly consumed by NeoPixelBus
+Rgb16Color provides a color object that stores in only 16 bits, aka 565 format
 
 Written by Michael C. Miller.
 
@@ -30,107 +30,151 @@ License along with NeoPixel.  If not, see
 #else
 #include <stdint.h>
 #endif
+#include "NeoSettings.h"
+#include "RgbColorBase.h"
 
-struct RgbColor;
-struct HslColor;
-struct HsbColor;
 
 // ------------------------------------------------------------------------
-// RgbwColor represents a color object that is represented by Red, Green, Blue
-// component values and an extra White component.  It contains helpful color 
-// routines to manipulate the color.
+// Rgb16Color represents a color object that is represented by Red, Green, Blue
+// component values stored in a single 16 bit value using 565 model.  
+// It contains helpful color routines to manipulate the color.
 // ------------------------------------------------------------------------
-struct RgbwColor
+struct Rgb16Color : RgbColorBase
 {
-    typedef NeoRgbwCurrentSettings SettingsObject;
+    typedef NeoRgbCurrentSettings SettingsObject;
 
     // ------------------------------------------------------------------------
-    // Construct a RgbwColor using R, G, B, W values (0-255)
+    // Construct a Rgb16Color using R, G, B values (0-255)
     // ------------------------------------------------------------------------
-    RgbwColor(uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0) :
-        R(r), G(g), B(b), W(w)
+    Rgb16Color(uint8_t r, uint8_t g, uint8_t b) 
     {
+        setR(r);
+        setG(g);
+        setB(b);
     };
 
     // ------------------------------------------------------------------------
-    // Construct a RgbColor using a single brightness value (0-255)
+    // Construct a Rgb16Color using a single brightness value (0-255)
     // This works well for creating gray tone colors
     // (0) = black, (255) = white, (128) = gray
     // ------------------------------------------------------------------------
-    RgbwColor(uint8_t brightness) :
-        R(0), G(0), B(0), W(brightness)
+    Rgb16Color(uint8_t brightness) 
+    {
+        setR(brightness);
+        setG(brightness);
+        setB(brightness);
+    };
+
+    // ------------------------------------------------------------------------
+    // Construct a Rgb16Color using a single 16bit encoded value 
+    // CAUTION: the color value must follow a 5/6/5 encoding model otherwise an
+    // incorrect color will be generated
+    // ------------------------------------------------------------------------
+    Rgb16Color(uint16_t color) :
+        Color565(color)
     {
     };
 
     // ------------------------------------------------------------------------
-    // Construct a RgbwColor using RgbColor
+    // Construct a Rgb16Color using HtmlColor
     // ------------------------------------------------------------------------
-    RgbwColor(const RgbColor& color) :
-        R(color.R),
-        G(color.G),
-        B(color.B),
-        W(0)
+    /*Rgb16Color(const HtmlColor& color)
+    {
+        RgbColor converted = color;
+
+        setR(converted.R);
+        setG(converted.G);
+        setB(converted.B);
+    };*/
+
+    // ------------------------------------------------------------------------
+    // Construct a Rgb16Color using HslColor
+    // ------------------------------------------------------------------------
+    Rgb16Color(const HslColor& color)
+    {
+        RgbColor converted = color;
+
+        setR(converted.R);
+        setG(converted.G);
+        setB(converted.B);
+    };
+
+    // ------------------------------------------------------------------------
+    // Construct a Rgb16Color using HsbColor
+    // ------------------------------------------------------------------------
+    Rgb16Color(const HsbColor& color)
+    {
+        RgbColor converted = color;
+
+        setR(converted.R);
+        setG(converted.G);
+        setB(converted.B);
+    };
+
+    // ------------------------------------------------------------------------
+    // Construct a Rgb16Color that will have its values set in latter operations
+    // CAUTION:  The Color565 member is not initialized and may not be consistent
+    // ------------------------------------------------------------------------
+    Rgb16Color()
     {
     };
 
     // ------------------------------------------------------------------------
-    // Construct a RgbwColor using HtmlColor
+    // properties
     // ------------------------------------------------------------------------
-    //RgbwColor(const HtmlColor& color);
-
-    // ------------------------------------------------------------------------
-    // Construct a RgbwColor using HslColor
-    // ------------------------------------------------------------------------
-    RgbwColor(const HslColor& color);
-
-    // ------------------------------------------------------------------------
-    // Construct a RgbwColor using HsbColor
-    // ------------------------------------------------------------------------
-    RgbwColor(const HsbColor& color);
-
-    // ------------------------------------------------------------------------
-    // Construct a RgbwColor that will have its values set in latter operations
-    // CAUTION:  The R,G,B, W members are not initialized and may not be consistent
-    // ------------------------------------------------------------------------
-    RgbwColor()
+    void setR(uint8_t r)
     {
+        Color565 &= 0x07ff;
+        Color565 |= ((r & 0xf8) << 8);
     };
+    uint8_t getR() const
+    {
+        return (Color565 & 0xf800) >> 8;
+    };
+
+    void setG(uint8_t g)
+    {
+        Color565 &= 0xf81f;
+        Color565 |= ((g & 0xfe) << 3);
+    };
+    uint8_t getG() const
+    {
+        return (Color565 & 0x07e0) >> 3;
+    };
+
+    void setB(uint8_t b)
+    {
+        Color565 &= 0xffe0;
+        Color565 |= ((b & 0xf8) >> 3);
+    };
+    uint8_t getB() const
+    {
+        return (Color565 & 0x001f) << 3;
+    };
+
 
     // ------------------------------------------------------------------------
     // Comparison operators
     // ------------------------------------------------------------------------
-    bool operator==(const RgbwColor& other) const
+    bool operator==(const Rgb16Color& other) const
     {
-        return (R == other.R && G == other.G && B == other.B && W == other.W);
+        return (Color565 == other.Color565);
     };
 
-    bool operator!=(const RgbwColor& other) const
+    bool operator!=(const Rgb16Color& other) const
     {
         return !(*this == other);
-    };
-
-    // ------------------------------------------------------------------------
-    // Returns if the color is grey, all values are equal other than white
-    // ------------------------------------------------------------------------
-    bool IsMonotone() const
-    {
-        return (R == B && R == G);
-    };
-
-    // ------------------------------------------------------------------------
-    // Returns if the color components are all zero, the white component maybe 
-    // anything
-    // ------------------------------------------------------------------------
-    bool IsColorLess() const
-    {
-        return (R == 0 && B == 0 && G == 0);
     };
 
     // ------------------------------------------------------------------------
     // CalculateBrightness will calculate the overall brightness
     // NOTE: This is a simple linear brightness
     // ------------------------------------------------------------------------
-    uint8_t CalculateBrightness() const;
+    uint8_t CalculateBrightness() const
+    {
+        RgbColor converted = *this;
+        return converted.CalculateBrightness();
+    };
 
     // ------------------------------------------------------------------------
     // Dim will return a new color that is blended to black with the given ratio
@@ -138,7 +182,13 @@ struct RgbwColor
     // 
     // NOTE: This is a simple linear blend
     // ------------------------------------------------------------------------
-    RgbwColor Dim(uint8_t ratio) const;
+    Rgb16Color Dim(uint8_t ratio) const
+    {
+        RgbColor converted = *this;
+        RgbColor result = converted.Dim(ratio);
+
+        return Rgb16Color(result.R, result.G, result.B);
+    };
 
     // ------------------------------------------------------------------------
     // Brighten will return a new color that is blended to white with the given ratio
@@ -146,21 +196,43 @@ struct RgbwColor
     // 
     // NOTE: This is a simple linear blend
     // ------------------------------------------------------------------------
-    RgbwColor Brighten(uint8_t ratio) const;
+    Rgb16Color Brighten(uint8_t ratio) const
+    {
+        RgbColor converted = *this;
+        RgbColor result = converted.Brighten(ratio);
+
+        return Rgb16Color(result.R, result.G, result.B);
+    };
 
     // ------------------------------------------------------------------------
     // Darken will adjust the color by the given delta toward black
     // NOTE: This is a simple linear change
     // delta - (0-255) the amount to dim the color
     // ------------------------------------------------------------------------
-    void Darken(uint8_t delta);
+    void Darken(uint8_t delta)
+    {
+        RgbColor converted = *this;
+
+        converted.Darken(delta);
+        setR(converted.R);
+        setG(converted.G);
+        setB(converted.B);
+    };
 
     // ------------------------------------------------------------------------
     // Lighten will adjust the color by the given delta toward white
     // NOTE: This is a simple linear change
     // delta - (0-255) the amount to lighten the color
     // ------------------------------------------------------------------------
-    void Lighten(uint8_t delta);
+    void Lighten(uint8_t delta)
+    {
+        RgbColor converted = *this;
+
+        converted.Lighten(delta);
+        setR(converted.R);
+        setG(converted.G);
+        setB(converted.B);
+    };
 
     // ------------------------------------------------------------------------
     // LinearBlend between two colors by the amount defined by progress variable
@@ -169,7 +241,12 @@ struct RgbwColor
     // progress - (0.0 - 1.0) value where 0 will return left and 1.0 will return right
     //     and a value between will blend the color weighted linearly between them
     // ------------------------------------------------------------------------
-    static RgbwColor LinearBlend(const RgbwColor& left, const RgbwColor& right, float progress);
+    static Rgb16Color LinearBlend(const Rgb16Color& left, const Rgb16Color& right, float progress)
+    {
+        RgbColor result = RgbColor::LinearBlend(left, right, progress);
+
+        return Rgb16Color(result.R, result.G, result.B);
+    };
     
     // ------------------------------------------------------------------------
     // BilinearBlend between four colors by the amount defined by 2d variable
@@ -180,53 +257,28 @@ struct RgbwColor
     // x - unit value (0.0 - 1.0) that defines the blend progress in horizontal space
     // y - unit value (0.0 - 1.0) that defines the blend progress in vertical space
     // ------------------------------------------------------------------------
-    static RgbwColor BilinearBlend(const RgbwColor& c00, 
-        const RgbwColor& c01, 
-        const RgbwColor& c10, 
-        const RgbwColor& c11, 
-        float x, 
-        float y);
+    static Rgb16Color BilinearBlend(const Rgb16Color& c00,
+        const Rgb16Color& c01,
+        const Rgb16Color& c10,
+        const Rgb16Color& c11,
+        float x,
+        float y)
+    {
+        RgbColor result = RgbColor::BilinearBlend(c00, c01, c10, c11, x, y);
 
-    uint16_t CalcTotalTenthMilliAmpere(const SettingsObject& settings)
+        return Rgb16Color(result.R, result.G, result.B);
+    };
+
+    uint32_t CalcTotalTenthMilliAmpere(const SettingsObject& settings)
     {
         auto total = 0;
 
-        total += R * settings.RedTenthMilliAmpere / 255;
-        total += G * settings.GreenTenthMilliAmpere / 255;
-        total += B * settings.BlueTenthMilliAmpere / 255;
-        total += W * settings.WhiteCurrent / 255;
+        total += getR() * settings.RedTenthMilliAmpere / 255;
+        total += getG() * settings.GreenTenthMilliAmpere / 255;
+        total += getB() * settings.BlueTenthMilliAmpere / 255;
 
         return total;
-    }
+    };
 
-    // ------------------------------------------------------------------------
-    // Red, Green, Blue, White color members (0-255) where 
-    // (0,0,0,0) is black and (255,255,255, 0) and (0,0,0,255) is white
-    // Note (255,255,255,255) is extreme bright white
-    // ------------------------------------------------------------------------
-    uint8_t R;
-    uint8_t G;
-    uint8_t B;
-    uint8_t W;
-
-private:
-    inline static uint8_t _elementDim(uint8_t value, uint8_t ratio)
-    {
-        return (static_cast<uint16_t>(value) * (static_cast<uint16_t>(ratio) + 1)) >> 8;
-    }
-
-    inline static uint8_t _elementBrighten(uint8_t value, uint8_t ratio)
-    {
-        uint16_t element = ((static_cast<uint16_t>(value) + 1) << 8) / (static_cast<uint16_t>(ratio) + 1);
-
-        if (element > 255)
-        {
-            element = 255;
-        }
-        else
-        {
-            element -= 1;
-        }
-        return element;
-    }
+    uint16_t Color565;
 };

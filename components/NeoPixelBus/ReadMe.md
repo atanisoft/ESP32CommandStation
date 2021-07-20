@@ -10,8 +10,11 @@ Supports most Arduino platforms.
 Please read this best practices link before connecting your NeoPixels, it will save you a lot of time and effort.  
 [Adafruit NeoPixel Best Practices](https://learn.adafruit.com/adafruit-neopixel-uberguide/best-practices)
 
-For quick questions and support jump on Gitter and ask away.  
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Makuna/NeoPixelBus?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+For quick questions and support:  
+* [Try the new Github Discussions](https://github.com/Makuna/NeoPixelBus/discussions)  
+* [Discord NeoPixelBus Invitation](https://discord.gg/c6FrysvZyV) or if you are already a member of [Discord Server NeoPixelBus](https://discord.com/channels/789177382221119519/789177382221119521)  
+* Or jump on Gitter   
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Makuna/NeoPixelBus?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)  
 
 For bugs, make sure there isn't an active issue and then create one.
 
@@ -21,15 +24,10 @@ See [Why this Library in the Wiki](https://github.com/Makuna/NeoPixelBus/wiki/Li
 ## Documentation
 [See Wiki](https://github.com/Makuna/NeoPixelBus/wiki)
 
-## Installing This Library (prefered, you just want to use it)
+## Installing This Library (preferred, you just want to use it)
 Open the Library Manager and search for "NeoPixelBus by Makuna" and install
 
 ## Installing This Library From GitHub (advanced, you want to contribute)
 Create a directory in your Arduino\Library folder named "NeoPixelBus"
 Clone (Git) this project into that folder.  
 It should now show up in the import list when you restart Arduino IDE.
-
-
-
-
-
