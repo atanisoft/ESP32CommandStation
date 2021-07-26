@@ -96,7 +96,10 @@ public:
     // for a single dcc packet is 192 while using up to 50 preamble bits.
     uint16_t maxBitCount =
       std::max(HW::DCC_SERVICE_MODE_PREAMBLE_BITS, HW::DCC_PREAMBLE_BITS) +
-      1 + (dcc::Packet::MAX_PAYLOAD * 8) + dcc::Packet::MAX_PAYLOAD + 3;
+      1 + /* payload start bit */
+      (MAX_DCC_DLC_LEN * 8) + /* payload bytes */
+      MAX_DCC_DLC_LEN + /* end of byte markers */
+      3; /* end of packet marker, sacrificial bit, RMT EOF marker */
     HASSERT(maxBitCount <= MAX_RMT_ENCODED_BITS);
     uint8_t memoryBlocks = (maxBitCount / RMT_MEM_ITEM_NUM) + 1;
     HASSERT(memoryBlocks <= MAX_RMT_MEMORY_BLOCKS);
@@ -156,6 +159,14 @@ public:
     if (sourcePacket->packet_header.is_marklin)
     {
       // drop Marklin packets.
+      return 1;
+    }
+    if (sourcePacket->dlc > MAX_DCC_DLC_LEN)
+    {
+      // drop over-length packets.
+      LOG_ERROR("[DCC-RMT-%d] Dropping DCC packet that is too long: %s\n",
+                HW::RMT_CHANNEL,
+                dcc::packet_to_string(*sourcePacket, true).c_str());
       return 1;
     }
 #if !CONFIG_PROG_TRACK_ENABLED
@@ -240,14 +251,17 @@ public:
   }
 
 private:
+  /// Maximum number of bytes to support for DCC packets.
+  static constexpr uint8_t MAX_DCC_DLC_LEN = 6;
+
   /// Maximum number of RMT memory blocks to allow for the DCC signal
   /// generation. With three memory blocks it is possible to send up to 192
   /// bits per DCC packet with up to 50 preamble bits.
-  static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = 3;
+  static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = 6;
 
   /// Maximum number of bits that can be transmitted as one packet.
-  static constexpr uint8_t MAX_RMT_ENCODED_BITS =
-    RMT_MEM_ITEM_NUM * MAX_RMT_MEMORY_BLOCKS;
+  static constexpr uint16_t MAX_RMT_ENCODED_BITS =
+    SOC_RMT_CHANNEL_MEM_WORDS * MAX_RMT_MEMORY_BLOCKS;
 
   /// malloc() capabilities to use for the DCC packet queue. This is configured
   /// to use internal 8-bit capable memory only.
