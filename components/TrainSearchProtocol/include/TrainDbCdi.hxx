@@ -116,7 +116,7 @@ CDI_GROUP(TrainConfigDef, MainCdi());
 // We do not support ACDI and we do not support adding the <identification>
 // information in here because both of these vary train by train.
 CDI_GROUP_ENTRY(ident, openlcb::Identification, Model("Virtual train node"));
-CDI_GROUP_ENTRY(train, TrainSegment);
+CDI_GROUP_ENTRY(train, TrainSegment, Name("Train Settings"));
 //CDI_GROUP_ENTRY(cv, ProgrammingTrackSpaceConfig);
 CDI_GROUP_END();
 
@@ -132,7 +132,7 @@ CDI_GROUP_END();
 /// user.
 CDI_GROUP(TrainTmpConfigDef, MainCdi());
 CDI_GROUP_ENTRY(ident, openlcb::Identification, Model("Virtual train node"));
-CDI_GROUP_ENTRY(train, TmpTrainSegment);
+CDI_GROUP_ENTRY(train, TmpTrainSegment, Name("Train Settings"));
 //CDI_GROUP_ENTRY(cv, ProgrammingTrackSpaceConfig);
 CDI_GROUP_END();
 
