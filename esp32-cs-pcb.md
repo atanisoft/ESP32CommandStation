@@ -21,12 +21,12 @@ Below is a rendering of the ESP32 Command Station PCB:
 ### Gerber files
 These can be used with any PCB manufacturing company.
 
-* v1.5.1 - Coming soon
+* v1.5.2 - Coming soon
 
 ### PCBA Services
 Some PCB manufactures offer PCBA. The files below can possibly be used for such purposes:
 
-* v1.5.1 - Coming soon
+* v1.5.2 - Coming soon
 
 ## Schematic and BOM
 
@@ -98,11 +98,13 @@ GPIO 22 is connected to five TX1812 (or similar) RGB LEDs.
 | --- | ----- | -------------- |
 | 1 | WiFi Station Status | Green - Connected<br/>Green (flashing) - Connecting<br/>Red - Disconnected |
 | 2 | WiFi SoftAP Status | Blue - SoftAP Active<br/>Blue (flashing) - Starting<br/>Red - Disconnected |
-| 3 | Bootloader Active | Green - On<br/> Clear/Off - Off<br/>Red - Fault/Short |
+| 3 | Bootloader Active | Green - Active<br/> Clear/Off - Inactive |
 | 4 | OPS Track Status | Green - On<br/> Clear/Off - Off<br/>Yellow - 75% utilization<br/>Red - Fault/Short |
 | 5 | PROG Track Status | Green - On<br/> Clear/Off - Off<br/>Red - Fault/Short |
 
 Flashing LEDs use an on/off frequency of 450ms-500ms.
+
+Note that if the ESP32 Command Station detects that a crash occurred prior to the current startup attempt it will configure the LEDs to blink in an alternating red and yellow pattern. During the first 15 seconds if the Factory Reset button is pressed the ESP32 Command Station will clear the crash details and proceed with normal startup. If no button is pressed the ESP32 Command Station will remain in the alternating light pattern indefinitely. If the code is built using ESP-IDF v4.4 or later the crash details will be convered to a text file and stored on the SD card as "coredump.txt", if no SD card is in use it will be persisted in SPIFFS.
 
 ## Factory Reset button behavior
 During startup the ESP32 Command Station will check for the factory reset button being held and the bootloader request button not being held. The Status LEDs will blink green in an alternating pattern. If the Factory Reset button is held for up to five seconds the OpenLCB (LCC) events will be regenerated. If the Factory Reset button is held for more than ten seconds persistent configuration data will be cleared, note that the NVS persistent configuration will not be cleared.
