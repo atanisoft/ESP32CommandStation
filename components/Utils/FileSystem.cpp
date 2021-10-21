@@ -106,6 +106,12 @@ static spi_bus_config_t bus_cfg =
     .sclk_io_num = CONFIG_SD_CLOCK,
     .quadwp_io_num = GPIO_NUM_NC,
     .quadhd_io_num = GPIO_NUM_NC,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,4,0)
+    .data4_io_num = GPIO_NUM_NC,
+    .data5_io_num = GPIO_NUM_NC,
+    .data6_io_num = GPIO_NUM_NC,
+    .data7_io_num = GPIO_NUM_NC,
+#endif // IDF v4.4+
     .max_transfer_sz = 0,
     .flags = SPICOMMON_BUSFLAG_SCLK | SPICOMMON_BUSFLAG_MISO |
              SPICOMMON_BUSFLAG_MOSI,
@@ -187,7 +193,7 @@ void unmount_fs()
     {
         LOG(INFO, "[FS] Unmounting SD...");
         ESP_ERROR_CHECK(esp_vfs_fat_sdmmc_unmount());
-        ESP_ERROR_CHECK(spi_bus_free(HSPI_HOST));
+        ESP_ERROR_CHECK(spi_bus_free(SDSPI_DEFAULT_HOST));
     }
 }
 

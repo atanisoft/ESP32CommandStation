@@ -27,6 +27,9 @@ if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/components/HttpServer/CMakeLists.txt)
     message(FATAL_ERROR "${CMAKE_CURRENT_SOURCE_DIR}/components/HttpServer does not appear to have been checked out, please run 'git submodule update --init' from ${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
+# verify that submodules are up-to-date
+git_submodule_check(${CMAKE_CURRENT_SOURCE_DIR})
+
 ###############################################################################
 # ESP32 Command Station only supports the ESP32 and not other variants at this
 # time. This may change in the future.
@@ -142,6 +145,10 @@ if (NOT CONFIG_LWIP_SO_RCVBUF)
     message(FATAL_ERROR "LwIP SO_RCVBUF is a required option in menuconfig.")
 endif()
 
-if (NOT CONFIG_ESP32_ULP_COPROC_ENABLED)
+if (CONFIG_IDF_TARGET_ESP32 AND NOT CONFIG_ESP32_ULP_COPROC_ENABLED)
+    message(FATAL_ERROR "ULP Co-Processor must be enabled")
+endif()
+
+if (CONFIG_IDF_TARGET_ESP32S3 AND NOT CONFIG_ESP32S3_ULP_COPROC_ENABLED)
     message(FATAL_ERROR "ULP Co-Processor must be enabled")
 endif()

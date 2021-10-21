@@ -310,7 +310,7 @@ uint16_t get_last_tempsensor_reading()
   {
     return ULP_VAR(ulp_tempsensor_last_reading);
   }
-#endif// !CONFIG_TEMPSENSOR_DISABLED
+#endif // !CONFIG_TEMPSENSOR_DISABLED
   return 4095;
 }
 

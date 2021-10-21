@@ -237,16 +237,26 @@ struct RailComHwDefs
   static constexpr periph_module_t UART_PERIPH = PERIPH_UART1_MODULE;
   static constexpr int UART_ISR_SOURCE = ETS_UART1_INTR_SOURCE;
   static constexpr uint32_t UART_MATRIX_IDX = U1RXD_IN_IDX;
+#if CONFIG_IDF_TARGET_ESP32
   static constexpr uint32_t UART_CLOCK_EN_BIT = DPORT_UART1_CLK_EN;
   static constexpr uint32_t UART_RESET_BIT = DPORT_UART1_RST;
+#elif CONFIG_IDF_TARGET_ESP32S3
+  static constexpr uint32_t UART_CLOCK_EN_BIT = SYSTEM_UART1_CLK_EN;
+  static constexpr uint32_t UART_RESET_BIT = SYSTEM_UART1_RST;
+#endif
 #elif CONFIG_RAILCOM_UART2
   static constexpr uart_port_t UART = 2;
   static constexpr uart_dev_t *UART_BASE = &UART2;
   static constexpr periph_module_t UART_PERIPH = PERIPH_UART2_MODULE;
   static constexpr int UART_ISR_SOURCE = ETS_UART2_INTR_SOURCE;
   static constexpr uint32_t UART_MATRIX_IDX = U2RXD_IN_IDX;
+#if CONFIG_IDF_TARGET_ESP32
   static constexpr uint32_t UART_CLOCK_EN_BIT = DPORT_UART2_CLK_EN;
   static constexpr uint32_t UART_RESET_BIT = DPORT_UART2_RST;
+#elif CONFIG_IDF_TARGET_ESP32S3
+  static constexpr uint32_t UART_CLOCK_EN_BIT = SYSTEM_UART2_CLK_EN;
+  static constexpr uint32_t UART_RESET_BIT = SYSTEM_UART2_RST;
+#endif
 #else
   #error Unsupported UART selected for OPS RailCom!
 #endif

@@ -17,9 +17,12 @@ COPYRIGHT (c) 2021 Mike Dunston
 #include "sdkconfig.h"
 #include <esp_core_dump.h>
 #include <esp_log.h>
+#include <FileSystem.hxx>
 #include <hardware.hxx>
 #include <StatusLED.hxx>
+#include <utils/FileUtils.hxx>
 #include <utils/logging.h>
+#include <utils/StringPrintf.hxx>
 
 using esp32cs::StatusLED;
 
@@ -106,7 +109,7 @@ void check_for_coredump()
       for (size_t idx = 0; idx < details.exc_bt_info.depth; idx++)
       {
         core_dump_summary +=
-          StringPrintf(" %zu: %08x", idx, details.exc_bt_info.bt[idx]);
+          StringPrintf(" 0x%08x", details.exc_bt_info.bt[idx]);
         if (details.exc_bt_info.corrupted)
         {
           core_dump_summary += "(corrupted)";
@@ -117,6 +120,7 @@ void check_for_coredump()
       esp32cs::mount_fs(false);
       write_string_to_file("/fs/coredump.txt", core_dump_summary);
       esp32cs::unmount_fs();
+      cleanup_coredump = true;
     }
 #endif // IDF v4.4+
 

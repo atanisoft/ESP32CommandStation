@@ -21,8 +21,13 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include <dcc/RailCom.hxx>
 #include <dcc/RailcomHub.hxx>
 #include <esp_intr_alloc.h>
+#if CONFIG_IDF_TARGET_ESP32
 #include <esp32/clk.h>
 #include <esp32/rom/gpio.h>
+#elif CONFIG_IDF_TARGET_ESP32S3
+#include <esp32s3/clk.h>
+#include <esp32s3/rom/gpio.h>
+#endif
 #include <freertos_drivers/arduino/DeviceBuffer.hxx>
 #include <freertos_drivers/arduino/RailcomDriver.hxx>
 #include <hal/uart_types.h>

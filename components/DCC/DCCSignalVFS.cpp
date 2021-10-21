@@ -15,7 +15,11 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
+#include "sdkconfig.h"
+
+#if !CONFIG_RAILCOM_DISABLED
 #include "Esp32RailComDriver.hxx"
+#endif 
 #include "PrioritizedUpdateLoop.hxx"
 #include "TrackOutputDescriptor.hxx"
 #include "TrackPowerHandler.hxx"
@@ -36,7 +40,6 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <driver/timer.h>
 #include <driver/uart.h>
 #include <esp_vfs.h>
-#include <esp32/ulp.h>
 #include <EventBroadcastHelper.hxx>
 #include <executor/PoolToQueueFlow.hxx>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
@@ -57,10 +60,6 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 
 namespace esp32cs
 {
-
-/// The ULP uses only the lower 16 bits of the 32 bit variables. When reading
-/// the values on the ESP32 side we need to limit to only the lower 16 bits.
-#define ULP_VAR(var) (var & UINT16_MAX)
 
 /// Disables the OPS track output and enables the PROG track output.
 static void enable_programming_track()

@@ -19,7 +19,11 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include "sdkconfig.h"
 #include "hardware.hxx"
 #include "StringUtils.hxx"
+#if CONFIG_IDF_TARGET_ESP32
 #include <esp32/rom/rtc.h>
+#elif CONFIG_IDF_TARGET_ESP32S3
+#include <esp32s3/rom/rtc.h>
+#endif
 #include <esp_err.h>
 #include <esp_partition.h>
 #include <freertos_drivers/esp32/Esp32BootloaderHal.hxx>
@@ -637,12 +641,6 @@ void bootloader_led(enum BootloaderLed led, bool value)
       auto leds = Singleton<esp32cs::StatusLED>::instance();
       leds->set(esp32cs::StatusLED::LED::BOOTLOADER,
                value ? esp32cs::StatusLED::COLOR::GREEN : esp32cs::StatusLED::COLOR::OFF);
-    }
-    else if (led == LED_REQUEST)
-    {
-      LOG(INFO, "[Bootloader] Preparing to receive firmware");
-      LOG(INFO, "[Bootloader] Current partition: %s", current->label);
-      LOG(INFO, "[Bootloader] Target partition: %s", target->label);
     }
 }
 /// Initializes the node specific bootloader hardware (LEDs)
