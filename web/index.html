@@ -9,6 +9,7 @@
   <link rel="icon" type="image/png" href="loco-32x32.png">
   <link rel="stylesheet" href="spectre.min.css">
   <script src="cash.min.js"></script>
+  <script src="cdi.js"></script>
   <style>
     fieldset {
       border-style: solid;
@@ -180,8 +181,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             </div>
           </div>
           <div class="modal-footer">
-            <button id="loco-select-add" class="btn btn-primary" title="Manual"><i
-                class="icon icon-plus"></i></button>
+            <button id="loco-select-add" class="btn btn-primary" title="Manual"><i class="icon icon-plus"></i></button>
             <button id="loco-select-select" class="btn btn-primary" title="Select"><i
                 class="icon icon-check"></i></button>
           </div>
@@ -190,7 +190,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     </div>
     <div class="container" style="display:none;" id="tab-accessories">
       <div class="empty bg-dark" id="accessories-empty">
-        <div class="empty-title">No accesosry decoders have been registered yet</div>
+        <div class="empty-title">No accessory decoders have been registered yet</div>
         <div class="empty-subtitle">Click the add button below to register an accessory decoder.</div>
       </div>
       <div class="container">
@@ -212,8 +212,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         <button id='accessory-create' title='Create' class='btn btn-lg btn-action btn-primary'><i
             class="icon icon-plus"></i></button>
         <button id='accessory-refresh' title='Refresh' class='btn btn-lg btn-action btn-primary'
-          onclick="$(this).toggleClass('loading');refreshAccessories(this);"><i
-            class="icon icon-refresh"></i></button>
+          onclick="$(this).toggleClass('loading');refreshAccessories(this);"><i class="icon icon-refresh"></i></button>
       </div>
       <div id="accessory-editor" class="modal">
         <a href="#" class="modal-overlay" title="Cancel" onclick="toggleModal('#accessory-editor');"></a>
@@ -255,21 +254,22 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
                 <div class="column">
                   <label class="form-label text-dark" for="accessory_evt_closed">Closed event(s):</label>
                   <div id="accessory_evt_closed"></div>
-                  <button class="btn btn-primary" onclick="addEventRow('accessory_evt_closed');"><i class="icon icon-plus"></i></button>
+                  <button class="btn btn-primary" onclick="addEventRow('accessory_evt_closed');"><i
+                      class="icon icon-plus"></i></button>
                 </div>
                 <div class="column">
                   <label class="form-label text-dark" for="accessory_evt_thrown">Thrown event(s):</label>
                   <div id="accessory_evt_thrown"></div>
-                  <button class="btn btn-primary" onclick="addEventRow('accessory_evt_thrown');"><i class="icon icon-plus"></i></button>
+                  <button class="btn btn-primary" onclick="addEventRow('accessory_evt_thrown');"><i
+                      class="icon icon-plus"></i></button>
                 </div>
               </div>
-          </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-primary float-right" title="Cancel" onclick="toggleModal('#accessory-editor');"><i
                 class="icon icon-cross"></i></button>
-            <button id="accessory-save" class="btn btn-primary" title="Save"><i
-                class="icon icon-check"></i></button>
+            <button id="accessory-save" class="btn btn-primary" title="Save"><i class="icon icon-check"></i></button>
           </div>
         </div>
       </div>
@@ -339,67 +339,77 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       </div>
     </div>
     <div class="container" style="display:none;" id="tab-olcbconfig">
-      <ul class="tab tab-block">
-        <li class="tab-item">
-          <a href="#" onclick="showCDISection('node_info',this);">Node Info</a>
-        </li>
-        <li class="tab-item">
-          <a href="#" onclick="showCDISection('track',this);">Track Configuration</a>
-        </li>
-        <li class="tab-item">
-          <a href="#" onclick="showCDISection('thermal',this);">Thermal Monitoring Configuration</a>
-        </li>
-        <li class="tab-item">
-          <a href="#" onclick="showCDISection('wifi',this);">WiFi Configuration</a>
-        </li>
-      </ul>
-      <div id="cdi_tab_node_info">
-        <div class="columns">
-          <div class="column"><label class="form-label" for="node_id">Node ID:</label></div>
-          <div class="column column-6"><input class="form-input" id="node_id" oninput="enable_button('save_node_id');">
+      <div class="empty bg-dark" id="olcbconfig-empty">
+        <div class="empty-title">Downloading node metadata</div>
+        <div class="empty-subtitle">
+          <div class="columns" id="node-cdi-download">
+            <div class="column">Bytes received:</div>
+            <div class="column" id="node-cdi-byte-count">Pending</div>
           </div>
-          <div class="column"><button class="btn btn-primary btn-sm" id="btn-save_node_id" disabled
-              onclick="save_node_id(this);">Save</button></div>
+          <div class="columns" id="node-cdi-status" style="display:none;"></div>
         </div>
-        <div class="columns">
-          <div class="column"><label class="form-label" for="sw_version">Software Version:</label></div>
-          <div class="column column-6" id="sw_version"></div>
-          <div class="column"></div>
-        </div>
-        <div class="columns">
-          <div class="column"><label class="form-label" for="hw_version">Hardware Version:</label></div>
-          <div class="column column-6" id="hw_version"></div>
-          <div class="column"></div>
-        </div>
-        <div id="node_info_dynamic"></div>
-        <div id="status_led">
+      </div>
+      <div id="olcbconfig-content">
+        <ul class="tab tab-block" id="node-cfg-tabs">
+        </ul>
+        <div id="cdi_tab-node_info">
           <div class="columns">
-            <div class="column">
-              <label for="led-brightness">Status LED Brightness:</label>
-            </div>
-            <div class="column column-6"><input class="bar bar-slider" type="range" id="led-brightness" min="8" max="255"
-                value="128" onchange="statusLEDChange(this);" />
-            </div>
+            <div class="column"><label class="form-label" for="node_cfg_node_id">Node ID:</label></div>
+            <div class="column column-3" id="node_cfg_node_id">PENDING</div>
+            <div class="column"></div>
+          </div>
+          <div id="node_info_dynamic"></div>
+          <div class="columns">
+            <div class="column"><label class="form-label" for="node_cfg_sw_version">Software
+                Version:</label></div>
+            <div class="column column-3" id="node_cfg_sw_version">PENDING</div>
             <div class="column"></div>
           </div>
           <div class="columns">
-            <div class="column">
-              <small>This controls the brightness of the on-board RGB Status LEDs. The minimum value is 8 and maximum of 255, however, values over 200 are not discernable.</small>
+            <div class="column"><label class="form-label" for="node_cfg_hw_version">Hardware
+                Version:</label></div>
+            <div class="column column-3" id="node_cfg_hw_version">PENDING</div>
+            <div class="column"></div>
+          </div>
+          <div id="status_led">
+            <div class="columns">
+              <div class="column">
+                <label for="led-brightness">Status LED Brightness:</label>
+              </div>
+              <div class="column column-6"><input class="bar bar-slider" type="range" id="led-brightness" min="8"
+                  max="255" value="128" onchange="statusLEDChange(this);" />
+              </div>
+              <div class="column"></div>
+            </div>
+            <div class="columns">
+              <div class="column">
+                <small>This controls the brightness of the on-board RGB Status LEDs. The minimum value is 8 and maximum of
+                  255, however, values over 200 are not discernable.</small>
+              </div>
             </div>
           </div>
         </div>
+        <div id="node_cfg_sections"></div>
+        <div class="columns">
+          <div class="column"><button class="btn btn-primary btn-sm" onclick="factory_reset();">Factory Reset</button>
+          </div>
+          <div class="column" id="bootloader"><button class="btn btn-primary btn-sm" onclick="request_bootloader();">Enter
+              Bootloader</button>
+          </div>
+          <div class="column"><button class="btn btn-primary btn-sm" onclick="reset_events();">Reset Events</button></div>
+          <div class="column"><button class="btn btn-primary btn-sm" onclick="update_complete();">Update Complete</button>
+          </div>
+        </div>
       </div>
-      <div id="cdi_tab_track" style="display:none;"></div>
-      <div id="cdi_tab_thermal" style="display:none;"></div>
-      <div id="cdi_tab_wifi" style="display:none;"></div>
-      <div class="columns">
-        <div class="column"><button class="btn btn-primary btn-sm" onclick="factory_reset();">Factory Reset</button>
+    </div>
+    <div class="container" style="display:none;" id="node-cdi-pending">
+      <div class="modal-overlay"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <div class="modal-title h5"></div>
         </div>
-        <div class="column" id="bootloader"><button class="btn btn-primary btn-sm" onclick="request_bootloader();">Enter
-            Bootloader</button>
-        </div>
-        <div class="column"><button class="btn btn-primary btn-sm" onclick="reset_events();">Reset Events</button></div>
-        <div class="column"><button class="btn btn-primary btn-sm" onclick="update_complete();">Update Complete</button>
+        <div class="modal-body">
+          
         </div>
       </div>
     </div>
@@ -498,7 +508,6 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       $(button).toggleClass('active');
       $(button).toggleClass('inactive');
       if (target === '#tab-olcbconfig') {
-        $(button).toggleClass('loading');
         refreshCDI(button);
       } else if (target === '#tab-accessories') {
         $(button).toggleClass('loading');
@@ -598,10 +607,9 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           } else if (json.res === 'error') {
             showErrorDialog(json.error);
           } else if (json.res === 'info') {
-            $('#node_id').val(pad_hex(json.node_id, 12));
+            $('#node_id').text(pad_hex(json.node_id, 12));
             $('#sw_version').text(json.snip_sw);
             $('#hw_version').text(json.snip_hw);
-            $('#btn-save_node_id').removeClass('loading');
             if (json.statusLED === false) {
               $('#status_led').hide();
             } else {
@@ -614,15 +622,29 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             cs_status_interval_timer_id = setInterval(cs_status, cs_status_interval_ms);
           } else if (json.res === 'saved') {
             reset_cdi_buttons(json.tgt);
+            enable_button('update_complete_button');
           } else if (json.res === 'field') {
+            const req = ws_pending_response[json.tgt];
+            if (req) {
+              req(json);
+            }
             if (json.type === 'evt') {
+              if (parseInt(json.val) == 0) {
+                $('#' + json.tgt).addClass('is-error');
+              }
               $('#' + json.tgt).val(pad_hex(json.val, 16));
+            } else if (json.type === 'str') {
+              try {
+                $('#' + json.tgt).val(atob(json.val));
+              } catch (error) {
+                console.error(error, json);
+                $('#' + json.tgt).val('decode failure');
+                $('#' + json.tgt).addClass('is-error');
+              }
             } else {
               $('#' + json.tgt).val(json.val);
             }
             reset_cdi_buttons(json.tgt);
-          } else if (json.res === 'nodeid' || json.res === 'factory-reset') {
-            reload_page();
           } else if (json.res === 'reset-events') {
             refresh_all_fields();
           } else if (json.res === 'loco') {
@@ -651,7 +673,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             else {
               $(String.format("#accessory_{0}_addr", json.addr)).text(json.addr);
               if (json.hasOwnProperty('type') && json.type < accessory_types.length) {
-                console.debug('accessory type change', $(String.format("#accessory_{0}_type", json.addr)).data('type'),'->', json.type);
+                console.debug('accessory type change', $(String.format("#accessory_{0}_type", json.addr)).data('type'), '->', json.type);
                 $(String.format("#accessory_{0}_type", json.addr)).text(accessory_types[json.type]);
                 $(String.format("#accessory_{0}_type", json.addr)).data('type', json.type);
               }
@@ -689,6 +711,66 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               $('#ops_usage').text(String.format('{0} mA', json.usage));
             } else {
               $('#ops_usage').text('');
+            }
+          } else if (json.res === 'cdi') {
+            if (json.hasOwnProperty('reset')) {
+              cdi_download = '';
+              $('#node-cdi-byte-count').text('Pending');
+            } else if (json.hasOwnProperty('error')) {
+              $('#' + json.tgt).toggleClass('loading');
+              $('#olcbconfig-empty').show();
+              $('#olcbconfig-content').hide();
+              showErrorDialog(json.error);
+            } else if (json.hasOwnProperty('part')) {
+              cdi_download += atob(json.part);
+              $('#node-cdi-byte-count').text(cdi_download.length.toString());
+            } else if (json.hasOwnProperty('done')) {
+              $('#' + json.tgt).toggleClass('loading');
+              $('#node-cdi-download').hide();
+              $('#node-cdi-status').text('Node metadata parsing in progress');
+              $('#node-cdi-status').show();
+              console.log('CDI Size:', cdi_download.length);
+              var node_id = pad_hex(json.node_id.toString(16), 12);
+              $('#node_cfg_node_id').text(node_id);
+              if (json.hasOwnProperty('sw_ver')) {
+                $('#node_cfg_sw_version').text(json.sw_ver);
+              } else {
+                $('#node_cfg_sw_version').text('Not Available');
+              }
+              if (json.hasOwnProperty('sw_ver')) {
+                $('#node_cfg_hw_version').text(json.hw_ver);
+              } else {
+                $('#node_cfg_hw_version').text('Not Available');
+              }
+              if (json.is_train) {
+                disable_button('restart_button');
+              } else {
+                enable_button('restart_button');
+              }
+              disable_button('update_complete_button');
+              var cdi_doc = parseXML(cdi_download);
+              $('#node_info_dynamic').children().remove();
+              $('#node_cfg_sections').children().remove();
+              $('#node-cfg-tabs').children().remove();
+              $('#node-cfg-tabs').append(String.format('<li class="tab-item"><a href="#" id="cdi_tab_link-node_info" onclick="showCDISection(\'node_info\',this);">Node Info</a></li>'));
+              $(cdi_doc).find('segment').each((x, seg) => {
+                var segment = new CdiSegment(seg, node_id);
+                $('#node-cdi-status').text(String.format('Processing {0}', segment.get_name));
+                if (segment.is_space(CDI_SPACE_ACDI_USER)) {
+                  segment.render('#node_info_dynamic');
+                } else {
+                  $('#node-cfg-tabs').append(String.format('<li class="tab-item"><a href="#" id="cdi_tab_link-{0}" onclick="showCDISection(\'{0}\',this);">{1}</a></li>', segment.get_alias, segment.get_name));
+                  $('#node_cfg_sections').append(String.format('<div id="cdi_tab-{0}" style="display:none;"></div>', segment.get_alias));
+                  segment.render(String.format('#cdi_tab-{0}', segment.get_alias));
+                }
+              });
+              download_cdi_fields().then(() => {
+                showCDISection('node_info');
+                $('#olcbconfig-empty').hide();
+                $('#olcbconfig-content').show();
+                $('#tab-olcbconfig').show();
+                cdi_loaded = true;
+              });
             }
           }
         }
@@ -932,7 +1014,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         if ($('#accessory-olcb').prop('checked')) {
           var closed_events = '';
           var thrown_events = '';
-          $('#accessory_evt_closed input').each(function(idx, elem) {
+          $('#accessory_evt_closed input').each(function (idx, elem) {
             var value = $(elem).val();
             if (value.length) {
               if (closed_events.length) {
@@ -941,7 +1023,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               closed_events += value;
             }
           });
-          $('#accessory_evt_thrown input').each(function(idx, elem) {
+          $('#accessory_evt_thrown input').each(function (idx, elem) {
             var value = $(elem).val();
             if (value.length) {
               if (thrown_events.length) {
@@ -1123,28 +1205,28 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           showErrorDialog('Failed to retrieve roster entry', error);
         });
       }
-    }   
+    }
     function deleteLoco(address) {
       if (window.location.host.length) {
         ws_tx(JSON.stringify({
-            req: 'roster',
-            act: 'delete',
-            addr: parseInt(address),
-            id: get_ws_msg_id()
+          req: 'roster',
+          act: 'delete',
+          addr: parseInt(address),
+          id: get_ws_msg_id()
         }));
       }
     }
     function saveLoco() {
       if (window.location.host.length) {
         ws_tx(JSON.stringify({
-            req: 'roster',
-            act: 'save',
-            addr: parseInt($('#roster-addr').val()),
-            name: $('#roster-name').val(),
-            mode: parseInt($('#roster-mode').val()),
-            desc: $('#roster-desc').val(),
-            idle: $('#roster-idle').prop('checked'),
-            id: get_ws_msg_id()
+          req: 'roster',
+          act: 'save',
+          addr: parseInt($('#roster-addr').val()),
+          name: $('#roster-name').val(),
+          mode: parseInt($('#roster-mode').val()),
+          desc: $('#roster-desc').val(),
+          idle: $('#roster-idle').prop('checked'),
+          id: get_ws_msg_id()
         }));
         toggleModal('#roster-editor');
       }
@@ -1172,83 +1254,21 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         enableLocoInputs();
       }
     }
-    function refresh_all_cdi_fields() {
-      $('[id^=btn-refresh-]').each(function (i, e) {
-        refresh_cdi_field(e);
-      });
-    }
-    function showCDISection(section) {
-      $('[id^=cdi_tab_]').hide();
-      $(String.format('#cdi_tab_{0}', section)).show();
-    }
     function refreshCDI(button) {
+      $('#node-cdi-status').text('');
+      $('#olcbconfig-empty').show();
+      $('#olcbconfig-content').hide();
       if (!cdi_loaded) {
-        fetchWithTimeout("/fs?path=/fs/cdi.xml&remove_nulls=true").then(res => res.text()).then(cdi => build_cdi_dom(cdi, button));
+        ws_tx(JSON.stringify({
+            req: 'cdi',
+            cdi: true,
+            tgt: 'cdi',
+            id: get_ws_msg_id()
+        }));
       } else {
         refresh_all_cdi_fields();
-        $(button).toggleClass('loading');
-        $('#tab-olcbconfig').show();
       }
-    }
-    function save_node_id(button) {
-      $(button).addClass('loading');
-      disable_button('save_node_id');
-      ws_tx(JSON.stringify({
-        req: 'nodeid',
-        val: $('#node_id').val(),
-        id: get_ws_msg_id()
-      }));
-    }
-    function build_cdi_dom(cdi, button) {
-      cdi_loaders.splice(0, cdi_loaders.length);
-      var parser = new window.DOMParser();
-      var doc = parser.parseFromString(cdi, "text/xml");
-      var offsets_251 = calculate_offsets(doc, 251);
-      var offsets_253 = calculate_offsets(doc, 253);
-      cdi_dynamic_group(doc, 251, 'node_info', '#node_info_dynamic', offsets_251, '//segment[@space="251"]');
-      cdi_dynamic_group(doc, 253, 'Track Configuration', '#cdi_tab_track', offsets_253);
-      cdi_dynamic_group(doc, 253, 'Thermal Monitoring Configuration', '#cdi_tab_thermal', offsets_253);
-      cdi_dynamic_group(doc, 253, 'WiFi Configuration', '#cdi_tab_wifi', offsets_253);
-      cdi_loaders.forEach(elem => ws_tx(elem));
-      cdi_loaders.splice(0, cdi_loaders.length);
       $('#tab-olcbconfig').show();
-      $(button).toggleClass('loading');
-      cdi_loaded = true;
-    }
-    function save_cdi_field(field) {
-      var target = $(field).attr('id').substr(9);
-      $(field).toggleClass('loading');
-      var size = parseInt($('#' + target).data('size'));
-      var type = $('#' + target).data('type');
-      var value = $('#' + target).val()
-      if (type === 'str') {
-        if (value.length < size) {
-          size = value.length;
-        } else {
-          value = value.substr(0, size);
-        }
-      }
-      ws_tx(JSON.stringify({
-        req: 'cdi',
-        ofs: parseInt($('#' + target).data('offset')),
-        sz: size,
-        type: type,
-        tgt: target,
-        val: value,
-        id: get_ws_msg_id()
-      }));
-    }
-    function refresh_cdi_field(field) {
-      var target = $(field).attr('id').substr(12);
-      $(field).toggleClass('loading');
-      ws_tx(JSON.stringify({
-        req: 'cdi',
-        ofs: $('#' + target).data('offset'),
-        sz: $('#' + target).data('size'),
-        type: $('#' + target).data('type'),
-        tgt: target,
-        id: get_ws_msg_id()
-      }));
     }
     function factory_reset() {
       if (confirm('Are you sure you want to perform a Factory Reset?')) {
@@ -1256,6 +1276,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           req: 'factory-reset',
           id: get_ws_msg_id()
         }));
+        reload_page();
       }
     }
     function request_bootloader() {
@@ -1284,223 +1305,13 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         id: get_ws_msg_id()
       }));
     }
-    function reset_cdi_buttons(target) {
-      $(String.format('#btn-refresh-{0}', target)).removeClass('loading');
-      $(String.format('#btn-save-{0}', target)).removeClass('loading');
-      enable_button('refresh-' + target);
-      disable_button('save-' + target);
-    }
-    function pad_hex(str, length) {
-      var hex = new Array(length + 1).join('0') + str;
-      return hex.substr(-length).match(/.{1,2}/g).join('.');
-    }
-    function enable_button(field) {
-      console.debug('enabling:', '#btn-' + field);
-      $('#btn-' + field).removeAttr('disabled');
-    }
-    function disable_button(field) {
-      console.debug('disabling:', '#btn-' + field);
-      $('#btn-' + field).attr('disabled', true);
-    }
-    function process_group(group) {
-      var groupsize = 0;
-      if (group.nodeName == 'int' || group.nodeName == 'string') {
-        groupsize += parseInt($(group).attr('size'));
-      } else if (group.nodeName == 'eventid') {
-        groupsize += 8;
-      } else if (group.nodeName == 'group') {
-        if ($.isNumeric($(group).attr('offset'))) {
-          groupsize += parseInt($(group).attr('offset'));
-        }
-        $(group).children().each(function (i, c) {
-          groupsize += process_group(c);
-        });
-      }
-      return groupsize;
-    }
-    function calculate_offsets(cdi, space) {
-      var offsets = {};
-      var segment = $(cdi).find('segment').filter(
-        function (i, e) {
-          return parseInt($(e).attr('space')) === space && parseInt($(e).attr('origin')) > 0;
-        });
-      var offs = parseInt($(segment).attr('origin'));
-      $(segment).children().each(function (i, e) {
-        var group_name = 'unknown';
-        if (space === 251) {
-          group_name = 'node_info';
-        } else {
-          $(e.children).each(function (i, e) {
-            if (e.nodeName === 'name') {
-              group_name = $(e).text();
-            }
-          });
-        }
-        var replica_count = 1;
-        if ($(e).attr('replication')) {
-          replica_count = parseInt($(e).attr('replication'));
-        }
-        var groupsize = 0;
-        $(e.children).each(function (i, c) {
-          groupsize += process_group(c);
-        });
-        offsets[group_name] = { size: groupsize, replicas: replica_count, offset: offs };
-        offs += (groupsize * replica_count);
-      });
-      return offsets;
-    }
-    function generate_cdi_dynamic_content(space, group, offset) {
-      var size = 0;
-      // these nodes can be safely dropped from rendering
-      if (group.nodeName === 'name' || group.nodeName === 'description' || group.nodeName === 'repname') {
-        return ['', 0];
-      }
-      var content = '';
-      var node_data_type = group.nodeName;
-      var node_name = '';
-      var is_mapped = false;
-      var mapped = undefined;
-      var node_description = '';
-      var node_alias = String.format('cdi_{0}', Math.random()).replace(/\./g, '_');
-      for (child = 0; child < group.children.length; child++) {
-        if (group.children[child].nodeName === 'name') {
-          node_name = $(group.children[child]).text();
-        } else if (group.children[child].nodeName === 'map') {
-          is_mapped = true;
-          mapped = group.children[child];
-        } else if (group.children[child].nodeName === 'description') {
-          node_description = $(group.children[child]).text().replace(/\n/g, '<br/>');
-        }
-      };
-      if (is_mapped) {
-        size = parseInt($(group).attr('size'));
-        console.groupCollapsed('Mapped:', node_name, 'offset:', offset, 'size:', size, 'description:', node_description);
-        content += '<div class="columns">';
-        content += String.format('<div class="column"><label for="{0}">{1}:</label></div>', node_alias, node_name);
-        content += String.format('<div class="column column-6"><select id="{0}" data-offset="{1}" data-type="{2}" data-size="{3}" oninput="enable_button(\'save-{0}\')">', node_alias, offset, node_data_type, size);
-        $(mapped.children).each(function (i, e) {
-          console.log($(e).find('value').text(), '=>', $(e).find('property').text());
-          content += String.format('<option value="{0}">{1}</option>', $(e).find('property').text(), $(e).find('value').text());
-        });
-        content += '</select></div>';
-        content += String.format('<div class="column"><div class="btn-group"><button class="btn btn-primary btn-sm" id="btn-save-{0}" disabled onclick="save_cdi_field(this);">Save</button>', node_alias);
-        content += String.format('<button class="btn btn-primary btn-sm loading" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
-        content += '</div></div>';
-        content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
-        cdi_loaders.push(JSON.stringify({
-          req: 'cdi',
-          ofs: offset,
-          sz: size,
-          type: node_data_type,
-          tgt: node_alias,
-          id: get_ws_msg_id()
-        }));
-        console.groupEnd();
-      } else if (node_data_type === 'group') {
-        if ($.isNumeric(parseInt($(group).attr('offset'))) && node_name === '') {
-          size = parseInt($(group).attr('offset'));
-          node_name = 'hidden'
-        }
-        if (group.children.length > 0) {
-          if (node_name != '') {
-            content += String.format('<fieldset><legend>{0}:</legend>', node_name);
-            console.groupCollapsed(node_name);
-          } else {
-            console.groupCollapsed('unnamed group');
-          }
-          content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description);
-          $(group.children).each(function (i, e) {
-            var res = generate_cdi_dynamic_content(space, e, offset + size);
-            content += res[0];
-            size += res[1];
-          });
-          console.groupEnd();
-          if (node_name != '') {
-            content += '</fieldset>';
-          }
-        }
-      } else if (node_name !== '') {
-        if (node_data_type === 'eventid') {
-          size = 8; // events are always 8 bytes
-          node_data_type = 'evt';
-        } else {
-          if (node_data_type === 'string') {
-            node_data_type = 'str';
-          }
-          size = parseInt($(group).attr('size'));
-        }
-        console.log('Entry:', node_name, 'offset:', offset, 'size:', size, 'datatype:', node_data_type, 'description:', node_description);
-        content += '<div class="columns">';
-        content += String.format('<div class="column"><label class="form-label" for="{0}">{1}:</label></div>', node_alias, node_name);
-        content += String.format('<div class="column column-6"><input class="form-input" type="text" id="{0}" data-offset="{1}" data-type="{2}" data-size="{3}" oninput="enable_button(\'save-{0}\')"></div>', node_alias, offset, node_data_type, size);
-        content += String.format('<div class="column"><div class="btn-group"><button class="btn btn-primary btn-sm" id="btn-save-{0}" disabled onclick="save_cdi_field(this);">Save</button>', node_alias);
-        content += String.format('<button class="btn btn-primary btn-sm loading" id="btn-refresh-{0}" onclick="refresh_cdi_field(this);">Refresh</button></div>', node_alias);
-        content += '</div></div>';
-        content += String.format('<div class="columns"><div class="column"><small>{0}</small></div></div>', node_description)
-        cdi_loaders.push(JSON.stringify({
-          req: 'cdi',
-          ofs: offset,
-          sz: size,
-          type: node_data_type,
-          tgt: node_alias,
-          id: get_ws_msg_id()
-        }));
-      }
-      return [content, size];
-    }
-    function cdi_dynamic_group(cdi, space, group, target_selector, offsets, xpath = String.format("//segment[@space='{0}']/group[name[text()='{1}']]", space, group)) {
-      var nodes = cdi.evaluate(xpath, cdi);
-      var node = nodes.iterateNext();
-      var offs = offsets[group].offset;
-      var group_name = 'unnamed';
-      $(node.children).each(function (i, e) {
-        if (e.nodeName === 'name') {
-          group_name = $(e).text();
-        }
-      });
-      console.groupCollapsed(group_name, 'segment:', space);
-      if (offsets[group].replicas === 1) {
-        $(node.children).each(function (i, e) {
-          var rendered = generate_cdi_dynamic_content(space, e, offs);
-          $(target_selector).append(rendered[0]);
-          offs += rendered[1];
-        });
-      } else {
-        var group_tabs = '<ul class="tab tab-block">';
-        var group_content = '';
-        var alias = $(node).find('repname').text();
-        var group_id = group.replace(/ /g, '_');
-        for (replica = 1; replica <= offsets[group].replicas; replica++) {
-          console.groupCollapsed(alias, replica);
-          group_tabs += String.format('<li class="tab-item"><a href="#" class="btn btn-primary" id="{0}-{1}">{2} {1}</a></li>', group_id, replica, alias);
-          group_content += String.format('<div class="container" id="rep-{0}-{1}" style="display:{3};"><fieldset><legend>{2} {1}</legend>', group_id, replica, alias, replica > 1 ? 'none' : 'block');
-          $(node).children().each(function (i, e) {
-            var rendered = generate_cdi_dynamic_content(space, e, offs);
-            group_content += rendered[0];
-            offs += rendered[1];
-          });
-          group_content += '</fieldset></div>';
-          console.groupEnd();
-        }
-        group_tabs += "</ul>";
-        $(target_selector).append(group_tabs);
-        $(target_selector).append(group_content);
-        $(String.format('[id^={0}-]', group_id)).on('click', function (evt) {
-          var selected_tab = $(evt.target).attr('id');
-          var tab_group = selected_tab.substring(0, selected_tab.lastIndexOf('-'));
-          $(String.format('[id^=rep-{0}', tab_group)).filter(function (i, e) { return $(e).attr('id') != $(evt.target).attr('id'); }).each(function (i, other_tab) {
-            $('#' + $(other_tab).attr('id')).hide();
-            $(other_tab).removeClass('active');
-            $(other_tab).addClass('inactive');
-            return true;
-          });
-          var tab_content = String.format('#rep-{0}', selected_tab);
-          $(tab_content).show();
-          $(evt.target).addClass('active');
-          $(evt.target).removeClass('inactive');
-        });
-      }
-      console.groupEnd();
+    function showCDISection(section) {
+      $('[id^=cdi_tab_link-]').removeClass('active');
+      $('[id^=cdi_tab_link-]').addClass('inactive');
+      $('[id^=cdi_tab-]').hide();
+      $(String.format('#cdi_tab-{0}', section)).show();
+      $(String.format('#cdi_tab_link-{0}', section)).removeClass('inactive');
+      $(String.format('#cdi_tab_link-{0}', section)).addClass('active');
     }
   </script>
 </body>

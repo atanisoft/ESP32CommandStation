@@ -16,25 +16,10 @@ if (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR LESS 3)
 endif()
 
 ###############################################################################
-# Verify submodules were checked out correctly
+# Verify submodules are up-to-date
 ###############################################################################
 
-if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/components/OpenMRNIDF/CMakeLists.txt)
-    message(FATAL_ERROR "${CMAKE_CURRENT_SOURCE_DIR}/components/OpenMRNIDF does not appear to have been checked out, please run 'git submodule update --init' from ${CMAKE_CURRENT_SOURCE_DIR}")
-endif()
-
-if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/components/HttpServer/CMakeLists.txt)
-    message(FATAL_ERROR "${CMAKE_CURRENT_SOURCE_DIR}/components/HttpServer does not appear to have been checked out, please run 'git submodule update --init' from ${CMAKE_CURRENT_SOURCE_DIR}")
-endif()
-
-# verify that submodules are up-to-date
 git_submodule_check(${CMAKE_CURRENT_SOURCE_DIR})
-
-###############################################################################
-# ESP32 Command Station only supports the ESP32 and not other variants at this
-# time. This may change in the future.
-###############################################################################
-set(SUPPORTED_TARGETS esp32)
 
 ###############################################################################
 # Disable ESP-IDF components that are not required for this project. This will
@@ -73,6 +58,28 @@ idf_build_set_property(COMPILE_DEFINITIONS "-Wno-ignored-qualifiers" APPEND)
 idf_build_set_property(COMPILE_DEFINITIONS "-Wno-implicit-fallthrough" APPEND)
 
 ###############################################################################
+# Configure SNIP parameters
+###############################################################################
+
+# export the project version as a define for the SNIP data, note it must be
+# truncated to 21 characters max.
+idf_build_get_property(project_ver PROJECT_VER)
+string(SUBSTRING "${project_ver}" 0 20 SNIP_SW_VERSION)
+idf_build_get_property(project_name PROJECT_NAME)
+string(SUBSTRING "${project_name}" 0 40 SNIP_PROJECT_NAME)
+
+set(SNIP_HW_VERSION "1.0.0")
+set(SNIP_PROJECT_PAGE "atanisoft.github.io")
+set(CDI_VERSION "0x0200")
+message(STATUS "SNIP: ${SNIP_PROJECT_NAME}/${SNIP_PROJECT_PAGE}/${SNIP_SW_VERSION}/${SNIP_HW_VERSION}")
+
+idf_build_set_property(COMPILE_DEFINITIONS "-DSNIP_PROJECT_PAGE=\"${SNIP_PROJECT_PAGE}\"" APPEND)
+idf_build_set_property(COMPILE_DEFINITIONS "-DSNIP_HW_VERSION=\"${SNIP_HW_VERSION}\"" APPEND)
+idf_build_set_property(COMPILE_DEFINITIONS "-DSNIP_SW_VERSION=\"${SNIP_SW_VERSION}\"" APPEND)
+idf_build_set_property(COMPILE_DEFINITIONS "-DSNIP_PROJECT_NAME=\"${SNIP_PROJECT_NAME}\"" APPEND)
+idf_build_set_property(COMPILE_DEFINITIONS "-DCDI_VERSION=${CDI_VERSION}" APPEND)
+
+###############################################################################
 # Search for GZIP application
 ###############################################################################
 
@@ -103,7 +110,7 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js.gz"
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js
     VERBATIM)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/web/cache.min.js.gz")
+    "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js.gz")
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz"
     COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css
@@ -112,6 +119,12 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz"
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz")
 
+add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js.gz"
+    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js
+    VERBATIM)
+set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js.gz")
 ###############################################################################
 # Add web content to the binary
 ###############################################################################
@@ -120,6 +133,7 @@ target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/we
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js.gz" BINARY)
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz" BINARY)
 target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/web/loco-32x32.png" BINARY)
+target_add_binary_data(${CMAKE_PROJECT_NAME}.elf "${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js.gz" BINARY)
 
 ###############################################################################
 # Configuration validations
@@ -129,26 +143,40 @@ if (NOT CONFIG_FREERTOS_HZ EQUAL 1000)
     message(FATAL_ERROR "FreeRTOS tick rate (hz) is required to be 1000.")
 endif()
 
-if (NOT CONFIG_PARTITION_TABLE_FILENAME STREQUAL "ESP32CS-partitions.csv")
-    message(FATAL_ERROR "The custom partition table option is not enabled in menuconfig and is required for compilation.")
-endif()
-
-if (NOT CONFIG_PARTITION_TABLE_CUSTOM_FILENAME STREQUAL "ESP32CS-partitions.csv")
-    message(FATAL_ERROR "The custom partition table option is not enabled in menuconfig and is required for compilation.")
+if (NOT CONFIG_LWIP_SO_RCVBUF)
+    message(FATAL_ERROR "LwIP SO_RCVBUF is a required option in menuconfig.")
 endif()
 
 if (NOT CONFIG_PARTITION_TABLE_CUSTOM)
     message(FATAL_ERROR "The custom partition table option is not enabled in menuconfig and is required for compilation.")
 endif()
 
-if (NOT CONFIG_LWIP_SO_RCVBUF)
-    message(FATAL_ERROR "LwIP SO_RCVBUF is a required option in menuconfig.")
+if (IDF_VERSION_MAJOR LESS 5 AND CONFIG_LWIP_DHCP_OPTIONS_LEN LESS 128)
+    message(FATAL_ERROR "CONFIG_LWIP_DHCP_OPTIONS_LEN should be at least 128 to workaround https://github.com/espressif/esp-idf/issues/7742")
 endif()
 
-if (CONFIG_IDF_TARGET_ESP32 AND NOT CONFIG_ESP32_ULP_COPROC_ENABLED)
-    message(FATAL_ERROR "ULP Co-Processor must be enabled")
-endif()
+idf_build_get_property(idf_target IDF_TARGET)
 
-if (CONFIG_IDF_TARGET_ESP32S3 AND NOT CONFIG_ESP32S3_ULP_COPROC_ENABLED)
-    message(FATAL_ERROR "ULP Co-Processor must be enabled")
+if(${idf_target} STREQUAL "esp32")
+    if (NOT CONFIG_PARTITION_TABLE_FILENAME STREQUAL "ESP32CS-partitions.csv")
+        message(FATAL_ERROR "The custom partition table option is not enabled in menuconfig and is required for compilation.")
+    endif()
+
+    if (NOT CONFIG_PARTITION_TABLE_CUSTOM_FILENAME STREQUAL "ESP32CS-partitions.csv")
+        message(FATAL_ERROR "The custom partition table option is not enabled in menuconfig and is required for compilation.")
+    endif()
+    if (NOT CONFIG_ESP32_ULP_COPROC_ENABLED)
+        message(FATAL_ERROR "ULP Co-Processor must be enabled")
+    endif()
+elseif(${idf_target} STREQUAL "esp32s3")
+    if (NOT CONFIG_PARTITION_TABLE_FILENAME STREQUAL "ESP32CS-S3-partitions.csv")
+        message(FATAL_ERROR "The custom partition table option is not enabled in menuconfig and is required for compilation.")
+    endif()
+
+    if (NOT CONFIG_PARTITION_TABLE_CUSTOM_FILENAME STREQUAL "ESP32CS-S3-partitions.csv")
+        message(FATAL_ERROR "The custom partition table option is not enabled in menuconfig and is required for compilation.")
+    endif()
+    if (NOT CONFIG_ESP32S3_ULP_COPROC_ENABLED)
+        message(FATAL_ERROR "ULP Co-Processor must be enabled")
+    endif()
 endif()

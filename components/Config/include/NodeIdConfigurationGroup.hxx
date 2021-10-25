@@ -1,7 +1,7 @@
 /**********************************************************************
 ESP32 COMMAND STATION
 
-COPYRIGHT (c) 2019-2021 Mike Dunston
+COPYRIGHT (c) 2017-2021 Mike Dunston
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -15,27 +15,24 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#ifndef TRACK_OUTPUT_DESCRIPTOR_H_
-#define TRACK_OUTPUT_DESCRIPTOR_H_
+#ifndef NODEID_CONFIG_GROUP_HXX_
+#define NODEID_CONFIG_GROUP_HXX_
 
 #include <openlcb/ConfigRepresentation.hxx>
 
+#include "sdkconfig.h"
+
 namespace esp32cs
 {
-  /// Track output configuration
-  CDI_GROUP(TrackOutputConfig);
-  CDI_GROUP_ENTRY(event_short,
-                  openlcb::EventConfigEntry,
-                  Name("Short Detected"),
-                  Description("This event will be produced when a short has "
-                              "been detected on the track output."));
-  CDI_GROUP_ENTRY(event_shutdown,
-                  openlcb::EventConfigEntry,
-                  Name("H-Bridge Shutdown"),
-                  Description("This event will be produced when the track "
-                              "output power has exceeded the safety threshold "
-                              "of the H-Bridge."));
-  CDI_GROUP_END();
+
+CDI_GROUP(NodeIdConfig, Segment(CONFIG_OLCB_NODEID_MEMORY_SPACE_ID),
+          Offset(CONFIG_OLCB_NODEID_MEMORY_SPACE_OFFSET));
+CDI_GROUP_ENTRY(node_id, openlcb::StringConfigEntry<32>, Name("Node ID"),
+                Description(
+R"!^!(Identifier to use for this device.
+NOTE: Changing this value will force a factory reset.)!^!"))
+CDI_GROUP_END();
+
 } // namespace esp32cs
 
-#endif // TRACK_OUTPUT_DESCRIPTOR_H_
+#endif // NODEID_CONFIG_GROUP_HXX_

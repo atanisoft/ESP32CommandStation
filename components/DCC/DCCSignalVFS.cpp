@@ -205,7 +205,12 @@ public:
 
   void factory_reset(int fd) override
   {
-    // no-op
+    // TODO: move this out of track monitor
+    CDI_FACTORY_RESET(cfg_.ops_current_limit);
+    CDI_FACTORY_RESET(cfg_.advanced().enable_railcom);
+    CDI_FACTORY_RESET(cfg_.advanced().enable_railcom_receiver);
+    CDI_FACTORY_RESET(cfg_.advanced().ops_preamble_bits);
+    CDI_FACTORY_RESET(cfg_.advanced().prog_preamble_bits);
   }
 
 private:

@@ -19,6 +19,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include <AllTrainNodes.hxx>
 #include <CDIClient.hxx>
+#include <CDIDownloader.hxx>
 #include <cJSON.h>
 #include <dcc/Loco.hxx>
 #include <dcc/DccOutput.hxx>
@@ -45,30 +46,29 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 using commandstation::AllTrainNodes;
 using commandstation::DccMode;
 using dcc::SpeedType;
+using esp32cs::AccessoryDecoderDB;
+using esp32cs::AccessoryType;
 using esp32cs::Esp32TrainDatabase;
 using esp32cs::EventBroadcastHelper;
 using esp32cs::NvsManager;
 using esp32cs::OTAWatcherFlow;
 using esp32cs::StatusLED;
-using esp32cs::AccessoryDecoderDB;
-using esp32cs::AccessoryType;
+using http::AbstractHttpResponse;
+using http::HTTP_ENCODING_GZIP;
+using http::HTTP_ENCODING_NONE;
 using http::Httpd;
 using http::HttpMethod;
 using http::HttpRequest;
 using http::HttpStatusCode;
-using http::AbstractHttpResponse;
-using http::StringResponse;
 using http::JsonResponse;
-using http::WebSocketFlow;
+using http::MIME_TYPE_IMAGE_GIF;
+using http::MIME_TYPE_IMAGE_PNG;
+using http::MIME_TYPE_TEXT_CSS;
 using http::MIME_TYPE_TEXT_HTML;
 using http::MIME_TYPE_TEXT_JAVASCRIPT;
 using http::MIME_TYPE_TEXT_PLAIN;
 using http::MIME_TYPE_TEXT_XML;
-using http::MIME_TYPE_TEXT_CSS;
-using http::MIME_TYPE_IMAGE_PNG;
-using http::MIME_TYPE_IMAGE_GIF;
-using http::HTTP_ENCODING_GZIP;
-using http::HTTP_ENCODING_NONE;
+using http::StringResponse;
 using http::WebSocketEvent;
 using http::WebSocketFlow;
 using openlcb::DatagramClient;
@@ -79,7 +79,7 @@ using openlcb::MemoryConfigDefs;
 using openlcb::NodeHandle;
 
 // Captive Portal landing page
-static constexpr const char * const CAPTIVE_PORTAL_HTML = R"!^!(
+static constexpr const char *const CAPTIVE_PORTAL_HTML = R"!^!(
 <html>
  <head>
   <title>ESP32 Command Station v%s</title>
@@ -110,49 +110,58 @@ extern const size_t cashJsGz_size asm("cash_min_js_gz_length");
 extern const uint8_t spectreCssGz[] asm("_binary_spectre_min_css_gz_start");
 extern const size_t spectreCssGz_size asm("spectre_min_css_gz_length");
 
-// TODO: add accessory method that wraps this usage
-#define GET_LOCO_VIA_EXECUTOR(NAME, address)                                  \
-  openlcb::TrainImpl *NAME = nullptr;                                         \
-  Singleton<AllTrainNodes>::instance()->train_service()->executor()->sync_run(\
-  ([&]()                                                                      \
-  {                                                                           \
-    NAME = Singleton<AllTrainNodes>::instance()->get_train_impl(              \
-                                      DccMode::DCC_128, address);             \
-  }));
+extern const uint8_t cdiJsGz[] asm("_binary_cdi_js_gz_start");
+extern const size_t cdiJsGz_size asm("cdi_js_gz_length");
 
 // TODO: add accessory method that wraps this usage
-#define REMOVE_LOCO_VIA_EXECUTOR(addr)                                        \
-  Singleton<AllTrainNodes>::instance()->train_service()->executor()->sync_run(\
-  ([&]()                                                                      \
-  {                                                                           \
-    Singleton<AllTrainNodes>::instance()->remove_train_impl(addr);            \
-  }));
+#define GET_LOCO_VIA_EXECUTOR(NAME, address)                                   \
+  openlcb::TrainImpl *NAME = nullptr;                                          \
+  Singleton<AllTrainNodes>::instance()->train_service()->executor()->sync_run( \
+      ([&]()                                                                   \
+       { NAME = Singleton<AllTrainNodes>::instance()->get_train_impl(          \
+             DccMode::DCC_128, address); }));
+
+// TODO: add accessory method that wraps this usage
+#define REMOVE_LOCO_VIA_EXECUTOR(addr)                                         \
+  Singleton<AllTrainNodes>::instance()->train_service()->executor()->sync_run( \
+      ([&]()                                                                   \
+       { Singleton<AllTrainNodes>::instance()->remove_train_impl(addr); }));
 
 uninitialized<CDIClient> cdi_client;
+uninitialized<CDIDownloadHandler> cdi_downloader;
 static NodeHandle cs_node_handle;
 static NvsManager *nvs;
 static Esp32TrainDatabase *traindb;
 
-void init_webserver(Service *service,
-                    NvsManager *nvs_mgr,
-                    MemoryConfigClient *mem_client,
+#ifndef CONFIG_STATUS_LED_DATA_PIN
+#define CONFIG_STATUS_LED_DATA_PIN -1
+#endif
+
+namespace openlcb
+{
+  extern const char CDI_DATA[];
+  extern const size_t CDI_SIZE;
+}
+
+void init_webserver(Service *service, NvsManager *nvs_mgr, openlcb::Node *node,
+                    openlcb::MemoryConfigHandler *mem_cfg,
                     Esp32TrainDatabase *train_db)
 {
   nvs = nvs_mgr;
   traindb = train_db;
   auto httpd = Singleton<Httpd>::instance();
   cs_node_handle = NodeHandle(nvs->node_id());
-  cdi_client.emplace(service, mem_client);
+  cdi_client.emplace(service, node, mem_cfg);
+  cdi_downloader.emplace(service, node, mem_cfg);
   httpd->captive_portal(
-    StringPrintf(CAPTIVE_PORTAL_HTML, esp_ota_get_app_description()->version));
-  httpd->static_uri("/", indexHtmlGz, indexHtmlGz_size
-                  , MIME_TYPE_TEXT_HTML, HTTP_ENCODING_GZIP, false);
-  httpd->static_uri("/loco-32x32.png", loco32x32, loco32x32_size
-                  , MIME_TYPE_IMAGE_PNG);
-  httpd->static_uri("/cash.min.js", cashJsGz, cashJsGz_size
-                  , MIME_TYPE_TEXT_JAVASCRIPT, HTTP_ENCODING_GZIP);
-  httpd->static_uri("/spectre.min.css", spectreCssGz, spectreCssGz_size
-                  , MIME_TYPE_TEXT_CSS, HTTP_ENCODING_GZIP);
+      StringPrintf(CAPTIVE_PORTAL_HTML, esp_ota_get_app_description()->version));
+  httpd->static_uri("/", indexHtmlGz, indexHtmlGz_size, MIME_TYPE_TEXT_HTML, HTTP_ENCODING_GZIP, false);
+  httpd->static_uri("/loco-32x32.png", loco32x32, loco32x32_size, MIME_TYPE_IMAGE_PNG);
+  httpd->static_uri("/cash.min.js", cashJsGz, cashJsGz_size, MIME_TYPE_TEXT_JAVASCRIPT, HTTP_ENCODING_GZIP);
+  httpd->static_uri("/spectre.min.css", spectreCssGz, spectreCssGz_size, MIME_TYPE_TEXT_CSS, HTTP_ENCODING_GZIP);
+  httpd->static_uri("/cdi.js", cdiJsGz, cdiJsGz_size, MIME_TYPE_TEXT_JAVASCRIPT, HTTP_ENCODING_GZIP);
+  httpd->static_uri("/cdi.xml", (const uint8_t *)openlcb::CDI_DATA,
+                    openlcb::CDI_SIZE, MIME_TYPE_TEXT_XML);
   httpd->websocket_uri("/ws", process_ws);
   httpd->uri("/update", HttpMethod::POST, nullptr, process_ota);
   httpd->uri("/fs", HttpMethod::GET, process_fs);
@@ -175,67 +184,46 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
     if (req_type == NULL || req_id == NULL)
     {
       // NO OP, the websocket is outbound only to trigger events on the client side.
-      LOG(INFO, "[WSJSON] Failed to parse:%s", req.c_str());
-    }
-    else if (!strcmp(req_type->valuestring, "nodeid"))
-    {
-      if (!cJSON_HasObjectItem(root, "val"))
-      {
-        response =
-          StringPrintf(R"!^!({"res":"error","error":"The 'val' field must be provided","id":%d})!^!"
-                    , req_id->valueint);
-      }
-      else
-      {
-        std::string value = cJSON_GetObjectItem(root, "val")->valuestring;
-        nvs->node_id(esp32cs::string_to_uint64(value));
-        LOG(INFO, "[WSJSON:%d] Node ID updated to: %s, reboot pending"
-          , req_id->valueint, value.c_str());
-        response =
-          StringPrintf(R"!^!({"res":"nodeid","id":%d})!^!", req_id->valueint);
-        Singleton<esp32cs::DelayRebootHelper>::instance()->start();
-      }
+      LOG(INFO, "[WS] Failed to parse:%s", req.c_str());
     }
     else if (!strcmp(req_type->valuestring, "info"))
     {
       const esp_app_desc_t *app_data = esp_ota_get_app_description();
       const esp_partition_t *partition = esp_ota_get_running_partition();
       response =
-        StringPrintf(R"!^!({"res":"info","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","statusLED":%s,"statusLEDBrightness":%d,"id":%d})!^!",
-          app_data->date, app_data->time, partition->label,
-          openlcb::SNIP_STATIC_DATA.model_name,
-          openlcb::SNIP_STATIC_DATA.hardware_version,
-          openlcb::SNIP_STATIC_DATA.software_version,
-          uint64_to_string_hex(nvs->node_id()).c_str(),
-          CONFIG_STATUS_LED_DATA_PIN != -1 ? "true" : "false",
-          Singleton<StatusLED>::instance()->getBrightness(), req_id->valueint);
-    }
-    else if (!strcmp(req_type->valuestring, "update-complete"))
-    {
-      BufferPtr<CDIClientRequest> b(cdi_client->alloc());
-      b->data()->reset(CDIClientRequest::UPDATE_COMPLETE, cs_node_handle,
-                       socket, req_id->valueint);
-      b->data()->done.reset(EmptyNotifiable::DefaultInstance());
-      LOG(VERBOSE, "[WSJSON:%d] Sending UPDATE_COMPLETE to queue",
-          req_id->valueint);
-      nvs->set_led_brightness(Singleton<StatusLED>::instance()->getBrightness());
-      cdi_client->send(b->ref());
-      cJSON_Delete(root);
-      return;
+          StringPrintf(R"!^!({"res":"info","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","statusLED":%s,"statusLEDBrightness":%d,"id":%d})!^!",
+                       app_data->date, app_data->time, partition->label,
+                       openlcb::SNIP_STATIC_DATA.model_name,
+                       openlcb::SNIP_STATIC_DATA.hardware_version,
+                       openlcb::SNIP_STATIC_DATA.software_version,
+                       uint64_to_string_hex(nvs->node_id()).c_str(),
+#if defined(CONFIG_STATUS_LED_DATA_PIN) && CONFIG_STATUS_LED_DATA_PIN != -1
+                       "true",
+#else
+                       "false",
+#endif
+                       Singleton<StatusLED>::instance()->getBrightness(), req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "cdi"))
     {
-      if (!cJSON_HasObjectItem(root, "ofs") ||
-          !cJSON_HasObjectItem(root, "type") ||
-          !cJSON_HasObjectItem(root, "sz") ||
-          !cJSON_HasObjectItem(root, "tgt"))
+      if (cJSON_HasObjectItem(root, "cdi"))
       {
-        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
-                , req_id->valueint, req.c_str());
+        BufferPtr<CDIDownloadRequest> b(cdi_downloader->alloc());
+        b->data()->reset(cs_node_handle.id, "target", socket);
+        b->data()->done.reset(EmptyNotifiable::DefaultInstance());
+        cdi_downloader->send(b->ref());
         response =
-          StringPrintf(
-            R"!^!({"res":"error", "error":"request is missing one (or more) required parameters","id":%d})!^!"
-          , req_id->valueint);
+            StringPrintf(R"!^!({"res":"cdi", "status":"processing","id":%d})!^!", req_id->valueint);
+      }
+      else if (!cJSON_HasObjectItem(root, "ofs") ||
+               !cJSON_HasObjectItem(root, "type") ||
+               !cJSON_HasObjectItem(root, "sz") ||
+               !cJSON_HasObjectItem(root, "tgt") ||
+               !cJSON_HasObjectItem(root, "spc"))
+      {
+        LOG_ERROR("[WS:%d] One or more required parameters are missing: %s", req_id->valueint, req.c_str());
+        response =
+            StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!", req_id->valueint);
       }
       else
       {
@@ -244,16 +232,18 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
             cJSON_GetObjectItem(root, "type")->valuestring;
         size_t size = cJSON_GetObjectItem(root, "sz")->valueint;
         string target = cJSON_GetObjectItem(root, "tgt")->valuestring;
+        uint8_t space = cJSON_GetObjectItem(root, "spc")->valueint;
         BufferPtr<CDIClientRequest> b(cdi_client->alloc());
 
         if (!cJSON_HasObjectItem(root, "val"))
         {
-          LOG(VERBOSE
-            , "[WSJSON:%d] Sending CDI READ: offs:%zu size:%zu type:%s tgt:%s"
-            , req_id->valueint, offs, size, param_type.c_str()
-            , target.c_str());
-          b->data()->reset(CDIClientRequest::READ, cs_node_handle, socket
-                         , req_id->valueint, offs, size, target, param_type);
+          LOG(INFO,
+              "[WS:%d] Sending CDI READ: offs:%zu size:%zu type:%s tgt:%s spc:%d",
+              req_id->valueint, offs, size, param_type.c_str(), target.c_str(),
+              space);
+          b->data()->reset(CDIClientRequest::READ, cs_node_handle,
+                           socket, req_id->valueint, offs, size, target,
+                           param_type, space);
         }
         else
         {
@@ -304,11 +294,13 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
             value.push_back((data >> 8) & 0xFF);
             value.push_back(data & 0xFF);
           }
-          LOG(VERBOSE
-            , "[WSJSON:%d] Sending CDI WRITE: offs:%zu value:%s tgt:%s"
-            , req_id->valueint, offs, raw_value->valuestring, target.c_str());
-          b->data()->reset(CDIClientRequest::WRITE, cs_node_handle, socket
-                         , req_id->valueint, offs, size, target, value);
+          LOG(INFO,
+              "[WS:%d] Sending CDI WRITE: offs:%zu value:%s tgt:%s spc:%d",
+              req_id->valueint, offs, raw_value->valuestring, target.c_str(),
+              space);
+          b->data()->reset(CDIClientRequest::WRITE, cs_node_handle,
+                           socket, req_id->valueint, offs, size, target,
+                           value, space);
         }
         b->data()->done.reset(EmptyNotifiable::DefaultInstance());
         cdi_client->send(b->ref());
@@ -316,51 +308,70 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         return;
       }
     }
+    else if (!strcmp(req_type->valuestring, "update-complete"))
+    {
+      LOG(INFO, "[WS:%d] Sending UPDATE_COMPLETE to queue", req_id->valueint);
+      BufferPtr<CDIClientRequest> b(cdi_client->alloc());
+      b->data()->reset(CDIClientRequest::UPDATE_COMPLETE, cs_node_handle, socket,
+                       req_id->valueint);
+      b->data()->done.reset(EmptyNotifiable::DefaultInstance());
+      cdi_client->send(b->ref());
+      cJSON_Delete(root);
+      return;
+    }
+    else if (!strcmp(req_type->valuestring, "reboot"))
+    {
+      LOG(INFO, "[WS:%d] Sending REBOOT to queue", req_id->valueint);
+      BufferPtr<CDIClientRequest> b(cdi_client->alloc());
+      b->data()->reset(CDIClientRequest::REBOOT, cs_node_handle, req_id->valueint);
+      b->data()->done.reset(EmptyNotifiable::DefaultInstance());
+      cdi_client->send(b->ref());
+      cJSON_Delete(root);
+      return;
+    }
     else if (!strcmp(req_type->valuestring, "factory-reset"))
     {
-      LOG(VERBOSE, "[WSJSON:%d] Factory reset received", req_id->valueint);
+      LOG(VERBOSE, "[WS:%d] Factory reset received", req_id->valueint);
       nvs->force_factory_reset();
       Singleton<esp32cs::DelayRebootHelper>::instance()->start();
       response =
-        StringPrintf(R"!^!({"res":"factory-reset","id":%d})!^!"
-                  , req_id->valueint);
+          StringPrintf(R"!^!({"res":"factory-reset","id":%d})!^!", req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "bootloader"))
     {
-      LOG(VERBOSE, "[WSJSON:%d] bootloader request received", req_id->valueint);
+      LOG(VERBOSE, "[WS:%d] bootloader request received", req_id->valueint);
       enter_bootloader();
       // NOTE: This response may not get sent to the client.
       response =
-        StringPrintf(R"!^!({"res":"bootloader","id":%d})!^!", req_id->valueint);
+          StringPrintf(R"!^!({"res":"bootloader","id":%d})!^!", req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "reset-events"))
     {
-      LOG(VERBOSE, "[WSJSON:%d] Reset event IDs received", req_id->valueint);
+      LOG(VERBOSE, "[WS:%d] Reset event IDs received", req_id->valueint);
       nvs->force_reset_events();
       response =
-        StringPrintf(R"!^!({"res":"reset-events","id":%d})!^!"
-                   , req_id->valueint);
+          StringPrintf(R"!^!({"res":"reset-events","id":%d})!^!", req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "event"))
     {
       if (!cJSON_HasObjectItem(root, "evt"))
       {
-        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
-                , req_id->valueint, req.c_str());
+        LOG_ERROR("[WS:%d] One or more required parameters are missing: %s",
+                  req_id->valueint, req.c_str());
         response =
-          StringPrintf(R"!^!({"res":"error","error":"The 'evt' field must be provided","id":%d})!^!"
-                    , req_id->valueint);
+            StringPrintf(R"!^!({"res":"error","error":"The 'evt' field must be provided","id":%d})!^!",
+                         req_id->valueint);
       }
       else
       {
         string value = cJSON_GetObjectItem(root, "evt")->valuestring;
-        LOG(VERBOSE, "[WSJSON:%d] Sending event: %s", req_id->valueint
-          , value.c_str());
+        LOG(VERBOSE, "[WS:%d] Sending event: %s", req_id->valueint,
+            value.c_str());
         uint64_t eventID = esp32cs::string_to_uint64(value);
         Singleton<EventBroadcastHelper>::instance()->send_event(eventID);
         response =
-          StringPrintf(R"!^!({"res":"event","evt":"%s","id":%d})!^!"
-                    , value.c_str(), req_id->valueint);
+            StringPrintf(R"!^!({"res":"event","evt":"%s","id":%d})!^!",
+                         value.c_str(), req_id->valueint);
       }
     }
     else if (!strcmp(req_type->valuestring, "function"))
@@ -369,36 +380,30 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
           !cJSON_HasObjectItem(root, "fn") ||
           !cJSON_HasObjectItem(root, "state"))
       {
-        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
-                , req_id->valueint, req.c_str());
+        LOG_ERROR("[WS:%d] One or more required parameters are missing: %s", req_id->valueint, req.c_str());
         response =
-          StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!"
-                    , req_id->valueint);
+            StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!", req_id->valueint);
       }
       else
       {
         uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
         uint8_t function = cJSON_GetObjectItem(root, "fn")->valueint;
         uint8_t state = cJSON_IsTrue(cJSON_GetObjectItem(root, "state"));
-        LOG(VERBOSE, "[WSJSON:%d] Setting function %d on loco %d to %d"
-          , req_id->valueint, address, function, state);
+        LOG(VERBOSE, "[WS:%d] Setting function %d on loco %d to %d", req_id->valueint, address, function, state);
         GET_LOCO_VIA_EXECUTOR(train, address);
         train->set_fn(function, state);
         response =
-          StringPrintf(R"!^!({"res":"function","id":%d,"fn":%d,"state":%s})!^!"
-                    , req_id->valueint, function
-                    , train->get_fn(function) == 1 ? "true" : "false");
+            StringPrintf(R"!^!({"res":"function","id":%d,"fn":%d,"state":%s})!^!",
+                         req_id->valueint, function, train->get_fn(function) == 1 ? "true" : "false");
       }
     }
     else if (!strcmp(req_type->valuestring, "loco"))
     {
       if (!cJSON_HasObjectItem(root, "addr"))
       {
-        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s"
-                , req_id->valueint, req.c_str());
+        LOG_ERROR("[WS:%d] One or more required parameters are missing: %s", req_id->valueint, req.c_str());
         response =
-          StringPrintf(R"!^!({"res":"error","error":"The 'addr' field must be provided","id":%d})!^!"
-                    , req_id->valueint);
+            StringPrintf(R"!^!({"res":"error","error":"The 'addr' field must be provided","id":%d})!^!", req_id->valueint);
       }
       else
       {
@@ -409,22 +414,20 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         if (cJSON_HasObjectItem(root, "s"))
         {
           uint8_t speed = cJSON_GetObjectItem(root, "spd")->valueint;
-          LOG(VERBOSE, "[WSJSON:%d] Setting loco %d speed to %d"
-            , req_id->valueint, address, speed);
+          LOG(VERBOSE, "[WS:%d] Setting loco %d speed to %d", req_id->valueint, address, speed);
           req_speed.set_mph(speed);
         }
         if (cJSON_HasObjectItem(root, "dir"))
         {
           bool direction = cJSON_IsTrue(cJSON_GetObjectItem(root, "dir"));
-          LOG(VERBOSE, "[WSJSON:%d] Setting loco %d direction to %s"
-            , req_id->valueint, address, direction ? "REV" : "FWD");
+          LOG(VERBOSE, "[WS:%d] Setting loco %d direction to %s", req_id->valueint, address, direction ? "REV" : "FWD");
           req_speed.set_direction(direction);
         }
         train->set_speed(req_speed);
         response =
-          StringPrintf(R"!^!({"res":"loco","addr":%d,"spd":%d,"dir":%s,"id":%d})!^!"
-                    , address, (int)req_speed.mph()
-                    , req_speed.direction() ? "true" : "false", req_id->valueint);
+            StringPrintf(R"!^!({"res":"loco","addr":%d,"spd":%d,"dir":%s,"id":%d})!^!",
+                         address, (int)req_speed.mph(),
+                         req_speed.direction() ? "true" : "false", req_id->valueint);
       }
     }
     else if (!strcmp(req_type->valuestring, "accessory"))
@@ -432,11 +435,11 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
       if (!cJSON_HasObjectItem(root, "addr") ||
           !cJSON_HasObjectItem(root, "act"))
       {
-        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s",
+        LOG_ERROR("[WS:%d] One or more required parameters are missing: %s",
                   req_id->valueint, req.c_str());
         response =
-          StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!",
-                       req_id->valueint);
+            StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!",
+                         req_id->valueint);
       }
       else
       {
@@ -444,8 +447,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
         string name = std::to_string(address);
         string action = cJSON_GetObjectItem(root, "act")->valuestring;
-        string target = cJSON_HasObjectItem(root, "tgt") ?
-            cJSON_GetObjectItem(root, "tgt")->valuestring : "";
+        string target = cJSON_HasObjectItem(root, "tgt") ? cJSON_GetObjectItem(root, "tgt")->valuestring : "";
         bool state = false;
         AccessoryType type = AccessoryType::UNCHANGED;
         if (cJSON_HasObjectItem(root, "type"))
@@ -458,13 +460,13 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         }
         if (action == "save")
         {
-          LOG(VERBOSE, "[WSJSON:%d] Saving accessory %d as type %d",
+          LOG(VERBOSE, "[WS:%d] Saving accessory %d as type %d",
               req_id->valueint, address, type);
           if (cJSON_IsTrue(cJSON_GetObjectItem(root, "olcb")))
           {
             db->createOrUpdateOlcb(address, name,
-              cJSON_GetObjectItem(root, "closed")->valuestring,
-              cJSON_GetObjectItem(root, "thrown")->valuestring, type);
+                                   cJSON_GetObjectItem(root, "closed")->valuestring,
+                                   cJSON_GetObjectItem(root, "thrown")->valuestring, type);
           }
           else
           {
@@ -473,20 +475,20 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         }
         else if (action == "toggle")
         {
-          LOG(VERBOSE, "[WSJSON:%d] Toggling accessory %d", req_id->valueint,
+          LOG(VERBOSE, "[WS:%d] Toggling accessory %d", req_id->valueint,
               address);
           state = db->toggle(address);
         }
         else if (action == "delete")
         {
-          LOG(VERBOSE, "[WSJSON:%d] Deleting accessory %d", req_id->valueint,
+          LOG(VERBOSE, "[WS:%d] Deleting accessory %d", req_id->valueint,
               address);
           db->remove(address);
         }
         response =
-          StringPrintf(R"!^!({"res":"accessory","act":"%s","addr":%d,"name":"%s","tgt":"%s","state":%d,"type":%d,"id":%d})!^!",
-                      action.c_str(), address, name.c_str(), target.c_str(),
-                      state, type, req_id->valueint);
+            StringPrintf(R"!^!({"res":"accessory","act":"%s","addr":%d,"name":"%s","tgt":"%s","state":%d,"type":%d,"id":%d})!^!",
+                         action.c_str(), address, name.c_str(), target.c_str(),
+                         state, type, req_id->valueint);
       }
     }
     else if (!strcmp(req_type->valuestring, "roster"))
@@ -494,79 +496,77 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
       if (!cJSON_HasObjectItem(root, "addr") ||
           !cJSON_HasObjectItem(root, "act"))
       {
-        LOG_ERROR("[WSJSON:%d] One or more required parameters are missing: %s",
+        LOG_ERROR("[WS:%d] One or more required parameters are missing: %s",
                   req_id->valueint, req.c_str());
         response =
-          StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!",
-                       req_id->valueint);
+            StringPrintf(R"!^!({"res":"error","error":"One (or more) required fields are missing.","id":%d})!^!",
+                         req_id->valueint);
       }
       else
       {
         uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
         string action = cJSON_GetObjectItem(root, "act")->valuestring;
-        string target = cJSON_HasObjectItem(root, "tgt") ?
-            cJSON_GetObjectItem(root, "tgt")->valuestring : "";
+        string target = cJSON_HasObjectItem(root, "tgt") ? cJSON_GetObjectItem(root, "tgt")->valuestring : "";
         if (action == "save")
         {
-          LOG(VERBOSE, "[WSJSON:%d] Creating/Updating roster entry %d",
+          LOG(VERBOSE, "[WS:%d] Creating/Updating roster entry %d",
               req_id->valueint, address);
           string name = cJSON_GetObjectItem(root, "name")->valuestring;
           string description = cJSON_GetObjectItem(root, "desc")->valuestring;
           DccMode mode =
-            static_cast<DccMode>(cJSON_GetObjectItem(root, "mode")->valueint);
+              static_cast<DccMode>(cJSON_GetObjectItem(root, "mode")->valueint);
           bool idle = cJSON_IsTrue(cJSON_GetObjectItem(root, "idle"));
           traindb->create_or_update(address, name, description, mode, idle);
         }
         else if (action == "delete")
         {
-          LOG(VERBOSE, "[WSJSON:%d] Deleting roster entry %d",
+          LOG(VERBOSE, "[WS:%d] Deleting roster entry %d",
               req_id->valueint, address);
           traindb->delete_entry(address);
         }
         response =
-          StringPrintf(R"!^!({"res":"roster","act":"%s","tgt":"%s","id":%d})!^!",
-                      action.c_str(), target.c_str(), req_id->valueint);
+            StringPrintf(R"!^!({"res":"roster","act":"%s","tgt":"%s","id":%d})!^!",
+                         action.c_str(), target.c_str(), req_id->valueint);
       }
     }
     else if (!strcmp(req_type->valuestring, "ping"))
     {
-      LOG(VERBOSE, "[WSJSON:%d] PING received", req_id->valueint);
+      LOG(VERBOSE, "[WS:%d] PING received", req_id->valueint);
       response =
-        StringPrintf(R"!^!({"res":"pong","id":%d})!^!", req_id->valueint);
+          StringPrintf(R"!^!({"res":"pong","id":%d})!^!", req_id->valueint);
     }
     else if (!strcmp(req_type->valuestring, "status"))
     {
-      LOG(VERBOSE, "[WSJSON:%d] STATUS received", req_id->valueint);
+      LOG(VERBOSE, "[WS:%d] STATUS received", req_id->valueint);
       auto track = get_dcc_output(DccOutput::Type::TRACK);
       uint8_t track_status = track->get_disable_output_reasons();
       if (track_status & (uint8_t)DccOutput::DisableReason::SHORTED ||
           track_status & (uint8_t)DccOutput::DisableReason::THERMAL)
       {
         response =
-          StringPrintf(R"!^!({"res":"status","id":%d,"track":"Fault"})!^!",
-                       req_id->valueint);
+            StringPrintf(R"!^!({"res":"status","id":%d,"track":"Fault"})!^!",
+                         req_id->valueint);
       }
       else if (track_status != 0)
       {
         response =
-          StringPrintf(R"!^!({"res":"status","id":%d,"track":"Off"})!^!",
-                       req_id->valueint);
+            StringPrintf(R"!^!({"res":"status","id":%d,"track":"Off"})!^!",
+                         req_id->valueint);
       }
       else
       {
         response =
-          StringPrintf(R"!^!({"res":"status","id":%d,"track":"On","usage":%d})!^!",
-                       req_id->valueint, esp32cs::get_ops_load());
+            StringPrintf(R"!^!({"res":"status","id":%d,"track":"On","usage":%d})!^!",
+                         req_id->valueint, esp32cs::get_ops_load());
       }
     }
     else if (!strcmp(req_type->valuestring, "statusled"))
     {
       cJSON *value = cJSON_GetObjectItem(root, "val");
-      LOG(VERBOSE, "[WSJSON:%d] statusled received, new brightness:%d"
-        , req_id->valueint, value->valueint);
+      LOG(VERBOSE, "[WS:%d] statusled received, new brightness:%d", req_id->valueint, value->valueint);
       Singleton<StatusLED>::instance()->setBrightness(value->valueint);
       response =
-        StringPrintf(R"!^!({"res":"statusled","id":%d})!^!", req_id->valueint);
+          StringPrintf(R"!^!({"res":"statusled","id":%d})!^!", req_id->valueint);
     }
     else
     {
@@ -580,15 +580,14 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
 
 esp_ota_handle_t otaHandle;
 esp_partition_t *ota_partition = nullptr;
-HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length
-                       , offset, final, abort_req)
+HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length, offset, final, abort_req)
 {
   if (!offset)
   {
     esp_log_level_set("esp_image", ESP_LOG_VERBOSE);
     ota_partition = (esp_partition_t *)esp_ota_get_next_update_partition(NULL);
     esp_err_t err = ESP_ERROR_CHECK_WITHOUT_ABORT(
-      esp_ota_begin(ota_partition, size, &otaHandle));
+        esp_ota_begin(ota_partition, size, &otaHandle));
     if (err != ESP_OK)
     {
       LOG_ERROR("[WebSrv] OTA start failed, aborting!");
@@ -597,8 +596,7 @@ HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length
       *abort_req = true;
       return nullptr;
     }
-    LOG(INFO, "[WebSrv] OTA Update starting (%zu bytes, target:%s)...", size
-      , ota_partition->label);
+    LOG(INFO, "[WebSrv] OTA Update starting (%zu bytes, target:%s)...", size, ota_partition->label);
     Singleton<OTAWatcherFlow>::instance()->report_start();
   }
   HASSERT(ota_partition);
@@ -615,10 +613,9 @@ HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length
       *abort_req = true;
       return nullptr;
     }
-    LOG(INFO, "[WebSrv] OTA binary received, setting boot partition: %s"
-      , ota_partition->label);
+    LOG(INFO, "[WebSrv] OTA binary received, setting boot partition: %s", ota_partition->label);
     err = ESP_ERROR_CHECK_WITHOUT_ABORT(
-      esp_ota_set_boot_partition(ota_partition));
+        esp_ota_set_boot_partition(ota_partition));
     if (err != ESP_OK)
     {
       LOG_ERROR("[WebSrv] OTA end failed, aborting!");
@@ -699,7 +696,7 @@ HTTP_HANDLER_IMPL(process_accessories, request)
   bool readable = request->param("readbleStrings", false);
   auto db = Singleton<AccessoryDecoderDB>::instance();
   if (request->method() == HttpMethod::GET &&
-     !request->has_param("address"))
+      !request->has_param("address"))
   {
     return new JsonResponse(db->to_json(readable));
   }
@@ -717,7 +714,7 @@ HTTP_HANDLER_IMPL(process_accessories, request)
   else if (request->method() == HttpMethod::POST)
   {
     AccessoryType type =
-      (AccessoryType)request->param("type", AccessoryType::UNKNOWN);
+        (AccessoryType)request->param("type", AccessoryType::UNKNOWN);
     string name = request->param("name");
     if (name.empty())
     {
@@ -753,9 +750,9 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
     return "{}";
   }
   string res =
-    StringPrintf(R"!^!({"addr":%d,"spd":%d,"dir":"%s","fn":[)!^!",
-                 t->legacy_address(),(int)t->get_speed().mph(),
-                 t->get_speed().direction() == dcc::SpeedType::REVERSE ? "REV" : "FWD");
+      StringPrintf(R"!^!({"addr":%d,"spd":%d,"dir":"%s","fn":[)!^!",
+                   t->legacy_address(), (int)t->get_speed().mph(),
+                   t->get_speed().direction() == dcc::SpeedType::REVERSE ? "REV" : "FWD");
   for (size_t funcID = 0; funcID < commandstation::DCC_MAX_FN; funcID++)
   {
     if (funcID)
@@ -795,7 +792,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
   else if (url.find("/roster") != string::npos)
   {
     if (request->method() == HttpMethod::GET &&
-       !request->has_param("address"))
+        !request->has_param("address"))
     {
       return new JsonResponse(traindb->get_all_entries_as_json());
     }
@@ -821,7 +818,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
         string name = request->param("name");
         string description = request->param("desc");
         DccMode mode = static_cast<commandstation::DccMode>(
-          request->param("mode", DccMode::DCC_128));
+            request->param("mode", DccMode::DCC_128));
         bool idle = request->param("idle", false);
         traindb->create_or_update(address, name, description, mode, idle);
         // search for and remap functions if present
@@ -831,8 +828,8 @@ HTTP_HANDLER_IMPL(process_loco, request)
           if (request->has_param(fArg.c_str()))
           {
             commandstation::Symbols label =
-            static_cast<commandstation::Symbols>(
-              request->param(fArg, commandstation::Symbols::FN_UNKNOWN));
+                static_cast<commandstation::Symbols>(
+                    request->param(fArg, commandstation::Symbols::FN_UNKNOWN));
             traindb->set_train_function_label(address, fn, label);
           }
         }
@@ -845,8 +842,8 @@ HTTP_HANDLER_IMPL(process_loco, request)
     // Since it is not an eStop or roster command we need to check the request
     // method and ensure it contains the required arguments otherwise the
     // request should be rejected
-    if (request->method() == HttpMethod::GET && 
-       !request->has_param("address"))
+    if (request->method() == HttpMethod::GET &&
+        !request->has_param("address"))
     {
       // get all active locomotives
       string res = "[";
@@ -904,7 +901,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
                                           : dcc::SpeedType::REVERSE);
           loco->set_speed(upd_speed);
         }
-        
+
         for (uint8_t funcID = 0; funcID <= 28; funcID++)
         {
           string fArg = StringPrintf("f%d", funcID);

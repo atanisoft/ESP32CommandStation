@@ -18,11 +18,10 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #ifndef FACTORY_RESET_HELPER_HXX_
 #define FACTORY_RESET_HELPER_HXX_
 
+#include <NvsManager.hxx>
 #include <StringUtils.hxx>
 #include <utils/ConfigUpdateListener.hxx>
 #include <utils/logging.h>
-
-#include "NodeIdMemoryConfigSpace.hxx"
 
 namespace esp32cs
 {
@@ -43,11 +42,9 @@ public:
         // If this is not our initial load and the node id has changed we need
         // to force a reboot
         if (!initial_load &&
-            Singleton<NodeIdMemoryConfigSpace>::instance()->updated())
+            Singleton<NvsManager>::instance()->memory_spaces_modified())
         {
-            LOG(WARNING,
-                "[CFG] Node ID has been changed, node will reboot and factory "
-                "reset to complete the update.");
+            LOG(WARNING, "[CFG] NVS has been updated requiring a restart.");
             return ConfigUpdateListener::UpdateAction::REBOOT_NEEDED;
         }
 
@@ -61,7 +58,7 @@ public:
         cfg_.name().write(fd, openlcb::SNIP_STATIC_DATA.model_name);
         std::string node_id =
             esp32cs::node_id_to_string(
-                Singleton<NodeIdMemoryConfigSpace>::instance()->node_id());
+                Singleton<NvsManager>::instance()->node_id());
         cfg_.description().write(fd, node_id.c_str());
     }
 private:

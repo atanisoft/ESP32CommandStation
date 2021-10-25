@@ -16,11 +16,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 **********************************************************************/
 
 #include "sdkconfig.h"
-#include "cdi.hxx"
-#include "hardware.hxx"
 #include "ThermalMonitorFlow.hxx"
 #include <AllTrainNodes.hxx>
-#include <CDIXMLGenerator.hxx>
+#include <cdi.hxx>
 #include <dcc/Packet.hxx>
 #include <dcc/PacketSource.hxx>
 #include <dcc/UpdateLoop.hxx>
@@ -28,6 +26,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <DelayRebootHelper.hxx>
 #include <esp_adc_cal.h>
 #include <esp_core_dump.h>
+#include <esp_ipc.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <FileSystem.hxx>
@@ -36,12 +35,13 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <freertos_drivers/esp32/Esp32SocInfo.hxx>
 #include <freertos_drivers/esp32/Esp32HardwareTwai.hxx>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
+#include <hardware.hxx>
 #include <HealthMonitor.hxx>
 #include <Httpd.h>
 #include <mutex>
-#include <NodeIdMemoryConfigSpace.hxx>
 #include <NodeRebootHelper.hxx>
 #include <NvsManager.hxx>
+#include <OpenLCBConfigurationGroup.hxx>
 #include <openlcb/BroadcastTime.hxx>
 #include <openlcb/BroadcastTimeServer.hxx>
 #include <openlcb/MemoryConfigClient.hxx>
@@ -123,15 +123,12 @@ namespace openlcb
   /// Define the SNIP data for the ESP32 Command Station.
   const SimpleNodeStaticValues SNIP_STATIC_DATA =
       {
-          4,                  /* version           */
-          SNIP_PROJECT_PAGE,  /* manufacturer_name */
-          SNIP_PROJECT_NAME,  /* model_name        */
-          SNIP_HW_VERSION,    /* hardware_version  */
-          SNIP_SW_VERSION     /* software_version  */
+          4,                                      /* version           */
+          SNIP_PROJECT_PAGE,                      /* manufacturer_name */
+          SNIP_PROJECT_NAME,                      /* model_name        */
+          SNIP_HW_VERSION " " CONFIG_IDF_TARGET,  /* hardware_version  */
+          SNIP_SW_VERSION                         /* software_version  */
       };
-
-  /// This will stop OpenMRN from exporting the CDI memory space upon start.
-  const char CDI_DATA[] = "";
 
   /// Path to where OpenMRN should persist general configuration data.
   const char *const CONFIG_FILENAME = "/fs/olcb_config";
@@ -142,13 +139,10 @@ namespace openlcb
   /// Default to store the dynamic SNIP data is stored in the same persistant
   /// data file as general configuration data.
   const char *const SNIP_DYNAMIC_FILENAME = CONFIG_FILENAME;
-
-  /// Name of CDI.xml to generate dynamically.
-  const char CDI_FILENAME[] = "/fs/cdi.xml";
 } // namespace openlcb
 
 void init_webserver(Service *service, esp32cs::NvsManager *nvs_mgr,
-                    openlcb::MemoryConfigClient *mem_client,
+                    openlcb::Node *node, openlcb::MemoryConfigHandler *mem_cfg,
                     esp32cs::Esp32TrainDatabase *train_db);
 
 void check_for_coredump();
@@ -159,35 +153,49 @@ void check_for_coredump();
 /// initialization process.
 static void twai_init(void *param)
 {
+#if CONFIG_OLCB_TWAI_USE_IPC
+  twai.hw_init();
+#else
   SyncNotifiable *notif = (SyncNotifiable *)param;
   twai.hw_init();
   notif->notify();
   vTaskDelete(NULL);
-}
-
-/// Validates that the CDI.xml has been created and is up-to-date.
-///
-/// @param stack @ref SimpleStackBase to register events to from the CDI data.
-/// @return true if the CDI.xml was updated, false otherwise.
-bool validate_cdi(openlcb::SimpleStackBase *stack)
-{
-  return CDIXMLGenerator::create_config_descriptor_xml(
-    cfg, openlcb::CDI_FILENAME, stack);
+#endif //  CONFIG_OLCB_TWAI_USE_IPC
 }
 
 using esp32cs::NvsManager;
 using esp32cs::StatusLED;
 
+class OpenLCBFactoryResetHelper : public DefaultConfigUpdateListener
+{
+public:
+    OpenLCBFactoryResetHelper(const esp32cs::OpenLCBConfiguration &cfg) : cfg_(cfg)
+    {
+    }
+
+    UpdateAction apply_configuration(int fd, bool initial_load,
+                                     BarrierNotifiable *done) override
+    {
+        AutoNotify n(done);
+        LOG(VERBOSE, "[CFG] apply_configuration(%d, %d)", fd, initial_load);
+        return ConfigUpdateListener::UpdateAction::UPDATED;
+    }
+
+    void factory_reset(int fd) override
+    {
+        LOG(VERBOSE, "[CDI] OpenLCBConfiguration factory reset invoked.");
+        CDI_FACTORY_RESET(cfg_.advanced().brownout_enable);
+        CDI_FACTORY_RESET(cfg_.advanced().dcc_enable);
+        CDI_FACTORY_RESET(cfg_.advanced().enable_accessory_bus);
+        CDI_FACTORY_RESET(cfg_.advanced().enable_throttles);
+        CDI_FACTORY_RESET(cfg_.advanced().throttle_heartbeat);
+    }
+private:
+    const esp32cs::OpenLCBConfiguration cfg_;
+};
+
 extern "C"
 {
-
-#ifndef CONFIG_FASTCLOCK_REALTIME_ID
-#define CONFIG_FASTCLOCK_REALTIME_ID openlcb::BroadcastTimeDefs::DEFAULT_REALTIME_CLOCK_ID
-#endif
-
-#ifndef CONFIG_FASTCLOCK_DEFAULT_ID
-#define CONFIG_FASTCLOCK_DEFAULT_ID openlcb::BroadcastTimeDefs::DEFAULT_FAST_CLOCK_ID
-#endif
 
 /// Application main entry point.
 void app_main()
@@ -224,20 +232,52 @@ void app_main()
     // initialize the OpenMRN stack and dependent components
     openlcb::SimpleCanStack stack(nvs.node_id());;
     Esp32WiFiManager wifi_manager(nvs.station_ssid(), nvs.station_password(),
-                                  &stack, cfg.seg().wifi(), nvs.wifi_mode(),
-#if CONFIG_OLCB_TWAI_ENABLED
-                                  0, // Disable both Hub and Uplink by default
-#else
-                                  1, // Enable Uplink by default
-#endif // CONFIG_OLCB_TWAI_ENABLED
+                                  &stack, cfg.seg().olcb().wifi(),
+                                  nvs.wifi_mode(),
+                                  CONFIG_OLCB_UPLINK_MODE_DEFAULT,
                                   nvs.hostname_prefix(),
                                   nvs.sntp_server(), nvs.timezone(),
                                   nvs.sntp_enabled(), nvs.softap_channel(),
                                   nvs.softap_auth(), nvs.softap_ssid(),
                                   nvs.softap_password());
-    leds.attach_callbacks(&wifi_manager);
-    esp32cs::NodeIdMemoryConfigSpace node_id_memoryspace(&stack, &nvs);
+    wifi_manager.register_network_up_callback(
+      [&](esp_network_interface_t interface, uint32_t ip)
+      {
+        if (interface == esp_network_interface_t::SOFTAP_INTERFACE)
+        {
+          leds.set(StatusLED::LED::WIFI_AP, StatusLED::COLOR::BLUE);
+        }
+        else if (interface == esp_network_interface_t::STATION_INTERFACE)
+        {
+          leds.set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN);
+        }
+    });
+    wifi_manager.register_network_down_callback(
+      [&](esp_network_interface_t interface)
+      {
+        if (interface == esp_network_interface_t::SOFTAP_INTERFACE)
+        {
+          leds.set(StatusLED::LED::WIFI_AP, StatusLED::COLOR::OFF);
+        }
+        else if (interface == esp_network_interface_t::STATION_INTERFACE)
+        {
+          leds.set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::OFF);
+        }
+    });
+    wifi_manager.register_network_init_callback(
+      [&](esp_network_interface_t interface)
+      {
+        if (interface == esp_network_interface_t::SOFTAP_INTERFACE)
+        {
+          leds.set(StatusLED::LED::WIFI_AP, StatusLED::COLOR::BLUE_BLINK);
+        }
+        else if (interface == esp_network_interface_t::STATION_INTERFACE)
+        {
+          leds.set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN_BLINK);
+        }
+    });
     esp32cs::FactoryResetHelper factory_reset_helper(cfg.userinfo());
+    OpenLCBFactoryResetHelper olcb_factory_reset(cfg.seg().olcb());
     esp32cs::EventBroadcastHelper event_helper(stack.service(), stack.node());
     esp32cs::DelayRebootHelper delayed_reboot(&wifi_manager);
     esp32cs::HealthMonitor health_monitor(&wifi_manager);
@@ -252,49 +292,12 @@ void app_main()
                                          train_db.get_temp_train_cdi());
     MDNS mdns;
     http::Httpd httpd(&wifi_manager, &mdns);
-    openlcb::MemoryConfigClient memory_client(stack.node(),
-                                              stack.memory_config_handler());
     esp32cs::ThermalMonitorFlow thermal_monitor(&wifi_manager,
                                                 stack.node(),
                                                 cfg.seg().thermal());
-#if CONFIG_FASTCLOCK_REALTIME
-    openlcb::BroadcastTimeServer fastclock_realtime(stack.node(),
-                                                    CONFIG_FASTCLOCK_REALTIME_ID);
-    fastclock_realtime.set_rate_quarters(4);
-    wifi_manager.register_network_time_callback(
-    [&](time_t sync_time)
-    {
-      LOG(INFO, "[FastClock] Time sync: %s", ctime(&sync_time));
-      struct tm timeinfo;
-      localtime_r(&sync_time, &timeinfo);
-      fastclock_realtime.set_time(timeinfo.tm_hour, timeinfo.tm_min);
-      fastclock_realtime.set_date(timeinfo.tm_mon + 1, timeinfo.tm_mday);
-      fastclock_realtime.set_year(timeinfo.tm_year + 1900);
-      if (!fastclock_realtime.is_running())
-      {
-        fastclock_realtime.start();
-        LOG(INFO, "[FastClock] Starting real-time clock");
-      }
-      else
-      {
-        LOG(INFO, "[FastClock] real-time clock synced");
-      }
-    });
-#endif // CONFIG_FASTCLOCK_REALTIME
-#if CONFIG_FASTCLOCK
-    openlcb::BroadcastTimeServer fastclock(stack.node(),
-                                           CONFIG_FASTCLOCK_DEFAULT_ID);
-    nvs.initialize_fast_clock(&fastclock);
-#endif // CONFIG_FASTCLOCK
     esp32cs::init_dcc(stack.node(), stack.service(), cfg.seg().track());
-
-    // Create / update CDI, if the CDI is out of date a factory reset will be
-    // forced.
-    if (validate_cdi(&stack))
-    {
-      LOG(WARNING, "[CDI] Forcing factory reset due to CDI update");
-      unlink(openlcb::CONFIG_FILENAME);
-    }
+    nvs.register_virtual_memory_spaces(&stack);
+    nvs.register_clocks(stack.node(), &wifi_manager);
 
     // Create config file and initiate factory reset if it doesn't exist or is
     // otherwise corrupted.
@@ -321,6 +324,9 @@ void app_main()
     }
 
 #if CONFIG_OLCB_TWAI_ENABLED
+#if CONFIG_OLCB_TWAI_USE_IPC
+    ESP_ERROR_CHECK(esp_ipc_call_blocking(APP_CPU_NUM, twai_init, nullptr));
+#else
     SyncNotifiable notif;
     // Initialize the TWAI driver on the APP CPU (core 1) since OpenMRN will
     // run on PRO CPU (core 0).
@@ -328,6 +334,7 @@ void app_main()
                             ESP_TASK_TCPIP_PRIO, nullptr /* task handle */,
                             APP_CPU_NUM);
     notif.wait_for_notification();
+#endif // CONFIG_OLCB_TWAI_USE_IPC
 #if CONFIG_OLCB_TWAI_SELECT
     LOG(INFO, "[TWAI] Enabling select() API");
     stack.add_can_port_select("/dev/twai/twai0");
@@ -341,7 +348,8 @@ void app_main()
     stack.print_all_packets();
 #endif
 
-    init_webserver(&wifi_manager, &nvs, &memory_client, &train_db);
+    init_webserver(&wifi_manager, &nvs, stack.node(),
+                   stack.memory_config_handler(), &train_db);
 
 #if CONFIG_FASTCLOCK
     fastclock.start();

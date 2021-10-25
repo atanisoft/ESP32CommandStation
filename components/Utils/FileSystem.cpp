@@ -92,88 +92,161 @@ void recursive_dump_tree(const std::string &path, bool remove = false, bool firs
     }
 }
 
-static sdmmc_host_t sd_host = SDSPI_HOST_DEFAULT();
 static esp_vfs_fat_mount_config_t sd_cfg =
 {
-    .format_if_mount_failed = true,
-    .max_files = 10,
-    .allocation_unit_size = 0
+    .format_if_mount_failed = true, // if the FS is corrupted format.
+    .max_files = 10,                // maximum of 10 open files at a time.
+    .allocation_unit_size = 0       // default allocation unit size.
 };
-static spi_bus_config_t bus_cfg =
+
+void display_fatfs_usage()
 {
-    .mosi_io_num = CONFIG_SD_MOSI,
-    .miso_io_num = CONFIG_SD_MISO,
-    .sclk_io_num = CONFIG_SD_CLOCK,
-    .quadwp_io_num = GPIO_NUM_NC,
-    .quadhd_io_num = GPIO_NUM_NC,
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,4,0)
-    .data4_io_num = GPIO_NUM_NC,
-    .data5_io_num = GPIO_NUM_NC,
-    .data6_io_num = GPIO_NUM_NC,
-    .data7_io_num = GPIO_NUM_NC,
-#endif // IDF v4.4+
-    .max_transfer_sz = 0,
-    .flags = SPICOMMON_BUSFLAG_SCLK | SPICOMMON_BUSFLAG_MISO |
-             SPICOMMON_BUSFLAG_MOSI,
-    .intr_flags = ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM
-};
-static sdspi_device_config_t device_cfg = SDSPI_DEVICE_CONFIG_DEFAULT();
+    float capacity =
+        ((uint64_t)sd_card->csd.capacity) * sd_card->csd.sector_size;
+    LOG(INFO, "[FS] SD card '%s' mounted, max capacity %.2f MB",
+        sd_card->cid.name, (float)(capacity / ONE_MB));
+    FATFS *fs;
+    DWORD c;
+    if (f_getfree("0:", &c, &fs) == FR_OK)
+    {
+        float used_space =
+            ((uint64_t)fs->csize * (fs->n_fatent - 2 - fs->free_clst)) * fs->ssize;
+        float max_space =
+            ((uint64_t)fs->csize * (fs->n_fatent - 2)) * fs->ssize;
+        LOG(INFO, "[FS] SD FAT usage: %.2f/%.2f MB",
+            (float)(used_space / ONE_MB), (float)(max_space / ONE_MB));
+    }
+}
+
+#if CONFIG_USE_SD_SPI_MODE
+bool mount_fs_sdspi()
+{
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    spi_bus_config_t bus =
+    {
+        .mosi_io_num = CONFIG_SD_SPI_MOSI,
+        .miso_io_num = CONFIG_SD_SPI_MISO,
+        .sclk_io_num = CONFIG_SD_SPI_CLOCK,
+        .quadwp_io_num = GPIO_NUM_NC,
+        .quadhd_io_num = GPIO_NUM_NC,
+    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,4,0)
+        .data4_io_num = GPIO_NUM_NC,
+        .data5_io_num = GPIO_NUM_NC,
+        .data6_io_num = GPIO_NUM_NC,
+        .data7_io_num = GPIO_NUM_NC,
+    #endif // IDF v4.4+
+        .max_transfer_sz = 0,
+        .flags = SPICOMMON_BUSFLAG_SCLK | SPICOMMON_BUSFLAG_MISO |
+                SPICOMMON_BUSFLAG_MOSI,
+        .intr_flags = ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM
+    };
+    sdspi_device_config_t device = SDSPI_DEVICE_CONFIG_DEFAULT();
+
+    gpio_set_pull_mode((gpio_num_t)CONFIG_SD_SPI_MISO, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode((gpio_num_t)CONFIG_SD_SPI_SELECT, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode((gpio_num_t)CONFIG_SD_SPI_CLOCK, GPIO_PULLUP_ONLY);
+
+    if (spi_bus_initialize(
+            SDSPI_DEFAULT_HOST, &bus, SPI_DMA_CH_AUTO) == ESP_OK &&
+        esp_vfs_fat_sdspi_mount(
+            FS_MOUNTPOINT, &host, &device, &sd_cfg, &sd_card) == ESP_OK)
+    {
+        return true;
+    }
+    gpio_reset_pin((gpio_num_t)CONFIG_SD_SPI_MISO);
+    gpio_reset_pin((gpio_num_t)CONFIG_SD_SPI_MOSI);
+    gpio_reset_pin((gpio_num_t)CONFIG_SD_SPI_SELECT);
+    gpio_reset_pin((gpio_num_t)CONFIG_SD_SPI_CLOCK);
+    return false;
+}
+#endif // CONFIG_USE_SD_SPI_MODE
+
+#if CONFIG_USE_SD_MMC_MODE
+bool mount_fs_sdmmc()
+{
+    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    sdmmc_slot_config_t slot = 
+    {
+        .clk = (gpio_num_t)CONFIG_SD_MMC_CLOCK,
+        .cmd = (gpio_num_t)CONFIG_SD_MMC_CMD,
+        .d0 = (gpio_num_t)CONFIG_SD_MMC_DATA_0,
+        .d1 = (gpio_num_t)CONFIG_SD_MMC_DATA_1,
+        .d2 = (gpio_num_t)CONFIG_SD_MMC_DATA_2,
+        .d3 = (gpio_num_t)CONFIG_SD_MMC_DATA_3,
+        .d4 = GPIO_NUM_NC,
+        .d5 = GPIO_NUM_NC,
+        .d6 = GPIO_NUM_NC,
+        .d7 = GPIO_NUM_NC,
+        .cd = SDMMC_SLOT_NO_CD,
+        .wp = SDMMC_SLOT_NO_WP,
+        .width = 4,
+        .flags = 0
+    };
+    host.flags = SDMMC_HOST_FLAG_1BIT | SDMMC_HOST_FLAG_4BIT |
+                    SDMMC_HOST_FLAG_DDR;
+
+    gpio_set_pull_mode(slot.clk, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(slot.cmd, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(slot.d0, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(slot.d1, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(slot.d2, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(slot.d3, GPIO_PULLUP_ONLY);
+    if (esp_vfs_fat_sdmmc_mount(
+            FS_MOUNTPOINT, &host, &slot, &sd_cfg, &sd_card) == ESP_OK)
+    {
+        return true;
+    }
+    gpio_reset_pin(slot.clk);
+    gpio_reset_pin(slot.cmd);
+    gpio_reset_pin(slot.d0);
+    gpio_reset_pin(slot.d1);
+    gpio_reset_pin(slot.d2);
+    gpio_reset_pin(slot.d3);
+    return false;
+}
+#endif // CONFIG_USE_SD_MMC_MODE
+
+void mount_spiffs()
+{
+    esp_vfs_spiffs_conf_t conf =
+    {
+        .base_path = FS_MOUNTPOINT,
+        .partition_label = NULL,
+        .max_files = 10,
+        .format_if_mount_failed = true
+    };
+    // Attempt to mount the partition
+    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
+    // check that the partition mounted
+    size_t total = 0, used = 0;
+    if (esp_spiffs_info(NULL, &total, &used) == ESP_OK)
+    {
+        LOG(INFO, "[FS] SPIFFS usage: %.2f/%.2f KiB",
+            (float)(used / 1024.0f), (float)(total / 1024.0f));
+    }
+    else
+    {
+        LOG_ERROR("[FS] Unable to retrieve SPIFFS utilization statistics.");
+    }
+    LOG(INFO, "[FS] SPIFFS will be used for persistent storage.");
+}
 
 bool mount_fs(bool cleanup)
 {
     bool is_sd = false;
-    esp_err_t err = ESP_FAIL;
-    gpio_set_pull_mode((gpio_num_t)CONFIG_SD_MISO, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode((gpio_num_t)CONFIG_SD_SELECT, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode((gpio_num_t)CONFIG_SD_CLOCK, GPIO_PULLUP_ONLY);
-
-    err = spi_bus_initialize(SDSPI_DEFAULT_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
-    if (err == ESP_OK)
+#if CONFIG_USE_SD_SPI_MODE
+    is_sd = mount_fs_sdspi();
+#elif CONFIG_USE_SD_MMC_MODE
+    is_sd = mount_fs_sdmmc();
+#endif
+    if (is_sd)
     {
-        err = esp_vfs_fat_sdspi_mount(FS_MOUNTPOINT, &sd_host, &device_cfg, &sd_cfg, &sd_card);
-    }
-    if (err == ESP_OK)
-    {
-        float capacity = ((uint64_t)sd_card->csd.capacity) * sd_card->csd.sector_size;
-        LOG(INFO, "[FS] SD card '%s' mounted, max capacity %.2f MB", sd_card->cid.name, (float)(capacity / ONE_MB));
-        FATFS *fs;
-        DWORD c;
-        if (f_getfree("0:", &c, &fs) == FR_OK)
-        {
-            float used_space = ((uint64_t)fs->csize * (fs->n_fatent - 2 - fs->free_clst)) * fs->ssize;
-            float max_space = ((uint64_t)fs->csize * (fs->n_fatent - 2)) * fs->ssize;
-            LOG(INFO, "[FS] SD FAT usage: %.2f/%.2f MB", (float)(used_space / ONE_MB), (float)(max_space / ONE_MB));
-        }
+        display_fatfs_usage();
         LOG(INFO, "[FS] SD will be used for persistent storage.");
-        is_sd = true;
     }
     else
     {
-        gpio_reset_pin((gpio_num_t)CONFIG_SD_MISO);
-        gpio_reset_pin((gpio_num_t)CONFIG_SD_MOSI);
-        gpio_reset_pin((gpio_num_t)CONFIG_SD_SELECT);
-        gpio_reset_pin((gpio_num_t)CONFIG_SD_CLOCK);
-        LOG(INFO, "[FS] SD Card not present or mounting failed, using SPIFFS");
-        esp_vfs_spiffs_conf_t conf =
-        {
-            .base_path = FS_MOUNTPOINT,
-            .partition_label = NULL,
-            .max_files = 10,
-            .format_if_mount_failed = true
-        };
-        // Attempt to mount the partition
-        ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
-        // check that the partition mounted
-        size_t total = 0, used = 0;
-        if (esp_spiffs_info(NULL, &total, &used) == ESP_OK)
-        {
-            LOG(INFO, "[FS] SPIFFS usage: %.2f/%.2f KiB", (float)(used / 1024.0f), (float)(total / 1024.0f));
-        }
-        else
-        {
-            LOG_ERROR("[FS] Unable to retrieve SPIFFS utilization statistics.");
-        }
-        LOG(INFO, "[FS] SPIFFS will be used for persistent storage.");
+        mount_spiffs();
     }
     recursive_dump_tree(FS_MOUNTPOINT, cleanup);
     return is_sd;
@@ -193,7 +266,9 @@ void unmount_fs()
     {
         LOG(INFO, "[FS] Unmounting SD...");
         ESP_ERROR_CHECK(esp_vfs_fat_sdmmc_unmount());
+#if CONFIG_USE_SD_SPI_MODE
         ESP_ERROR_CHECK(spi_bus_free(SDSPI_DEFAULT_HOST));
+#endif
     }
 }
 

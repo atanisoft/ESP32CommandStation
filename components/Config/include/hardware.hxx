@@ -21,6 +21,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include "sdkconfig.h"
 #include <dcc/DccOutput.hxx>
 #include <driver/periph_ctrl.h>
+#include <driver/timer.h>
 #include <esp_rom_gpio.h>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
@@ -128,6 +129,14 @@ GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_TRACK_ENABLE_PIN);
 typedef DummyPin PROG_ENABLE_Pin;
 #endif // DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_PROG_ONLY
 
+#ifdef CONFIG_DCC_OLCB_ENABLE_PIN
+/// Enables the OpenLCB DCC signal output.
+GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
+#else
+/// Enables the OpenLCB DCC signal output.
+typedef DummyPin OLCB_DCC_ENABLE_Pin;
+#endif //  CONFIG_DCC_OLCB_ENABLE_PIN
+
 #if CONFIG_RAILCOM_DISABLED || CONFIG_RAILCOM_TRIGGER_PIN == -1
 /// RailCom detector enable pin.
 typedef DummyPin RAILCOM_TRIGGER_Pin;
@@ -152,9 +161,21 @@ GPIO_PIN(BOOTLOADER_BUTTON, GpioInputPU, CONFIG_BOOTLOADER_PIN);
 typedef DummyPinWithReadHigh BOOTLOADER_BUTTON_Pin;
 #endif
 
+#if CONFIG_OPSTRACK_ADC_I2C_CHANNEL_1 || \
+    CONFIG_OPSTRACK_ADC_I2C_CHANNEL_2 || \
+    CONFIG_OPSTRACK_ADC_I2C_CHANNEL_3
+#define USE_I2C_FOR_OPS_CURRENT_SENSE 1
+#else
+
 #if CONFIG_OPSTRACK_ADC_CHANNEL_0
 /// OPS track current sense input pin.
 ADC_PIN(OPS_CURRENT_SENSE, ADC1_CHANNEL_0, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_1
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC1_CHANNEL_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_2
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC1_CHANNEL_2, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #elif CONFIG_OPSTRACK_ADC_CHANNEL_3
 /// OPS track current sense input pin.
 ADC_PIN(OPS_CURRENT_SENSE, ADC1_CHANNEL_3, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
@@ -170,11 +191,60 @@ ADC_PIN(OPS_CURRENT_SENSE, ADC1_CHANNEL_6, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #elif CONFIG_OPSTRACK_ADC_CHANNEL_7
 /// OPS track current sense input pin.
 ADC_PIN(OPS_CURRENT_SENSE, ADC1_CHANNEL_7, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_8
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC1_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC_CHANNEL_9
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC1_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_0
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_0, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_1
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_2
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_2, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_3
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_3, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_4
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_4, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_5
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_5, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_6
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_6, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_7
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_7, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_8
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_OPSTRACK_ADC2_CHANNEL_9
+/// OPS track current sense input pin.
+ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #endif
+#endif // OPS ADC_I2C
+
+#if CONFIG_PROGTRACK_ADC_I2C_CHANNEL_1 || \
+    CONFIG_PROGTRACK_ADC_I2C_CHANNEL_2 || \
+    CONFIG_PROGTRACK_ADC_I2C_CHANNEL_3
+#define USE_I2C_FOR_PROG_CURRENT_SENSE 1
+#else
 
 #if CONFIG_PROGTRACK_ADC_CHANNEL_0
 /// PROG track current sense input pin.
 ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_0, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_1
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_2
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_2, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #elif CONFIG_PROGTRACK_ADC_CHANNEL_3
 /// PROG track current sense input pin.
 ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_3, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
@@ -190,11 +260,60 @@ ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_6, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #elif CONFIG_PROGTRACK_ADC_CHANNEL_7
 /// PROG track current sense input pin.
 ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_7, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_8
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_9
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_8
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC_CHANNEL_9
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC1_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_0
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_0, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_1
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_2
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_2, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_3
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_3, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_4
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_4, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_5
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_5, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_6
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_6, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_7
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_7, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_8
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_PROGTRACK_ADC2_CHANNEL_9
+/// PROG track current sense input pin.
+ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #endif
+#endif // PROG ADC I2C
 
 #if CONFIG_TEMPSENSOR_ADC_CHANNEL_0
 /// External thermal sensor input pin.
 ADC_PIN(THERMAL_SENSOR, ADC1_CHANNEL_0, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_1
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC1_CHANNEL_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_2
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC1_CHANNEL_2, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #elif CONFIG_TEMPSENSOR_ADC_CHANNEL_3
 /// External thermal sensor input pin.
 ADC_PIN(THERMAL_SENSOR, ADC1_CHANNEL_3, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
@@ -210,22 +329,63 @@ ADC_PIN(THERMAL_SENSOR, ADC1_CHANNEL_6, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #elif CONFIG_TEMPSENSOR_ADC_CHANNEL_7
 /// External thermal sensor input pin.
 ADC_PIN(THERMAL_SENSOR, ADC1_CHANNEL_7, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_8
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC1_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC_CHANNEL_9
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC1_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_0
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_0, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_1
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_2
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_2, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_3
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_3, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_4
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_4, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_5
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_5, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_6
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_6, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_7
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_7, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_8
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_9
+/// External thermal sensor input pin.
+ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #endif
 
 /// GPIO Pin initializer.
 typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin,
                         DCC_SIGNAL_Pin, DCC_BRAKE_Pin, OPS_ENABLE_Pin,
                         PROG_ENABLE_Pin, FACTORY_RESET_BUTTON_Pin,
+#if !USE_I2C_FOR_OPS_CURRENT_SENSE
 #if CONFIG_OPS_TRACK_ENABLED
                         OPS_CURRENT_SENSE_Pin,
 #endif
+#endif // !USE_I2C_FOR_OPS_CURRENT_SENSE
+#if !USE_I2C_FOR_PROG_CURRENT_SENSE
 #if CONFIG_PROG_TRACK_ENABLED
                         PROG_CURRENT_SENSE_Pin,
 #endif
+#endif // !USE_I2C_FOR_PROG_CURRENT_SENSE
 #if !CONFIG_TEMPSENSOR_DISABLED
                         THERMAL_SENSOR_Pin,
 #endif // !CONFIG_TEMPSENSOR_DISABLED
-                        BOOTLOADER_BUTTON_Pin> GpioInit;
+                        BOOTLOADER_BUTTON_Pin,
+                        OLCB_DCC_ENABLE_Pin> GpioInit;
 
 /// RailCom hardware definition
 struct RailComHwDefs
@@ -318,7 +478,8 @@ struct DccHwDefs
     (gpio_num_t)CONFIG_DCC_TRACK_SIGNAL_PIN;
 
 #if CONFIG_DCC_TRACK_BRAKE_PIN != -1
-  /// Wrapper which handles the 
+  /// Wrapper which handles the toggling of brake pin in conjuction with the
+  /// enable pins.
   struct BOOSTER_ENABLE_Pin
   {
       static void set(bool value)
@@ -331,11 +492,13 @@ struct DccHwDefs
           ets_delay_us(1);
           // enable the h-bridge output pin
           OPS_ENABLE_Pin::set(true);
+          OLCB_DCC_ENABLE_Pin::set(true);
         }
         else
         {
           // disable the h-bridge output pin
           OPS_ENABLE_Pin::set(false);
+          OLCB_DCC_ENABLE_Pin::set(false);
           // delay 1usec to allow h-bridge to catch up
           ets_delay_us(1);
           // enable the h-bridge brake pin
@@ -351,7 +514,32 @@ struct DccHwDefs
       }
   };
 #else // BRAKE pin is not needed, directly use enable pin.
-  using BOOSTER_ENABLE_Pin = ::OPS_ENABLE_Pin;
+  /// Wrapper which handles the toggling of enable pins.
+  struct BOOSTER_ENABLE_Pin
+  {
+      static void set(bool value)
+      {
+        if (value)
+        {
+          // enable the h-bridge output pin
+          OPS_ENABLE_Pin::set(true);
+          OLCB_DCC_ENABLE_Pin::set(true);
+        }
+        else
+        {
+          // disable the h-bridge output pin
+          OPS_ENABLE_Pin::set(false);
+          OLCB_DCC_ENABLE_Pin::set(false);
+        }
+      }
+
+      static void hw_init()
+      {
+        OPS_ENABLE_Pin::hw_init();
+        OLCB_DCC_ENABLE_Pin::hw_init();
+        set(false);
+      }
+  };
 #endif // CONFIG_OPS_TRACK_BRAKE_PIN != -1
 
   /// The number of preamble bits to send exclusive of end of packet '1' bit

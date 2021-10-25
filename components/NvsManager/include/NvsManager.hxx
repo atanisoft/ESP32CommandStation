@@ -21,15 +21,22 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include "sdkconfig.h"
 #include <esp_wifi_types.h>
 #include <string>
+#include <utils/Singleton.hxx>
 
 namespace openlcb
 {
   class BroadcastTimeServer;
+  class Node;
+  class SimpleStackBase;
+}
+namespace openmrn_arduino
+{
+  class Esp32WiFiManager;
 }
 namespace esp32cs
 {
 
-class NvsManager
+class NvsManager : public Singleton<NvsManager>
 {
 public:
   void init(uint8_t reset_reason);
@@ -39,9 +46,12 @@ public:
   void force_factory_reset();
   void force_reset_events();
   void set_led_brightness(uint8_t level);
-  void initialize_fast_clock(openlcb::BroadcastTimeServer *time_server);
-  void reconfigure_fast_clock(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t rate);
+  void restart_fast_clock();
   void save_fast_clock_time();
+
+  bool memory_spaces_modified();
+  void register_virtual_memory_spaces(openlcb::SimpleStackBase *stack);
+  void register_clocks(openlcb::Node *node, openmrn_arduino::Esp32WiFiManager *wifi_mgr);
   
   uint64_t node_id();
   void node_id(uint64_t node_id);
@@ -49,17 +59,14 @@ public:
   void wifi_mode(wifi_mode_t mode);
   const char *station_ssid();
   const char *station_password();
-  void reconfigure_station(std::string ssid, std::string password);
   const char *softap_ssid();
   const char *softap_password();
   uint8_t softap_channel();
   wifi_auth_mode_t softap_auth();
-  void reconfigure_softap(std::string ssid, std::string password, uint8_t channel, wifi_auth_mode_t auth);
   const char *hostname_prefix();
   bool sntp_enabled();
   const char *sntp_server();
   const char *timezone();
-  void reconfigure_sntp(bool enabled = true, std::string server = "pool.ntp.org", std::string timezone = "UTC0");
 };
 
 } // namespace esp32cs

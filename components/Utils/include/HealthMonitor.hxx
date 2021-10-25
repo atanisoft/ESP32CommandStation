@@ -70,10 +70,20 @@ private:
         struct tm ti;
         gettimeofday(&tv, NULL);
         localtime_r(&tv.tv_sec, &ti);
-        LOG(INFO, "%02d:%02d:%02d.%03ld: heap:%.2fkB/%.2fKb, buf:%.2fkB",
+        LOG(INFO, "%02d:%02d:%02d.%03ld:: heap: %.2fkB/%.2fKb (max block size: %.2fkB), "
+#if CONFIG_SPIRAM
+                  "PSRAM: %.2fkB/%.2fKb (max block size: %.2fkB), "
+#endif // CONFIG_SPIRAM
+                  "mainBufferPool: %.2fkB",
             ti.tm_hour, ti.tm_min, ti.tm_sec, tv.tv_usec / 1000,
             heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0f,
             heap_caps_get_total_size(MALLOC_CAP_INTERNAL) / 1024.0f,
+            heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024.0f,
+#if CONFIG_SPIRAM
+            heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024.0f,
+            heap_caps_get_total_size(MALLOC_CAP_SPIRAM) / 1024.0f,
+            heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM) / 1024.0f,
+#endif // CONFIG_SPIRAM
             mainBufferPool->total_size() / 1024.0f);
         return sleep_and_call(&timer_, reportInterval_, STATE(update));
     }

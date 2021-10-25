@@ -22,6 +22,7 @@ set(IDF_DEPS
     efuse
     esp_adc_cal
     esp_common
+    esp_ipc
     espcoredump
     json
     nvs_flash
@@ -46,19 +47,3 @@ set(CUSTOM_DEPS
 
 idf_component_register(SRCS ESP32CommandStation.cpp Esp32CoreDumpUtil.cpp WebServer.cpp
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
-
-# export the project version as a define for the SNIP data, note it must be
-# truncated to 21 characters max.
-idf_build_get_property(project_ver PROJECT_VER)
-string(SUBSTRING "${project_ver}" 0 20 SNIP_SW_VERSION)
-idf_build_get_property(project_name PROJECT_NAME)
-string(SUBSTRING "${project_name}" 0 40 SNIP_PROJECT_NAME)
-
-set(SNIP_HW_VERSION "1.0.0")
-set(SNIP_PROJECT_PAGE "atanisoft.github.io/ESP32CommandStation")
-set(CDI_VERSION "0x0200")
-message(STATUS "SNIP: ${SNIP_PROJECT_NAME}/${SNIP_PROJECT_PAGE}/${SNIP_SW_VERSION}/${SNIP_HW_VERSION}")
-
-set_source_files_properties(ESP32CommandStation.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")
-set_source_files_properties(ESP32CommandStation.cpp PROPERTIES COMPILE_DEFINITIONS "SNIP_PROJECT_PAGE=\"${SNIP_PROJECT_PAGE}\"; SNIP_HW_VERSION=\"${SNIP_HW_VERSION}\"; SNIP_SW_VERSION=\"${SNIP_SW_VERSION}\"; SNIP_PROJECT_NAME=\"${SNIP_PROJECT_NAME}\"; CDI_VERSION=${CDI_VERSION}")
-set_source_files_properties(nvs_config.cpp PROPERTIES COMPILE_FLAGS "-Wno-ignored-qualifiers")

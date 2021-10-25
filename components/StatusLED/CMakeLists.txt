@@ -4,8 +4,15 @@ set(CUSTOM_DEPS
     NeoPixelBus
 )
 
-idf_component_register(SRCS StatusLED.cpp
+idf_build_get_property(target IDF_TARGET)
+
+if({target} STREQUAL "esp32")
+idf_component_register(SRCS StatusLED.cpp StatusLEDNeoPixel.cpp
                        INCLUDE_DIRS "include"
                        REQUIRES "${CUSTOM_DEPS}")
 
-set_source_files_properties(StatusLED.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
+else()
+idf_component_register(SRCS StatusLED.cpp StatusLEDGpio.cpp
+                       INCLUDE_DIRS "include"
+                       REQUIRES "${CUSTOM_DEPS}")
+endif()

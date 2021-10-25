@@ -16,7 +16,6 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 **********************************************************************/
 
 #include "sdkconfig.h"
-#include "ThermalConfiguration.hxx"
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
 #include <EventBroadcastHelper.hxx>
@@ -24,6 +23,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <hardware.hxx>
 #include <openlcb/CallbackEventHandler.hxx>
 #include <StringUtils.hxx>
+#include <ThermalConfigurationGroup.hxx>
 #include <UlpAdc.hxx>
 #include <utils/ConfigUpdateListener.hxx>
 #include <utils/Fixed16.hxx>
