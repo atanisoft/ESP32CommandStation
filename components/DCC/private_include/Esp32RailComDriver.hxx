@@ -289,6 +289,7 @@ private:
 
   void start_timer(uint32_t usec, bool enable_alarm = true, bool enable_timer = true)
   {
+#if CONFIG_IDF_TARGET_ESP32 && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
     // disable the timer since we will reconfigure it
     HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.enable = 0;
 
@@ -304,6 +305,37 @@ private:
 
     // start the timer
     HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.enable = enable_timer;
+#elif CONFIG_IDF_TARGET_ESP32
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_en = 0;
+
+    // reload the timer with a default count of zero
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].tx_hi.tx_alarm_hi = 0UL;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].tx_lo.tx_alarm_lo = 0UL;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].update.tx_update = 1;
+
+    // set the next alarm period
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarmhi.val = 0;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarmlo.val = usec;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_alarm_en = enable_alarm;
+
+    // start the timer
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_en = enable_timer;
+#elif CONFIG_IDF_TARGET_ESP32S3
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_en = 0;
+
+    // reload the timer with a default count of zero
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].tn_hi.tn_alarm_hi = 0UL;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].tn_lo.tn_alarm_lo = 0UL;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].update.tn_update = 1;
+
+    // set the next alarm period
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarmhi.val = 0;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarmlo.val = usec;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_alarm_en = enable_alarm;
+
+    // start the timer
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_en = enable_timer;
+#endif
   }
 
   uintptr_t railcomFeedbackKey_{0}; 
