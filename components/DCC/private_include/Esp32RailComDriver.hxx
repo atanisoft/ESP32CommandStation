@@ -250,19 +250,40 @@ private:
     portENTER_CRITICAL_SAFE(&esp32_timer_mux);
     // make sure the ISR is disabled and that the status is cleared before
     // reconfiguring the timer.
+#if CONFIG_IDF_TARGET_ESP32 && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
     HW::TIMER_BASE->int_ena.val &= (~BIT(HW::TIMER_IDX));
     HW::TIMER_BASE->int_clr_timers.val = BIT(HW::TIMER_IDX);
-
     HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.autoreload = reload;
     HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.divider = divider;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.enable = enable;
     HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.increase = count_up;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.level_int_en = 1;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.edge_int_en = 0;
+
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.enable = enable;
+#elif CONFIG_IDF_TARGET_ESP32
+    HW::TIMER_BASE->int_ena_timers.val &= (~BIT(HW::TIMER_IDX));
+    HW::TIMER_BASE->int_clr_timers.val = BIT(HW::TIMER_IDX);
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_autoreload = reload;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_divider = divider;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_increase = count_up;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_level_int_en = 1;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_edge_int_en = 0;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_en = enable;
+#elif CONFIG_IDF_TARGET_ESP32S3
+    HW::TIMER_BASE->int_ena_timers.val &= (~BIT(HW::TIMER_IDX));
+    HW::TIMER_BASE->int_clr_timers.val = BIT(HW::TIMER_IDX);
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_autoreload = reload;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_divider = divider;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_increase = count_up;
+    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_en = enable;
+#endif
     start_timer(alarm, true, false);
 
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
     // enable the ISR now that the timer has been configured
     HW::TIMER_BASE->int_ena.val |= BIT(HW::TIMER_IDX);
+#else
+    // enable the ISR now that the timer has been configured
+    HW::TIMER_BASE->int_ena_timers.val |= BIT(HW::TIMER_IDX);
+#endif    
     portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
   }
 
