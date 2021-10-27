@@ -21,7 +21,7 @@ jobs:
           submodules: recursive
           fetch-depth: 0
       - name: Build
-        uses: espressif/esp-idf-ci-action@latest
+        uses: atanisoft/esp-idf-ci-action@latest
         with:
           target: ${{ matrix.target }}
       - name: Prepare Binaries
