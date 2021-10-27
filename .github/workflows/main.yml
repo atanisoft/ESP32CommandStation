@@ -11,13 +11,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 2
+      matrix:
+        target: [esp32, esp32s3]
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
           fetch-depth: 0
       - name: Build
-        uses: espressif/esp-idf-ci-action@release-v4.3
+        uses: espressif/esp-idf-ci-action@latest
+        with:
+          target: ${{ matrix.target }}
       - name: Prepare Binaries
         run: |
           mkdir -p binaries
