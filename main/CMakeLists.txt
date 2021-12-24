@@ -1,55 +1,54 @@
-set(esp_idf_deps
-    "driver"
-    "efuse"
-    "soc"
-    "nvs_flash"
-    "spi_flash"
-    "vfs"
-    "esp_common"
-    "esp_adc_cal"
-    "bootloader_support"
-    "app_update"
-    "esp_wifi"
+###############################################################################
+# ESP32 COMMAND STATION
+#
+# COPYRIGHT (c) 2017-2021 Mike Dunston
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see http://www.gnu.org/licenses
+###############################################################################
+
+set(IDF_DEPS
+    app_update
+    bootloader_support
+    driver
+    efuse
+    esp_adc_cal
+    esp_common
+    esp_system
+    espcoredump
+    json
+    nvs_flash
+    soc
 )
 
-set(required_deps
-    "Configuration"
-    "DCCppProtocol"
-    "DCCSignalGenerator"
-    "DCCTurnoutManager"
-    "HttpServer"
-    "LCCTrainSearchProtocol"
-    "nlohmann_json"
-    "OpenMRNLite"
-    "TaskMonitor"
+# starting in IDF v5 esp_ipc component has been merged into esp_system
+if (IDF_VERSION_MAJOR LESS 5)
+    list(APPEND IDF_DEPS esp_ipc)
+endif()
+
+set(CUSTOM_DEPS
+    AccessoryDecoderDB
+    Config
+    DCC
+    HttpServer
+    NeoPixelBus
+    NvsManager
+    OpenMRNIDF
+    StatusDisplay
+    StatusLED
+    TrainDatabase
+    TrainSearchProtocol
+    ULPADC
+    Utils
 )
 
-# These are all optional dependencies but due to the way that idf.py operates
-# they must be specified here in full otherwise they will not be present in the
-# include path when enabled.
-
-set(optional_deps
-    "GPIO"
-    "HC12"
-    "JmriInterface"
-    "StatusLED"
-    "StatusDisplay"
-)
-
-set(COMPONENT_REQUIRES "${esp_idf_deps} ${required_deps} ${optional_deps}")
-
-set(COMPONENT_SRCS
-    "ESP32CommandStation.cpp"
-    "ESP32TrainDatabase.cpp"
-    "OpenMRNEsp32Overrides.cpp"
-    "WebServer.cpp"
-)
-
-set(COMPONENT_ADD_INCLUDEDIRS ".")
-
-register_component()
-
-set_source_files_properties(ESP32CommandStation.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")
-set_source_files_properties(ESP32TrainDatabase.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
-set_source_files_properties(OpenMRNEsp32Overrides.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
-set_source_files_properties(WebServer.cpp PROPERTIES COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-ignored-qualifiers")
+idf_component_register(SRCS ESP32CommandStation.cpp Esp32CoreDumpUtil.cpp WebServer.cpp
+                       REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")

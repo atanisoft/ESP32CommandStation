@@ -1,14 +1,17 @@
-set(COMPONENT_SRCS
-    "StatusLED.cpp"
+set(CUSTOM_DEPS
+    Config
+    OpenMRNIDF
+    NeoPixelBus
 )
 
-set(COMPONENT_ADD_INCLUDEDIRS "include" )
+idf_build_get_property(target IDF_TARGET)
 
-set(COMPONENT_REQUIRES
-    "OpenMRNLite"
-    "NeoPixelBus"
-)
-
-register_component()
-
-set_source_files_properties(StatusLED.cpp PROPERTIES COMPILE_FLAGS -Wno-ignored-qualifiers)
+if({target} STREQUAL "esp32s3")
+idf_component_register(SRCS StatusLED.cpp StatusLEDGpio.cpp
+                       INCLUDE_DIRS "include"
+                       REQUIRES "${CUSTOM_DEPS}")
+else()
+idf_component_register(SRCS StatusLED.cpp StatusLEDNeoPixel.cpp
+                       INCLUDE_DIRS "include"
+                       REQUIRES "${CUSTOM_DEPS}")
+endif()
