@@ -147,22 +147,6 @@ void init_webserver(Service *service, esp32cs::NvsManager *nvs_mgr,
 
 void check_for_coredump();
 
-/// TWAI hardware initializer task entry point.
-///
-/// @param param @ref SyncNotifiable instance to notify upon completion of the
-/// initialization process.
-static void twai_init(void *param)
-{
-#if CONFIG_OLCB_TWAI_USE_IPC
-  twai.hw_init();
-#else
-  SyncNotifiable *notif = (SyncNotifiable *)param;
-  twai.hw_init();
-  notif->notify();
-  vTaskDelete(NULL);
-#endif //  CONFIG_OLCB_TWAI_USE_IPC
-}
-
 using esp32cs::NvsManager;
 using esp32cs::StatusLED;
 
@@ -324,17 +308,7 @@ void app_main()
     }
 
 #if CONFIG_OLCB_TWAI_ENABLED
-#if CONFIG_OLCB_TWAI_USE_IPC
-    ESP_ERROR_CHECK(esp_ipc_call_blocking(APP_CPU_NUM, twai_init, nullptr));
-#else
-    SyncNotifiable notif;
-    // Initialize the TWAI driver on the APP CPU (core 1) since OpenMRN will
-    // run on PRO CPU (core 0).
-    xTaskCreatePinnedToCore(twai_init, "TWAI-INIT", 2048, &notif,
-                            ESP_TASK_TCPIP_PRIO, nullptr /* task handle */,
-                            APP_CPU_NUM);
-    notif.wait_for_notification();
-#endif // CONFIG_OLCB_TWAI_USE_IPC
+    twai.hw_init();
 #if CONFIG_OLCB_TWAI_SELECT
     LOG(INFO, "[TWAI] Enabling select() API");
     stack.add_can_port_select("/dev/twai/twai0");

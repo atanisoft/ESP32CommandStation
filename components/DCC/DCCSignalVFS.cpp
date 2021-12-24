@@ -34,7 +34,6 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <dcc/RailcomHub.hxx>
 #include <dcc/RailcomPortDebug.hxx>
 #include <driver/adc.h>
-#include <driver/periph_ctrl.h>
 #include <driver/rtc_cntl.h>
 #include <driver/rmt.h>
 #include <driver/timer.h>

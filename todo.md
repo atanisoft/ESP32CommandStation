@@ -36,11 +36,12 @@
 * [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
 * [ ] WebUI: Test all endpoints.
 * [x] WebUI: Roster save via WS.
-* [ ] WebUI: Expose FastClock configuration (non-realtime).
+* [x] WebUI: Expose FastClock configuration (non-realtime).
 * [x] FastClock: Re-add FastClock support.
 
 ### Nice to have for v2.0
 
+* RailCom: Migrate Esp32RailComDriver to use HAL APIs (portability work)
 * TrainDB: Configurable timeout for idle trains.
 * TrainDB: Customizable function label names.
 * TrainSearch: General code formatting / cleanup
@@ -54,17 +55,13 @@
 
 ### Future planning
 
-* DCC: select() VFS API?
-* DCC: on-demand translation and drop tx complete hook?
-* DCC: DCC-14 speed step support (OpenMRN implementation needed)
-* RailCom: Migrate Esp32RailComDriver to use Timer and UART HAL APIs.
 * StatusLED: Rework to depend on Esp32Ws2812 instead of NeoPixelBus.
 * TrainDB: CBOR data format?
 * TrainDB: Expose via Memory Space?
 * AccessoryDecoderDB: CBOR data format?
 * AccessoryDecoderDB: Routes.
-* WebUI: compressed ws stream?
 * Import roster/routes/accessories from JMRI
+* Build: Migrate to IDF components rather than submodules?
 
 ## OpenMRNIDF TODO list
 
@@ -79,6 +76,7 @@
 
 ### Not required for v2.0
 
+* DCC: DCC-14 speed step support
 * Add option for inline translation in Esp32Ws2812 rather than on-demand translation.
 * Add support for more LED types in Esp32Ws2812.
 

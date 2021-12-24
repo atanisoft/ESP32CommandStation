@@ -19,8 +19,14 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #define HARDWARE_HXX_
 
 #include "sdkconfig.h"
+#include <esp_idf_version.h>
+
 #include <dcc/DccOutput.hxx>
+#if ESP_IDF_VERSION_MAJOR >= 5
+#include <esp_private/periph_ctrl.h>
+#else // IDF v4.x (or earlier)
 #include <driver/periph_ctrl.h>
+#endif // IDF v5+
 #include <driver/timer.h>
 #include <esp_rom_gpio.h>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>
@@ -116,55 +122,14 @@ typedef DummyPin DCC_BRAKE_Pin;
 #if CONFIG_OPS_TRACK_ENABLED
 /// Enables the OPS track output h-bridge.
 GPIO_PIN(OPS_ENABLE, GpioOutputSafeLow, CONFIG_OPS_TRACK_ENABLE_PIN);
-#else // OPS DISABLED
-/// Enables the OPS track output h-bridge.
-typedef DummyPin OPS_ENABLE_Pin;
-#endif // DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_OPS_ONLY
-
-#if CONFIG_PROG_TRACK_ENABLED
-/// Enables the PROG track output h-bridge.
-GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_TRACK_ENABLE_PIN);
-#else // PROG DISABLED
-/// Enables the PROG track output h-bridge.
-typedef DummyPin PROG_ENABLE_Pin;
-#endif // DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_PROG_ONLY
-
-#ifdef CONFIG_DCC_OLCB_ENABLE_PIN
-/// Enables the OpenLCB DCC signal output.
-GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
-#else
-/// Enables the OpenLCB DCC signal output.
-typedef DummyPin OLCB_DCC_ENABLE_Pin;
-#endif //  CONFIG_DCC_OLCB_ENABLE_PIN
-
-#if CONFIG_RAILCOM_DISABLED || CONFIG_RAILCOM_TRIGGER_PIN == -1
-/// RailCom detector enable pin.
-typedef DummyPin RAILCOM_TRIGGER_Pin;
-#else // !CONFIG_RAILCOM_DISABLED
-/// RailCom detector enable pin.
-GPIO_PIN(RAILCOM_TRIGGER, GpioOutputSafeHigh, CONFIG_RAILCOM_TRIGGER_PIN);
-#endif // CONFIG_RAILCOM_DISABLED
-
-#if CONFIG_FACTORY_RESET_PIN != -1
-/// Factory reset button pin.
-GPIO_PIN(FACTORY_RESET_BUTTON, GpioInputPU, CONFIG_FACTORY_RESET_PIN);
-#else
-/// Virtual factory reset button pin.
-typedef DummyPinWithReadHigh FACTORY_RESET_BUTTON_Pin;
-#endif
-
-#if CONFIG_BOOTLOADER_PIN != -1
-/// Bootloader Request button pin.
-GPIO_PIN(BOOTLOADER_BUTTON, GpioInputPU, CONFIG_BOOTLOADER_PIN);
-#else
-/// Virtual bootloader request button pin.
-typedef DummyPinWithReadHigh BOOTLOADER_BUTTON_Pin;
-#endif
 
 #if CONFIG_OPSTRACK_ADC_I2C_CHANNEL_1 || \
     CONFIG_OPSTRACK_ADC_I2C_CHANNEL_2 || \
     CONFIG_OPSTRACK_ADC_I2C_CHANNEL_3
 #define USE_I2C_FOR_OPS_CURRENT_SENSE 1
+
+/// Fake OPS Current sense pin since it will be reported via I2C.
+typedef DummyPin OPS_CURRENT_SENSE_Pin;
 #else
 
 #if CONFIG_OPSTRACK_ADC_CHANNEL_0
@@ -230,10 +195,25 @@ ADC_PIN(OPS_CURRENT_SENSE, ADC2_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #endif
 #endif // OPS ADC_I2C
 
+#else // OPS DISABLED
+/// Fake OPS enable pin since the track is disabled.
+typedef DummyPin OPS_ENABLE_Pin;
+
+/// Fake OPS Current sense pin since the track is disabled.
+typedef DummyPin OPS_CURRENT_SENSE_Pin;
+#endif // CONFIG_OPS_TRACK_ENABLED
+
+#if CONFIG_PROG_TRACK_ENABLED
+/// Enables the PROG track output h-bridge.
+GPIO_PIN(PROG_ENABLE, GpioOutputSafeLow, CONFIG_PROG_TRACK_ENABLE_PIN);
+
 #if CONFIG_PROGTRACK_ADC_I2C_CHANNEL_1 || \
     CONFIG_PROGTRACK_ADC_I2C_CHANNEL_2 || \
     CONFIG_PROGTRACK_ADC_I2C_CHANNEL_3
 #define USE_I2C_FOR_PROG_CURRENT_SENSE 1
+
+/// Fake PROG Current sense pin since it will be reported via I2C.
+typedef DummyPin PROG_CURRENT_SENSE_Pin;
 #else
 
 #if CONFIG_PROGTRACK_ADC_CHANNEL_0
@@ -303,7 +283,64 @@ ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 /// PROG track current sense input pin.
 ADC_PIN(PROG_CURRENT_SENSE, ADC2_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #endif
+
 #endif // PROG ADC I2C
+
+#else // PROG DISABLED
+/// Fake PROG enable pin since the track is disabled.
+typedef DummyPin PROG_ENABLE_Pin;
+
+/// Fake PROG Current sense pin since the track is disabled.
+typedef DummyPin PROG_CURRENT_SENSE_Pin;
+#endif // CONFIG_PROG_TRACK_ENABLED
+
+#ifdef CONFIG_DCC_OLCB_ENABLE_PIN
+/// Enables the OpenLCB DCC signal output.
+GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
+#else
+/// Enables the OpenLCB DCC signal output.
+typedef DummyPin OLCB_DCC_ENABLE_Pin;
+#endif //  CONFIG_DCC_OLCB_ENABLE_PIN
+
+#if CONFIG_RAILCOM_DISABLED || CONFIG_RAILCOM_TRIGGER_PIN == -1
+/// RailCom detector enable pin.
+typedef DummyPin RAILCOM_TRIGGER_Pin;
+#else
+/// RailCom detector enable pin.
+GPIO_PIN(RAILCOM_TRIGGER, GpioOutputSafeHigh, CONFIG_RAILCOM_TRIGGER_PIN);
+#endif // CONFIG_RAILCOM_DISABLED
+
+#if !defined(CONFIG_RAILCOM_SHORT_PIN)
+/// RailCom detector current drain pin.
+typedef DummyPin RAILCOM_SHORT_Pin;
+#else
+/// RailCom detector current drain pin.
+GPIO_PIN(RAILCOM_SHORT, GpioOutputSafeHigh, CONFIG_RAILCOM_DRAIN_PIN);
+#endif
+
+#if CONFIG_FACTORY_RESET_PIN != -1
+/// Factory reset button pin.
+GPIO_PIN(FACTORY_RESET_BUTTON, GpioInputPU, CONFIG_FACTORY_RESET_PIN);
+#else
+/// Virtual factory reset button pin.
+typedef DummyPinWithReadHigh FACTORY_RESET_BUTTON_Pin;
+#endif
+
+#if CONFIG_BOOTLOADER_PIN != -1
+/// Bootloader Request button pin.
+GPIO_PIN(BOOTLOADER_BUTTON, GpioInputPU, CONFIG_BOOTLOADER_PIN);
+#else
+/// Virtual bootloader request button pin.
+typedef DummyPinWithReadHigh BOOTLOADER_BUTTON_Pin;
+#endif
+
+#if !defined(CONFIG_I2C_ADC_ALERT_PIN) || CONFIG_I2C_ADC_ALERT_PIN == -1
+/// RailCom detector current drain pin.
+typedef DummyPin I2C_ADC_ALERT_Pin;
+#else
+/// External ADC alert pin.
+GPIO_PIN(I2C_ADC_ALERT, GpioInputPU, CONFIG_I2C_ADC_ALERT_PIN);
+#endif
 
 #if CONFIG_TEMPSENSOR_ADC_CHANNEL_0
 /// External thermal sensor input pin.
@@ -365,27 +402,18 @@ ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_8, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
 #elif CONFIG_TEMPSENSOR_ADC2_CHANNEL_9
 /// External thermal sensor input pin.
 ADC_PIN(THERMAL_SENSOR, ADC2_CHANNEL_9, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12);
+#else
+/// Fake thermal sensor pin.
+typedef DummyPin THERMAL_SENSOR_Pin;
 #endif
 
 /// GPIO Pin initializer.
-typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin,
+typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin, RAILCOM_SHORT_Pin,
                         DCC_SIGNAL_Pin, DCC_BRAKE_Pin, OPS_ENABLE_Pin,
                         PROG_ENABLE_Pin, FACTORY_RESET_BUTTON_Pin,
-#if !USE_I2C_FOR_OPS_CURRENT_SENSE
-#if CONFIG_OPS_TRACK_ENABLED
-                        OPS_CURRENT_SENSE_Pin,
-#endif
-#endif // !USE_I2C_FOR_OPS_CURRENT_SENSE
-#if !USE_I2C_FOR_PROG_CURRENT_SENSE
-#if CONFIG_PROG_TRACK_ENABLED
-                        PROG_CURRENT_SENSE_Pin,
-#endif
-#endif // !USE_I2C_FOR_PROG_CURRENT_SENSE
-#if !CONFIG_TEMPSENSOR_DISABLED
-                        THERMAL_SENSOR_Pin,
-#endif // !CONFIG_TEMPSENSOR_DISABLED
-                        BOOTLOADER_BUTTON_Pin,
-                        OLCB_DCC_ENABLE_Pin> GpioInit;
+                        OPS_CURRENT_SENSE_Pin, PROG_CURRENT_SENSE_Pin,
+                        THERMAL_SENSOR_Pin, BOOTLOADER_BUTTON_Pin,
+                        OLCB_DCC_ENABLE_Pin, I2C_ADC_ALERT_Pin> GpioInit;
 
 /// RailCom hardware definition
 struct RailComHwDefs

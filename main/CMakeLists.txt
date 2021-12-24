@@ -22,12 +22,17 @@ set(IDF_DEPS
     efuse
     esp_adc_cal
     esp_common
-    esp_ipc
+    esp_system
     espcoredump
     json
     nvs_flash
     soc
 )
+
+# starting in IDF v5 esp_ipc component has been merged into esp_system
+if (IDF_VERSION_MAJOR LESS 5)
+    list(APPEND IDF_DEPS esp_ipc)
+endif()
 
 set(CUSTOM_DEPS
     AccessoryDecoderDB
