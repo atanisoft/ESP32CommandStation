@@ -4,9 +4,9 @@ set(CUSTOM_DEPS
     NeoPixelBus
 )
 
-idf_build_get_property(target IDF_TARGET)
+idf_build_get_property(idf_target IDF_TARGET)
 
-if({target} STREQUAL "esp32s3")
+if(${idf_target} STREQUAL "esp32s3")
 idf_component_register(SRCS StatusLED.cpp StatusLEDGpio.cpp
                        INCLUDE_DIRS "include"
                        REQUIRES "${CUSTOM_DEPS}")

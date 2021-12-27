@@ -16,20 +16,45 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 **********************************************************************/
 
 #include "StatusLED.hxx"
+#include <freertos_drivers/arduino/DummyGPIO.hxx>
 #include <freertos_drivers/esp32/Esp32Gpio.hxx>
 #include <utils/GpioInitializer.hxx>
 
 namespace esp32cs
 {
 
+#if CONFIG_STATUS_LED_WIFI_STA_PIN == -1
+typedef DummyPinWithRead WIFI_STA_Pin;
+#else
 GPIO_PIN(WIFI_STA, GpioOutputSafeHighInvert, CONFIG_STATUS_LED_WIFI_STA_PIN);
+#endif
+
+#if CONFIG_STATUS_LED_WIFI_AP_PIN == -1
+typedef DummyPinWithRead WIFI_AP_Pin;
+#else
 GPIO_PIN(WIFI_AP, GpioOutputSafeHighInvert, CONFIG_STATUS_LED_WIFI_AP_PIN);
+#endif
+
+#if CONFIG_STATUS_LED_BOOTLOADER_ACTIVE_PIN == -1
+typedef DummyPinWithRead BOOTLOADER_Pin;
+#else
 GPIO_PIN(BOOTLOADER, GpioOutputSafeHighInvert,
          CONFIG_STATUS_LED_BOOTLOADER_ACTIVE_PIN);
+#endif
+
+#if CONFIG_STATUS_LED_OPS_ACTIVE_PIN == -1
+typedef DummyPinWithRead OPS_ACTIVE_Pin;
+#else
 GPIO_PIN(OPS_ACTIVE, GpioOutputSafeHighInvert,
          CONFIG_STATUS_LED_OPS_ACTIVE_PIN);
+#endif
+
+#if CONFIG_STATUS_LED_PROG_ACTIVE_PIN == -1
+typedef DummyPinWithRead PROG_ACTIVE_Pin;
+#else
 GPIO_PIN(PROG_ACTIVE, GpioOutputSafeHighInvert,
          CONFIG_STATUS_LED_PROG_ACTIVE_PIN);
+#endif
 
 typedef GpioInitializer<WIFI_STA_Pin, WIFI_AP_Pin,
                         BOOTLOADER_Pin, OPS_ACTIVE_Pin,

@@ -30,6 +30,10 @@ StatusLED::StatusLED()
   clear();
 }
 
+#ifndef CONFIG_STATUS_LED_UPDATE_INTERVAL_MSEC
+#define CONFIG_STATUS_LED_UPDATE_INTERVAL_MSEC 450
+#endif
+
 static constexpr uint32_t LED_UPDATE_TASK_STACK = 2048;
 static constexpr BaseType_t LED_UPDATE_TASK_PRIORITY = 3;
 static constexpr BaseType_t LED_UPDATE_TASK_CORE = APP_CPU_NUM;
