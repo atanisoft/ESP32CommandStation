@@ -50,17 +50,34 @@ class FindProtocolServer : public openlcb::SimpleEventHandler
 public:
   FindProtocolServer(AllTrainNodesInterface *nodes) : nodes_(nodes)
   {
-    openlcb::EventRegistry::instance()->register_handler(
-        EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE,
-                           USER_ARG_FIND),
-        FindProtocolDefs::TRAIN_FIND_MASK);
-    openlcb::EventRegistry::instance()->register_handler(
-        EventRegistryEntry(this, IS_TRAIN_EVENT, USER_ARG_ISTRAIN), 0);
+    
   }
 
   ~FindProtocolServer()
   {
-    openlcb::EventRegistry::instance()->unregister_handler(this);
+    configure(false);
+  }
+
+  /// Enables/Disables the @ref FindProtocolServer based on persistent
+  /// configuration settings.
+  ///
+  /// @param enabled When true the @ref FindProtocolServer will listen for and
+  /// respond to OpenLCB Events related to train search.
+  void configure(bool enabled)
+  {
+    if (enabled)
+    {
+      openlcb::EventRegistry::instance()->register_handler(
+          EventRegistryEntry(this, FindProtocolDefs::TRAIN_FIND_BASE,
+                            USER_ARG_FIND),
+          FindProtocolDefs::TRAIN_FIND_MASK);
+      openlcb::EventRegistry::instance()->register_handler(
+          EventRegistryEntry(this, IS_TRAIN_EVENT, USER_ARG_ISTRAIN), 0);
+    }
+    else
+    {
+      openlcb::EventRegistry::instance()->unregister_handler(this);
+    }
   }
 
   void handle_identify_global(const EventRegistryEntry &registry_entry,

@@ -118,20 +118,31 @@ AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
   }
   LOG(INFO, "[AccessoryDecoderDB] Loaded %d accessory decoder(s)",
       accessories_.size());
-
-  EventRegistry::instance()->register_handler(
-      EventRegistryEntry(
-          this, TractionDefs::ACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE),
-      12);
-  EventRegistry::instance()->register_handler(
-      EventRegistryEntry(
-          this, TractionDefs::INACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE),
-      12);
 }
 
 AccessoryDecoderDB::~AccessoryDecoderDB()
 {
-  EventRegistry::instance()->unregister_handler(this);
+  // deregister via the configure method
+  configure(false);
+}
+
+void AccessoryDecoderDB::configure(bool enabled)
+{
+  if (enabled)
+  {
+    EventRegistry::instance()->register_handler(
+      EventRegistryEntry(
+          this, TractionDefs::ACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE),
+      12);
+    EventRegistry::instance()->register_handler(
+        EventRegistryEntry(
+            this, TractionDefs::INACTIVATE_BASIC_DCC_ACCESSORY_EVENT_BASE),
+        12);
+  }
+  else
+  {
+    EventRegistry::instance()->unregister_handler(this);
+  }
 }
 
 void AccessoryDecoderDB::handle_identify_global(const EventRegistryEntry &entry,

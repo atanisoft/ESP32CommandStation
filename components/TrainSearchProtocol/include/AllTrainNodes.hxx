@@ -102,6 +102,13 @@ class AllTrainNodes : public AllTrainNodesInterface
   /// @return true if the provided node id is a known/active train.
   bool is_valid_train_node(openlcb::NodeID node_id, bool allocate=true);
 
+  /// Enables/Disables the @ref AllTrainNodes based on persistent
+  /// configuration settings.
+  ///
+  /// @param enabled When true the @ref AllTrainNodes will listen for and
+  /// respond to OpenLCB Events related to train search.
+  void configure(bool enabled);
+
  private:
   // ==== Interface for children ====
   class DelayedInitTrainNode;
@@ -124,6 +131,7 @@ class AllTrainNodes : public AllTrainNodesInterface
   openlcb::MemoryConfigHandler* memoryConfigService_;
   openlcb::MemorySpace* ro_train_cdi_;
   openlcb::MemorySpace* ro_tmp_train_cdi_;
+  openlcb::SimpleInfoFlow* infoFlow_;
 
   /// All train nodes that we know about.
   std::vector<DelayedInitTrainNode *> trains_;
@@ -159,8 +167,6 @@ class AllTrainNodes : public AllTrainNodesInterface
   friend class TrainIdentifyHandler;
   std::unique_ptr<TrainIdentifyHandler> trainIdentHandler_;
 };
-
-openlcb::TrainImpl *create_train_node_helper(DccMode mode, int address);
 
 }  // namespace commandstation
 

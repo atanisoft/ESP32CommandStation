@@ -17,6 +17,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include "sdkconfig.h"
 #include "ThermalMonitorFlow.hxx"
+#include <AccessoryDecoderDatabase.hxx>
 #include <AllTrainNodes.hxx>
 #include <cdi.hxx>
 #include <dcc/Packet.hxx>
@@ -153,7 +154,9 @@ using esp32cs::StatusLED;
 class OpenLCBFactoryResetHelper : public DefaultConfigUpdateListener
 {
 public:
-    OpenLCBFactoryResetHelper(const esp32cs::OpenLCBConfiguration &cfg) : cfg_(cfg)
+    OpenLCBFactoryResetHelper(
+      const esp32cs::OpenLCBConfiguration &cfg, uint8_t reset_reason)
+      : cfg_(cfg), resetReason_(reset_reason)
     {
     }
 
@@ -162,6 +165,45 @@ public:
     {
         AutoNotify n(done);
         LOG(VERBOSE, "[CFG] apply_configuration(%d, %d)", fd, initial_load);
+
+        uint8_t dcc_en = CDI_READ_TRIM_DEFAULT(cfg_.advanced().dcc_enable, fd);
+        auto lcc_dcc = get_dcc_output(DccOutput::LCC);
+        LOG(INFO, "[OpenLCB] DCC signal output: %s",
+            dcc_en ? "Enabled" : "Disabled");
+        if (dcc_en)
+        {
+          lcc_dcc->clear_disable_output_for_reason(
+            DccOutput::DisableReason::CONFIG_SETTING);
+        }
+        else
+        {
+          lcc_dcc->disable_output_for_reason(
+            DccOutput::DisableReason::CONFIG_SETTING);
+        }
+
+        uint8_t brownout_en =
+          CDI_READ_TRIM_DEFAULT(cfg_.advanced().brownout_enable, fd);
+        LOG(INFO, "[OpenLCB] Brownout event publishing: %s",
+            dcc_en ? "Enabled" : "Disabled");
+        if (resetReason_ == RTCWDT_BROWN_OUT_RESET && brownout_en)
+        {
+          LOG(INFO, "[OpenLCB] Brownout event detected, trying to send event");
+          Singleton<esp32cs::EventBroadcastHelper>::instance()->send_event(
+            openlcb::Defs::POWER_STANDARD_BROWNOUT_EVENT);
+        }
+
+        uint8_t acc_en =
+          CDI_READ_TRIM_DEFAULT(cfg_.advanced().enable_accessory_bus, fd);
+        LOG(INFO, "[OpenLCB] DCC Accessory Decoder Listener: %s",
+            dcc_en ? "Enabled" : "Disabled");
+        Singleton<esp32cs::AccessoryDecoderDB>::instance()->configure(acc_en);
+
+        uint8_t throttles_en =
+          CDI_READ_TRIM_DEFAULT(cfg_.advanced().enable_throttles, fd);
+        LOG(INFO, "[OpenLCB] Train Search Listener: %s",
+            dcc_en ? "Enabled" : "Disabled");
+        Singleton<commandstation::AllTrainNodes>::instance()->configure(throttles_en);
+
         return ConfigUpdateListener::UpdateAction::UPDATED;
     }
 
@@ -176,6 +218,7 @@ public:
     }
 private:
     const esp32cs::OpenLCBConfiguration cfg_;
+    const uint8_t resetReason_;
 };
 
 extern "C"
@@ -260,9 +303,11 @@ void app_main()
           leds.set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN_BLINK);
         }
     });
-    esp32cs::FactoryResetHelper factory_reset_helper(cfg.userinfo());
-    OpenLCBFactoryResetHelper olcb_factory_reset(cfg.seg().olcb());
+    // declare EventBroadcastHelper first since it is used in the
+    // OpenLCBFactoryResetHelper code for brownout event publishing.
     esp32cs::EventBroadcastHelper event_helper(stack.service(), stack.node());
+    esp32cs::FactoryResetHelper factory_reset_helper(cfg.userinfo());
+    OpenLCBFactoryResetHelper olcb_factory_reset(cfg.seg().olcb(), reset_reason);
     esp32cs::DelayRebootHelper delayed_reboot(&wifi_manager);
     esp32cs::HealthMonitor health_monitor(&wifi_manager);
     esp32cs::StatusDisplay status_display(&wifi_manager,

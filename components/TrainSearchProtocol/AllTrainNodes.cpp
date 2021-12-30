@@ -857,22 +857,11 @@ AllTrainNodes::AllTrainNodes(TrainDb* db,
       memoryConfigService_(memory_config),
       ro_train_cdi_(ro_train_cdi),
       ro_tmp_train_cdi_(ro_tmp_train_cdi),
-      findProtocolServer_(this),
-      snipHandler_(new TrainSnipHandler(this, info_flow)),
-      pipHandler_(new TrainPipHandler(this)),
-      fdiSpace_(new TrainFDISpace(this)),
-      configSpace_(new TrainConfigSpace(this)),
-      cdiSpace_(new TrainCDISpace(this)),
-      trainIdentHandler_(new TrainIdentifyHandler(this))
+      infoFlow_(info_flow),
+      findProtocolServer_(this)
 {
   HASSERT(ro_train_cdi_->read_only());
   HASSERT(ro_tmp_train_cdi_->read_only());
-  memoryConfigService_->registry()->insert(
-      nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
-  memoryConfigService_->registry()->insert(
-      nullptr, MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
-  memoryConfigService_->registry()->insert(
-      nullptr, MemoryConfigDefs::SPACE_CONFIG, configSpace_.get());
 }
 
 AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
@@ -929,10 +918,45 @@ AllTrainNodes::~AllTrainNodes()
   {
     delete t;
   }
-  memoryConfigService_->registry()->erase(
-      nullptr, openlcb::MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
-  memoryConfigService_->registry()->erase(
-      nullptr, openlcb::MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
+  // deregister everything via the configure method
+  configure(false);
+}
+
+void AllTrainNodes::configure(bool enabled)
+{
+  if (enabled)
+  {
+    snipHandler_ = std::make_unique<TrainSnipHandler>(this, infoFlow_);
+    pipHandler_ = std::make_unique<TrainPipHandler>(this);
+    pipHandler_ = std::make_unique<TrainPipHandler>(this);
+    fdiSpace_ = std::make_unique<TrainFDISpace>(this);
+    configSpace_ = std::make_unique<TrainConfigSpace>(this);
+    cdiSpace_  = std::make_unique<TrainCDISpace>(this);
+    trainIdentHandler_  = std::make_unique<TrainIdentifyHandler>(this);
+    memoryConfigService_->registry()->insert(
+        nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+    memoryConfigService_->registry()->insert(
+        nullptr, MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
+    memoryConfigService_->registry()->insert(
+        nullptr, MemoryConfigDefs::SPACE_CONFIG, configSpace_.get());
+  }
+  else
+  {
+    memoryConfigService_->registry()->erase(
+        nullptr, MemoryConfigDefs::SPACE_FDI, fdiSpace_.get());
+    memoryConfigService_->registry()->erase(
+        nullptr, MemoryConfigDefs::SPACE_CDI, cdiSpace_.get());
+    memoryConfigService_->registry()->erase(
+        nullptr, MemoryConfigDefs::SPACE_CONFIG, configSpace_.get());
+    snipHandler_.reset(nullptr);
+    pipHandler_.reset(nullptr);
+    pipHandler_.reset(nullptr);
+    fdiSpace_.reset(nullptr);
+    configSpace_.reset(nullptr);
+    cdiSpace_.reset(nullptr);
+    trainIdentHandler_.reset(nullptr);
+  }
+  findProtocolServer_.configure(enabled);
 }
 
 }  // namespace commandstation

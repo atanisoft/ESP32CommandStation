@@ -48,6 +48,13 @@ public:
   /// Destructor.
   ~AccessoryDecoderDB();
 
+  /// Enables/Disables the @ref AccessoryDecoderDB based on persistent
+  /// configuration settings.
+  ///
+  /// @param enabled When true the @ref AccessoryDecoderDB will listen for and
+  /// respond to OpenLCB Events related to DCC accessory decoders.
+  void configure(bool enabled);
+
   /// Stops the background persistence task.
   void stop()
   {
