@@ -34,7 +34,7 @@ jobs:
         with:
           target: ${{ steps.target.outputs._0 }}
         if: ${{ steps.target.outputs._1 == 'v44' }}
-      - name: Build (IDF v4.4)
+      - name: Build (IDF v4.3)
         uses: espressif/esp-idf-ci-action@release-v4.3
         if: ${{ steps.target.outputs._1 == 'v43' }}
       - name: Prepare Binaries
