@@ -12,18 +12,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 2
+      max-parallel: 3
       matrix:
-        target: [esp32, esp32s3]
+        target: [esp32-v5, esp32-v43, esp32-v44, esp32s3-v5, esp32s3-v44]
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
           fetch-depth: 0
-      - name: Build
+      - name: Build (IDF v5)
         uses: atanisoft/esp-idf-ci-action@main
         with:
           target: ${{ matrix.target }}
+        if: endsWith(matrix.target, "-v5")
+      - name: Build (IDF v4.4)
+        uses: atanisoft/esp-idf-ci-action@release-v4.4
+        with:
+          target: ${{ matrix.target }}
+        if: endsWith(matrix.target, "-v44")
+      - name: Build (IDF v4.3)
+        uses: espressif/esp-idf-ci-action@release-v4.3
+        with:
+          target: ${{ matrix.target }}
+        if: endsWith(matrix.target, "-v43")
       - name: Prepare Binaries
         run: |
           mkdir -p binaries
