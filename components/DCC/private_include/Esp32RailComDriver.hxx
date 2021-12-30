@@ -96,7 +96,7 @@ public:
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
     ESP_ERROR_CHECK(
       esp_intr_alloc(HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED
-                   , esp32_railcom_uart_isr<HW, DCC_BOOSTER>, this, nullptr));
+                   , esp32_railcom_uart_isr<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>, this, nullptr));
 #endif // CONFIG_RAILCOM_FULL
 
     LOG(INFO, "[RailCom] Configuring hardware timer (%d:%d)...", HW::TIMER_GRP,
@@ -109,7 +109,7 @@ public:
       esp_intr_alloc_intrstatus(HW::TIMER_ISR_SOURCE, ESP_INTR_FLAG_LOWMED,
                                 TIMG_INT_ST_TIMERS_REG(HW::TIMER_GRP),
                                 BIT(HW::TIMER_IDX),
-                                esp32_railcom_timer_tick<HW, DCC_BOOSTER>,
+                                esp32_railcom_timer_tick<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>,
                                 this, nullptr));
   }
 
