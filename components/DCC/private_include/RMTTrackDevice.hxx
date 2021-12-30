@@ -62,7 +62,7 @@ namespace esp32cs
 ///
 /// NMRA S-9.1 reference:
 /// https://www.nmra.org/sites/default/files/standards/sandrp/pdf/s-9.1_electrical_standards_2020.pdf
-template<class HW, class DCC_BOOSTER>
+template<class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
 class RMTTrackDevice
 {
 public:
@@ -235,6 +235,10 @@ public:
       {
         DCC_BOOSTER::enable_output();
       }
+      if (OLCB_DCC_BOOSTER::should_be_enabled())
+      {
+        OLCB_DCC_BOOSTER::enable_output();
+      }
     }
 
     // NOTE: This is not using rmt_write_items as it is not safe within an ISR
@@ -262,8 +266,7 @@ private:
   static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = 6;
 #elif CONFIG_IDF_TARGET_ESP32S3
   /// Maximum number of RMT memory blocks to allow for the DCC signal
-  /// generation. With three memory blocks it is possible to send up to 192
-  /// bits per DCC packet with up to 50 preamble bits.
+  /// generation.
   static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = SOC_RMT_TX_CANDIDATES_PER_GROUP;
 #endif
 
@@ -462,8 +465,8 @@ private:
 };
 
 /// DCC ZERO bit pre-encoded in RMT format.
-template<class HW, class DCC_BOOSTER>
-rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER>::DCC_RMT_ZERO_BIT =
+template<class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
+rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>::DCC_RMT_ZERO_BIT =
 {{{
     HW::DCC_ZERO_RMT_TICKS, // number of microseconds for the first half of the
     HW::RMT_DCC_FIRST_HALF, // DCC signal wave format.
@@ -472,8 +475,8 @@ rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER>::DCC_RMT_ZERO_BIT =
 }}};
 
 /// DCC ONE bit pre-encoded in RMT format.
-template<class HW, class DCC_BOOSTER>
-rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER>::DCC_RMT_ONE_BIT =
+template<class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
+rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>::DCC_RMT_ONE_BIT =
 {{{
     HW::DCC_ONE_RMT_TICKS,  // number of microseconds for the first half of the
     HW::RMT_DCC_FIRST_HALF, // DCC signal wave format.

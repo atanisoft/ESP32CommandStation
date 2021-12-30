@@ -24,7 +24,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 namespace esp32cs
 {
 
-template <class DCC_BOOSTER>
+template <class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
 class TrackPowerBit : public openlcb::BitEventInterface
 {
 public:
@@ -60,11 +60,13 @@ public:
     {
       LOG(INFO, "[Track Power] Clearing global emergency off");
       DCC_BOOSTER::clear_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
+      OLCB_DCC_BOOSTER::clear_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
     }
     else
     {
       LOG(INFO, "[Track Power] Setting global emergency off");
       DCC_BOOSTER::set_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
+      OLCB_DCC_BOOSTER::set_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
     }
   }
 

@@ -63,21 +63,23 @@ namespace esp32cs
 /// Disables the OPS track output and enables the PROG track output.
 static void enable_programming_track()
 {
-  if (DccHwDefs::InternalBoosterOutput::should_be_enabled())
-  {
-    OPS_ENABLE_Pin::set(false);
-    PROG_ENABLE_Pin::set(true);
-  }
+  DccHwDefs::InternalBoosterOutput::set_disable_reason(
+    DccOutput::DisableReason::PGM_TRACK_LOCKOUT);
+  DccHwDefs::OpenLCBBoosterOutput::set_disable_reason(
+    DccOutput::DisableReason::PGM_TRACK_LOCKOUT);
+
+  PROG_ENABLE_Pin::set(true);
 }
 
 /// Disables the PROG track output and enables the OPS track output.
 static void disable_programming_track()
 {
-  if (DccHwDefs::InternalBoosterOutput::should_be_enabled())
-  {
-    PROG_ENABLE_Pin::set(false);
-    OPS_ENABLE_Pin::set(true);
-  }
+  PROG_ENABLE_Pin::set(false);
+
+  DccHwDefs::InternalBoosterOutput::clear_disable_reason(
+    DccOutput::DisableReason::PGM_TRACK_LOCKOUT);
+  DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
+    DccOutput::DisableReason::PGM_TRACK_LOCKOUT);
 }
 
 // TODO: move this into TrainSearchProtocol
@@ -168,13 +170,13 @@ static uninitialized<dcc::RailcomHubFlow> railcom_hub;
 #if CONFIG_RAILCOM_DUMP_PACKETS
 static uninitialized<dcc::RailcomPrintfFlow> railcom_dumper;
 #endif // CONFIG_RAILCOM_DUMP_PACKETS
-static esp32cs::Esp32RailComDriver<RailComHwDefs, DccHwDefs::InternalBoosterOutput> railComDriver;
+static esp32cs::Esp32RailComDriver<RailComHwDefs, DccHwDefs::InternalBoosterOutput, DccHwDefs::OpenLCBBoosterOutput> railComDriver;
 #endif // CONFIG_RAILCOM_DISABLED
-static esp32cs::RMTTrackDevice<DccHwDefs, DccHwDefs::InternalBoosterOutput> track(&railComDriver);
+static esp32cs::RMTTrackDevice<DccHwDefs, DccHwDefs::InternalBoosterOutput, DccHwDefs::OpenLCBBoosterOutput> track(&railComDriver);
 static uninitialized<dcc::LocalTrackIf> track_interface;
 static uninitialized<esp32cs::PrioritizedUpdateLoop> track_update_loop;
 static uninitialized<PoolToQueueFlow<Buffer<dcc::Packet>>> track_flow;
-static uninitialized<TrackPowerBit<DccHwDefs::InternalBoosterOutput>> track_power;
+static uninitialized<TrackPowerBit<DccHwDefs::InternalBoosterOutput, DccHwDefs::OpenLCBBoosterOutput>> track_power;
 static uninitialized<openlcb::BitEventConsumer> track_power_consumer;
 static uninitialized<EStopPacketSource> estop_packet_source;
 static uninitialized<openlcb::BitEventConsumer> estop_consumer;
@@ -401,11 +403,17 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   // Clear the initialization pending flag
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
+  DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
+        DccOutput::DisableReason::INITIALIZATION_PENDING);
 #if CONFIG_ENERGIZE_TRACK_ON_STARTUP
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(
     DccOutput::DisableReason::GLOBAL_EOFF);
+  DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
+        DccOutput::DisableReason::GLOBAL_EOFF);
 #else
   DccHwDefs::InternalBoosterOutput::set_disable_reason(
+    DccOutput::DisableReason::GLOBAL_EOFF);
+  DccHwDefs::OpenLCBBoosterOutput::set_disable_reason(
     DccOutput::DisableReason::GLOBAL_EOFF);
 #endif // CONFIG_ENERGIZE_TRACK_ON_STARTUP
 }
@@ -422,6 +430,8 @@ void shutdown_dcc()
   // Disable all track outputs
   DccHwDefs::InternalBoosterOutput::set_disable_reason(
         DccOutput::DisableReason::INITIALIZATION_PENDING);
+  DccHwDefs::OpenLCBBoosterOutput::set_disable_reason(
+        DccOutput::DisableReason::INITIALIZATION_PENDING);
 }
 
 } // namespace esp32cs
@@ -434,9 +444,9 @@ DccOutput *get_dcc_output(DccOutput::Type type)
     case DccOutput::TRACK:
       return DccOutputImpl<DccHwDefs::InternalBoosterOutput>::instance();
     case DccOutput::PGM:
-      return DccOutputImpl<DccHwDefs::Output2>::instance();
+      return DccOutputImpl<DccHwDefs::ProgBoosterOutput>::instance();
     case DccOutput::LCC:
-      return DccOutputImpl<DccHwDefs::Output3>::instance();
+      return DccOutputImpl<DccHwDefs::OpenLCBBoosterOutput>::instance();
   }
   return nullptr;
 }

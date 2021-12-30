@@ -73,6 +73,18 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #define TEMPSENSOR_ADC_CHANNEL -1
 #endif
 
+#ifndef CONFIG_RAILCOM_SHORT_PIN
+#define CONFIG_RAILCOM_SHORT_PIN -1
+#endif
+
+#ifndef CONFIG_DCC_OLCB_ENABLE_PIN
+#define CONFIG_DCC_OLCB_ENABLE_PIN -1
+#endif
+
+#ifndef CONFIG_I2C_ADC_ALERT_PIN
+#define CONFIG_I2C_ADC_ALERT_PIN -1
+#endif
+
 // Sanity check that the preamble bits are within the supported range.
 #ifndef CONFIG_OPS_DCC_PREAMBLE_BITS
 #warning CONFIG_OPS_DCC_PREAMBLE_BITS is not defined and has been set to 11.
@@ -294,7 +306,7 @@ typedef DummyPin PROG_ENABLE_Pin;
 typedef DummyPin PROG_CURRENT_SENSE_Pin;
 #endif // CONFIG_PROG_TRACK_ENABLED
 
-#ifdef CONFIG_DCC_OLCB_ENABLE_PIN
+#if CONFIG_DCC_OLCB_ENABLE_PIN != -1
 /// Enables the OpenLCB DCC signal output.
 GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
 #else
@@ -302,15 +314,20 @@ GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
 typedef DummyPin OLCB_DCC_ENABLE_Pin;
 #endif //  CONFIG_DCC_OLCB_ENABLE_PIN
 
+/// OpenLCB RailCom detector enable pin.
+/// For the ESP32CSPCB this is shared with OPS as a single unified detector
+/// however the API requires a pin to be declared regardless.
+typedef DummyPin OLCB_RAILCOM_TRIGGER_Pin;
+
 #if CONFIG_RAILCOM_DISABLED || CONFIG_RAILCOM_TRIGGER_PIN == -1
 /// RailCom detector enable pin.
 typedef DummyPin RAILCOM_TRIGGER_Pin;
 #else
 /// RailCom detector enable pin.
-GPIO_PIN(RAILCOM_TRIGGER, GpioOutputSafeHigh, CONFIG_RAILCOM_TRIGGER_PIN);
+GPIO_PIN(RAILCOM_TRIGGER, GpioOutputSafeLow, CONFIG_RAILCOM_TRIGGER_PIN);
 #endif // CONFIG_RAILCOM_DISABLED
 
-#if !defined(CONFIG_RAILCOM_SHORT_PIN)
+#if CONFIG_RAILCOM_DISABLED || CONFIG_RAILCOM_SHORT_PIN == -1
 /// RailCom detector current drain pin.
 typedef DummyPin RAILCOM_SHORT_Pin;
 #else
@@ -334,7 +351,7 @@ GPIO_PIN(BOOTLOADER_BUTTON, GpioInputPU, CONFIG_BOOTLOADER_PIN);
 typedef DummyPinWithReadHigh BOOTLOADER_BUTTON_Pin;
 #endif
 
-#if !defined(CONFIG_I2C_ADC_ALERT_PIN) || CONFIG_I2C_ADC_ALERT_PIN == -1
+#if CONFIG_I2C_ADC_ALERT_PIN == -1
 /// RailCom detector current drain pin.
 typedef DummyPin I2C_ADC_ALERT_Pin;
 #else
@@ -413,7 +430,8 @@ typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin, RAILCOM_SHORT_Pin,
                         PROG_ENABLE_Pin, FACTORY_RESET_BUTTON_Pin,
                         OPS_CURRENT_SENSE_Pin, PROG_CURRENT_SENSE_Pin,
                         THERMAL_SENSOR_Pin, BOOTLOADER_BUTTON_Pin,
-                        OLCB_DCC_ENABLE_Pin, I2C_ADC_ALERT_Pin> GpioInit;
+                        OLCB_DCC_ENABLE_Pin, OLCB_RAILCOM_TRIGGER_Pin,
+                        I2C_ADC_ALERT_Pin> GpioInit;
 
 /// RailCom hardware definition
 struct RailComHwDefs
@@ -520,13 +538,11 @@ struct DccHwDefs
           ets_delay_us(1);
           // enable the h-bridge output pin
           OPS_ENABLE_Pin::set(true);
-          OLCB_DCC_ENABLE_Pin::set(true);
         }
         else
         {
           // disable the h-bridge output pin
           OPS_ENABLE_Pin::set(false);
-          OLCB_DCC_ENABLE_Pin::set(false);
           // delay 1usec to allow h-bridge to catch up
           ets_delay_us(1);
           // enable the h-bridge brake pin
@@ -541,33 +557,8 @@ struct DccHwDefs
         set(false);
       }
   };
-#else // BRAKE pin is not needed, directly use enable pin.
-  /// Wrapper which handles the toggling of enable pins.
-  struct BOOSTER_ENABLE_Pin
-  {
-      static void set(bool value)
-      {
-        if (value)
-        {
-          // enable the h-bridge output pin
-          OPS_ENABLE_Pin::set(true);
-          OLCB_DCC_ENABLE_Pin::set(true);
-        }
-        else
-        {
-          // disable the h-bridge output pin
-          OPS_ENABLE_Pin::set(false);
-          OLCB_DCC_ENABLE_Pin::set(false);
-        }
-      }
-
-      static void hw_init()
-      {
-        OPS_ENABLE_Pin::hw_init();
-        OLCB_DCC_ENABLE_Pin::hw_init();
-        set(false);
-      }
-  };
+#else
+  using BOOSTER_ENABLE_Pin = ::OPS_ENABLE_Pin;
 #endif // CONFIG_OPS_TRACK_BRAKE_PIN != -1
 
   /// The number of preamble bits to send exclusive of end of packet '1' bit
@@ -627,9 +618,11 @@ struct DccHwDefs
                     RailComHwDefs::RAILCOM_START_PHASE2_DELAY_USEC,
                     RailComHwDefs::RAILCOM_STOP_DELAY_USEC>;
   /// Fake output hardware for program track.
-  using Output2 = DccOutputHwDummy<DccOutput::PGM>;
-  /// Fake output hardware for LCC track.
-  using Output3 = DccOutputHwDummy<DccOutput::LCC>;
+  using ProgBoosterOutput = DccOutputHwDummy<DccOutput::PGM>;
+  /// OpenLCB Booster output.
+  using OpenLCBBoosterOutput =
+    DccOutputHwReal<DccOutput::LCC, OLCB_DCC_ENABLE_Pin,
+                    OLCB_RAILCOM_TRIGGER_Pin, 0, 0, 0>;
 }; // DccHwDefs
 
 #endif // HARDWARE_HXX_

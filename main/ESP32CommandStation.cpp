@@ -341,16 +341,10 @@ void app_main()
       sd_auto_sync =
         std::make_unique<AutoSyncFileFlow>(&wifi_manager, config_fd,
                                            SEC_TO_USEC(CONFIG_OLCB_SD_FSYNC_SEC));
-      reboot_helper =
-        std::make_unique<esp32cs::NodeRebootHelper>(
-          &stack, &nvs, config_fd, sd_auto_sync.get());
     }
-    else
-    {
-      reboot_helper =
-        std::make_unique<esp32cs::NodeRebootHelper>(
-          &stack, &nvs, config_fd, nullptr);
-    }
+    reboot_helper =
+      std::make_unique<esp32cs::NodeRebootHelper>(
+        &stack, &nvs, config_fd, sd_auto_sync.get());
 
 #if CONFIG_OLCB_TWAI_ENABLED
     twai.hw_init();

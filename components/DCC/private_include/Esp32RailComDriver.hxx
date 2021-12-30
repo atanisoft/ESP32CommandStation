@@ -44,10 +44,10 @@ COPYRIGHT (c) 2020 Mike Dunston
 namespace esp32cs
 {
 
-template <class HW, class DCC_BOOSTER>
+template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
 static void esp32_railcom_timer_tick(void *param);
 
-template <class HW, class DCC_BOOSTER>
+template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
 static void esp32_railcom_uart_isr(void *param);
 
 static portMUX_TYPE esp32_uart_mux = portMUX_INITIALIZER_UNLOCKED;
@@ -58,7 +58,7 @@ static constexpr uint32_t ESP32_UART_DISABLE_ALL_INTERRUPTS = 0x00000000;
 static constexpr uint32_t ESP32_UART_RX_INTERRUPT_BITS =
   UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA;
 
-template <class HW, class DCC_BOOSTER>
+template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
 class Esp32RailComDriver : public RailcomDriver
 {
 public:
@@ -120,7 +120,8 @@ public:
 
   void start_cutout() override
   {
-    ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase1());
+    ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase1() +
+                 OLCB_DCC_BOOSTER::start_railcom_cutout_phase1());
 
 #if CONFIG_RAILCOM_FULL
     portENTER_CRITICAL_SAFE(&esp32_uart_mux);
@@ -134,7 +135,8 @@ public:
 #endif // CONFIG_RAILCOM_FULL
 
     // enable the RailCom detector
-    ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase2());
+    ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase2() + 
+                 OLCB_DCC_BOOSTER::start_railcom_cutout_phase2());
 
     portENTER_CRITICAL_SAFE(&esp32_timer_mux);
     // set our phase and start the timer
@@ -163,11 +165,17 @@ public:
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
 #endif // CONFIG_RAILCOM_FULL
     // disable the RailCom detector
-    ets_delay_us(DCC_BOOSTER::stop_railcom_cutout_phase1());
+    ets_delay_us(DCC_BOOSTER::stop_railcom_cutout_phase1() +
+                 OLCB_DCC_BOOSTER::stop_railcom_cutout_phase1());
     DCC_BOOSTER::stop_railcom_cutout_phase2();
+    OLCB_DCC_BOOSTER::stop_railcom_cutout_phase2();
     if (DCC_BOOSTER::should_be_enabled())
     {
       DCC_BOOSTER::enable_output();
+    }
+    if (OLCB_DCC_BOOSTER::should_be_enabled())
+    {
+      OLCB_DCC_BOOSTER::enable_output();
     }
   }
 
@@ -347,20 +355,20 @@ private:
   bool enabled_{false};
 };
 
-template <class HW, class DCC_BOOSTER>
+template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
 static void esp32_railcom_timer_tick(void *param)
 {
-  Esp32RailComDriver<HW, DCC_BOOSTER> *driver =
-    reinterpret_cast<Esp32RailComDriver<HW, DCC_BOOSTER> *>(param);
+  Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER> *driver =
+    reinterpret_cast<Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER> *>(param);
   driver->timer_tick();
 }
 
-template <class HW, class DCC_BOOSTER>
+template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
 static void esp32_railcom_uart_isr(void *param)
 {
   portENTER_CRITICAL_SAFE(&esp32_uart_mux);
-  Esp32RailComDriver<HW, DCC_BOOSTER> *driver =
-    reinterpret_cast<Esp32RailComDriver<HW, DCC_BOOSTER> *>(param);
+  Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER> *driver =
+    reinterpret_cast<Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER> *>(param);
   dcc::RailcomHubData *fb = driver->railcom_buffer();
   uint8_t rx_buf[6] = {0, 0, 0, 0, 0, 0};
   size_t rx_bytes = driver->rx_to_buf(rx_buf, 6);
@@ -369,7 +377,7 @@ static void esp32_railcom_uart_isr(void *param)
     for (size_t idx = 0; idx < rx_bytes; idx++)
     {
       if (driver->railcom_phase() ==
-          Esp32RailComDriver<HW, DCC_BOOSTER>::RailComPhase::CUTOUT_PHASE1)
+          Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>::RailComPhase::CUTOUT_PHASE1)
       {
         fb->add_ch1_data(rx_buf[idx]);
       }
