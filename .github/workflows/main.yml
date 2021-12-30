@@ -12,34 +12,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 3
       matrix:
-        target: [esp32-v5, esp32-v43, esp32-v44, esp32s3-v5, esp32s3-v44]
+        target: [esp32, esp32s3]
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
           fetch-depth: 0
-      - uses: jungwinter/split@v2
-        id: target
-        with:
-          msg: ${{ matrix.target }}
-          separator: '-'
       - name: Build (IDF v5)
         uses: atanisoft/esp-idf-ci-action@main
         with:
-          target: ${{ steps.target.outputs._0 }}
-        if: ${{ steps.target.outputs._1 }} == 'v5'
+          target: ${{ matrix.target }}
       - name: Build (IDF v4.4)
         uses: atanisoft/esp-idf-ci-action@release-v4.4
         with:
-          target: ${{ steps.target.outputs._0 }}
-        if: ${{ steps.target.outputs._1 }} == 'v44'
+          target: ${{ matrix.target }}
       - name: Build (IDF v4.3)
         uses: espressif/esp-idf-ci-action@release-v4.3
         with:
-          target: ${{ steps.target.outputs._0 }}
-        if: ${{ steps.target.outputs._1 }} == 'v43'
+          target: ${{ matrix.target }}
+        if: ${{ matrix.target }} == 'esp32'
       - name: Prepare Binaries
         run: |
           mkdir -p binaries
