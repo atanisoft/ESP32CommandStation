@@ -26,8 +26,7 @@ jobs:
           separator: '-'
       - name: Remove build artifacts
         run: |
-          rm -rf build
-          rm sdkconfig
+          rm -rf build sdkconfig
       - name: Build (IDF v5)
         uses: atanisoft/esp-idf-ci-action@main
         with:
