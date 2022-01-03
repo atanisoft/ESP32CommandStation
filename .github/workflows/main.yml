@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [esp32-v5, esp32-v43, esp32s3-v5]
+        target: [esp32-v5, esp32-v43, esp32-v44, esp32s3-v44, esp32s3-v5]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -24,6 +24,10 @@ jobs:
         with:
           msg: ${{ matrix.target }}
           separator: '-'
+      - name: Remove build artifacts
+        run: |
+          rm -rf build
+          rm sdkconfig
       - name: Build (IDF v5)
         uses: atanisoft/esp-idf-ci-action@main
         with:
