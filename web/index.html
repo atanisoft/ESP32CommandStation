@@ -487,6 +487,10 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       ws_req_id++;
       return ws_req_id;
     }
+    function pad_hex(str, length) {
+      var hex = new Array(length + 1).join('0') + str;
+      return hex.substr(-length).match(/.{1,2}/g).join('.');
+    }
     async function fetchWithTimeout(resource, options) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), fetch_timeout_ms);
