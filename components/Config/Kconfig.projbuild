@@ -2,7 +2,8 @@ menu "ESP32 Command Station Configuration"
 
 choice ESP_MODEL_HBRIDGE
     bool "ESP32 / H-Bridge Selection"
-    default ESP_MODEL_HBRIDGE_L298
+    default ESP_MODEL_HBRIDGE_L298 if IDF_TARGET_ESP32
+    default ESP_MODEL_HBRIDGE_PCB_ESP32S3 if IDF_TARGET_ESP32S3
 
     config ESP_MODEL_HBRIDGE_L298
         bool "ESP32 with Arduino Motor Shield (L298)"
