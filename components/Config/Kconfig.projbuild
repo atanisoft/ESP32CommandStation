@@ -471,52 +471,78 @@ menu "Pin Usage"
     endmenu
     menu "SD Card"
         choice SD_MODE
-            bool "SD Interface"
+            bool "SD Mode"
             default USE_SD_SPI_MODE
             config USE_SD_SPI_MODE
                 bool "SD SPI"
+                help
+                    Selecting this option uses SPI mode for accessing the SD
+                    card. This can result in slower storage access but is more
+                    reliable on the majority of ESP32 boards.
             config USE_SD_MMC_MODE
                 bool "SDMMC"
+                help
+                    Selecting this option uses SDMMC mode for accessing the SD
+                    card. This usually results in higher performance but may
+                    not work on all ESP32 boards.
         endchoice
         menu "SD SPI Pins"
+            # SD SPI pin mapping is only configurable on the ESP32-S3
             visible if IDF_TARGET_ESP32S3
             config SD_SPI_MISO
                 int "MISO pin"
                 default 2 if IDF_TARGET_ESP32
                 default 41 if IDF_TARGET_ESP32S3
+                range 0 48 if IDF_TARGET_ESP32S3
             config SD_SPI_MOSI
                 int "MOSI pin"
                 default 15 if IDF_TARGET_ESP32
                 default 40 if IDF_TARGET_ESP32S3
+                range 0 48 if IDF_TARGET_ESP32S3
             config SD_SPI_CLOCK
                 int "Clock pin"
                 default 14 if IDF_TARGET_ESP32
                 default 39 if IDF_TARGET_ESP32S3
+                range 0 48 if IDF_TARGET_ESP32S3
             config SD_SPI_SELECT
                 int "Chip Select pin"
                 default 13 if IDF_TARGET_ESP32
                 default 42 if IDF_TARGET_ESP32S3
+                range 0 48 if IDF_TARGET_ESP32S3
         endmenu
         menu "SD MMC Pins"
+            # SD_MMC pin mapping is only configurable on the ESP32-S3
             visible if IDF_TARGET_ESP32S3
             config SD_MMC_CLOCK
                 int "Clock pin"
-                default 39
+                default 14 if IDF_TARGET_ESP32
+                default 39 if IDF_TARGET_ESP32S3
+                range 0 48 if IDF_TARGET_ESP32S3
             config SD_MMC_CMD
                 int "Command pin"
-                default 40
+                default 15 if IDF_TARGET_ESP32
+                default 40 if IDF_TARGET_ESP32S3
+                range 0 48 if IDF_TARGET_ESP32S3
             config SD_MMC_DATA_0
                 int "Data 0 pin"
-                default 38
+                default 2 if IDF_TARGET_ESP32
+                default 41 if IDF_TARGET_ESP32S3
+                range 0 48 if IDF_TARGET_ESP32S3
             config SD_MMC_DATA_1
                 int "Data 1 pin"
-                default 37
+                default 4 if IDF_TARGET_ESP32
+                default -1 if IDF_TARGET_ESP32S3
+                range -1 48 if IDF_TARGET_ESP32S3
             config SD_MMC_DATA_2
                 int "Data 2 pin"
-                default 42
+                default 12 if IDF_TARGET_ESP32
+                default -1 if IDF_TARGET_ESP32S3
+                range -1 48 if IDF_TARGET_ESP32S3
             config SD_MMC_DATA_3
                 int "Data 3 pin"
-                default 41
+                default 13 if IDF_TARGET_ESP32
+                default -1 if IDF_TARGET_ESP32S3
+                range -1 48 if IDF_TARGET_ESP32S3
         endmenu
     endmenu
 endmenu
@@ -1380,6 +1406,10 @@ menu "Crash Behavior"
     config CRASH_COLLECT_CORE_DUMP
         bool "Collect core dump on crash"
         default y
+        help
+            When this option is enabled the ESP32 will attempt to collect a
+            core dump whenever the ESP32 crashes. This core dump can then be
+            used to determine why the crash occurred.
     config CRASH_HALT_ON_STARTUP
         bool "Halt startup when core dump detected"
         default y
@@ -1387,6 +1417,9 @@ menu "Crash Behavior"
         help
             Enabling this option will cause the ESP32 Command Station to halt
             normal startup when a core dump from a previous crash is detected.
+            NOTE: If the ESP-IDF version is v4.4 or later this option will not
+            have any effect as the core dump will be converted to a text file
+            automatically when detected.
     config CRASH_CLEANUP_TIMEOUT_SEC
         int "Number of seconds to allow clearing of old core dump"
         default 15
@@ -1396,6 +1429,9 @@ menu "Crash Behavior"
             This option controls how long the ESP32 Command Station will wait
             for the factory reset button to be pressed before halting or
             deleting the core dump.
+            NOTE: If the ESP-IDF version is v4.4 or later this option will not
+            have any effect as the core dump will be converted to a text file
+            automatically when detected.
 endmenu
 menu "Current Sense"
     config CURRENTSENSE_USE_SHUNT
