@@ -4,8 +4,17 @@ set -e
 # Move to source code folder
 cd /home/espressif/ESP32CommandStation
 
-# Config if required
-if [ "x$1" == "xmenuconfig" ]; then
+# Target if required
+if [ "x$1" == "x" ]; then
+    echo "Missing target"
+    exit 1
+else
+    TARGET=$1
+fi
+idf.py set-target $TARGET
+
+# Config if optional
+if [ "x$2" == "xmenuconfig" ]; then
     idf.py menuconfig
 fi 
 
