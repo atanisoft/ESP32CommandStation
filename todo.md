@@ -22,6 +22,7 @@
     - [x] Shunt support
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
 * [x] Deps: Remove nlohmann_json dependency in favor of cJSON.
+* [ ] Docs: Add user guide and how to build guide under docs tree.
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
@@ -38,6 +39,7 @@
 * [x] WebUI: Roster save via WS.
 * [x] WebUI: Expose FastClock configuration (non-realtime).
 * [x] FastClock: Re-add FastClock support.
+* [ ] Build: Improve robustness of gzip search.
 
 ### Nice to have for v2.0
 
@@ -52,13 +54,11 @@
 * WebUI: Show remaining characters for various text fields.
 * WebUI: Filtering of accessories/locos.
 * WiThrottle support.
+* Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
 
 ### Future planning
 
-* StatusLED: Rework to depend on Esp32Ws2812 instead of NeoPixelBus.
-* TrainDB: CBOR data format?
 * TrainDB: Expose via Memory Space?
-* AccessoryDecoderDB: CBOR data format?
 * AccessoryDecoderDB: Routes.
 * Import roster/routes/accessories from JMRI
 * Build: Migrate to IDF components rather than submodules?
