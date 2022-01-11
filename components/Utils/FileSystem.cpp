@@ -92,12 +92,14 @@ void recursive_dump_tree(const std::string &path, bool remove = false, bool firs
     }
 }
 
+#if !CONFIG_USE_SD_DISABLED
 static esp_vfs_fat_mount_config_t sd_cfg =
 {
     .format_if_mount_failed = true, // if the FS is corrupted format.
     .max_files = 10,                // maximum of 10 open files at a time.
     .allocation_unit_size = 0       // default allocation unit size.
 };
+#endif // !CONFIG_USE_SD_DISABLED
 
 void display_fatfs_usage()
 {

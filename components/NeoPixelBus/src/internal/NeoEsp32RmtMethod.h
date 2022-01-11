@@ -527,7 +527,9 @@ public:
 
         ESP_ERROR_CHECK(rmt_driver_uninstall(_channel));
 
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
         gpio_matrix_out(_pin, 0x100, false, false);
+#endif
 #ifdef ARDUINO
         pinMode(_pin, INPUT);
 #endif

@@ -40,6 +40,7 @@
 * [x] WebUI: Expose FastClock configuration (non-realtime).
 * [x] FastClock: Re-add FastClock support.
 * [ ] Build: Improve robustness of gzip search.
+* [ ] Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
 
 ### Nice to have for v2.0
 
@@ -54,7 +55,7 @@
 * WebUI: Show remaining characters for various text fields.
 * WebUI: Filtering of accessories/locos.
 * WiThrottle support.
-* Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
+* Build: IDF v5+ migrate from driver/timer.h to driver/gptimer.h
 
 ### Future planning
 

@@ -1,4 +1,104 @@
 menu "ESP32 Command Station Configuration"
+
+choice ESP_MODEL_HBRIDGE
+    bool "ESP32 / H-Bridge Selection"
+    default ESP_MODEL_HBRIDGE_L298
+
+    config ESP_MODEL_HBRIDGE_L298
+        bool "ESP32 with Arduino Motor Shield (L298)"
+
+    config ESP_MODEL_HBRIDGE_LMD18200
+        bool "ESP32 with LMD18200"
+
+    config ESP_MODEL_HBRIDGE_BTS7960B
+        bool "ESP32 with BTS7960B"
+    
+    config ESP_MODEL_HBRIDGE_PCB_ESP32
+        bool "ESP32 CS PCB with ESP32"
+
+    config ESP_MODEL_HBRIDGE_PCB_ESP32S3
+        bool "ESP32 CS PCB with ESP32S3"
+endchoice
+
+menu "WiFi Configuration"
+    choice WIFI_MODE
+        bool "WiFi Mode"
+        default WIFI_MODE_SOFTAP
+        config WIFI_MODE_STATION
+            bool "Connect to SSID"
+        config WIFI_MODE_SOFTAP
+            bool "Create SoftAP"
+        config WIFI_MODE_SOFTAP_STATION
+            bool "Connect to SSID and create SoftAP"
+        config WIFI_MODE_OFF
+            bool "Disabled"
+    endchoice
+    config WIFI_MODE
+        int
+        default 0 if WIFI_MODE_OFF
+        default 1 if WIFI_MODE_STATION
+        default 2 if WIFI_MODE_SOFTAP
+        default 3 if WIFI_MODE_SOFTAP_STATION
+    config WIFI_HOSTNAME_PREFIX
+        string "Hostname prefix"
+        default "esp32cs_"
+        help
+            The OpenLCB node identifier will be appended to this value, ie:
+            esp32cs_0502010300000.
+    menu "Station Configuration"
+        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
+        config WIFI_STATION_SSID
+            string "Station SSID"
+        config WIFI_STATION_PASSWORD
+            string "Station Password"
+    endmenu
+    menu "SoftAP Configuration"
+        depends on WIFI_MODE_SOFTAP || WIFI_MODE_SOFTAP_STATION
+        config WIFI_SOFTAP_SSID
+            string "SoftAP SSID"
+            default "esp32csap"
+        config WIFI_SOFTAP_PASSWORD
+            string "SoftAP Password"
+            default "esp32csap"
+        config WIFI_SOFTAP_CHANNEL
+            int "SoftAP Channel"
+            default 1
+            range 1 14
+            help
+                This configures the channel that will be used by the SoftAP. There
+                are fourteen channels available to pick from and some are better
+                than others. The best channels to pick from are: 1, 6, 11 since
+                these do not overlap with other channels.
+    endmenu
+    menu "SNTP Configuration"
+        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
+        config SNTP
+            bool "Enable SNTP synchronization"
+            default n
+            help
+                By enabling this option the ESP32 will attempt to synchronize the
+                system time with an external SNTP server once per hour.
+        config SNTP_SERVER
+            string "SNTP Server"
+            default "pool.ntp.org"
+            depends on SNTP
+        config SNTP_TIMEZONE
+            string "Timezone"
+            default "UTC0"
+            depends on SNTP
+            help
+                This is the timezone that the ESP32 OpenLCB IO Board is running in.
+                The value must follow POSIX notation.
+                A few common values:
+                * PST8PDT,M3.2.0,M11.1.0 -- UTC-8 with automatic DST adjustment
+                * MST7MDT,M3.2.0,M11.1.0 -- UTC-7 with automatic DST adjustment
+                * CST6CDT,M3.2.0,M11.1.0 -- UTC-6 with automatic DST adjustment
+                * EST5EDT,M3.2.0,M11.1.0 -- UTC-5 with automatic DST adjustment
+                A complete list can be seen here in the second column:
+                https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
+    endmenu
+endmenu
+
 ###############################################################################
 # NOTE: All log level config options must be kept in sync with
 # components/OpenMRNIDF/src/utils/logging.h:
@@ -19,6 +119,7 @@ menu "Pin Usage"
             int "Track signal/direction pin"
             range 0 33 if IDF_TARGET_ESP32
             range 0 48 if IDF_TARGET_ESP32S3
+            default 19 if ESP_MODEL_HBRIDGE_L298 || ESP_MODEL_HBRIDGE_LMD18200
             default 16 if IDF_TARGET_ESP32
             default 10 if IDF_TARGET_ESP32S3
             help
@@ -49,6 +150,7 @@ menu "Pin Usage"
             int "OPS Track enable/pwm pin"
             range 0 33 if IDF_TARGET_ESP32
             range 0 48 if IDF_TARGET_ESP32S3
+            default 25 if ESP_MODEL_HBRIDGE_L298 || ESP_MODEL_HBRIDGE_LMD18200
             default 17 if IDF_TARGET_ESP32
             default 11 if IDF_TARGET_ESP32S3
             help
@@ -133,6 +235,7 @@ menu "Pin Usage"
             int "PROG Track enable/pwm pin"
             range 0 33 if IDF_TARGET_ESP32
             range 0 48 if IDF_TARGET_ESP32S3
+            default 23 if ESP_MODEL_HBRIDGE_L298 || ESP_MODEL_HBRIDGE_LMD18200
             default 18 if IDF_TARGET_ESP32
             default 9 if IDF_TARGET_ESP32S3
             help
@@ -281,7 +384,8 @@ menu "Pin Usage"
         config STATUS_LED_DATA_PIN
             int "Addressable RGB Data pin"
             range -1 33
-            default 22 if IDF_TARGET_ESP32
+            default 22 if ESP_MODEL_HBRIDGE_PCB_ESP32
+            default -1
             depends on IDF_TARGET_ESP32
             help
                 This pin is used to output a digital signal for Addressable
@@ -332,8 +436,9 @@ menu "Pin Usage"
             int "Factory Reset pin"
             range -1 39 if IDF_TARGET_ESP32
             range -1 48 if IDF_TARGET_ESP32S3
-            default 32 if IDF_TARGET_ESP32
-            default 2 if IDF_TARGET_ESP32S3
+            default 32 if ESP_MODEL_HBRIDGE_PCB_ESP32
+            default 2 if ESP_MODEL_HBRIDGE_PCB_ESP32S3
+            default -1
             help
                 When this pin is pulled to GND during startup for 10 seconds the
                 ESP32 Command Station will reset persistent configuration data.
@@ -345,8 +450,9 @@ menu "Pin Usage"
             int "Bootloader Request pin"
             range -1 39 if IDF_TARGET_ESP32
             range -1 48 if IDF_TARGET_ESP32S3
-            default 33 if IDF_TARGET_ESP32
-            default 1 if IDF_TARGET_ESP32S3
+            default 33 if ESP_MODEL_HBRIDGE_PCB_ESP32
+            default 1 if ESP_MODEL_HBRIDGE_PCB_ESP32S3
+            default -1
             help
                 When this pin is pulled to GND during startup the ESP32 Command
                 Station will enter the OpenLCB bootloader rather than enter the
@@ -385,8 +491,9 @@ menu "Pin Usage"
                 Station, when the temperature is too high the ESP32 Command
                 Station will shutdown track output power until temperature has
                 dropped below configured levels.
-            default TEMPSENSOR_ADC_CHANNEL_7 if IDF_TARGET_ESP32
-            default TEMPSENSOR_ADC2_CHANNEL_2 if IDF_TARGET_ESP32S3
+            default TEMPSENSOR_ADC_CHANNEL_7 if ESP_MODEL_HBRIDGE_PCB_ESP32
+            default TEMPSENSOR_ADC2_CHANNEL_2 if ESP_MODEL_HBRIDGE_PCB_ESP32S3
+            default TEMPSENSOR_DISABLED
             config TEMPSENSOR_DISABLED
                 bool "Disabled"
             config TEMPSENSOR_ADC_CHANNEL_0
@@ -472,7 +579,10 @@ menu "Pin Usage"
     menu "SD Card"
         choice SD_MODE
             bool "SD Mode"
-            default USE_SD_SPI_MODE
+            default USE_SD_SPI_MODE if ESP_MODEL_HBRIDGE_PCB_ESP32 || ESP_MODEL_HBRIDGE_PCB_ESP32S3
+            default USE_SD_DISABLED
+            config USE_SD_DISABLED
+                bool "Disabled"
             config USE_SD_SPI_MODE
                 bool "SD SPI"
                 help
@@ -558,77 +668,77 @@ menu "OpenLCB Configuration"
             The default node ID is part of a reserved range of ID values.
     config OLCB_TWAI_ENABLED
         bool "Enable TWAI (CAN) interface"
-        default y
+        default y if ESP_MODEL_HBRIDGE_PCB_ESP32 || ESP_MODEL_HBRIDGE_PCB_ESP32S3
+        default n
     config OLCB_UPLINK_MODE_DEFAULT
         int
         default 0 if OLCB_TWAI_ENABLED
         default 1 if !OLCB_TWAI_ENABLED
-    config OLCB_TWAI_SELECT
-        bool "Use select() based TWAI driver"
-        default y
-        depends on OLCB_TWAI_ENABLED
-    config OLCB_TWAI_USE_IPC
-        bool
-        default y
-    config OLCB_MEMORY_SPACES
-        int "MemoryConfig space limit"
-        default 20
-        help
-            Maximum number of memory spaces that can be registered for the
-            MemoryConfig datagram handler.
-    config OLCB_EXECUTOR_SELECT_PRESCALER
-        int "StateFlows to execute between select() calls"
-        range 5 300
-        default 60
-        help
-            Executors will run this many Executables (if there is anything
-            scheduled) before two calls to select. This helps in reducing the
-            overhead of the select calls.
-    config OLCB_LOCAL_ALIAS_COUNT
-        int "Number of 'local' LCC aliases"
-        default 100
-        help
-            This controls how many trains will be supported concurrently by
-            the command station.
-    config OLCB_SD_FSYNC_SEC
-        int "Automatic fsync() interval (seconds)"
-        default 10
-        help
-            For some file systems (SD only currently) it is required to call
-            fsync() to force synchronize file changes to the file system due to
-            small file size. In the case of the SD file system any file
-            modification smaller than 512 bytes will remain in the in-memory
-            cache and not be persisted to the SD card without a call to fsync()
-            or close(). In the case of the LCC CDI file, the CDI file remains
-            open for the lifetime of the application.
-    config OLCB_GC_OUTBOUND_PACKET_LIMIT
-        int "GridConnect outbound packet count limit"
-        default 5
-        help
-            Number of pending buffers (of type string) in the outgoing hub on a
-            per-connection basis. This limit ensures that we don't leak memory
-            if the output socket cannot send the data fast enough.
-    config OLCB_GC_INBOUND_PACKET_LIMIT
-        int "GridConnect inbound packet count limit"
-        default 5
-        help
-            Number of pending buffers (of type string) in the incoming hub on a
-            per-connection basis. This limit ensures that we don't leak memory
-            if the output socket cannot send the data fast enough.
-    config OLCB_PRINT_ALL_PACKETS
-        bool "Print all packets"
-        default n
-        help
-            Enabling this option will cause all LCC packets to be printed to
-            the serial console.
-    config OLCB_GC_NEWLINES
-        bool "Add newline to GridConnect packets"
-        default y if OLCB_PRINT_ALL_PACKETS
-        default n
-        help
-            Enabling this option will generate a newline character after
-            every GridConnect packet that is sent out. This is generally
-            only needed for debug purposes.
+    menu "Advanced Configuration"
+        config OLCB_TWAI_SELECT
+            bool "Use select() based TWAI driver"
+            default y
+            depends on OLCB_TWAI_ENABLED
+        config OLCB_MEMORY_SPACES
+            int "MemoryConfig space limit"
+            default 20
+            help
+                Maximum number of memory spaces that can be registered for the
+                MemoryConfig datagram handler.
+        config OLCB_EXECUTOR_SELECT_PRESCALER
+            int "StateFlows to execute between select() calls"
+            range 5 300
+            default 60
+            help
+                Executors will run this many Executables (if there is anything
+                scheduled) before two calls to select. This helps in reducing the
+                overhead of the select calls.
+        config OLCB_LOCAL_ALIAS_COUNT
+            int "Number of 'local' LCC aliases"
+            default 100
+            help
+                This controls how many trains will be supported concurrently by
+                the command station.
+        config OLCB_SD_FSYNC_SEC
+            int "Automatic fsync() interval (seconds)"
+            default 10
+            help
+                For some file systems (SD only currently) it is required to call
+                fsync() to force synchronize file changes to the file system due to
+                small file size. In the case of the SD file system any file
+                modification smaller than 512 bytes will remain in the in-memory
+                cache and not be persisted to the SD card without a call to fsync()
+                or close(). In the case of the LCC CDI file, the CDI file remains
+                open for the lifetime of the application.
+        config OLCB_GC_OUTBOUND_PACKET_LIMIT
+            int "GridConnect outbound packet count limit"
+            default 5
+            help
+                Number of pending buffers (of type string) in the outgoing hub on a
+                per-connection basis. This limit ensures that we don't leak memory
+                if the output socket cannot send the data fast enough.
+        config OLCB_GC_INBOUND_PACKET_LIMIT
+            int "GridConnect inbound packet count limit"
+            default 5
+            help
+                Number of pending buffers (of type string) in the incoming hub on a
+                per-connection basis. This limit ensures that we don't leak memory
+                if the output socket cannot send the data fast enough.
+        config OLCB_PRINT_ALL_PACKETS
+            bool "Print all packets"
+            default n
+            help
+                Enabling this option will cause all LCC packets to be printed to
+                the serial console.
+        config OLCB_GC_NEWLINES
+            bool "Add newline to GridConnect packets"
+            default y if OLCB_PRINT_ALL_PACKETS
+            default n
+            help
+                Enabling this option will generate a newline character after
+                every GridConnect packet that is sent out. This is generally
+                only needed for debug purposes.
+    endmenu
     config OLCB_NODEID_MEMORY_SPACE_ID
         hex
         default 0xAA
@@ -766,90 +876,14 @@ menu "Status Display"
         default 700000 if DISPLAY_TYPE_OLED
         default 100000
 endmenu
-menu "WiFi Configuration"
-    choice WIFI_MODE
-        bool "WiFi Mode"
-        default WIFI_MODE_SOFTAP
-        config WIFI_MODE_STATION
-            bool "Connect to SSID"
-        config WIFI_MODE_SOFTAP
-            bool "Create SoftAP"
-        config WIFI_MODE_SOFTAP_STATION
-            bool "Connect to SSID and create SoftAP"
-        config WIFI_MODE_OFF
-            bool "Disabled"
-    endchoice
-    config WIFI_MODE
-        int
-        default 0 if WIFI_MODE_OFF
-        default 1 if WIFI_MODE_STATION
-        default 2 if WIFI_MODE_SOFTAP
-        default 3 if WIFI_MODE_SOFTAP_STATION
-    config WIFI_HOSTNAME_PREFIX
-        string "Hostname prefix"
-        default "esp32cs_"
-        help
-            The OpenLCB node identifier will be appended to this value, ie:
-            esp32cs_0502010300000.
-    menu "Station Configuration"
-        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
-        config WIFI_STATION_SSID
-            string "Station SSID"
-        config WIFI_STATION_PASSWORD
-            string "Station Password"
-    endmenu
-    menu "SoftAP Configuration"
-        depends on WIFI_MODE_SOFTAP || WIFI_MODE_SOFTAP_STATION
-        config WIFI_SOFTAP_SSID
-            string "SoftAP SSID"
-            default "esp32csap"
-        config WIFI_SOFTAP_PASSWORD
-            string "SoftAP Password"
-            default "esp32csap"
-        config WIFI_SOFTAP_CHANNEL
-            int "SoftAP Channel"
-            default 1
-            range 1 14
-            help
-                This configures the channel that will be used by the SoftAP. There
-                are fourteen channels available to pick from and some are better
-                than others. The best channels to pick from are: 1, 6, 11 since
-                these do not overlap with other channels.
-    endmenu
-    menu "SNTP Configuration"
-        depends on WIFI_MODE_STATION || WIFI_MODE_SOFTAP_STATION
-        config SNTP
-            bool "Enable SNTP synchronization"
-            default n
-            help
-                By enabling this option the ESP32 will attempt to synchronize the
-                system time with an external SNTP server once per hour.
-        config SNTP_SERVER
-            string "SNTP Server"
-            default "pool.ntp.org"
-            depends on SNTP
-        config SNTP_TIMEZONE
-            string "Timezone"
-            default "UTC0"
-            depends on SNTP
-            help
-                This is the timezone that the ESP32 OpenLCB IO Board is running in.
-                The value must follow POSIX notation.
-                A few common values:
-                * PST8PDT,M3.2.0,M11.1.0 -- UTC-8 with automatic DST adjustment
-                * MST7MDT,M3.2.0,M11.1.0 -- UTC-7 with automatic DST adjustment
-                * CST6CDT,M3.2.0,M11.1.0 -- UTC-6 with automatic DST adjustment
-                * EST5EDT,M3.2.0,M11.1.0 -- UTC-5 with automatic DST adjustment
-                A complete list can be seen here in the second column:
-                https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
-    endmenu
-endmenu
 menu "DCC Signal Configuration"
     config DCC_VFS_MOUNT_POINT
         string
         default "/dev/track"
     choice DCC_TRACK_OUTPUTS
         bool "Track Outputs"
+        default DCC_TRACK_OUTPUTS_OPS_ONLY if ESP_MODEL_HBRIDGE_LMD18200 || ESP_MODEL_HBRIDGE_BTS7960B
+        default DCC_TRACK_OUTPUTS_OPS_AND_PROG
         config DCC_TRACK_OUTPUTS_OPS_AND_PROG
             bool "OPS and PROG"
         config DCC_TRACK_OUTPUTS_OPS_ONLY
@@ -876,7 +910,10 @@ menu "DCC Signal Configuration"
         depends on DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_OPS_ONLY
         choice OPS_HBRIDGE_TYPE
             bool "H-Bridge type"
-            default OPS_HBRIDGE_DRV8873_5A
+            default OPS_HBRIDGE_L298 if ESP_MODEL_HBRIDGE_L298
+            default OPS_HBRIDGE_LMD18200 if ESP_MODEL_HBRIDGE_LMD18200
+            default OPS_HBRIDGE_BTS7960B_5A if ESP_MODEL_HBRIDGE_BTS7960B
+            default OPS_HBRIDGE_DRV8873_5A if ESP_MODEL_HBRIDGE_PCB_ESP32 || ESP_MODEL_HBRIDGE_PCB_ESP32S3
             help
                 The following motor driver modules are supported:
                 L298           : Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A per channel https://store.arduino.cc/usa/arduino-motor-shield-rev3
@@ -946,7 +983,8 @@ menu "DCC Signal Configuration"
         depends on DCC_TRACK_OUTPUTS_OPS_AND_PROG || DCC_TRACK_OUTPUTS_PROG_ONLY
         choice PROG_HBRIDGE_TYPE
             bool "H-Bridge type"
-            default PROG_HBRIDGE_DRV880X
+            default PROG_HBRIDGE_L298 if ESP_MODEL_HBRIDGE_L298
+            default PROG_HBRIDGE_DRV880X if ESP_MODEL_HBRIDGE_PCB_ESP32 || ESP_MODEL_HBRIDGE_PCB_ESP32S3
             help
                 The following motor driver modules are supported:
                 L298           : Arduino Motor shield Rev3 based on the L298 chip. Max Output 2A per channel https://store.arduino.cc/usa/arduino-motor-shield-rev3
@@ -1104,8 +1142,8 @@ endmenu
 menu "RailCom Configuration"
     choice RAILCOM
         bool "Mode"
-        default RAILCOM_FULL if IDF_TARGET_ESP32
-        default RAILCOM_DISABLED if IDF_TARGET_ESP32S3
+        default RAILCOM_FULL if ESP_MODEL_HBRIDGE_PCB_ESP32
+        default RAILCOM_DISABLED
         config RAILCOM_FULL
             bool "Generate cut-out and receive data"
         config RAILCOM_CUTOUT_ONLY
@@ -1127,19 +1165,22 @@ menu "RailCom Configuration"
         default 1 if RAILCOM_UART1
         default 2 if RAILCOM_UART2
         depends on RAILCOM_FULL
-    config RAILCOM_DUMP_PACKETS
-        bool "Display all RailCom packets as they are received"
-        default n
-        depends on RAILCOM_FULL
-    config RAILCOM_FEEDBACK_QUEUE
-        int "Feedback queue size"
-        default 10
-        depends on RAILCOM_FULL
-        help
-            This controls the number of RailCom feedback packets to
-            pre-allocate for receiving feedback from RailCom enabled DCC
-            decoders. This value must be larger than the OPS DCC packet
-            queue size.
+
+    menu "Advanced Configuration"
+        config RAILCOM_DUMP_PACKETS
+            bool "Display all RailCom packets as they are received"
+            default n
+            depends on RAILCOM_FULL
+        config RAILCOM_FEEDBACK_QUEUE
+            int "Feedback queue size"
+            default 10
+            depends on RAILCOM_FULL
+            help
+                This controls the number of RailCom feedback packets to
+                pre-allocate for receiving feedback from RailCom enabled DCC
+                decoders. This value must be larger than the OPS DCC packet
+                queue size.
+    endmenu
 endmenu
 menu "Fast Clock Configuration"
     config FASTCLOCK
@@ -1334,22 +1375,24 @@ menu "Turnout Management"
             will result in it being created and persisted. NOTE: This will only
             create DCC Turnouts. For OpenLCB based turnouts you will need to
             update them to provide the event mapping.
-    config TURNOUT_PERSISTENCE_INTERVAL_SEC
-        int "Number of seconds between automatic persistence of turnout list"
-        default 30
-    choice TURNOUT_LOGGING
-        bool "Log level"
-        default TURNOUT_LOGGING_MINIMAL
-        config TURNOUT_LOGGING_VERBOSE
-            bool "Verbose"
-        config TURNOUT_LOGGING_MINIMAL
-            bool "Minimal"
-    endchoice
-    config TURNOUT_LOG_LEVEL
-        int
-        default 4 if TURNOUT_LOGGING_MINIMAL
-        default 3 if TURNOUT_LOGGING_VERBOSE
-        default 5
+    menu "Advanced Configuration"
+        config TURNOUT_PERSISTENCE_INTERVAL_SEC
+            int "Number of seconds between automatic persistence of turnout list"
+            default 30
+        choice TURNOUT_LOGGING
+            bool "Log level"
+            default TURNOUT_LOGGING_MINIMAL
+            config TURNOUT_LOGGING_VERBOSE
+                bool "Verbose"
+            config TURNOUT_LOGGING_MINIMAL
+                bool "Minimal"
+        endchoice
+        config TURNOUT_LOG_LEVEL
+            int
+            default 4 if TURNOUT_LOGGING_MINIMAL
+            default 3 if TURNOUT_LOGGING_VERBOSE
+            default 5
+    endmenu
 endmenu
 menu "Locomotive Roster"
     config ROSTER_AUTO_IDLE_NEW_LOCOS
@@ -1365,42 +1408,46 @@ menu "Locomotive Roster"
             By enabling this option, any train that is requested that does not
             already exist in the locomotive roster will be automatically added
             to the roster using DCC 128 speed step mode.
-    config ROSTER_PERSISTENCE_INTERVAL_SEC
-        int "Locomotive roster persistence interval (seconds)"
-        default 30
-        help
-            Any changes to locomotives in the roster will be persisted after
-            this many seconds to persistant storage (SPIFFS or SD). This is
-            done to minimize the number of write operations when roster entries
-            are modified.
-    choice ROSTER_LOGGING
-        bool "Log level"
-        default ROSTER_LOGGING_MINIMAL
-        config ROSTER_LOGGING_VERBOSE
-            bool "Verbose"
-        config ROSTER_LOGGING_MINIMAL
-            bool "Minimal"
-    endchoice
-    config ROSTER_LOG_LEVEL
-        int
-        default 4 if ROSTER_LOGGING_MINIMAL
-        default 3 if ROSTER_LOGGING_VERBOSE
-        default 5
+    menu "Advanced Configuration"
+        config ROSTER_PERSISTENCE_INTERVAL_SEC
+            int "Locomotive roster persistence interval (seconds)"
+            default 30
+            help
+                Any changes to locomotives in the roster will be persisted after
+                this many seconds to persistant storage (SPIFFS or SD). This is
+                done to minimize the number of write operations when roster entries
+                are modified.
+        choice ROSTER_LOGGING
+            bool "Log level"
+            default ROSTER_LOGGING_MINIMAL
+            config ROSTER_LOGGING_VERBOSE
+                bool "Verbose"
+            config ROSTER_LOGGING_MINIMAL
+                bool "Minimal"
+        endchoice
+        config ROSTER_LOG_LEVEL
+            int
+            default 4 if ROSTER_LOGGING_MINIMAL
+            default 3 if ROSTER_LOGGING_VERBOSE
+            default 5
+    endmenu
 endmenu
 menu "Train Search Protocol"
-    choice TSP_LOGGING
-        bool "Log level"
-        default TSP_LOGGING_MINIMAL
-        config TSP_LOGGING_VERBOSE
-            bool "Verbose"
-        config TSP_LOGGING_MINIMAL
-            bool "Minimal"
-    endchoice
-    config TSP_LOGGING_LEVEL
-        int
-        default 4 if TSP_LOGGING_MINIMAL
-        default 3 if TSP_LOGGING_VERBOSE
-        default 5
+    menu "Advanced Configuration"
+        choice TSP_LOGGING
+            bool "Log level"
+            default TSP_LOGGING_MINIMAL
+            config TSP_LOGGING_VERBOSE
+                bool "Verbose"
+            config TSP_LOGGING_MINIMAL
+                bool "Minimal"
+        endchoice
+        config TSP_LOGGING_LEVEL
+            int
+            default 4 if TSP_LOGGING_MINIMAL
+            default 3 if TSP_LOGGING_VERBOSE
+            default 5
+    endmenu
 endmenu
 menu "Crash Behavior"
     config CRASH_COLLECT_CORE_DUMP
@@ -1434,6 +1481,7 @@ menu "Crash Behavior"
             automatically when detected.
 endmenu
 menu "Current Sense"
+    visible if ESP_MODEL_HBRIDGE_PCB_ESP32 || ESP_MODEL_HBRIDGE_PCB_ESP32S3
     config CURRENTSENSE_USE_SHUNT
         bool "Use shunt for current sense"
         default n
