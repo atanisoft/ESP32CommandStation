@@ -12,8 +12,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 3
       matrix:
-        target: [esp32-v5, esp32-v43, esp32-v44, esp32s3-v44, esp32s3-v5]
+        target: [esp32-v43, esp32-v44, esp32-v44-pcb, esp32-v5, esp32-v5-pcb, esp32s3-v44, esp32s3-v44-pcb, esp32s3-v5, esp32s3-v5-pcb]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -32,6 +33,16 @@ jobs:
         with:
           target: ${{ steps.target.outputs._0 }}
         if: ${{ steps.target.outputs._1 == 'v5' }}
+      - uses: finnp/create-file-action@master
+        env:
+          FILE_NAME: 'sdkconfig'
+          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_PCB_ESP32=y'
+        if: ${{ steps.target.length > 2 && steps.target.outputs._0 == 'esp32' && steps.target.outputs._2 == 'pcb' }}
+      - uses: finnp/create-file-action@master
+        env:
+          FILE_NAME: 'sdkconfig'
+          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_PCB_ESP32S3=y'
+        if: ${{ steps.target.length > 2 && steps.target.outputs._0 == 'esp32s3' && steps.target.outputs._2 == 'pcb' }}
       - name: Build (IDF v4.4)
         uses: atanisoft/esp-idf-ci-action@release-v4.4
         with:
@@ -51,7 +62,7 @@ jobs:
       - name: Package binaries
         uses: actions/upload-artifact@v1
         with:
-          name: ESP32CommandStation
+          name: ESP32CommandStation-${{ matrix.target }}
           path: binaries
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
