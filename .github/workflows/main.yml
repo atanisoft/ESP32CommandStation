@@ -37,12 +37,12 @@ jobs:
         env:
           FILE_NAME: 'sdkconfig'
           FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_PCB_ESP32=y'
-        if: ${{ steps.target.length > 2 && steps.target.outputs._0 == 'esp32' && steps.target.outputs._2 == 'pcb' }}
+        if: ${{ steps.target.outputs._0 == 'esp32' && steps.target.outputs._2 == 'pcb' }}
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
           FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_PCB_ESP32S3=y'
-        if: ${{ steps.target.length > 2 && steps.target.outputs._0 == 'esp32s3' && steps.target.outputs._2 == 'pcb' }}
+        if: ${{ steps.target.outputs._0 == 'esp32s3' && steps.target.outputs._2 == 'pcb' }}
       - name: Build (IDF v4.4)
         uses: atanisoft/esp-idf-ci-action@release-v4.4
         with:
