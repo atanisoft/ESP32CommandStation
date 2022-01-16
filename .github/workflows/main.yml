@@ -14,7 +14,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        target: [esp32-v43, esp32-v44, esp32-v44-pcb, esp32-v5, esp32-v5-pcb, esp32s3-v44, esp32s3-v44-pcb, esp32s3-v5, esp32s3-v5-pcb]
+        target: [esp32-idfv43-l298, esp32-idfv43-lmd18200, esp32-idfv43-bts7960, esp32-idfv44-l298, esp32-idfv44-lmd18200, esp32-idfv44-bts7960, esp32-idfv44-pcb, esp32-idfv5-l298, esp32-idfv5-lmd18200, esp32-idfv5-bts7960, esp32-idfv5-pcb, esp32s3-idfv44-pcb, esp32s3-idfv5-pcb]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -25,14 +25,21 @@ jobs:
         with:
           msg: ${{ matrix.target }}
           separator: '-'
-      - name: Remove build artifacts
-        run: |
-          rm -rf build sdkconfig
-      - name: Build (IDF v5)
-        uses: atanisoft/esp-idf-ci-action@main
-        with:
-          target: ${{ steps.target.outputs._0 }}
-        if: ${{ steps.target.outputs._1 == 'v5' }}
+      - uses: finnp/create-file-action@master
+        env:
+          FILE_NAME: 'sdkconfig'
+          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_L298=y'
+        if: ${{ steps.target.outputs._2 == 'l298' }}
+      - uses: finnp/create-file-action@master
+        env:
+          FILE_NAME: 'sdkconfig'
+          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_LMD18200=y'
+        if: ${{ steps.target.outputs._2 == 'lmd18200' }}
+      - uses: finnp/create-file-action@master
+        env:
+          FILE_NAME: 'sdkconfig'
+          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_BTS7960B=y'
+        if: ${{ steps.target.outputs._2 == 'bts7960' }}
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
@@ -43,14 +50,22 @@ jobs:
           FILE_NAME: 'sdkconfig'
           FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_PCB_ESP32S3=y'
         if: ${{ steps.target.outputs._0 == 'esp32s3' && steps.target.outputs._2 == 'pcb' }}
+      - name: Remove build artifacts (if present)
+        run: |
+          rm -rf build sdkconfig
+      - name: Build (IDF v5)
+        uses: atanisoft/esp-idf-ci-action@main
+        with:
+          target: ${{ steps.target.outputs._0 }}
+        if: ${{ steps.target.outputs._1 == 'idfv5' }}
       - name: Build (IDF v4.4)
         uses: atanisoft/esp-idf-ci-action@release-v4.4
         with:
           target: ${{ steps.target.outputs._0 }}
-        if: ${{ steps.target.outputs._1 == 'v44' }}
+        if: ${{ steps.target.outputs._1 == 'idfv44' }}
       - name: Build (IDF v4.3)
         uses: espressif/esp-idf-ci-action@release-v4.3
-        if: ${{ steps.target.outputs._1 == 'v43' }}
+        if: ${{ steps.target.outputs._1 == 'idfv43' }}
       - name: Prepare Binaries
         run: |
           mkdir -p binaries
@@ -59,6 +74,15 @@ jobs:
           cp build/partition_table/partition-table.bin binaries
           cp build/ota_data_initial.bin binaries
           cp build/bootloader/bootloader.bin binaries
+          egrep 'DCC|OPS|PROG|RAILCOM|I2C|STATUS|FACTORY|BOOTLOADER|TWAI' sdkconfig | grep _PIN | egrep -v '^#'> binaries/pinmap.txt
+          egrep 'ADC_CHANNEL_|CONFIG_SD_SPI' sdkconfig | egrep -v '^#' >> binaries/pinmap.txt
+          egrep 'CONFIG_WIFI_SOFTAP_[SSID|PASSWORD]|CONFIG_WIFI_STATION' sdkconfig | egrep -v '^#' >> binaries/wifi.txt
+      - name: ADC Pin Map (ESP32)
+          cat .github/adc_pinmap.txt >> binaries/pinmap.txt
+        if: ${{ steps.target.outputs._0 == 'esp32' }}
+      - name: ADC Pin Map (ESP32-S3)
+          cat .github/adc_pinmaps3.txt >> binaries/pinmap.txt
+        if: ${{ steps.target.outputs._0 == 'esp32s3' }}
       - name: Package binaries
         uses: actions/upload-artifact@v1
         with:

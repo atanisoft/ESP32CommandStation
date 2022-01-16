@@ -1,20 +1,73 @@
-If you are using JMRI to update the ESP32CommandStation node you will want to use only
-ESP32CommandStation.bin via the JMRI Firmware Update utility.
+Using this binary firmware bundle
+---------------------------------
 
-If you are wanting to wipe the ESP32 clean and upload the new binary firmware
-to it you will want to use esptool.py (or a similar tool) to erase the flash
-and upload the binary files.
+This firmware bundle contains a pre-compiled and pre-configured version of the
+ESP32CommandStation code.
 
-Erase flash:
-esptool.py -p /dev/ttyUSB0 erase_flash
+There are currently four ways to utilize this firmware bundle:
 
-Uploading the binary firmware to the ESP32:
-esptool.py -p /dev/ttyUSB0 --before=default_reset --after=hard_reset
+1. esptool.
+2. Espressif Flash Download Tool.
+3. JMRI Firmware Update utility.
+4. Firmware Update via built-in web interface.
+
+esptool
+-------
+
+esptool is a command line utility for flashing binary firmware to various ESP32
+devices. This is the preferred method for initial firmware flashing.
+
+The command below can be used to flash the firmware to the ESP32:
+
+esptool.py --port /dev/ttyUSB0 --before=default_reset --after=hard_reset
     write_flash 0x8000 partition-table.bin 0xe000 ota_data_initial.bin
     0x1000 bootloader.bin 0x10000 ESP32CommandStation.bin
 
-Note: The esptool.py command above should be all on one line.
+Note: The command above should be a single line.
 
-If you prefer a graphical utility for flashing you can use the Flash Download
-Tool available from https://www.espressif.com/en/support/download/other-tools
-to write the four binary files listed above at the listed offsets.
+The port parameter should be adjusted to your environment, on Windows this is
+usually prefixed by COM rather. On Linux it will be similar to the provided
+value. On Mac the ESP32 may show up as /dev/cu.SLAB_USBtoUART and you may also
+require additional drivers.
+
+If you need/want to erase the flash on the ESP32 the following command can be
+used:
+
+esptool.py --port /dev/ttyUSB0 erase_flash
+
+Note: The port parameter will need to be adjusted similar to the flashing
+command above.
+
+Espressif Flash Download Tool
+-----------------------------
+
+The Espressif Flash Download Tool is a graphical Windows only utility that
+operates similar to esptool. This tool can be downloaded via the link below:
+https://www.espressif.com/en/support/download/other-tools
+
+Use the following offsets and binaries for this utility:
+
+0x8000 partition-table.bin
+0xe000 ota_data_initial.bin
+0x1000 bootloader.bin
+0x10000 ESP32CommandStation.bin
+
+JMRI Firmware Update Utility
+----------------------------
+
+JMRI has built-in support for uploading firmware to OpenLCB (LCC) connected
+devices. At this time ESP32 Command Station only supports this feature when
+using a CAN (TWAI) physical connection between the ESP32 Command Station and
+the computer running JMRI. This approach can not be used as the initial
+firmware upload to the ESP32.
+
+When using JMRI to upload the firmware only ESP32CommandStation.bin should be
+used for upload.
+
+
+Firmware Update via built-in web interface
+------------------------------------------
+
+After the initial firmware flashing has been completed it is possible to use
+the built-in web interface to upload new firmware versions to the ESP32 Command
+Station. Using this interface only ESP32CommandStation.bin should be uploaded.
