@@ -22,7 +22,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <esp_idf_version.h>
 
 #include <dcc/DccOutput.hxx>
-#if ESP_IDF_VERSION_MAJOR >= 5
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
 #include <esp_private/periph_ctrl.h>
 #else // IDF v4.x (or earlier)
 #include <driver/periph_ctrl.h>
@@ -37,6 +37,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <hal/timer_types.h>
 #include <hal/uart_types.h>
 #include <soc/dport_reg.h>
+#include <soc/gpio_sig_map.h>
 #include <soc/periph_defs.h>
 #include <soc/uart_struct.h>
 #include <soc/uart_reg.h>
@@ -485,7 +486,7 @@ struct RailComHwDefs
 #if CONFIG_RAILCOM_FULL
     // initialize the UART
     periph_module_enable(UART_PERIPH);
-    gpio_pad_select_gpio(RAILCOM_DATA_PIN);
+    esp_rom_gpio_pad_select_gpio(RAILCOM_DATA_PIN);
     esp_rom_gpio_connect_in_signal(RAILCOM_DATA_PIN, UART_MATRIX_IDX, false);
 #endif // CONFIG_RAILCOM_FULL
   }

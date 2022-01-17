@@ -29,6 +29,11 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <esp_core_dump.h>
 #include <esp_ipc.h>
 #include <esp_log.h>
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#include <esp32/rom/rtc.h>
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#include <esp32s3/rom/rtc.h>
+#endif
 #include <esp_ota_ops.h>
 #include <FileSystem.hxx>
 #include <EventBroadcastHelper.hxx>
