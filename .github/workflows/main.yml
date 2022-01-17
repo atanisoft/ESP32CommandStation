@@ -78,9 +78,11 @@ jobs:
           egrep 'ADC_CHANNEL_|CONFIG_SD_SPI' sdkconfig | egrep -v '^#' >> binaries/pinmap.txt
           egrep 'CONFIG_WIFI_SOFTAP_[SSID|PASSWORD]|CONFIG_WIFI_STATION' sdkconfig | egrep -v '^#' >> binaries/wifi.txt
       - name: ADC Pin Map (ESP32)
+        run: |
           cat .github/adc_pinmap.txt >> binaries/pinmap.txt
         if: ${{ steps.target.outputs._0 == 'esp32' }}
       - name: ADC Pin Map (ESP32-S3)
+        run: |
           cat .github/adc_pinmaps3.txt >> binaries/pinmap.txt
         if: ${{ steps.target.outputs._0 == 'esp32s3' }}
       - name: Package binaries
