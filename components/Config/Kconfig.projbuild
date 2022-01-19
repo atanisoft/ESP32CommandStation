@@ -457,7 +457,6 @@ menu "GPIO Pin Assignment"
             default 33 if ESP_MODEL_HBRIDGE_PCB_ESP32
             default 1 if ESP_MODEL_HBRIDGE_PCB_ESP32S3
             default -1
-            visible if OLCB_TWAI_ENABLED
             help
                 When this pin is pulled to GND during startup the ESP32 Command
                 Station will enter the OpenLCB bootloader rather than enter the
@@ -776,6 +775,7 @@ menu "Status Display Configuration"
             bool "LCD"
     endchoice
     menu "LCD"
+        depends on DISPLAY_TYPE_LCD
         choice DISPLAY_LCD_TYPE
             bool "Display Size"
             default DISPLAY_LCD_20x4
@@ -788,7 +788,6 @@ menu "Status Display Configuration"
             config DISPLAY_LCD_16x2
                 bool "16 columns, 2 lines"
         endchoice
-        depends on DISPLAY_TYPE_LCD
         config DISPLAY_LCD_BACKLIGHT
             bool "Enable Backlight"
             help
