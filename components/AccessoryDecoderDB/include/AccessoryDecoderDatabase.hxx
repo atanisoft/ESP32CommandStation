@@ -20,8 +20,8 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include "AccessoryDecoderDataTypes.hxx"
 #include <AutoPersistCallbackFlow.h>
-#include <dcc/PacketFlowInterface.hxx>
 #include <dcc/PacketSource.hxx>
+#include <dcc/TrackIf.hxx>
 #include <mutex>
 #include <openlcb/DccAccyConsumer.hxx>
 #include <openlcb/EventHandlerTemplates.hxx>
@@ -40,10 +40,10 @@ public:
   /// @param node @ref openlcb::Node to use for the DCC Accessory events
   /// processing.
   /// @param service @ref Service to use for the background persistence task.
-  /// @param track @ref dcc::PacketFlowInterface to send DCC Accessory decoder
+  /// @param track @ref dcc::TrackIf to send DCC Accessory decoder
   /// packets to.
   AccessoryDecoderDB(openlcb::Node *node, Service *service,
-                     dcc::PacketFlowInterface *track);
+                     dcc::TrackIf *track);
 
   /// Destructor.
   ~AccessoryDecoderDB();
@@ -157,7 +157,7 @@ private:
   openlcb::Node *node_;
 
   /// Track interface to route DCC packets to.
-  dcc::PacketFlowInterface *track_;
+  dcc::TrackIf *track_;
 
   /// Background persistence flow for registered accessory decoders.
   AutoPersistFlow persistFlow_;

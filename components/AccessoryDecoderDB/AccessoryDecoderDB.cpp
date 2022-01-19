@@ -58,7 +58,7 @@ static constexpr uint64_t DB_PERSIST_INTERVAL =
   )
 
 AccessoryDecoderDB::AccessoryDecoderDB(openlcb::Node *node, Service *service,
-  dcc::PacketFlowInterface *track)
+  dcc::TrackIf *track)
   : node_(node), track_(track),
     persistFlow_(service, DB_PERSIST_INTERVAL,
                  std::bind(&AccessoryDecoderDB::persist, this)),
@@ -490,7 +490,7 @@ void AccessoryDecoderDB::generate_dcc_packet(const uint16_t address,
                                              bool thrown, bool on_off)
 {
   const uint16_t addr = (((address - 1) << 1) | thrown);
-  dcc::PacketFlowInterface::message_type *pkt;
+  dcc::TrackIf::message_type *pkt;
   mainBufferPool->alloc(&pkt);
   auto *packet = pkt->data();
   packet->add_dcc_basic_accessory(addr, on_off);
