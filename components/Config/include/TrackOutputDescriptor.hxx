@@ -20,6 +20,8 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 
 #include <openlcb/ConfigRepresentation.hxx>
 
+#include "hardware.hxx"
+
 namespace esp32cs
 {
   /// <map> of possible keys and descriptive values to show to the user for

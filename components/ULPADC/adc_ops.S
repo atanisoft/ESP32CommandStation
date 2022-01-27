@@ -17,6 +17,16 @@ COPYRIGHT (c) 2021 Mike Dunston
 
 #include "sdkconfig.h"
 
+#if CONFIG_ESP32CS_PCB
+#include "pinmap-pcb.hxx"
+#elif CONFIG_ESP32CS_L298
+#include "pinmap-l298.hxx"
+#elif CONFIG_ESP32CS_LMD18200
+#include "pinmap-lmd18200.hxx"
+#elif CONFIG_ESP32CS_BTS7960B || CONFIG_ESP32CS_BTS7960B_X2
+#include "pinmap-bts7960.hxx"
+#endif
+
 #include <soc/rtc_cntl_reg.h>
 #include <soc/soc_ulp.h>
 

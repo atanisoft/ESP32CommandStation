@@ -71,7 +71,7 @@ public:
   {
     railComHubFlow_ = hubFlow;
 
-#if CONFIG_RAILCOM_FULL
+#if CONFIG_RAILCOM_DATA_ENABLED
     HW::hw_init();
     LOG(INFO, "[RailCom] Initializing detector using UART %d", HW::UART);
     portENTER_CRITICAL_SAFE(&esp32_uart_mux);
@@ -97,7 +97,7 @@ public:
     ESP_ERROR_CHECK(
       esp_intr_alloc(HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED
                    , esp32_railcom_uart_isr<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>, this, nullptr));
-#endif // CONFIG_RAILCOM_FULL
+#endif // CONFIG_RAILCOM_DATA_ENABLED
 
     LOG(INFO, "[RailCom] Configuring hardware timer (%d:%d)...", HW::TIMER_GRP,
         HW::TIMER_IDX);
@@ -123,7 +123,7 @@ public:
     ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase1() +
                  OLCB_DCC_BOOSTER::start_railcom_cutout_phase1());
 
-#if CONFIG_RAILCOM_FULL
+#if CONFIG_RAILCOM_DATA_ENABLED
     portENTER_CRITICAL_SAFE(&esp32_uart_mux);
     // flush the uart queue of any pending data
     rx_to_buf(nullptr, 0);
@@ -132,7 +132,7 @@ public:
     SET_PERI_REG_MASK(UART_INT_CLR_REG(HW::UART), ESP32_UART_RX_INTERRUPT_BITS);
     SET_PERI_REG_MASK(UART_INT_ENA_REG(HW::UART), ESP32_UART_RX_INTERRUPT_BITS);
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
-#endif // CONFIG_RAILCOM_FULL
+#endif // CONFIG_RAILCOM_DATA_ENABLED
 
     // enable the RailCom detector
     ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase2() + 
@@ -157,13 +157,13 @@ public:
 
   void end_cutout() override
   {
-#if CONFIG_RAILCOM_FULL
+#if CONFIG_RAILCOM_DATA_ENABLED
     portENTER_CRITICAL_SAFE(&esp32_uart_mux);
     // disable the UART RX interrupts
     HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
     HW::UART_BASE->int_ena.val = ESP32_UART_DISABLE_ALL_INTERRUPTS;
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
-#endif // CONFIG_RAILCOM_FULL
+#endif // CONFIG_RAILCOM_DATA_ENABLED
     // disable the RailCom detector
     ets_delay_us(DCC_BOOSTER::stop_railcom_cutout_phase1() +
                  OLCB_DCC_BOOSTER::stop_railcom_cutout_phase1());
@@ -236,7 +236,7 @@ public:
   size_t rx_to_buf(uint8_t *buf, size_t max_len)
   {
     size_t rx_bytes = 0;
-#if CONFIG_RAILCOM_FULL
+#if CONFIG_RAILCOM_DATA_ENABLED
     // NOTE: Due to a hardware issue when flushing the RX FIFO it is necessary
     // to read the FIFO until the RX count is zero *AND* read/write addresses
     // in the RX buffer are the same.
@@ -250,7 +250,7 @@ public:
         buf[rx_bytes++] = ch;
       }
     }
-#endif // CONFIG_RAILCOM_FULL
+#endif // CONFIG_RAILCOM_DATA_ENABLED
     return rx_bytes;
   }
 

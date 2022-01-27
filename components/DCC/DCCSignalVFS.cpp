@@ -16,14 +16,14 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 **********************************************************************/
 
 #include "sdkconfig.h"
+#include <hardware.hxx>
 
-#if !CONFIG_RAILCOM_DISABLED
+#if CONFIG_RAILCOM_CUT_OUT_ENABLED
 #include "Esp32RailComDriver.hxx"
 #endif 
 #include "PrioritizedUpdateLoop.hxx"
 #include "TrackOutputDescriptor.hxx"
 #include "TrackPowerHandler.hxx"
-#include <hardware.hxx>
 
 #include <AccessoryDecoderDatabase.hxx>
 #include <AllTrainNodes.hxx>
@@ -60,6 +60,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 namespace esp32cs
 {
 
+#if CONFIG_PROG_TRACK_ENABLED
 /// Disables the OPS track output and enables the PROG track output.
 static void enable_programming_track()
 {
@@ -81,6 +82,7 @@ static void disable_programming_track()
   DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
     DccOutput::DisableReason::PGM_TRACK_LOCKOUT);
 }
+#endif // CONFIG_PROG_TRACK_ENABLED
 
 // TODO: move this into TrainSearchProtocol
 class EStopPacketSource : public dcc::NonTrainPacketSource,
@@ -163,15 +165,15 @@ private:
   openlcb::Node *node_;
 };
 
-#if CONFIG_RAILCOM_DISABLED
-static NoRailcomDriver railComDriver;
-#else
+#if CONFIG_RAILCOM_CUT_OUT_ENABLED
 static uninitialized<dcc::RailcomHubFlow> railcom_hub;
 #if CONFIG_RAILCOM_DUMP_PACKETS
 static uninitialized<dcc::RailcomPrintfFlow> railcom_dumper;
 #endif // CONFIG_RAILCOM_DUMP_PACKETS
 static esp32cs::Esp32RailComDriver<RailComHwDefs, DccHwDefs::InternalBoosterOutput, DccHwDefs::OpenLCBBoosterOutput> railComDriver;
-#endif // CONFIG_RAILCOM_DISABLED
+#else
+static NoRailcomDriver railComDriver;
+#endif // CONFIG_RAILCOM_CUT_OUT_ENABLED
 static esp32cs::RMTTrackDevice<DccHwDefs, DccHwDefs::InternalBoosterOutput, DccHwDefs::OpenLCBBoosterOutput> track(&railComDriver);
 static uninitialized<dcc::LocalTrackIf> track_interface;
 static uninitialized<esp32cs::PrioritizedUpdateLoop> track_update_loop;
@@ -180,7 +182,9 @@ static uninitialized<TrackPowerBit<DccHwDefs::InternalBoosterOutput, DccHwDefs::
 static uninitialized<openlcb::BitEventConsumer> track_power_consumer;
 static uninitialized<EStopPacketSource> estop_packet_source;
 static uninitialized<openlcb::BitEventConsumer> estop_consumer;
+#if CONFIG_PROG_TRACK_ENABLED
 static uninitialized<ProgrammingTrackBackend> prog_backend;
+#endif
 static uninitialized<esp32cs::AccessoryDecoderDB> accessory_db;
 
 #if CONFIG_OPS_TRACK_ENABLED
@@ -380,7 +384,7 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   track_flow.emplace(svc, track_interface->pool(),
                      track_update_loop.operator->());
 
-#if !CONFIG_RAILCOM_DISABLED
+#if RAILCOM_CUT_OUT_ENABLED
   railcom_hub.emplace(svc);
   railComDriver.hw_init(railcom_hub.operator->());
 #if CONFIG_RAILCOM_DUMP_PACKETS

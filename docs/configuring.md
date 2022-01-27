@@ -33,19 +33,16 @@ this section you will find:
 
 | Component | Description |
 | --------- | ----------- |
-| [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection) | Provides automatic configuration of default options. |
+| [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection) | Provides automatic configuration for various H-Bridge options. |
 | [WiFi Configuration](#wifi-configuration) | Configures the WiFi settings. |
-| [GPIO Pin Assignment](#gpio-pin-assignment) | Configures how GPIO pins are used. |
+| [DCC Signal Configuration](#dcc-signal-configuration) | Configures the DCC Signal Generation. |
 | [OpenLCB Configuration](#openlcb-configuration) | Configures OpenLCB (LCC) settings. |
 | [Status Display Configuration](#status-display-configuration) | Configures an optional OLED/LCD display. |
-| [DCC Signal Configuration](#dcc-signal-configuration) | Configures the DCC Signal Generation. |
 | [RailCom Configuration](#railcom-configuration) | Configures RailCom functionality. |
-| [Fast Clock Configuration](#fast-clock-configuration) | Configures the built-in Fast Clock functionality. |
-| [Thermal Monitor Configuration](#thermal-monitor-configuration) | Configures thermal monitoring. |
+| [GPIO Pin Assignment](#gpio-pin-assignment) | Configures how GPIO pins are used.<br/>**NOTE:** This option is only available when selecting `ESP32 (custom configuration)` under [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection). |
 | [Status LED Configuration](#status-led-configuration) | Configures addressable LEDs for optional status indicators. |
 | [Accessory Decoder Management](#turnout-management) | Configures how turnouts are handled. |
 | [Locomotive Roster](#locomotive-roster) | Configures how turnouts are handled. |
-| [Train Search Protocol](#train-search-protocol) | Configures OpenLCB Train Search Protocol support. |
 | [Crash Behavior](#crash-behavior) | Configures how to handle unexpected crashes. |
 
 ### ESP32 / H-Bridge Selection
@@ -54,12 +51,16 @@ This section allows automatic configuration of features and pin assignment based
 on the ESP32 and H-Bridge in use. If the ESP32 and H-Bridge in use is not listed
 then it will be necessary to configure all options manually.
 
-| Option | Description |
-| ------ | ----------- |
-| ESP32 with Arduino Motor Shield (L298) | Selecting this option configures both OPS and PROG tracks using the L298 A and B outputs. |
-| ESP32 with LMD18200 | Selecting this option configures only the OPS track output, PROG track support will be disabled. |
-| ESP32 with BTS7960B | Selecting this option configures only the OPS track output, PROG track support will be disabled. |
-| ESP32 with 2x BTS7960B (OPS and PROG) | Selecting this option configures both OPS and PROG tracks using two BTS7960B devices. |
+| Config Key | NAme | Description |
+| ---------- | ---- | ----------- |
+| CONFIG_ESP32CS_L298 | ESP32 with Arduino Motor Shield (L298 for OPS & PROG) | Selecting this option configures both OPS and PROG tracks using the L298 A and B outputs. |
+| CONFIG_ESP32CS_LMD18200 | ESP32 with LMD18200 (OPS Only) | Selecting this option configures only the OPS track output, PROG track support will be disabled. |
+| CONFIG_ESP32CS_BTS7960B | ESP32 with BTS7960B (OPS Only) | Selecting this option configures only the OPS track output, PROG track support will be disabled. |
+| CONFIG_ESP32CS_BTS7960B_X2 | ESP32 with 2x BTS7960B (OPS and PROG) | Selecting this option configures both OPS and PROG tracks using two BTS7960B devices. |
+| CONFIG_ESP32CS_CUSTOM | ESP32 (custom configuration) | Selecting this option will require configuration of all GPIO pins. |
+
+**NOTE:** The default selection by `menuconfig` is `ESP32 with Arduino Motor Shield (L298)`
+and will influence all GPIO pin assignments.
 
 [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
 
@@ -70,8 +71,8 @@ the ESP32. By default the ESP32 Command Station will create a SoftAP which can
 be used to configure the WiFi connection at runtime rather than as part of the
 build. All pre-built binaries will default to create a SoftAP.
 
-| PARAM | Default | Description |
-| ----- | ------- | ----------- |
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
 | WiFi Mode | Create SoftAP | This controls how the WiFi support is used at runtime, supported options:<br/><li>Connect to SSID</li><li>Create SoftAP</li><li>Connect to SSID and create SoftAP</li><li>Disabled</li> |
 | Hostname prefix | esp32cs_ | This is used to generate a unique hostname for the ESP32 Command Station.<br/>Note: the OpenLCB Node ID will be appended to this value. |
 | [Station Configuration](#station-configuration) | | See [Station Configuration](#station-configuration) for more details |
@@ -82,8 +83,8 @@ build. All pre-built binaries will default to create a SoftAP.
 
 #### Station Configuration
 
-| PARAM | Default | Description |
-| ----- | ------- | ----------- |
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
 | Station SSID | not provided | This is the SSID to connect to when operating in "Connect to SSID" or "Connect to SSID and create SoftAP" mode. |
 | Station Password | not provided | This is the password for the SSID when operating in "Connect to SSID" or "Connect to SSID and create SoftAP" mode. |
 
@@ -91,8 +92,8 @@ build. All pre-built binaries will default to create a SoftAP.
 
 #### SoftAP Configuration
 
-| PARAM | Default | Description |
-| ----- | ------- | ----------- |
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
 | SoftAP SSID | esp32csap | Name of the AP to advertise when "Create SoftAP" is enabled. |
 | SoftAP Password | esp32csap | Password for connecting to the AP to advertise when "Create SoftAP" is enabled. |
 | SoftAP Channel | 1 | WiFi channel to use for the SoftAP. |
@@ -101,13 +102,174 @@ build. All pre-built binaries will default to create a SoftAP.
 
 #### SNTP Configuration
 
-| PARAM | Default | Description |
-| ----- | ------- | ----------- |
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
 | Enable SNTP synchronizatio | disabled | Enabling this option will allow the ESP32 Command Station to retrieve the current time from a remote time server. |
 | SNTP Server | pool.ntp.org | Remote time server to connect to. |
 | Timezone | UTC0 | Timezone adjustment to use for the retrieved time data. A full list of supported values can be seen [here](https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv). |
 
 [Return to "WiFi Configuration"](#wifi-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+### DCC Signal Configuration
+
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
+| Enable OPS track output | Off | Enabling this option will enable the OPS track signal.<br/>**NOTE:** This option will be enabled automatically for all [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection) *EXCEPT* `ESP32 (custom configuration)` |
+| Enable PROG track output | Off | Enabling this option will enable the PROG track signal.<br/>**NOTE:** This option will be enabled automatically for `ESP32 with Arduino Motor Shield (L298 for OPS & PROG)` and `ESP32 with 2x BTS7960B (OPS and PROG)` under [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection). |
+| Energize track upon startup | true (if OPS track is selected)<br/>false otherwise | Enabling this option will enable the OPS track output automatically on startup of the ESP32 Command Station rather than wait for the OpenLCB event to enable track power.<br/>**NOTE:** This option is only available when selecting `Enable OPS track output` |
+| OPS H-Bridge type | L298 | This configures the type of H-Bridge used for the OPS track.<br/>Available options:<br/><li>L298 (2A limit)</li><li>LMD18200 (3A limit)</li><li>DRV880x (2.8A limit)</li><li>DRV8873 (10A limit)</li><li>DRV8873 (5A limit)</li><li>Pololu MC33926 (2.5A limit)</li><li>BTS7960B (5A limit)</li><li>BTS7960B (10A limit)</li><br/>**NOTE:** This option is only available when selecting `ESP32 (custom configuration)` under [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection). |
+| PROG H-Bridge type | L298 | This configures the type of H-Bridge used for the PROG track.<br/>Available options:<br/><li>L298 (2A limit)</li><li>LMD18200 (3A limit)</li><li>DRV880x (2.8A limit)</li><li>DRV8873 (10A limit)</li><li>DRV8873 (5A limit)</li><li>Pololu MC33926 (2.5A limit)</li><li>BTS7960B (5A limit)</li><li>BTS7960B (10A limit)</li><br/>**NOTE:** This option is only available when selecting `ESP32 (custom configuration)` under [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection). |
+
+**NOTE**: There are advanced configuration options but they typically do not
+require updates from the default values.
+
+[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+### OpenLCB Configuration
+
+ESP32 Command Station provides an OpenLCB Interface (both WiFi and TWAI/CAN).
+OpenLCB is the underlying standards upon which the NMRA LCC (Layout Command
+Control) standard is based.
+
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
+| Node ID | 05.02.01.03.FF.FE | This is the OpenLCB Node Identifier to use for the ESP32 Command Station. The default value is part of a reserved range allocated to 
+| Enable TWAI (CAN) interface | Disabled | When this option is enabled an external CAN Transceiver is used to communicate with other OpenLCB nodes. |
+| [Fast Clock Configuration](#fast-clock-configuration) | | Configures the built-in Fast Clock functionality. |
+| [Train Search Protocol](#train-search-protocol) | Configures OpenLCB Train Search Protocol support. |
+| [Thermal Monitor Configuration](#thermal-monitor-configuration) | Configures thermal monitoring. |
+
+**NOTE**: There are advanced configuration options but they typically do not
+require updates from the default values.
+
+[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+#### Fast Clock Configuration
+
+ESP32 Command Station supports generating OpenLCB events for two types of Fast
+Clocks, fast and real-time.
+
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
+| Enable FastClock (fast) | Disabled | When enabled the ESP32 Command Station will generate FastClock events via OpenLCB. |
+| Enable FastClock (real-time) | Disabled | When enabled the ESP32 Command Station will generate FastClock events via OpenLCB. |
+| [FastClock (fast)](#fastclock-fast) | | See [FastClock (fast)](#fastclock-fast) for more details. |
+| [FastClock (real-time)](#fastclock-real-time) | | See [FastClock (real-time)](#fastclock-real-time) for more details. |
+
+[Return to "OpenLCB Configuration"](#openlcb-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+##### FastClock (fast)
+
+This clock provides a faster (or slower) than real-time. This can be used as
+part of scheduling of locomotives/events/etc via OpenLCB Events.
+
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
+| Rate | 4 | Rate at which the FastClock will advance time. |
+| Year | 1900 | Year at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
+| Month | 1 (January) | Month at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
+| Day | 1 | Day at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
+| Hour (24hr) | 1 | Hour at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
+| Minute | 1 | Minute at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
+| Clock ID | 01.01.00.00.01.00 | OpenLCB Clock ID, this typically will not need to be changed. |
+
+[Return to "Fast Clock Configuration"](#fast-clock-configuration) | [Return to "OpenLCB Configuration"](#openlcb-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+##### FastClock (real-time)
+
+This clock provides real-time updates roughly every minute. This requires that
+SNTP is enabled and configured under [SNTP Configuration](#sntp-configuration).
+This can be used as part of scheduling of locomotives/events/etc via OpenLCB
+Events.
+
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
+| Clock ID | 01.01.00.00.01.01 | OpenLCB Clock ID, this typically will not need to be changed. |
+
+[Return to "Fast Clock Configuration"](#fast-clock-configuration) | [Return to "OpenLCB Configuration"](#openlcb-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+
+#### Train Search Protocol
+
+There are no configurable options, aside from advanced options, that can be
+configured in this section. The advanced options typically do not require any
+updates and are primarily for debug purposes.
+
+[Return to "OpenLCB Configuration"](#openlcb-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+#### Thermal Monitor Configuration
+
+The ESP32 Command Station can monitor an external thermistor to estimate the
+running temperature of the H-Bridge or PCB, whichever is closer/connected to
+the thermistor. When the detected temperature rises above the configured
+thresholds the ESP32 Command Station can emit a warning event or shutdown the
+DCC track output(s) entirely until the temperature returns to below the
+configured thresholds.
+
+The ESP32 Command Station PCBs use an [MCP9701A](http://ww1.microchip.com/downloads/en/devicedoc/20001942g.pdf)
+thermistor IC to detect the temperature of the DRV8873 H-Bridge which is
+passively cooled. The DRV8801 H-Bridges used for PROG and OpenLCB outputs are
+not directly monitored as they are limited to under 500mA output external limit
+resistors, the PROG track is current limited to approximately 250mA via current
+limiting circuitry on the power supply and OpenLCB output power supply is
+limited by a 500mA voltage regulator.
+
+| PARAM | Default | Description |
+| ----- | ------- | ----------- |
+| Thermistor/IC | MCP9701/MCP9701A | Type of Thermistor/IC in use:<br/><li>MCP9700/MCP9700A -- </li><li>MCP9701/MCP9701A -- </li><li>Custom -- </li> |
+| Millivolts at 0C | varies:<br><li>MCP9700/MCP9700A -- 500mV</li><li>MCP9701/MCP9701A -- 400mV</li><li>0 -- default</li> | This is the voltage (in mV) that will be read when the thermistor is reading zero Celcius. |
+| Millivolts per 1C | varies:<br><li>MCP9700/MCP9700A -- 10.0mV/C</li><li>MCP9701/MCP9701A -- 19.5mV/C</li><li>10 -- default</li> | This is used to calculate the temperature offset from 0C.<br/>**NOTE:** This value is multiplied by 10 to work with whole numbers as menuconfig does not support decimals in values. |
+| Warning temperature (C) | 50 | Temperature (C) at which to raise a warning. |
+| Shutdown temperature (C) | 80 | Temperature (C) at which to shutdown all DCC track output(s) and raise an event indicating shutdown. |
+
+[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+### Status Display Configuration
+
+ESP32 Command Station supports connecting an external I2C display (LCD or OLED)
+which is used to report near real-time status updates.
+
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
+| Display Type | None | This configures the type of external display:<br><li>[LCD](#lcd-display-configuration)</li><li>[OLED](#oled-display-configuration)</li> |
+
+[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+#### LCD Display Configuration
+
+| PARAM | Default | Description |
+| ----- | ------- | ----------- |
+| Display Size | 20 columns, four lines | This configures how much information is displayed on the connected LCD:<br/><li>20 columns, 4 lines -- Displays maximum information</li><li>16 columns, 4 lines -- Displays maximum information, some truncation in labels</li><li>20 columns, 2 lines -- Displays primarily status information</li><li>16 columns, 2 lines -- Displays primarily status information, some truncation in labels</li> |
+| Enable Backlight | On | Setting this to enabled will turn on the backlight automatically as part of the display initialization. Some LCDs require this to be disabled. |
+
+**NOTE**: There are advanced configuration options but they typically do not
+require updates from the default values.
+
+[Return to "Status Display Configuration"](#status-display-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+#### OLED Display Configuration
+
+| PARAM | Default | Description |
+| ----- | ------- | ----------- |
+| Display Size | 128x64 | This configures the size of the connected display:<br/><li>128x64 pixels -- maximum information displayed.</li><li>128x32 pixels -- Displays most information.</li><li>96x16 pixels -- Displays only critical information.</li> |
+| Font | Bold | This selects which font to use on the connected display:<br/><li>Thin</li><li>Bold</li><br/>There is no functional difference between the two selections. |
+| Vertically flip display | Off | Enabling this option will flip the screen orientation vertically. |
+| Contrast Level | 128 | This can be used to adjust the contrast level of the connected display. |
+
+[Return to "Status Display Configuration"](#status-display-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
+
+
+### RailCom Configuration
+
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
+| Mode | Disabled | When enabled the ESP32 Command Station will generate a RailCom cut-out period and capture feedback data via a RailCom receiver circuit. |
+| UART | UART2 | The ESP32 has three hardware UART devices, the first one (UART0) is used via the USB connector as console output. There are no functional differences between UART1 or UART2. |
+
+**NOTE**: There are advanced configuration options but they typically do not
+require updates from the default values.
+
+[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
 
 ### GPIO Pin Assignment
 
@@ -304,174 +466,6 @@ On the ESP32-S3 additional configuration options are available to re-map the SD 
 
 [Return to "GPIO Pin Assignment"](#gpio-pin-assignment) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
 
-### OpenLCB Configuration
-
-ESP32 Command Station provides an OpenLCB Interface (both WiFi and TWAI/CAN).
-OpenLCB is the underlying standards upon which the NMRA LCC (Layout Command
-Control) standard is based.
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| Node ID | 05.02.01.03.FF.FE | This is the OpenLCB Node Identifier to use for the ESP32 Command Station. The default value is part of a reserved range allocated to 
-| Enable TWAI (CAN) interface | Disabled | When this option is enabled an external CAN Transceiver is used to communicate with other OpenLCB nodes. |
-
-**NOTE**: There are advanced configuration options but they typically do not
-require updates from the default values.
-
-[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-### Status Display Configuration
-
-ESP32 Command Station supports connecting an external I2C display (LCD or OLED)
-which is used to report near real-time status updates.
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| Display Type | None | This configures the type of external display:<br><li>[LCD](#lcd-display-configuration)</li><li>[OLED](#oled-display-configuration)</li> |
-
-[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-#### LCD Display Configuration
-
-| PARAM | Default | Description |
-| ----- | ------- | ----------- |
-| Display Size | 20 columns, four lines | This configures how much information is displayed on the connected LCD:<br/><li>20 columns, 4 lines -- Displays maximum information</li><li>16 columns, 4 lines -- Displays maximum information, some truncation in labels</li><li>20 columns, 2 lines -- Displays primarily status information</li><li>16 columns, 2 lines -- Displays primarily status information, some truncation in labels</li> |
-| Enable Backlight | On | Setting this to enabled will turn on the backlight automatically as part of the display initialization. Some LCDs require this to be disabled. |
-
-**NOTE**: There are advanced configuration options but they typically do not
-require updates from the default values.
-
-[Return to "Status Display Configuration"](#status-display-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-#### OLED Display Configuration
-
-| PARAM | Default | Description |
-| ----- | ------- | ----------- |
-| Display Size | 128x64 | This configures the size of the connected display:<br/><li>128x64 pixels -- maximum information displayed.</li><li>128x32 pixels -- Displays most information.</li><li>96x16 pixels -- Displays only critical information.</li> |
-| Font | Bold | This selects which font to use on the connected display:<br/><li>Thin</li><li>Bold</li><br/>There is no functional difference between the two selections. |
-| Vertically flip display | Off | Enabling this option will flip the screen orientation vertically. |
-| Contrast Level | 128 | This can be used to adjust the contrast level of the connected display. |
-
-[Return to "Status Display Configuration"](#status-display-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-### DCC Signal Configuration
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| Track Outputs | OPS and PROG (default)<br>OPS Only (LMD18200 or single BTS7960B) | This controls if the ESP32 Command Station will generate only OPS DCC packets, only PROG DCC packets or both.<br/><li>OPS and PROG -- Enables both OPS and PROG DCC packets to be generated.</li><li>OPS only -- Only OPS DCC packets will be generated.</li><li>PROG only -- Only PROG DCC packets will be generated.</li> |
-| Energize track upon startup | true (if OPS track is selected)<br/>false otherwise | Enabling this option will enable the OPS track output automatically on startup of the ESP32 Command Station rather than wait for the OpenLCB event to enable track power. |
-| [OPS Track Output](#ops-track-output) | | Configures the OPS Track output (if enabled). |
-| [PROG Track Output](#prog-track-output) | | Configures the PROG Track output (if enabled). |
-
-**NOTE**: There are advanced configuration options but they typically do not
-require updates from the default values.
-
-[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-#### OPS Track Output
-
-This section configures the OPS Track output.
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| H-Bridge type | varies based on [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection) | This configures the built-in current limits for the H-Bridge. |
-| DCC packet preamble bits | 16 (RailCom enabled)<br/>11 (RailCom disabled) | Each DCC packet requires at least 11 preamble bits, when RailCom is enabled it must be at least 16. |
-
-[Return to "DCC Signal Configuration"](#dcc-signal-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-#### PROG Track Output
-
-This section configures the PROG Track output.
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| H-Bridge type | varies based on [ESP32 / H-Bridge Selection](#esp32-h-bridge-selection) | This configures the built-in current limits for the H-Bridge. |
-| DCC packet preamble bits | 22 | Each Service Mode DCC packet requires at least 22 preamble bits, some older decoders may require as many as 50. |
-
-[Return to "DCC Signal Configuration"](#dcc-signal-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-### RailCom Configuration
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| Mode | Disabled | When enabled the ESP32 Command Station will generate a RailCom cut-out period and capture feedback data via a RailCom receiver circuit. |
-| UART | UART2 | The ESP32 has three hardware UART devices, the first one (UART0) is used via the USB connector as console output. There are no functional differences between UART1 or UART2. |
-
-**NOTE**: There are advanced configuration options but they typically do not
-require updates from the default values.
-
-[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-### Fast Clock Configuration
-
-ESP32 Command Station supports generating OpenLCB events for two types of Fast
-Clocks, fast and real-time.
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| Enable FastClock (fast) | Disabled | When enabled the ESP32 Command Station will generate FastClock events via OpenLCB. |
-| Enable FastClock (real-time) | Disabled | When enabled the ESP32 Command Station will generate FastClock events via OpenLCB. |
-| [FastClock (fast)](#fastclock-fast) | | See [FastClock (fast)](#fastclock-fast) for more details. |
-| [FastClock (real-time)](#fastclock-real-time) | | See [FastClock (real-time)](#fastclock-real-time) for more details. |
-
-[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-#### FastClock (fast)
-
-This clock provides a faster (or slower) than real-time. This can be used as
-part of scheduling of locomotives/events/etc via OpenLCB Events.
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| Rate | 4 | Rate at which the FastClock will advance time. |
-| Year | 1900 | Year at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
-| Month | 1 (January) | Month at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
-| Day | 1 | Day at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
-| Hour (24hr) | 1 | Hour at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
-| Minute | 1 | Minute at which to start the FastClock, this is persisted across restarts of the ESP32 Command Station. |
-| Clock ID | 01.01.00.00.01.00 | OpenLCB Clock ID, this typically will not need to be changed. |
-
-[Return to "Fast Clock Configuration"](#fast-clock-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-#### FastClock (real-time)
-
-This clock provides real-time updates roughly every minute. This requires that
-SNTP is enabled and configured under [SNTP Configuration](#sntp-configuration).
-This can be used as part of scheduling of locomotives/events/etc via OpenLCB
-Events.
-
-| Parameter | Default | Description |
-| --------- | ------- | ----------- |
-| Clock ID | 01.01.00.00.01.01 | OpenLCB Clock ID, this typically will not need to be changed. |
-
-[Return to "Fast Clock Configuration"](#fast-clock-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-### Thermal Monitor Configuration
-
-The ESP32 Command Station can monitor an external thermistor to estimate the
-running temperature of the H-Bridge or PCB, whichever is closer/connected to
-the thermistor. When the detected temperature rises above the configured
-thresholds the ESP32 Command Station can emit a warning event or shutdown the
-DCC track output(s) entirely until the temperature returns to below the
-configured thresholds.
-
-The ESP32 Command Station PCBs use an [MCP9701A](http://ww1.microchip.com/downloads/en/devicedoc/20001942g.pdf)
-thermistor IC to detect the temperature of the DRV8873 H-Bridge which is
-passively cooled. The DRV8801 H-Bridges used for PROG and OpenLCB outputs are
-not directly monitored as they are limited to under 500mA output external limit
-resistors, the PROG track is current limited to approximately 250mA via current
-limiting circuitry on the power supply and OpenLCB output power supply is
-limited by a 500mA voltage regulator.
-
-| PARAM | Default | Description |
-| ----- | ------- | ----------- |
-| Thermistor/IC | MCP9701/MCP9701A | Type of Thermistor/IC in use:<br/><li>MCP9700/MCP9700A -- </li><li>MCP9701/MCP9701A -- </li><li>Custom -- </li> |
-| Millivolts at 0C | varies:<br><li>MCP9700/MCP9700A -- 500mV</li><li>MCP9701/MCP9701A -- 400mV</li><li>0 -- default</li> | This is the voltage (in mV) that will be read when the thermistor is reading zero Celcius. |
-| Millivolts per 1C | varies:<br><li>MCP9700/MCP9700A -- 10.0mV/C</li><li>MCP9701/MCP9701A -- 19.5mV/C</li><li>10 -- default</li> | This is used to calculate the temperature offset from 0C.<br/>**NOTE:** This value is multiplied by 10 to work with whole numbers as menuconfig does not support decimals in values. |
-| Warning temperature (C) | 50 | Temperature (C) at which to raise a warning. |
-| Shutdown temperature (C) | 80 | Temperature (C) at which to shutdown all DCC track output(s) and raise an event indicating shutdown. |
-
-[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
 
 ### Status LED Configuration
 
@@ -513,14 +507,6 @@ The ESP32 Command Station provides a database of known Locomotives, this is used
 
 **NOTE**: There are advanced configuration options but they typically do not
 require updates from the default values.
-
-[Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
-
-### Train Search Protocol
-
-There are no configurable options, aside from advanced options, that can be
-configured in this section. The advanced options typically do not require any
-updates and are primarily for debug purposes.
 
 [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
 

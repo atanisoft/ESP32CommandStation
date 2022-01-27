@@ -39,12 +39,13 @@
 * [x] WebUI: Roster save via WS.
 * [x] WebUI: Expose FastClock configuration (non-realtime).
 * [x] FastClock: Re-add FastClock support.
-* [ ] Build: Improve robustness of gzip search.
 * [ ] Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
 
 ### Nice to have for v2.0
 
+* Build: Improve robustness of gzip search.
 * RailCom: Migrate Esp32RailComDriver to use HAL APIs (portability work)
+* RailCom: Login packet support.
 * TrainDB: Configurable timeout for idle trains.
 * TrainDB: Customizable function label names.
 * TrainSearch: General code formatting / cleanup

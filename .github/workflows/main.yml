@@ -28,28 +28,23 @@ jobs:
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_L298=y'
+          FILE_DATA: 'CONFIG_ESP32_L298=y'
         if: ${{ steps.target.outputs._2 == 'l298' }}
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_LMD18200=y'
+          FILE_DATA: 'CONFIG_ESP32_LMD18200=y'
         if: ${{ steps.target.outputs._2 == 'lmd18200' }}
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_BTS7960B=y'
+          FILE_DATA: 'CONFIG_ESP32_BTS7960B=y'
         if: ${{ steps.target.outputs._2 == 'bts7960' }}
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_PCB_ESP32=y'
-        if: ${{ steps.target.outputs._0 == 'esp32' && steps.target.outputs._2 == 'pcb' }}
-      - uses: finnp/create-file-action@master
-        env:
-          FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP_MODEL_HBRIDGE_PCB_ESP32S3=y'
-        if: ${{ steps.target.outputs._0 == 'esp32s3' && steps.target.outputs._2 == 'pcb' }}
+          FILE_DATA: 'CONFIG_ESP32_CSPCB=y'
+        if: ${{ steps.target.outputs._2 == 'pcb' }}
       - name: Remove build artifacts (if present)
         run: |
           rm -rf build sdkconfig
@@ -74,9 +69,12 @@ jobs:
           cp build/partition_table/partition-table.bin binaries
           cp build/ota_data_initial.bin binaries
           cp build/bootloader/bootloader.bin binaries
-          egrep 'DCC|OPS|PROG|RAILCOM|I2C|STATUS|FACTORY|BOOTLOADER|TWAI' sdkconfig | grep _PIN | egrep -v '^#'> binaries/pinmap.txt
-          egrep 'ADC_CHANNEL_|CONFIG_SD_SPI' sdkconfig | egrep -v '^#' >> binaries/pinmap.txt
+          egrep 'I2C|STATUS|FACTORY|BOOTLOADER|TWAI' sdkconfig | grep _PIN | egrep -v '^#'> binaries/pinmap.txt
+          egrep 'CONFIG_SD_SPI' sdkconfig | egrep -v '^#' >> binaries/pinmap.txt
           egrep 'CONFIG_WIFI_SOFTAP_[SSID|PASSWORD]|CONFIG_WIFI_STATION' sdkconfig | egrep -v '^#' >> binaries/wifi.txt
+      - name: H-Bridge Pin Map
+        run: |
+          cat .github/${{ steps.target.outputs._2 }}_pinmap.txt >> binaries/pinmap.txt
       - name: ADC Pin Map (ESP32)
         run: |
           cat .github/adc_pinmap.txt >> binaries/pinmap.txt

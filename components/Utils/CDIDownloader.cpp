@@ -54,14 +54,14 @@ StateFlowBase::Action CDIDownloadHandler::segment_complete()
     auto b = get_buffer_deleter(full_allocation_result(&client_));
     if (b->data()->resultCode)
     {
-        LOG_ERROR("[CDI:%s] CDI XML download (%u->%u) returned code: %d",
+        LOG_ERROR("[CDI:%s] CDI XML download (%u->%u) returned code: %04x",
                   targetNodeId_.c_str(), request()->offs,
                   request()->offs + CDI_DOWNLOAD_SEGMENT_SIZE,
                   b->data()->resultCode);
         request()->attempts++;
         if (request()->attempts <= MAX_ATTEMPTS)
         {
-            LOG_ERROR("[CDI:%s] Failed to download CDI: %d (%d/%d)",
+            LOG_ERROR("[CDI:%s] Failed to download CDI: %04x (%d/%d)",
                       targetNodeId_.c_str(), b->data()->resultCode,
                       request()->attempts, MAX_ATTEMPTS);
             return yield_and_call(STATE(download_segment));
