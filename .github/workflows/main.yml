@@ -31,22 +31,22 @@ jobs:
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP32_L298=y'
+          FILE_DATA: 'CONFIG_ESP32CS_L298=y'
         if: ${{ steps.target.outputs._2 == 'l298' }}
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP32_LMD18200=y'
+          FILE_DATA: 'CONFIG_ESP32CS_LMD18200=y'
         if: ${{ steps.target.outputs._2 == 'lmd18200' }}
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP32_BTS7960B=y'
+          FILE_DATA: 'CONFIG_ESP32CS_BTS7960B=y'
         if: ${{ steps.target.outputs._2 == 'bts7960' }}
       - uses: finnp/create-file-action@master
         env:
           FILE_NAME: 'sdkconfig'
-          FILE_DATA: 'CONFIG_ESP32_CSPCB=y'
+          FILE_DATA: 'CONFIG_ESP32CS_PCB=y'
         if: ${{ steps.target.outputs._2 == 'pcb' }}
       - name: Build (IDF v5)
         uses: atanisoft/esp-idf-ci-action@main
