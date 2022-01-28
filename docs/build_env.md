@@ -21,7 +21,7 @@ Once installed proceed to [Configuring build options](configuring.md).
 The easiest way to install the dependencies is to use the
 [ESP-IDF Windows Installer](https://dl.espressif.com/dl/esp-idf/?idf=4.4).
 This utility will download and configure all tools automatically for you. When
-prompted it is recommended to install ESP-IDF v4.3 or v4.4.
+prompted it is recommended to install ESP-IDF v4.4.
 
 Once completed proceed to [Configuring build options](configuring.md).
 
@@ -40,17 +40,15 @@ guide to install required software updates.
 
 ## Obtaining ESP-IDF
 
-ESP32 Command Station supports ESP-IDF v4.3 (or later). For Linux/MacOS the
-ESP-IDF framework should be downloaded via Git using the commands below:
+ESP32 Command Station supports ESP-IDF v4.3 (or later) with v4.4 being the
+recommended version. For Linux/MacOS the ESP-IDF framework should be downloaded
+via Git using the commands below:
 
 ```
 mkdir -p ~/esp
 cd ~/esp
-git clone --recursive https://github.com/espressif/esp-idf.git --branch release/v4.3
+git clone --recursive https://github.com/espressif/esp-idf.git --branch release/v4.4
 ```
-
-If you prefer to use ESP-IDF v4.4 adjust the branch name to `release/v4.4`
-instead.
 
 ## Configuring ESP-IDF Environment
 
