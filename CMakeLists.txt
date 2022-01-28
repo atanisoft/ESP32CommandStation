@@ -8,10 +8,10 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # Validate that we are on a supported version of ESP-IDF (v4.3+)
 ###############################################################################
 if (IDF_VERSION_MAJOR LESS 4)
-    message(FATAL_ERROR "ESP32CommandStation requires IDF v4.0 (or newer)")
-endif()
-
-if (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR LESS 3)
+    message(FATAL_ERROR "ESP32CommandStation requires IDF v4.3 (or newer)")
+elseif (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR LESS 4)
+    message(FATAL_ERROR "It is recommended to build ESP32 Command Station with IDF v4.4 (or newer)")
+elseif (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR LESS 3)
     message(FATAL_ERROR "ESP32 Command Station requires IDF v4.3 (or newer)")
 endif()
 

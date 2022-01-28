@@ -203,28 +203,22 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 // Sanity check that the preamble bits are within the supported range.
 #ifndef CONFIG_OPS_DCC_PREAMBLE_BITS
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is not defined and has been set to 11.
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 11
 #elif CONFIG_OPS_DCC_PREAMBLE_BITS < 11
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low and has been reset to 11.
 #undef CONFIG_OPS_DCC_PREAMBLE_BITS
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 11
 #elif CONFIG_OPS_DCC_PREAMBLE_BITS < 16 && CONFIG_RAILCOM_CUT_OUT_ENABLED
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low and has been reset to 16.
 #undef CONFIG_OPS_DCC_PREAMBLE_BITS
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 16
 #elif CONFIG_OPS_DCC_PREAMBLE_BITS > 20
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too high and has been reset to 20.
 #undef CONFIG_OPS_DCC_PREAMBLE_BITS
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 20
 #endif
 
 // Sanity check that the preamble bits are within range.
 #ifndef CONFIG_PROG_DCC_PREAMBLE_BITS
-#warning CONFIG_PROG_DCC_PREAMBLE_BITS is not defined and has been set to 22.
 #define CONFIG_PROG_DCC_PREAMBLE_BITS 22
 #elif CONFIG_PROG_DCC_PREAMBLE_BITS < 22 || CONFIG_PROG_DCC_PREAMBLE_BITS > 50
-#warning CONFIG_PROG_DCC_PREAMBLE_BITS is outside of supported range (22-50) and has been reset to 22.
 #undef CONFIG_PROG_DCC_PREAMBLE_BITS
 #define CONFIG_PROG_DCC_PREAMBLE_BITS 22
 #endif
@@ -422,12 +416,12 @@ typedef DummyPin PROG_ENABLE_Pin;
 typedef DummyPin PROG_CURRENT_SENSE_Pin;
 #endif // CONFIG_PROG_TRACK_ENABLED
 
-#if CONFIG_DCC_OLCB_ENABLE_PIN != -1
-/// Enables the OpenLCB DCC signal output.
-GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
-#else
+#if CONFIG_DCC_OLCB_ENABLE_PIN == -1
 /// Enables the OpenLCB DCC signal output.
 typedef DummyPin OLCB_DCC_ENABLE_Pin;
+#else
+/// Enables the OpenLCB DCC signal output.
+GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
 #endif //  CONFIG_DCC_OLCB_ENABLE_PIN
 
 /// OpenLCB RailCom detector enable pin.

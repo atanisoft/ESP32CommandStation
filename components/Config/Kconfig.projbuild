@@ -34,7 +34,7 @@ menu "ESP32 Command Station Configuration"
         default ESP32CS_L298
 
         config ESP32CS_L298
-            bool "ESP32 with Arduino Motor Shield (L298 for OPS & PROG)"
+            bool "ESP32 with Arduino Motor Shield (OPS and PROG)"
             select OPS_TRACK_ENABLED
             select PROG_TRACK_ENABLED
 
@@ -1292,6 +1292,7 @@ menu "ESP32 Command Station Configuration"
         menu "SD Card"
             choice SD_MODE
                 bool "SD Mode"
+                default USE_SD_SPI_MODE if ESP32CS_PCB
                 default USE_SD_DISABLED
                 config USE_SD_DISABLED
                     bool "Disabled"

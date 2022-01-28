@@ -53,7 +53,7 @@ then it will be necessary to configure all options manually.
 
 | Config Key | NAme | Description |
 | ---------- | ---- | ----------- |
-| CONFIG_ESP32CS_L298 | ESP32 with Arduino Motor Shield (L298 for OPS & PROG) | Selecting this option configures both OPS and PROG tracks using the L298 A and B outputs. |
+| CONFIG_ESP32CS_L298 | ESP32 with Arduino Motor Shield (OPS and PROG) | Selecting this option configures both OPS and PROG tracks using the L298 A and B outputs. |
 | CONFIG_ESP32CS_LMD18200 | ESP32 with LMD18200 (OPS Only) | Selecting this option configures only the OPS track output, PROG track support will be disabled. |
 | CONFIG_ESP32CS_BTS7960B | ESP32 with BTS7960B (OPS Only) | Selecting this option configures only the OPS track output, PROG track support will be disabled. |
 | CONFIG_ESP32CS_BTS7960B_X2 | ESP32 with 2x BTS7960B (OPS and PROG) | Selecting this option configures both OPS and PROG tracks using two BTS7960B devices. |
