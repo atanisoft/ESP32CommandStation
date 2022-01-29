@@ -14,13 +14,10 @@ railroad.
 * Built-in web interface for controlling locomotives or configuring the ESP32 Command Station.
 * Built-in support for OpenLCB (LCC) either via WiFi or an external CAN transceiver.
 
-### Supported ESP32 Boards
+## Supported Hardware
 
-The ESP32 Command Station has been tested on a variety of ESP32 and ESP32-S3
-boards, the current preferred format is either the Arduino Uno R3 shaped boards
-(easy to use with the Arduino Motor Shield) or the LilyGO TTGO-T1 with an
-integrated SD Card. However, almost any variant of the ESP32 or ESP32-S3 will
-work as long as there are enough pins available for the h-bridge connections.
+ESP32 Command Station supports many features that utilize built-in and external
+hardware. Please see [Supported Hardware](supported_hardware.md) for details.
 
 ## Releases
 
