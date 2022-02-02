@@ -376,6 +376,50 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   // Initialize the RMT signal generator.
   track.hw_init();
 
+#if CONFIG_OPS_TRACK_ENABLED
+  LOG(INFO, "[OPS] EN/PWM: %d,"
+#if CONFIG_DCC_TRACK_BRAKE_PIN != -1
+            " Brake Pin: %d,"
+#endif // CONFIG_DCC_TRACK_BRAKE_PIN != -1
+#if CONFIG_OPSTRACK_ADC_I2C_CHANNEL_1
+            " Current Sense I2C: 1"
+#elif CONFIG_OPSTRACK_ADC_I2C_CHANNEL_2
+            " Current Sense I2C: 2"
+#elif CONFIG_OPSTRACK_ADC_I2C_CHANNEL_3
+            " Current Sense I2C: 3"
+#else
+            " Current Sense Pin: %d (ADC1:%d)"
+#endif // OPSTRACK_ADC_I2C_CHANNEL_1 / 2 / 3
+    , CONFIG_OPS_TRACK_ENABLE_PIN
+#if CONFIG_DCC_TRACK_BRAKE_PIN != -1
+    , CONFIG_DCC_TRACK_BRAKE_PIN
+#endif // CONFIG_DCC_TRACK_BRAKE_PIN != -1
+#if !USE_I2C_FOR_OPS_CURRENT_SENSE
+    , OPS_CURRENT_SENSE_Pin::pin()
+    , OPS_CURRENT_SENSE_Pin::channel()
+#endif // !USE_I2C_FOR_OPS_CURRENT_SENSE
+);
+#endif // CONFIG_OPS_TRACK_ENABLED
+
+#if CONFIG_PROG_TRACK_ENABLED
+  LOG(INFO, "[PROG] EN/PWM: %d,"
+#if CONFIG_PROGTRACK_ADC_I2C_CHANNEL_1
+            " Current Sense I2C: 1"
+#elif CONFIG_PROGTRACK_ADC_I2C_CHANNEL_2
+            " Current Sense I2C: 2"
+#elif CONFIG_PROGTRACK_ADC_I2C_CHANNEL_3
+            " Current Sense I2C: 3"
+#else
+            " Current Sense Pin: %d (ADC1:%d)"
+#endif // PROGTRACK_ADC_I2C_CHANNEL_1 / 2 / 3
+    , CONFIG_PROG_TRACK_ENABLE_PIN
+#if !USE_I2C_FOR_PROG_CURRENT_SENSE
+    , PROG_CURRENT_SENSE_Pin::pin()
+    , PROG_CURRENT_SENSE_Pin::channel()
+#endif // !USE_I2C_FOR_OPS_CURRENT_SENSE
+);
+#endif // CONFIG_OPS_TRACK_ENABLED
+
   track_interface.emplace(svc, CONFIG_DCC_PACKET_POOL_SIZE);
   track_interface->set_fd(open(CONFIG_DCC_VFS_MOUNT_POINT, O_WRONLY));
   track_update_loop.emplace(svc, track_interface.operator->());
