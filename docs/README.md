@@ -1,11 +1,11 @@
 # What is ESP32 Command Station?
 
-ESP32 Command Station is an open-source Command Station for the operation of
-OpenLCB (LCC) and DCC-equipped model railroads.
+ESP32 Command Station is an open-source NMRA compliant DCC Command Station for
+the operation of DCC-equipped model railroads with integrated support for using
+RailCom and OpenLCB (LCC).
 
-The ESP32 Command Station consists of an ESP32 micro controller connected to at
-least one h-bridge that can be connected directly to the tracks of a model
-railroad.
+Please refer to [Supported Hardware](supported_hardware.md) for what hardware
+can be used with this software.
 
 ## Features
 
@@ -13,25 +13,32 @@ railroad.
 * Support for multiple h-bridge types (Arduino Motor Shield, Pololu MC33926 Motor Shield, BTS7960B, LMD18200, DRV8873, DRV8800/DRV8801).
 * Built-in web interface for controlling locomotives or configuring the ESP32 Command Station.
 * Built-in support for OpenLCB (LCC) either via WiFi or an external CAN transceiver.
+* Built-in support for generating RailCom cut-out and receiving RailCom feedback.
 
-## Supported Hardware
+## Development Status
 
-ESP32 Command Station supports many features that utilize built-in and external
-hardware. Please see [Supported Hardware](supported_hardware.md) for details.
+| Release Type | Label | Date |
+| ------------ | ----- | ---- |
+| Stable | [![GitHub release](https://img.shields.io/github/release/atanisoft/ESP32CommandStation.svg?label=Stable&style=plastic)](https://github.com/atanisoft/ESP32CommandStation/releases) | [![GitHub release date](https://img.shields.io/github/release-date/atanisoft/ESP32CommandStation.svg?style=plastic)](https://github.com/atanisoft/ESP32CommandStation/releases) |
+| Preview | [![GitHub release](https://img.shields.io/github/release-pre/atanisoft/ESP32CommandStation.svg?label=Preview&style=plastic)](https://github.com/atanisoft/ESP32CommandStation/releases) | [![GitHub release date](https://img.shields.io/github/release-date-pre/atanisoft/ESP32CommandStation.svg?style=plastic)](https://github.com/atanisoft/ESP32CommandStation/releases) |
 
-## Releases
+## Using this software
 
-* [![GitHub release](https://img.shields.io/github/release/atanisoft/ESP32CommandStation.svg?label=Stable&style=plastic)](https://github.com/atanisoft/ESP32CommandStation/releases) [![GitHub release date](https://img.shields.io/github/release-date/atanisoft/ESP32CommandStation.svg?style=plastic)](https://github.com/atanisoft/ESP32CommandStation/releases)
-* [![GitHub release](https://img.shields.io/github/release-pre/atanisoft/ESP32CommandStation.svg?label=Unstable&style=plastic)](https://github.com/atanisoft/ESP32CommandStation/releases) [![GitHub release date](https://img.shields.io/github/release-date-pre/atanisoft/ESP32CommandStation.svg?style=plastic)](https://github.com/atanisoft/ESP32CommandStation/releases)
+This software is provided in source code form and will require compilation
+using the [Espressif IDF](https://github.com/espressif/esp-idf) Framework.
+[Pre-compiled](precompiled.md) binaries are available for common configurations
+as part of releases starting with v2.0.0.
 
-## Building from source code
+If a customized version of the firmware is required, it will be necessary to
+setup the [Espressif IDF](https://github.com/espressif/esp-idf) build
+environment by following [these](build_env.md) instructions. After the build
+env has been configured proceed to [Configuring](configuring.md).
 
-In most cases a pre-compiled binary will work but there are cases where
-compiling from source code is necessary. If you have not previously configured
-an ESP-IDF build environment please follow [this](build_env.md) guide.
+### After flashing, what's next?
 
-Otherwise proceed to [Configuring build options](configuring.md).
+After this software has been flashed to the ESP32 you should be able to connect
+the track connections and supply power to the ESP32 (and h-bridge). The
+software will automatically start when the ESP32 is powered.
 
-## Pre-compiled binaries
-
-[link](precompiled.md).
+Proceed to [Getting Started](getting_started.md) for instructions on how to use
+this software.

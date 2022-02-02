@@ -524,6 +524,10 @@ The ESP32 Command Station provides a database of known Locomotives, this is used
 
 [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
 
+## Building
+
+With the software configured you can now start [building](building.md).
+
 ##
 
 [home](README.md)

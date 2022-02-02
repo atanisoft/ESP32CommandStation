@@ -16,6 +16,12 @@ a very easy to use ESP32 board that interfaces very well with the
 
 ![ESPDuino-32](images/ESPDuino-32.png)
 
+**NOTE:** There have been reports that this board may not always enter download
+mode. If the board does not enter download mode automatically connect a jumper
+wire from IO0 (pin closest to barrel jack) to GND (second and third pin from
+right in the same pin header) for downloading firmware and remove for normal
+operations.
+
 When pairing this with the [Arduino Motor Shield](#arduino-motor-shield-L298)
 or compatible L298 modules, please refer to [Arduino Motor Shield Required Jumpers](#arduino-motor-shield-required-jumpers)
 for details on required jumpers.
@@ -52,21 +58,21 @@ The official shield can be purchased [here](https://store-usa.arduino.cc/product
 there are also a number of compatible clones such as the one below:
 ![DeekRobot-L298](images/deekrobot.png)
 
+**NOTE:** The above image has an optional heatsink attached to the L298P IC.
+
+**NOTE:** When this shield is paired with the [ESPDuino-32](#ESPDuino-32), IO0
+is the unmarked pin to the left of IOREF.
+
 ### Arduino Motor Shield Required Jumpers
 
 Using this motor shield with ESP32 Command Station will require at least one
 jumper:
 
-* 12 / DIRA -> 13 / DIRB.
-
-This is necessary as the ESP32 Command Station generates the DCC signal on
-**ONE** GPIO pin.
-
-If this is being used with the [ESPDuino-32](#ESPDuino-32) board (or similar)
-two additional jumpers will be required:
-
-* A0 -> A2.
-* A1 -> A3.
+| Pin 1 | Pin 2 | Notes |
+| ----- | ----- | ----- |
+| 12 / DIRA (ESP32: 19) | 13 / DIRB (ESP32: 18) | This is necessary as the ESP32 Command Station generates the DCC signal on **ONE** GPIO pin. |
+| A0 (ESP32: 2) | A2 (ESP32: 35) | Required when using with [ESPDuino-32](#ESPDuino-32). |
+| A1 (ESP32: 4) | A3 (ESP32: 34) | Required when using with [ESPDuino-32](#ESPDuino-32). |
 
 ### L298 (Generic)
 

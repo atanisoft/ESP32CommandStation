@@ -1,9 +1,17 @@
 # Pre-compiled binaries
 
-Pre-compiled binaries are generally available with official releases. Binaries
-can also be obtained from the [Actions](https://github.com/atanisoft/ESP32CommandStation/actions)
-tab when a pull-request is submitted or updated, these however should be
-considered as unstable builds until the pull-request has been merged.
+Pre-compiled binaries are generally available with releases. Binaries can also
+be obtained from [Actions](https://github.com/atanisoft/ESP32CommandStation/actions)
+when a pull-request is submitted or updated, these however should be considered
+as unstable.
+
+The pre-compiled binaries include three text files which should be referenced
+as part of connecting your hardware together or connecting to the default
+SoftAP.
+
+* readme.txt - This file contains basic instructions on how to use the binaries.
+* pinmap.txt - This file contains GPIO pin mappings.
+* wifi.txt - This file contains the default WiFi configuration.
 
 ## Using pre-compiled binaries
 
@@ -25,7 +33,10 @@ esptool.py --port /dev/ttyUSB0 --before=default_reset --after=hard_reset
     write_flash 0x8000 partition-table.bin 0xe000 ota_data_initial.bin
     0x1000 bootloader.bin 0x10000 ESP32CommandStation.bin
 
-Note: The command above should be a single line.
+**Note:** The command above should be all on a single line.
+
+**Note:** For the ESP32-S3 the bootloader.bin should be flashed at 0x0000 and
+not 0x1000 as listed above.
 
 The port parameter should be adjusted to your environment, on Windows this is
 usually prefixed by COM rather. On Linux it will be similar to the provided
@@ -54,6 +65,9 @@ Use the following offsets and binaries for this utility:
 | 0x8000 | partition-table.bin |
 | 0xe000 | ota_data_initial.bin |
 | 0x10000 | ESP32CommandStation.bin |
+
+**Note:** For the ESP32-S3 the bootloader.bin should be flashed at 0x0000 and
+not 0x1000 as listed above.
 
 ### JMRI Firmware Update Utility
 
