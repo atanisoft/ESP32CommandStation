@@ -164,4 +164,28 @@ variety of shapes and sizes. The preferred size is 128x64 pixels.
 There are many options available with two or four lines with either sixteen or
 twenty columns. The preferred size is twenty columns and four lines.
 
+## External CAN Transceivers
+
+An external CAN transceiver is required for utilizing the OpenLCB (LCC) CAN
+based connections between the ESP32 Command Station and other OpenLCB (LCC)
+nodes.
+
+At this time the following external CAN transceivers have been tested and
+confirmed as working:
+
+* TJA1057/3 -- split voltage CAN transceiver from NXP Semiconductors.
+* IFX1050GVIOXUMA1 -- split voltage CAN transceiver from Infineon.
+* MCP2551 -- CAN transceiver from Microchip Technology.
+* SN65HVD23x -- CAN transceiver from Texas Instruments.
+
+The split voltage CAN transceivers are preferred as the logic IO (RX and TX)
+can use 3v3 logic which is compatible with the ESP32/ESP32-S3 GPIO pins.
+
+**NOTE:** MCP2551 has been tested **ONLY** using 5v as VDD with 3v3 logic on
+the CAN TX pin and a voltage divider on the CAN RX pin to reduce the maximum
+voltage to 3v3 to protect the ESP32/ESP32-S3 GPIO pins from the 5v logic level
+used by the MCP2551.
+
+## 
+
 [home](README.md)
