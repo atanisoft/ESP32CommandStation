@@ -47,13 +47,16 @@ namespace esp32cs
         FastClockMemoryConfigSpace(openlcb::SimpleStackBase *stack,
             node_config_t *config) : config_(config)
         {
-            #define REGISTER_NUMBER(field, type, name) \
-                LOG(ALWAYS, "[FastClockMemCfg:%02x] register_numeric(%s): %d", SPACE, name, field.offset()); \
-                register_numeric(field, numeric_reader<type>(field.offset()), \
+            #define REGISTER_NUMBER(field, type, name)                         \
+                LOG(VERBOSE,                                                   \
+                    "[FastClockMemCfg:%02x] register_numeric(%s): %d",         \
+                    SPACE, name, field.offset());                              \
+                register_numeric(field, numeric_reader<type>(field.offset()),  \
                                 numeric_writer<type>(field.offset()))
-            #define REGISTER_STRING(field, name) \
-                LOG(ALWAYS, "[FastClockMemCfg:%02x] register_string(%s): %d", SPACE, name, field.offset()); \
-                register_string(field, string_reader(field.offset()), \
+            #define REGISTER_STRING(field, name)                               \
+                LOG(VERBOSE, "[FastClockMemCfg:%02x] register_string(%s): %d", \
+                    SPACE, name, field.offset());                              \
+                register_string(field, string_reader(field.offset()),          \
                                 string_writer(field.offset()))
 
             REGISTER_NUMBER(FastClockConfigHolder.enabled(), uint8_t, "enabled");
