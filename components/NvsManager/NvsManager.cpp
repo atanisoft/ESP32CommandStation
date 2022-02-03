@@ -265,7 +265,9 @@ namespace esp32cs
     {
       LOG(INFO, "[NVS] FastClock: Disabled");
     }
+#if CONFIG_STATUS_LED_DATA_PIN != -1
     LOG(INFO, "[NVS] LED brightness: %d", nvsConfig.led_brightness);
+#endif // CONFIG_STATUS_LED_DATA_PIN != -1
   }
 
   void NvsManager::init(uint8_t reset_reason)
