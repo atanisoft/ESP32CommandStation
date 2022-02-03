@@ -20,10 +20,13 @@ devices. This is the preferred method for initial firmware flashing.
 The command below can be used to flash the firmware to the ESP32:
 
 esptool.py --port /dev/ttyUSB0 --before=default_reset --after=hard_reset
-    write_flash 0x8000 partition-table.bin 0xe000 ota_data_initial.bin
-    0x1000 bootloader.bin 0x10000 ESP32CommandStation.bin
+    --baud 460800 write_flash 0x1000 bootloader.bin 0x8000 partition-table.bin
+    0xe000 ota_data_initial.bin 0x10000 ESP32CommandStation.bin
 
 Note: The command above should be a single line.
+
+Note: For the ESP32-S3 the bootloader.bin should be flashed at 0x0000 instead
+of 0x1000 as listed above.
 
 The port parameter should be adjusted to your environment, on Windows this is
 usually prefixed by COM rather. On Linux it will be similar to the provided
