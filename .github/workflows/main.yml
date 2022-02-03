@@ -14,7 +14,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        target: [esp32-idfv43-pcb, esp32-idfv44-l298, esp32-idfv44-lmd18200, esp32-idfv44-bts7960, esp32-idfv44-pcb, esp32-idfv5-l298, esp32-idfv5-lmd18200, esp32-idfv5-bts7960, esp32-idfv5-pcb, esp32s3-idfv44-pcb, esp32s3-idfv5-pcb]
+        target: [esp32-idfv43-pcb, esp32-idfv44-l298, esp32-idfv44-lmd18200, esp32-idfv44-bts7960, esp32-idfv44-pcb, esp32-idfv5-l298, esp32-idfv5-lmd18200, esp32-idfv5-bts7960, esp32-idfv5-pcb, esp32s3-idfv5-pcb]
     steps:
       - uses: actions/checkout@v2
         with:
