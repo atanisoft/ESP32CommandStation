@@ -434,7 +434,12 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
 #if CONFIG_RAILCOM_DUMP_PACKETS
   railcom_dumper.emplace(railcom_hub.operator->());
 #endif
-#endif // !CONFIG_RAILCOM_DISABLED
+#else // cut-out disabled
+  get_dcc_output(DccOutput::Type::TRACK)->set_railcom_cutout_enabled(
+    DccOutput::RailcomCutout::DISABLED);
+  get_dcc_output(DccOutput::Type::LCC)->set_railcom_cutout_enabled(
+    DccOutput::RailcomCutout::DISABLED);
+#endif // RAILCOM_CUT_OUT_ENABLED
   track_power.emplace(node);
   track_power_consumer.emplace(track_power.operator->());
   estop_packet_source.emplace(node);
@@ -448,22 +453,23 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   track_monitor.emplace(svc, cfg);
 #endif // CONFIG_OPS_TRACK_ENABLED
 
-  // Clear the initialization pending flag
-  DccHwDefs::InternalBoosterOutput::clear_disable_reason(
-        DccOutput::DisableReason::INITIALIZATION_PENDING);
-  DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
-        DccOutput::DisableReason::INITIALIZATION_PENDING);
 #if CONFIG_ENERGIZE_TRACK_ON_STARTUP
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(
-    DccOutput::DisableReason::GLOBAL_EOFF);
+        DccOutput::DisableReason::GLOBAL_EOFF);
   DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
         DccOutput::DisableReason::GLOBAL_EOFF);
 #else
   DccHwDefs::InternalBoosterOutput::set_disable_reason(
-    DccOutput::DisableReason::GLOBAL_EOFF);
+        DccOutput::DisableReason::GLOBAL_EOFF);
   DccHwDefs::OpenLCBBoosterOutput::set_disable_reason(
-    DccOutput::DisableReason::GLOBAL_EOFF);
+        DccOutput::DisableReason::GLOBAL_EOFF);
 #endif // CONFIG_ENERGIZE_TRACK_ON_STARTUP
+
+  // Clear the initialization pending flag now that everything is configured.
+  get_dcc_output(DccOutput::Type::TRACK)->clear_disable_output_for_reason(
+    DccOutput::DisableReason::INITIALIZATION_PENDING);
+  get_dcc_output(DccOutput::Type::LCC)->clear_disable_output_for_reason(
+    DccOutput::DisableReason::INITIALIZATION_PENDING);
 }
 
 void shutdown_dcc()
