@@ -140,6 +140,42 @@ menu "ESP32 Command Station Configuration"
                     are fourteen channels available to pick from and some are better
                     than others. The best channels to pick from are: 1, 6, 11 since
                     these do not overlap with other channels.
+
+            choice WIFI_SOFTAP_AUTH
+                bool "SoftAP Authentication"
+                default WIFI_SOFTAP_AUTH_WPA2
+
+                config WIFI_SOFTAP_AUTH_OPEN
+                    bool "Open (None)"
+
+                config WIFI_SOFTAP_AUTH_WEP
+                    bool "WEP"
+
+                config WIFI_SOFTAP_AUTH_WPA
+                    bool "WPA"
+
+                config WIFI_SOFTAP_AUTH_WPA2
+                    bool "WPA2"
+
+                config WIFI_SOFTAP_AUTH_WPA_WPA2
+                    bool "WPA/WPA2"
+
+                config WIFI_SOFTAP_AUTH_WPA3
+                    bool "WPA3"
+
+                config WIFI_SOFTAP_AUTH_WPA2_WPA3
+                    bool "WPA2/WPA3"
+            endchoice
+
+            config WIFI_SOFTAP_AUTH
+                int
+                default 1 if WIFI_SOFTAP_AUTH_WEP
+                default 2 if WIFI_SOFTAP_AUTH_WPA
+                default 3 if WIFI_SOFTAP_AUTH_WPA2
+                default 4 if WIFI_SOFTAP_AUTH_WPA_WPA2
+                default 6 if WIFI_SOFTAP_AUTH_WPA3
+                default 7 if WIFI_SOFTAP_AUTH_WPA2_WPA3
+                default 0
         endmenu
 
         config SNTP

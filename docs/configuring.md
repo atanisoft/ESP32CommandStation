@@ -97,6 +97,7 @@ build. All pre-built binaries will default to create a SoftAP.
 | SoftAP SSID | esp32csap | Name of the AP to advertise when "Create SoftAP" is enabled. |
 | SoftAP Password | esp32csap | Password for connecting to the AP to advertise when "Create SoftAP" is enabled. |
 | SoftAP Channel | 1 | WiFi channel to use for the SoftAP. |
+| SoftAP Authentication | WPA2 | Authentication mode to use for the SoftAP. **NOTE:** if the SoftAP Password is blank, this will switch to Open (no authentication required). |
 
 [Return to "WiFi Configuration"](#wifi-configuration) | [Return to "Configuring ESP32 Command Station Options"](#configuring-esp32-command-station-options)
 
