@@ -57,20 +57,28 @@ namespace esp32cs
                 register_string(field, string_reader(field.offset()),          \
                                 string_writer(field.offset()))
 
-            REGISTER_NUMBER(WiFiConfigHolder.wifi_mode(), uint8_t, "wifi_mode");
-            REGISTER_STRING(WiFiConfigHolder.hostname_prefix(), "hostname_prefix");
+            REGISTER_NUMBER(WiFiConfigHolder.wifi_mode(), uint8_t,
+                            "wifi_mode");
+            REGISTER_STRING(WiFiConfigHolder.hostname_prefix(),
+                            "hostname_prefix");
             // Station Config
             REGISTER_STRING(WiFiConfigHolder.station().ssid(), "station_ssid");
-            REGISTER_STRING(WiFiConfigHolder.station().password(), "station_pass");
+            REGISTER_STRING(WiFiConfigHolder.station().password(),
+                            "station_pass");
             // SoftAP Config
             REGISTER_STRING(WiFiConfigHolder.softap().ssid(), "softap_ssid");
-            REGISTER_STRING(WiFiConfigHolder.softap().password(), "softap_pass");
-            REGISTER_NUMBER(WiFiConfigHolder.softap().auth(), uint8_t, "softap_auth");
-            REGISTER_NUMBER(WiFiConfigHolder.softap().channel(), uint8_t, "softap_channel");
+            REGISTER_STRING(WiFiConfigHolder.softap().password(),
+                            "softap_pass");
+            REGISTER_NUMBER(WiFiConfigHolder.softap().auth(), uint8_t,
+                            "softap_auth");
+            REGISTER_NUMBER(WiFiConfigHolder.softap().channel(), uint8_t,
+                            "softap_channel");
             // SNTP Congig
-            REGISTER_NUMBER(WiFiConfigHolder.sntp().enabled(), uint8_t, "sntp_enabled");
+            REGISTER_NUMBER(WiFiConfigHolder.sntp().enabled(), uint8_t,
+                            "sntp_enabled");
             REGISTER_STRING(WiFiConfigHolder.sntp().server(), "sntp_server");
-            REGISTER_STRING(WiFiConfigHolder.sntp().timezone(), "sntp_timezone");
+            REGISTER_STRING(WiFiConfigHolder.sntp().timezone(),
+                            "sntp_timezone");
             stack->memory_config_handler()->registry()->insert(
                 stack->node(), SPACE, this);
             #undef REGISTER_NUMBER
@@ -92,23 +100,28 @@ namespace esp32cs
                 switch(offset)
                 {
                     case WiFiConfigHolder.wifi_mode().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] wifi_mode: %d", SPACE, config_->wifi_mode);
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] wifi_mode: %d",
+                            SPACE, config_->wifi_mode);
                         value = config_->wifi_mode;
                         break;
                     case WiFiConfigHolder.softap().auth().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_auth: %d", SPACE, config_->softap_auth);
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_auth: %d",
+                            SPACE, config_->softap_auth);
                         value = config_->softap_auth;
                         break;
                     case WiFiConfigHolder.softap().channel().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_channel: %d", SPACE, config_->softap_channel);
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_channel: %d",
+                            SPACE, config_->softap_channel);
                         value = config_->softap_channel;
                         break;
                     case WiFiConfigHolder.sntp().enabled().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] sntp_enabled: %d", SPACE, config_->sntp_enabled);
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] sntp_enabled: %d",
+                            SPACE, config_->sntp_enabled);
                         value = config_->sntp_enabled;
                         break;
                     default:
-                        LOG_ERROR("[WiFiMemoryConfigSpace:%02x-RD] request for unrecognized offset:%d", SPACE, offset);
+                        LOG_ERROR("[WiFiMemCfg:%02x-RD] request for "
+                                  "unrecognized offset:%d", SPACE, offset);
                 }
                 done->notify();
                 return value;
@@ -125,23 +138,28 @@ namespace esp32cs
                 switch(offset)
                 {
                     case WiFiConfigHolder.wifi_mode().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] wifi_mode: %d", SPACE, value);
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] wifi_mode: %d",
+                            SPACE, value);
                         config_->wifi_mode = (wifi_mode_t)value;
                         break;
                     case WiFiConfigHolder.softap().auth().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_auth: %d", SPACE, value);
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_auth: %d",
+                            SPACE, value);
                         config_->softap_auth = (wifi_auth_mode_t)value;
                         break;
                     case WiFiConfigHolder.softap().channel().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_channel: %d", SPACE, value);
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_channel: %d",
+                            SPACE, value);
                         config_->softap_channel = value;
                         break;
                     case WiFiConfigHolder.sntp().enabled().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] sntp_enabled: %d", SPACE, value);
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] sntp_enabled: %d",
+                            SPACE, value);
                         config_->sntp_enabled = value;
                         break;
                     default:
-                        LOG_ERROR("[WiFiMemoryConfigSpace:%02x-WR] request for unrecognized offset:%d", SPACE, offset);
+                        LOG_ERROR("[WiFiMemCfg:%02x-WR] request for "
+                                  "unrecognized offset:%d", SPACE, offset);
                 }
                 done->notify();
             };
@@ -156,42 +174,55 @@ namespace esp32cs
                 {
                     case WiFiConfigHolder.hostname_prefix().offset():
                         *value = config_->hostname_prefix;
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] hostname_prefix: %s", SPACE, value->c_str());
+                        LOG(VERBOSE,
+                            "[WiFiMemCfg:%02x-RDSTR] hostname_prefix: %s",
+                            SPACE, value->c_str());
                         break;
                     case WiFiConfigHolder.station().ssid().offset():
                         *value = config_->station_ssid;
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] station_ssid: %s", SPACE, value->c_str());
+                        LOG(VERBOSE,
+                            "[WiFiMemCfg:%02x-RDSTR] station_ssid: %s", SPACE,
+                            value->c_str());
                         break;
                     case WiFiConfigHolder.station().password().offset():
                         {
-                            string encoded = base64_encode(config_->station_pass);
+                            string encoded =
+                                base64_encode(config_->station_pass);
                             encoded.insert(0, "***");
                             *value = encoded;
                         }
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] station_pass: %s", SPACE, value->c_str());
+                        LOG(VERBOSE,
+                            "[WiFiMemCfg:%02x-RDSTR] station_pass: %s", SPACE,
+                            value->c_str());
                         break;
                     case WiFiConfigHolder.softap().ssid().offset():
                         *value = config_->softap_ssid;
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] softap_ssid: %s", SPACE, value->c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] softap_ssid: %s",
+                            SPACE, value->c_str());
                         break;
                     case WiFiConfigHolder.softap().password().offset():
                         {
-                            string encoded = base64_encode(config_->softap_pass);
+                            string encoded =
+                                base64_encode(config_->softap_pass);
                             encoded.insert(0, "***");
                             *value = encoded;
                         }
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] softap_pass: %s", SPACE, value->c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] softap_pass: %s",
+                            SPACE, value->c_str());
                         break;
                     case WiFiConfigHolder.sntp().server().offset():
                         *value = config_->sntp_server;
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] sntp_server: %s", SPACE, value->c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] sntp_server: %s",
+                            SPACE, value->c_str());
                         break;
                     case WiFiConfigHolder.sntp().timezone().offset():
                         *value = config_->timezone;
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] timezone: %s", SPACE, value->c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] timezone: %s",
+                            SPACE, value->c_str());
                         break;
                     default:
-                        LOG_ERROR("[WiFiMemoryConfigSpace:%02x--RSTR] request for unrecognized offset:%d", SPACE, offset);
+                        LOG_ERROR("[WiFiMemCfg:%02x--RSTR] request for "
+                                  "unrecognized offset:%d", SPACE, offset);
                         *value = "";
                 }
                 done->notify();
@@ -210,11 +241,14 @@ namespace esp32cs
                 switch(offset)
                 {
                     case WiFiConfigHolder.hostname_prefix().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] hostname_prefix: %s", SPACE, value.c_str());
+                        LOG(VERBOSE,
+                            "[WiFiMemCfg:%02x-RD] hostname_prefix: %s", SPACE,
+                            value.c_str());
                         str_populate(config_->hostname_prefix, value.c_str());
                         break;
                     case WiFiConfigHolder.station().ssid().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] station_ssid: %s", SPACE, value.c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] station_ssid: %s",
+                            SPACE, value.c_str());
                         str_populate(config_->station_ssid, value.c_str());
                         break;
                     case WiFiConfigHolder.station().password().offset():
@@ -224,11 +258,13 @@ namespace esp32cs
                             string value = "";
                             base64_decode(encodedpw, &value);
                         }
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] station_pass: %s", SPACE, value.c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] station_pass: %s",
+                            SPACE, value.c_str());
                         str_populate(config_->station_pass, value.c_str());
                         break;
                     case WiFiConfigHolder.softap().ssid().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_ssid: %s", SPACE, value.c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_ssid: %s",
+                            SPACE, value.c_str());
                         str_populate(config_->softap_ssid, value.c_str());
                         break;
                     case WiFiConfigHolder.softap().password().offset():
@@ -238,19 +274,23 @@ namespace esp32cs
                             string value = "";
                             base64_decode(encodedpw, &value);
                         }
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_pass: %s", SPACE, value.c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_pass: %s",
+                            SPACE, value.c_str());
                         str_populate(config_->softap_pass, value.c_str());
                         break;
                     case WiFiConfigHolder.sntp().server().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] sntp_server: %s", SPACE, value.c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] sntp_server: %s",
+                            SPACE, value.c_str());
                         str_populate(config_->sntp_server, value.c_str());
                         break;
                     case WiFiConfigHolder.sntp().timezone().offset():
-                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] timezone: %s", SPACE, value.c_str());
+                        LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] timezone: %s",
+                            SPACE, value.c_str());
                         str_populate(config_->timezone, value.c_str());
                         break;
                     default:
-                        LOG_ERROR("[WiFiMemoryConfigSpace:%02x-WSTR] request for unrecognized offset:%d", SPACE, offset);
+                        LOG_ERROR("[WiFiMemCfg:%02x-WSTR] request for "
+                                  "unrecognized offset:%d", SPACE, offset);
                 }
                 done->notify();
             };
