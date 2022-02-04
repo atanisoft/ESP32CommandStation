@@ -29,7 +29,7 @@ CDIDownloadHandler::CDIDownloadHandler(Service *service, openlcb::Node *node,
 
 StateFlowBase::Action CDIDownloadHandler::entry()
 {
-    LOG(INFO, "[CDI:%s] Requesting CDI XML",
+    LOG(VERBOSE, "[CDI:%s] Requesting CDI XML",
         esp32cs::node_id_to_string(request()->target.id).c_str());
     string res = DOWNLOAD_START;
     res += "\n";
@@ -40,7 +40,7 @@ StateFlowBase::Action CDIDownloadHandler::entry()
 
 StateFlowBase::Action CDIDownloadHandler::download_segment()
 {
-    LOG(INFO, "[CDI:%s] Requesting CDI XML (%u -> %u)",
+    LOG(VERBOSE, "[CDI:%s] Requesting CDI XML (%u -> %u)",
         targetNodeId_.c_str(), request()->offs,
         request()->offs + CDI_DOWNLOAD_SEGMENT_SIZE);
     return invoke_subflow_and_wait(&client_, STATE(segment_complete),
@@ -61,9 +61,6 @@ StateFlowBase::Action CDIDownloadHandler::segment_complete()
         request()->attempts++;
         if (request()->attempts <= MAX_ATTEMPTS)
         {
-            LOG_ERROR("[CDI:%s] Failed to download CDI: %04x (%d/%d)",
-                      targetNodeId_.c_str(), b->data()->resultCode,
-                      request()->attempts, MAX_ATTEMPTS);
             return yield_and_call(STATE(download_segment));
         }
         string res =
@@ -73,7 +70,7 @@ StateFlowBase::Action CDIDownloadHandler::segment_complete()
     }
     else
     {
-        LOG(INFO, "[CDI:%s] (%u->%u) Received", targetNodeId_.c_str(),
+        LOG(VERBOSE, "[CDI:%s] (%u->%u) Received", targetNodeId_.c_str(),
             request()->offs, request()->offs + b->data()->payload.length());
         // Check if we have a null in the payload, this indicates end of stream
         // for the CDI data, RR-CirKits uses this rather than returning
@@ -90,7 +87,7 @@ StateFlowBase::Action CDIDownloadHandler::segment_complete()
 
         if (eofFound)
         {
-            LOG(INFO, "[CDI:%s] CDI XML null byte detected",
+            LOG(VERBOSE, "[CDI:%s] CDI XML null byte detected",
                 targetNodeId_.c_str());
             // CDI data downloaded fully and streamed to the websocket,
             // send a message with basic snip data and flag to indicate
@@ -111,7 +108,7 @@ StateFlowBase::Action CDIDownloadHandler::segment_complete()
         {
             // move to next chunk and start the download
             request()->offs += CDI_DOWNLOAD_SEGMENT_SIZE;
-            return call_immediately(STATE(segment_complete));
+            return call_immediately(STATE(download_segment));
         }
     }
     return exit();
