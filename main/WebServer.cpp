@@ -411,7 +411,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         GET_LOCO_VIA_EXECUTOR(train, address);
         auto req_speed = train->get_speed();
         SpeedType direction = req_speed.direction();
-        if (cJSON_HasObjectItem(root, "s"))
+        if (cJSON_HasObjectItem(root, "spd"))
         {
           uint8_t speed = cJSON_GetObjectItem(root, "spd")->valueint;
           LOG(VERBOSE, "[WS:%d] Setting loco %d speed to %d", req_id->valueint, address, speed);

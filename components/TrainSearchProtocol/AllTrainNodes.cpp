@@ -225,16 +225,30 @@ openlcb::TrainImpl* AllTrainNodes::get_train_impl(DccMode drive_type, int addres
       });
     if (ent != trains_.end())
     {
+      LOG(CONFIG_TSP_LOGGING_LEVEL,
+          "[TrainSearch] Found %s matching drive: %d with address %d",
+          esp32cs::node_id_to_string((*ent)->node_id()).c_str(),
+          static_cast<int>(drive_type), address);
       return (*ent)->train();
     }
   }
+  LOG(CONFIG_TSP_LOGGING_LEVEL,
+      "[TrainSearch] No existing loco found for drive: %d address %d, trying "
+      "to allocate", drive_type, address);
   // no active train was found with the drive type and address, attempt to
   // create a new one.
   auto impl = find_node(allocate_node(drive_type, address));
   if (impl)
   {
+    LOG(CONFIG_TSP_LOGGING_LEVEL,
+        "[TrainSearch] %s created for drive: %d with address %d",
+        esp32cs::node_id_to_string(impl->node_id()).c_str(),
+        static_cast<int>(drive_type), address);
     return impl->train();
   }
+  LOG_ERROR("[TrainSearch] Failed to locate/create locomotive for drive: %d "
+            "with address %d, giving up",
+            static_cast<int>(drive_type), address);
   return nullptr;
 }
 
@@ -871,7 +885,7 @@ AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
   if (mode & MARKLIN_ANY)
   {
     LOG_ERROR("[TrainSearch] Ignoring attempt to allocate unsupported drive "
-              "type:%d using address: %d", mode, address);
+              "type:%d using address: %d", static_cast<int>(mode), address);
     return nullptr;
   }
   DelayedInitTrainNode *impl =
@@ -880,6 +894,9 @@ AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
     OSMutexLock l(&trainsLock_);
     trains_.push_back(impl);
   }
+  LOG(CONFIG_TSP_LOGGING_LEVEL,
+      "[TrainSearch] Allocated loco for drive: %d address %d",
+      static_cast<int>(mode), address);
   return impl;
 }
 
@@ -906,8 +923,17 @@ bool AllTrainNodes::is_valid_train_node(NodeID node_id, bool allocate)
 NodeID AllTrainNodes::allocate_node(DccMode drive_type, unsigned address)
 {
   DelayedInitTrainNode* impl = create_impl(-1, drive_type, address);
-  if (!impl) return 0; // failed.
+  if (!impl)
+  {
+    LOG_ERROR("[TrainSearch] Failed to allocate new locomotive for drive:%d, "
+              "address:%d", static_cast<int>(drive_type), address);
+    return 0; // failed.
+  }
   impl->set_id(db_->add_dynamic_entry(address, drive_type));
+  LOG(CONFIG_TSP_LOGGING_LEVEL,
+      "[TrainSearch] %s created for drive: %d with address %d",
+      esp32cs::node_id_to_string(impl->node_id()).c_str(),
+      static_cast<int>(drive_type), address);
   return impl->node_id();
 }
 
