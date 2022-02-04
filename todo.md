@@ -13,7 +13,6 @@
     - HttpServer: Listener runs standalone, HttpServer leverages Esp32WiFiManager Executor.
     - TWAI: ISR APP_CPU, task float priority is one less than LwIP.
     - RMT: ISR PRO_CPU
-* [ ] Investigate heap corruption issues.
 * [ ] DCC: ULP current sense / ACK.
     - [x] Implementation of ULP code to read ADC and wake main SoC when thresholds breached.
     - [x] Disable track when short occurs.
@@ -34,12 +33,12 @@
 * [x] AccessoryDecoderDB: Directly consume OpenLCB events.
 * [x] AccessoryDecoderDB: Add name to decoder.
 * [x] TempSensor: Move ADC read into ULP.
-* [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
+* [x] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
 * [ ] WebUI: Test all endpoints.
 * [x] WebUI: Roster save via WS.
 * [x] WebUI: Expose FastClock configuration (non-realtime).
 * [x] FastClock: Re-add FastClock support.
-* [ ] Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
+* [x] Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
 
 ### Nice to have for v2.0
 

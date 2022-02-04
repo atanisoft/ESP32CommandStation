@@ -1072,13 +1072,13 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             tbody.children().remove();
             for (var idx in data) {
               var actions = String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Edit" onclick="editAccessory({0});"><i class="icon icon-edit"></i></button>',
-                data[idx].address);
+                data[idx].addr);
               actions += String.format('<button class="btn btn-primary btn-sm tooltip" data-tooltip="Delete" onclick="deleteAccessory({0});"><i class="icon icon-delete"></i></button>',
-                data[idx].address);
+                data[idx].addr);
               actions += String.format('<button id="accessory_{0}_toggle" class="btn btn-primary btn-sm tooltip" data-tooltip="{1}" onclick="toggleAccessory({0},this);"><i class="icon {2}"></i></button>',
-                data[idx].address, accessory_states_tooltip[data[idx].state], accessory_icons[(data[idx].type * 2) + data[idx].state]);
+                data[idx].addr, accessory_states_tooltip[data[idx].state], accessory_icons[(data[idx].type * 2) + data[idx].state]);
               $(tbody).append(String.format('<tr><td id="accessory_{0}_addr">{0}</td><td id="accessory_{0}_name">{1}</td><td id="accessory_{0}_type" data-type="{2}">{3}</td><td id="accessory_{0}_state">{4}</td><td>{5}</td></tr>',
-                data[idx].address, data[idx].name, data[idx].type, accessory_types[data[idx].type], accessory_states[data[idx].state], actions));
+                data[idx].addr, data[idx].name, data[idx].type, accessory_types[data[idx].type], accessory_states[data[idx].state], actions));
             }
             $("#accessories-empty").hide();
             $("#accessories-table").show();
