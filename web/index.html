@@ -906,7 +906,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         if ($(target).hasClass('icon')) {
           target = $(target).parent();
         }
-        var id = $(target).prop('id').match(/.*(\d+).*/)[1];
+        var id = $(target).prop('id').split(/_/)[1];
         ws_tx(JSON.stringify({
           req: 'function',
           addr: parseInt($("#loco-address").val()),
