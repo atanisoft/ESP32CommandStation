@@ -196,6 +196,9 @@ void AllTrainNodes::remove_train_impl(int address)
   {
     DelayedInitTrainNode *impl = (*ent);
     impl->iface()->delete_local_node(impl);
+    LOG(CONFIG_TSP_LOGGING_LEVEL,
+        "[TrainSearch] %s deleted as it used address:%d",
+        esp32cs::node_id_to_string(impl->node_id()).c_str(), address);
     delete impl;
     trains_.erase(ent);
   }
@@ -885,7 +888,7 @@ AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
   if (mode & MARKLIN_ANY)
   {
     LOG_ERROR("[TrainSearch] Ignoring attempt to allocate unsupported drive "
-              "type:%d using address: %d", static_cast<int>(mode), address);
+              "type:%d using address:%d", static_cast<int>(mode), address);
     return nullptr;
   }
   DelayedInitTrainNode *impl =
@@ -895,7 +898,8 @@ AllTrainNodes::DelayedInitTrainNode* AllTrainNodes::create_impl(
     trains_.push_back(impl);
   }
   LOG(CONFIG_TSP_LOGGING_LEVEL,
-      "[TrainSearch] Allocated loco for drive: %d address %d",
+      "[TrainSearch] %s created for drive:%d with address:%d",
+      esp32cs::node_id_to_string(impl->node_id()).c_str(),
       static_cast<int>(mode), address);
   return impl;
 }
@@ -931,7 +935,7 @@ NodeID AllTrainNodes::allocate_node(DccMode drive_type, unsigned address)
   }
   impl->set_id(db_->add_dynamic_entry(address, drive_type));
   LOG(CONFIG_TSP_LOGGING_LEVEL,
-      "[TrainSearch] %s created for drive: %d with address %d",
+      "[TrainSearch] %s created for drive:%d with address:%d",
       esp32cs::node_id_to_string(impl->node_id()).c_str(),
       static_cast<int>(drive_type), address);
   return impl->node_id();
