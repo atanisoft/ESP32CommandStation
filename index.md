@@ -24,4 +24,4 @@ The latest production release of the code is [![GitHub release](https://img.shie
 The development branch is where all "in-progress" work will be made available, there is no guarantee of stability of the project when using this version of the code.
 
 ## How to Build
-Details on building the ESP32 Command Station can be found [here](https://github.com/atanisoft/ESP32CommandStation/blob/doc_updates/docs/configuring.md)
+Details on building the ESP32 Command Station can be found [here](https://github.com/atanisoft/ESP32CommandStation/blob/master/docs/configuring.md)
