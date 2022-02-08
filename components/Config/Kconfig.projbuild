@@ -56,8 +56,6 @@ menu "ESP32 Command Station Configuration"
         
         config ESP32CS_PCB
             bool "ESP32 CS PCB with ESP32 (OPS & PROG)"
-            select OPS_TRACK_ENABLED
-            select PROG_TRACK_ENABLED
             select OLCB_TWAI_ENABLED
             select RAILCOM_CUT_OUT_ENABLED
             select RAILCOM_DATA_ENABLED
@@ -73,15 +71,26 @@ menu "ESP32 Command Station Configuration"
             bool "v1.5.0"
             depends on IDF_TARGET_ESP32
             select CURRENTSENSE_USE_SHUNT
+            select OPS_TRACK_ENABLED
+            select PROG_TRACK_ENABLED
+
+        config ESP32CS_PCB_V130_OPS_ONLY
+            bool "v1.3.0 (OPS Only)"
+            depends on IDF_TARGET_ESP32
+            select OPS_TRACK_ENABLED
 
         config ESP32CS_PCB_V100
             bool "v1.0.0"
             depends on IDF_TARGET_ESP32
-    
+            select OPS_TRACK_ENABLED
+            select PROG_TRACK_ENABLED
+
         config ESP32CS_PCB_V200
             bool "v2.0.0"
             depends on IDF_TARGET_ESP32S3
             select CURRENTSENSE_USE_SHUNT
+            select OPS_TRACK_ENABLED
+            select PROG_TRACK_ENABLED
     endchoice
 
     menu "WiFi Configuration"
