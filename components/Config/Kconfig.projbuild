@@ -79,12 +79,6 @@ menu "ESP32 Command Station Configuration"
             depends on IDF_TARGET_ESP32
             select OPS_TRACK_ENABLED
 
-        config ESP32CS_PCB_V100
-            bool "v1.0.0"
-            depends on IDF_TARGET_ESP32
-            select OPS_TRACK_ENABLED
-            select PROG_TRACK_ENABLED
-
         config ESP32CS_PCB_V200
             bool "v2.0.0"
             depends on IDF_TARGET_ESP32S3
