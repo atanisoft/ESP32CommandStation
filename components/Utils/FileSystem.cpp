@@ -92,12 +92,14 @@ void recursive_dump_tree(const std::string &path, bool remove = false, bool firs
     }
 }
 
+#if !CONFIG_USE_SD_DISABLED
 static esp_vfs_fat_mount_config_t sd_cfg =
 {
     .format_if_mount_failed = true, // if the FS is corrupted format.
     .max_files = 10,                // maximum of 10 open files at a time.
     .allocation_unit_size = 0       // default allocation unit size.
 };
+#endif // !CONFIG_USE_SD_DISABLED
 
 void display_fatfs_usage()
 {
@@ -129,15 +131,15 @@ bool mount_fs_sdspi()
         .sclk_io_num = CONFIG_SD_SPI_CLOCK,
         .quadwp_io_num = GPIO_NUM_NC,
         .quadhd_io_num = GPIO_NUM_NC,
-    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,4,0)
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,4,0)
         .data4_io_num = GPIO_NUM_NC,
         .data5_io_num = GPIO_NUM_NC,
         .data6_io_num = GPIO_NUM_NC,
         .data7_io_num = GPIO_NUM_NC,
-    #endif // IDF v4.4+
+#endif // IDF v4.4+
         .max_transfer_sz = 0,
         .flags = SPICOMMON_BUSFLAG_SCLK | SPICOMMON_BUSFLAG_MISO |
-                SPICOMMON_BUSFLAG_MOSI,
+                 SPICOMMON_BUSFLAG_MOSI,
         .intr_flags = ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_IRAM
     };
     sdspi_device_config_t device = SDSPI_DEVICE_CONFIG_DEFAULT();
@@ -162,48 +164,76 @@ bool mount_fs_sdspi()
 #endif // CONFIG_USE_SD_SPI_MODE
 
 #if CONFIG_USE_SD_MMC_MODE
+
+#define SET_PULL_MODE(pin)                                      \
+    if (pin != GPIO_NUM_NC)                                     \
+    {                                                           \
+        gpio_set_pull_mode((gpio_num_t)pin, GPIO_PULLUP_ONLY);  \
+    }
+
+#define RESET_PIN_MODE(pin)                                     \
+    if (pin != GPIO_NUM_NC)                                     \
+    {                                                           \
+        gpio_reset_pin((gpio_num_t)pin);                        \
+    }
+
 bool mount_fs_sdmmc()
 {
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-    sdmmc_slot_config_t slot = 
-    {
-        .clk = (gpio_num_t)CONFIG_SD_MMC_CLOCK,
-        .cmd = (gpio_num_t)CONFIG_SD_MMC_CMD,
-        .d0 = (gpio_num_t)CONFIG_SD_MMC_DATA_0,
-        .d1 = (gpio_num_t)CONFIG_SD_MMC_DATA_1,
-        .d2 = (gpio_num_t)CONFIG_SD_MMC_DATA_2,
-        .d3 = (gpio_num_t)CONFIG_SD_MMC_DATA_3,
-        .d4 = GPIO_NUM_NC,
-        .d5 = GPIO_NUM_NC,
-        .d6 = GPIO_NUM_NC,
-        .d7 = GPIO_NUM_NC,
-        .cd = SDMMC_SLOT_NO_CD,
-        .wp = SDMMC_SLOT_NO_WP,
-        .width = 4,
-        .flags = 0
-    };
-    host.flags = SDMMC_HOST_FLAG_1BIT | SDMMC_HOST_FLAG_4BIT |
-                    SDMMC_HOST_FLAG_DDR;
+    sdmmc_slot_config_t slot = SDMMC_SLOT_CONFIG_DEFAULT();
 
-    gpio_set_pull_mode(slot.clk, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(slot.cmd, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(slot.d0, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(slot.d1, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(slot.d2, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(slot.d3, GPIO_PULLUP_ONLY);
+#if SOC_SDMMC_USE_GPIO_MATRIX
+    slot.clk = (gpio_num_t)CONFIG_SD_MMC_CLOCK;
+    slot.cmd = (gpio_num_t)CONFIG_SD_MMC_CMD;
+    slot.d0 = (gpio_num_t)CONFIG_SD_MMC_DATA_0;
+    slot.d1 = (gpio_num_t)CONFIG_SD_MMC_DATA_1;
+    slot.d2 = (gpio_num_t)CONFIG_SD_MMC_DATA_2;
+    slot.d3 = (gpio_num_t)CONFIG_SD_MMC_DATA_3;
+    slot.d4 = slot.d5 = slot.d6 = slot.d7 = GPIO_NUM_NC;
+#endif // SOC_SDMMC_USE_GPIO_MATRIX
+
+    // Enable the built-in pull-up resistors
+    slot.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+
+    // Default to one line mode (D0)
+    slot.width = 1;
+    host.flags = SDMMC_HOST_FLAG_1BIT | SDMMC_HOST_FLAG_DDR;
+
+    // If additional other data lines are connected we can use four line mode.
+    if (CONFIG_SD_MMC_DATA_1 != GPIO_NUM_NC &&
+        CONFIG_SD_MMC_DATA_2 != GPIO_NUM_NC &&
+        CONFIG_SD_MMC_DATA_3 != GPIO_NUM_NC)
+    {
+        slot.width = 4;
+        host.flags |= SDMMC_HOST_FLAG_4BIT;
+    }
+
+    SET_PULL_MODE(CONFIG_SD_MMC_CLOCK)
+    SET_PULL_MODE(CONFIG_SD_MMC_CMD)
+    SET_PULL_MODE(CONFIG_SD_MMC_DATA_0)
+    SET_PULL_MODE(CONFIG_SD_MMC_DATA_1)
+    SET_PULL_MODE(CONFIG_SD_MMC_DATA_2)
+    SET_PULL_MODE(CONFIG_SD_MMC_DATA_3)
+
     if (esp_vfs_fat_sdmmc_mount(
             FS_MOUNTPOINT, &host, &slot, &sd_cfg, &sd_card) == ESP_OK)
     {
         return true;
     }
-    gpio_reset_pin(slot.clk);
-    gpio_reset_pin(slot.cmd);
-    gpio_reset_pin(slot.d0);
-    gpio_reset_pin(slot.d1);
-    gpio_reset_pin(slot.d2);
-    gpio_reset_pin(slot.d3);
+
+    RESET_PIN_MODE(CONFIG_SD_MMC_CLOCK)
+    RESET_PIN_MODE(CONFIG_SD_MMC_CMD)
+    RESET_PIN_MODE(CONFIG_SD_MMC_DATA_0)
+    RESET_PIN_MODE(CONFIG_SD_MMC_DATA_1)
+    RESET_PIN_MODE(CONFIG_SD_MMC_DATA_2)
+    RESET_PIN_MODE(CONFIG_SD_MMC_DATA_3)
+
     return false;
 }
+
+#undef SET_PULL_MODE
+#undef RESET_PIN_MODE
+
 #endif // CONFIG_USE_SD_MMC_MODE
 
 void mount_spiffs()

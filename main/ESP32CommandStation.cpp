@@ -29,6 +29,11 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <esp_core_dump.h>
 #include <esp_ipc.h>
 #include <esp_log.h>
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#include <esp32/rom/rtc.h>
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#include <esp32s3/rom/rtc.h>
+#endif
 #include <esp_ota_ops.h>
 #include <FileSystem.hxx>
 #include <EventBroadcastHelper.hxx>
@@ -241,6 +246,7 @@ void app_main()
       openlcb::SNIP_STATIC_DATA.model_name,
       openlcb::SNIP_STATIC_DATA.hardware_version,
       openlcb::SNIP_STATIC_DATA.software_version);
+  LOG(INFO, "[CDI] Size: %zu, Version:%04x", openlcb::CDI_SIZE, CDI_VERSION);
   uint8_t reset_reason = Esp32SocInfo::print_soc_info();
   GpioInit::hw_init();
   DccHwDefs::InternalBoosterOutput::set_disable_reason(
@@ -348,13 +354,8 @@ void app_main()
 
 #if CONFIG_OLCB_TWAI_ENABLED
     twai.hw_init();
-#if CONFIG_OLCB_TWAI_SELECT
     LOG(INFO, "[TWAI] Enabling select() API");
     stack.add_can_port_select("/dev/twai/twai0");
-#else // async API
-    LOG(INFO, "[TWAI] Enabling async API");
-    stack.add_can_port_async("/dev/twai/twai0");
-#endif // CONFIG_OLCB_TWAI_SELECT
 #endif // CONFIG_OLCB_TWAI_ENABLED
 
 #if CONFIG_OLCB_PRINT_ALL_PACKETS
@@ -389,7 +390,7 @@ void reboot()
 
 /// OpenMRN free heap hook, implemented to return the free heap that can be
 /// accessed as uint8_t.
-ssize_t os_get_free_heap()
+ssize_t os_get_free_heap(void)
 {
   return heap_caps_get_free_size(MALLOC_CAP_8BIT);
 }

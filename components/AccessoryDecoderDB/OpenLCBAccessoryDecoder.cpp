@@ -100,7 +100,7 @@ std::string OpenLCBAccessoryDecoder::to_json(bool readableStrings)
     thrown_events.push_back(uint64_to_string_hex(event));
   }
   string serialized =
-    StringPrintf(R"!^!({"address":%d,"name":"%s","type":%d,"olcb":{"closed":"%s","thrown":"%s"},"state":)!^!",
+    StringPrintf(R"!^!({"addr":%d,"name":"%s","type":%d,"olcb":{"closed":"%s","thrown":"%s"},"state":)!^!",
                  address(), name().c_str(), type(),
                  http::string_join(closed_events, ",").c_str(),
                  http::string_join(thrown_events, ",").c_str());

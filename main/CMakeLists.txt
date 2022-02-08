@@ -52,3 +52,23 @@ set(CUSTOM_DEPS
 
 idf_component_register(SRCS ESP32CommandStation.cpp Esp32CoreDumpUtil.cpp WebServer.cpp
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
+
+###############################################################################
+# Automatic configuration selection
+###############################################################################
+
+if(CONFIG_ESP32CS_L298)
+message(STATUS "Automatic configuration of OPS and PROG using L298")
+elseif(CONFIG_ESP32CS_BTS7960B)
+message(STATUS "Automatic configuration of OPS only using BTS7960B")
+elseif(CONFIG_ESP32CS_BTS7960B_X2)
+message(STATUS "Automatic configuration of OPS and PROG using 2x BTS7960B")
+elseif(CONFIG_ESP32CS_LMD18200)
+message(STATUS "Automatic configuration of OPS only using LMD18200")
+elseif(CONFIG_ESP32CS_PCB_V100)
+message(STATUS "Automatic configuration of OPS and PROG using CS PCB v1.0")
+elseif(CONFIG_ESP32CS_PCB_V150)
+message(STATUS "Automatic configuration of OPS and PROG using CS PCB v1.5")
+elseif(CONFIG_ESP32CS_PCB_V200)
+message(STATUS "Automatic configuration of OPS and PROG using CS PCB v2.0")
+endif()

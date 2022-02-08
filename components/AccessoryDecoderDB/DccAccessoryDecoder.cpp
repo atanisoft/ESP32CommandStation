@@ -36,7 +36,7 @@ DccAccessoryDecoder::DccAccessoryDecoder(
 string DccAccessoryDecoder::to_json(bool readableStrings)
 {
   string serialized =
-    StringPrintf("{\"address\":%d,\"name\":\"%s\",\"type\":%d,\"state\":",
+    StringPrintf("{\"addr\":%d,\"name\":\"%s\",\"type\":%d,\"state\":",
     address(), name().c_str(), type());
   if (readableStrings)
   {

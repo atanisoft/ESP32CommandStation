@@ -27,7 +27,7 @@ namespace esp32cs
 {
 
 using dcc::PacketSource;
-using dcc::PacketFlowInterface;
+using dcc::TrackIf;
 using dcc::UpdateLoopBase;
 
 DECLARE_CONST(min_refresh_delay_ms);
@@ -43,8 +43,7 @@ struct UpdateRequest
   unsigned code;
 };
 
-PrioritizedUpdateLoop::PrioritizedUpdateLoop(Service *service,
-                                             PacketFlowInterface *track)
+PrioritizedUpdateLoop::PrioritizedUpdateLoop(Service *service, TrackIf *track)
   : StateFlow<Buffer<dcc::Packet>, QList<1>>(service),
     track_(track)
 {

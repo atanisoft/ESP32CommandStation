@@ -29,40 +29,39 @@ CDIDownloadHandler::CDIDownloadHandler(Service *service, openlcb::Node *node,
 
 StateFlowBase::Action CDIDownloadHandler::entry()
 {
-    LOG(INFO, "[CDI:%s] Requesting CDI XML",
+    LOG(VERBOSE, "[CDI:%s] Requesting CDI XML",
         esp32cs::node_id_to_string(request()->target.id).c_str());
     string res = DOWNLOAD_START;
     res += "\n";
     request()->socket->send_text(res);
-    tgt_ = esp32cs::node_id_to_string(request()->target.id);
-    return call_immediately(STATE(download_chunk));
+    targetNodeId_ = esp32cs::node_id_to_string(request()->target.id);
+    return call_immediately(STATE(download_segment));
 }
 
-StateFlowBase::Action CDIDownloadHandler::download_chunk()
+StateFlowBase::Action CDIDownloadHandler::download_segment()
 {
-    LOG(INFO, "[CDI:%s] Requesting CDI XML (%u -> %u)",
-        tgt_.c_str(), request()->offs,
-        request()->offs + CHUNK_SIZE);
-    return invoke_subflow_and_wait(&client_, STATE(chunk_complete),
+    LOG(VERBOSE, "[CDI:%s] Requesting CDI XML (%u -> %u)",
+        targetNodeId_.c_str(), request()->offs,
+        request()->offs + CDI_DOWNLOAD_SEGMENT_SIZE);
+    return invoke_subflow_and_wait(&client_, STATE(segment_complete),
         openlcb::MemoryConfigClientRequest::READ_PART, request()->target,
-        openlcb::MemoryConfigDefs::SPACE_CDI, request()->offs, CHUNK_SIZE);
+        openlcb::MemoryConfigDefs::SPACE_CDI, request()->offs,
+        CDI_DOWNLOAD_SEGMENT_SIZE);
 }
 
-StateFlowBase::Action CDIDownloadHandler::chunk_complete()
+StateFlowBase::Action CDIDownloadHandler::segment_complete()
 {
     auto b = get_buffer_deleter(full_allocation_result(&client_));
     if (b->data()->resultCode)
     {
-        LOG_ERROR("[CDI:%s] CDI XML download (%u->%u) returned code: %d",
-                  tgt_.c_str(), request()->offs,
-                  request()->offs + CHUNK_SIZE, b->data()->resultCode);
+        LOG_ERROR("[CDI:%s] CDI XML download (%u->%u) returned code: %04x",
+                  targetNodeId_.c_str(), request()->offs,
+                  request()->offs + CDI_DOWNLOAD_SEGMENT_SIZE,
+                  b->data()->resultCode);
         request()->attempts++;
         if (request()->attempts <= MAX_ATTEMPTS)
         {
-            LOG_ERROR("[CDI:%s] Failed to download CDI: %d (%d/%d)",
-                      tgt_.c_str(), b->data()->resultCode,
-                      request()->attempts, MAX_ATTEMPTS);
-            return yield_and_call(STATE(download_chunk));
+            return yield_and_call(STATE(download_segment));
         }
         string res =
             StringPrintf(DOWNLOAD_FAILED_ERR, b->data()->resultCode);
@@ -71,8 +70,8 @@ StateFlowBase::Action CDIDownloadHandler::chunk_complete()
     }
     else
     {
-        LOG(INFO, "[CDI:%s] (%u->%u) Received", tgt_.c_str(), request()->offs,
-            request()->offs + b->data()->payload.length());
+        LOG(VERBOSE, "[CDI:%s] (%u->%u) Received", targetNodeId_.c_str(),
+            request()->offs, request()->offs + b->data()->payload.length());
         // Check if we have a null in the payload, this indicates end of stream
         // for the CDI data, RR-CirKits uses this rather than returning
         // out-of-bounds when reading beyond the payload size.
@@ -88,7 +87,8 @@ StateFlowBase::Action CDIDownloadHandler::chunk_complete()
 
         if (eofFound)
         {
-            LOG(INFO, "[CDI:%s] CDI XML null byte detected", tgt_.c_str());
+            LOG(VERBOSE, "[CDI:%s] CDI XML null byte detected",
+                targetNodeId_.c_str());
             // CDI data downloaded fully and streamed to the websocket,
             // send a message with basic snip data and flag to indicate
             // that the full CDI has been sent. This will trigger the
@@ -96,7 +96,7 @@ StateFlowBase::Action CDIDownloadHandler::chunk_complete()
             string serialized =
                     StringPrintf(
                         R"!^!("node_id":%)!^!" PRIu64 R"!^!(,"has_snip":true,"has_cdi":true,)!^!"
-                        R"!^!("is_train":false,"fdi":false)!^!",
+                        R"!^!("has_fdi":false,"is_train":false)!^!",
                         request()->target.id);
             encoded =
                 StringPrintf(DOWNLOAD_COMPLETE, request()->field.c_str(),
@@ -107,8 +107,8 @@ StateFlowBase::Action CDIDownloadHandler::chunk_complete()
         else
         {
             // move to next chunk and start the download
-            request()->offs += CHUNK_SIZE;
-            return call_immediately(STATE(download_chunk));
+            request()->offs += CDI_DOWNLOAD_SEGMENT_SIZE;
+            return call_immediately(STATE(download_segment));
         }
     }
     return exit();

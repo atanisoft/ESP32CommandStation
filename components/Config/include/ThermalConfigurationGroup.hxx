@@ -18,7 +18,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #ifndef THERMAL_CONFIGURATION_HXX_
 #define THERMAL_CONFIGURATION_HXX_
 
-#include "sdkconfig.h"
+#include "hardware.hxx"
 #include <openlcb/ConfigRepresentation.hxx>
 
 #ifndef CONFIG_THERMALMONITOR_WARNING

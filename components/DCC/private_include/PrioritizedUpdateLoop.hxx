@@ -18,7 +18,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #ifndef PRIORITIZED_UPDATE_LOOP_HXX_
 #define PRIORITIZED_UPDATE_LOOP_HXX_
 
-#include <dcc/PacketFlowInterface.hxx>
+#include <dcc/TrackIf.hxx>
 #include <dcc/UpdateLoop.hxx>
 #include <executor/StateFlow.hxx>
 #include <Spinlock.hxx>
@@ -41,7 +41,7 @@ public:
   ///
   /// @param service is the service to attach this stateflow to.
   /// @param track is the outbound track interface to send packets to.
-  PrioritizedUpdateLoop(Service *service, dcc::PacketFlowInterface *track);
+  PrioritizedUpdateLoop(Service *service, dcc::TrackIf *track);
 
   /// Destructor.
   ~PrioritizedUpdateLoop();
@@ -86,7 +86,7 @@ private:
   };
 
   /// Track interface to send packets to.
-  dcc::PacketFlowInterface *track_;
+  dcc::TrackIf *track_;
 
   /// Packet sources to ask about refreshing data periodically.
   std::vector<dcc::PacketSource *> sources_;

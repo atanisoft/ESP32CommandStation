@@ -13,7 +13,6 @@
     - HttpServer: Listener runs standalone, HttpServer leverages Esp32WiFiManager Executor.
     - TWAI: ISR APP_CPU, task float priority is one less than LwIP.
     - RMT: ISR PRO_CPU
-* [ ] Investigate heap corruption issues.
 * [ ] DCC: ULP current sense / ACK.
     - [x] Implementation of ULP code to read ADC and wake main SoC when thresholds breached.
     - [x] Disable track when short occurs.
@@ -22,6 +21,7 @@
     - [x] Shunt support
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
 * [x] Deps: Remove nlohmann_json dependency in favor of cJSON.
+* [ ] Docs: Add user guide and how to build guide under docs tree.
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
@@ -33,15 +33,18 @@
 * [x] AccessoryDecoderDB: Directly consume OpenLCB events.
 * [x] AccessoryDecoderDB: Add name to decoder.
 * [x] TempSensor: Move ADC read into ULP.
-* [ ] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
+* [x] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
 * [ ] WebUI: Test all endpoints.
 * [x] WebUI: Roster save via WS.
 * [x] WebUI: Expose FastClock configuration (non-realtime).
 * [x] FastClock: Re-add FastClock support.
+* [x] Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
 
 ### Nice to have for v2.0
 
+* Build: Improve robustness of gzip search.
 * RailCom: Migrate Esp32RailComDriver to use HAL APIs (portability work)
+* RailCom: Login packet support.
 * TrainDB: Configurable timeout for idle trains.
 * TrainDB: Customizable function label names.
 * TrainSearch: General code formatting / cleanup
@@ -52,13 +55,11 @@
 * WebUI: Show remaining characters for various text fields.
 * WebUI: Filtering of accessories/locos.
 * WiThrottle support.
+* Build: IDF v5+ migrate from driver/timer.h to driver/gptimer.h
 
 ### Future planning
 
-* StatusLED: Rework to depend on Esp32Ws2812 instead of NeoPixelBus.
-* TrainDB: CBOR data format?
 * TrainDB: Expose via Memory Space?
-* AccessoryDecoderDB: CBOR data format?
 * AccessoryDecoderDB: Routes.
 * Import roster/routes/accessories from JMRI
 * Build: Migrate to IDF components rather than submodules?

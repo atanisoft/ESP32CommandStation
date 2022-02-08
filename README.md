@@ -8,12 +8,11 @@ Support for the following add-ons is available:
 2. OLED or LCD display for command station status.
 3. Addressable RGB LEDs for visual status indicators.
 
-Full documentation can be found [here](https://atanisoft.github.io/ESP32CommandStation/).
+Documentation can be found [here](./docs).
 
 [![Build Status](https://github.com/atanisoft/ESP32CommandStation/workflows/Build/badge.svg)](https://github.com/atanisoft/ESP32CommandStation/actions)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/c29397e7912b4def98a7c04317258588)](https://www.codacy.com/gh/atanisoft/ESP32CommandStation/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=atanisoft/ESP32CommandStation&amp;utm_campaign=Badge_Grade)
 [![Contributors](https://img.shields.io/github/contributors/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/graphs/contributors)
 [![Stars](https://img.shields.io/github/stars/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/stargazers)
 [![License](https://img.shields.io/github/license/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/blob/master/LICENSE)
 
--May 01, 2020
+-Jan 19, 2022

@@ -19,10 +19,21 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #define HARDWARE_HXX_
 
 #include "sdkconfig.h"
+
+#if CONFIG_ESP32CS_PCB
+#include "pinmap-pcb.hxx"
+#elif CONFIG_ESP32CS_L298
+#include "pinmap-l298.hxx"
+#elif CONFIG_ESP32CS_LMD18200
+#include "pinmap-lmd18200.hxx"
+#elif CONFIG_ESP32CS_BTS7960B || CONFIG_ESP32CS_BTS7960B_X2
+#include "pinmap-bts7960.hxx"
+#endif
+
 #include <esp_idf_version.h>
 
 #include <dcc/DccOutput.hxx>
-#if ESP_IDF_VERSION_MAJOR >= 5
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
 #include <esp_private/periph_ctrl.h>
 #else // IDF v4.x (or earlier)
 #include <driver/periph_ctrl.h>
@@ -37,6 +48,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <hal/timer_types.h>
 #include <hal/uart_types.h>
 #include <soc/dport_reg.h>
+#include <soc/gpio_sig_map.h>
 #include <soc/periph_defs.h>
 #include <soc/uart_struct.h>
 #include <soc/uart_reg.h>
@@ -44,71 +56,169 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 // Validate configured pins are defined and if not disable the feature.
 #ifndef CONFIG_DCC_TRACK_BRAKE_PIN
-#define CONFIG_DCC_TRACK_BRAKE_PIN -1
+  #define CONFIG_DCC_TRACK_BRAKE_PIN -1
 #endif
 
 #ifndef CONFIG_RAILCOM_TRIGGER_PIN
-#define CONFIG_RAILCOM_TRIGGER_PIN -1
-#undef CONFIG_RAILCOM_DISABLED
-#define CONFIG_RAILCOM_DISABLED 1
+  #define CONFIG_RAILCOM_TRIGGER_PIN -1
 #endif
 
 #ifndef CONFIG_RAILCOM_DATA_PIN
-#define CONFIG_RAILCOM_DATA_PIN -1
+  #define CONFIG_RAILCOM_DATA_PIN -1
 #endif
 
 #ifndef CONFIG_RAILCOM_DIRECTION_PIN
-#define CONFIG_RAILCOM_DIRECTION_PIN -1
-#endif
-
-#ifndef CONFIG_RAILCOM_FEEDBACK_QUEUE
-#define CONFIG_RAILCOM_FEEDBACK_QUEUE 10
-#endif
-
-#ifndef CONFIG_OLED_RESET_PIN
-#define CONFIG_OLED_RESET_PIN -1
-#endif
-
-#ifndef TEMPSENSOR_ADC_CHANNEL
-#define TEMPSENSOR_ADC_CHANNEL -1
+  #define CONFIG_RAILCOM_DIRECTION_PIN -1
 #endif
 
 #ifndef CONFIG_RAILCOM_SHORT_PIN
-#define CONFIG_RAILCOM_SHORT_PIN -1
+  #define CONFIG_RAILCOM_SHORT_PIN -1
+#endif
+
+#if CONFIG_RAILCOM_TRIGGER_PIN == -1
+  #undef CONFIG_RAILCOM_CUT_OUT_ENABLED
+#endif
+
+#if CONFIG_RAILCOM_DATA_PIN == -1
+  #undef CONFIG_RAILCOM_DATA_ENABLED
+#endif
+
+#ifndef CONFIG_OLED_RESET_PIN
+  #define CONFIG_OLED_RESET_PIN -1
+#endif
+
+#ifndef TEMPSENSOR_ADC_CHANNEL
+  #define TEMPSENSOR_ADC_CHANNEL -1
 #endif
 
 #ifndef CONFIG_DCC_OLCB_ENABLE_PIN
-#define CONFIG_DCC_OLCB_ENABLE_PIN -1
+  #define CONFIG_DCC_OLCB_ENABLE_PIN -1
 #endif
 
 #ifndef CONFIG_I2C_ADC_ALERT_PIN
-#define CONFIG_I2C_ADC_ALERT_PIN -1
+  #define CONFIG_I2C_ADC_ALERT_PIN -1
 #endif
+
+#ifndef CONFIG_RAILCOM_FEEDBACK_QUEUE
+  #define CONFIG_RAILCOM_FEEDBACK_QUEUE 10
+#endif
+
+#if CONFIG_OPS_HBRIDGE_L298
+  #define CONFIG_OPS_HBRIDGE_TYPE_NAME "L298"
+  #define CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS 2000
+  #define CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS 2000
+#elif CONFIG_OPS_HBRIDGE_LMD18200
+  #define CONFIG_OPS_HBRIDGE_TYPE_NAME "LMD18200"
+  #define CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS 3000
+  #define CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS 3000
+#elif CONFIG_OPS_HBRIDGE_DRV880X
+  #define CONFIG_OPS_HBRIDGE_TYPE_NAME "DRV880x"
+  #define CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS 2800
+  #define CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS 2800
+#elif CONFIG_OPS_HBRIDGE_DRV8873 || CONFIG_OPS_HBRIDGE_DRV8873_5A
+  #define CONFIG_OPS_HBRIDGE_TYPE_NAME "DRV8873"
+  #define CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS 10000
+
+  #if CONFIG_OPS_HBRIDGE_DRV8873
+    #define CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS 10000
+  #else
+    #define CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS 5000
+  #endif
+#elif CONFIG_OPS_HBRIDGE_POLOLU
+  #define CONFIG_OPS_HBRIDGE_TYPE_NAME "MC33926"
+  #define CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS 2500
+  #define CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS 2500
+#elif CONFIG_OPS_HBRIDGE_BTS7960B_5A || CONFIG_OPS_HBRIDGE_BTS7960B_10A
+#define CONFIG_OPS_HBRIDGE_TYPE_NAME "BTS7960B"
+#define CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS 43000
+  #if CONFIG_OPS_HBRIDGE_BTS7960B_10A
+    #define CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS 10000
+  #else
+    #define CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS 5000
+  #endif
+#elif CONFIG_OPS_TRACK_ENABLED
+#error Unknown OPS h-bridge
+#endif
+
+#if CONFIG_PROG_HBRIDGE_L298
+#define CONFIG_PROG_HBRIDGE_TYPE_NAME "L298"
+#define CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS 2000
+#elif CONFIG_PROG_HBRIDGE_LMD18200
+#define CONFIG_PROG_HBRIDGE_TYPE_NAME "LMD18200"
+#define CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS 3000
+#elif CONFIG_PROG_HBRIDGE_DRV880X
+#define CONFIG_PROG_HBRIDGE_TYPE_NAME "DRV880x"
+#define CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS 2800
+#elif CONFIG_PROG_HBRIDGE_DRV8873 || CONFIG_PROG_HBRIDGE_DRV8873_5A
+#define CONFIG_PROG_HBRIDGE_TYPE_NAME "DRV8873"
+#define CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS 10000
+#elif CONFIG_PROG_HBRIDGE_POLOLU
+#define CONFIG_PROG_HBRIDGE_TYPE_NAME "MC33926"
+#define CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS 2500
+#elif CONFIG_PROG_HBRIDGE_BTS7960B_5A || CONFIG_PROG_HBRIDGE_BTS7960B_10A
+#define CONFIG_PROG_HBRIDGE_TYPE_NAME "BTS7960B"
+#define CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS 43000
+#elif CONFIG_PROG_TRACK_ENABLED
+#error Unknown PROG h-bridge
+#endif
+
+#ifndef CONFIG_DISPLAY_LINE_COUNT
+#if CONFIG_DISPLAY_OLED_128x64
+#define CONFIG_DISPLAY_LINE_COUNT 8
+#elif CONFIG_DISPLAY_OLED_128x32 || CONFIG_DISPLAY_LCD_20x4 || \
+      CONFIG_DISPLAY_LCD_16x4
+#define CONFIG_DISPLAY_LINE_COUNT 4
+#else
+#define CONFIG_DISPLAY_LINE_COUNT 2
+#endif
+#endif // CONFIG_DISPLAY_LINE_COUNT
+
+#ifndef CONFIG_DISPLAY_COLUMN_COUNT
+#if CONFIG_DISPLAY_LCD_20x4
+#define CONFIG_DISPLAY_COLUMN_COUNT 20
+#elif CONFIG_DISPLAY_OLED_96x16
+#define CONFIG_DISPLAY_COLUMN_COUNT 12
+#else
+#define CONFIG_DISPLAY_COLUMN_COUNT 16
+#endif
+#endif // CONFIG_DISPLAY_COLUMN_COUNT
+
+#ifndef CONFIG_DISPLAY_OLED_WIDTH
+#if CONFIG_DISPLAY_OLED_96x16
+#define CONFIG_DISPLAY_OLED_WIDTH 96
+#else
+#define CONFIG_DISPLAY_OLED_WIDTH 128
+#endif
+#endif // CONFIG_DISPLAY_OLED_WIDTH
+
+#ifndef CONFIG_DISPLAY_OLED_HEIGHT
+#if CONFIG_DISPLAY_OLED_128x64
+#define CONFIG_DISPLAY_OLED_HEIGHT 64
+#elif CONFIG_DISPLAY_OLED_128x32
+#define CONFIG_DISPLAY_OLED_HEIGHT 32
+#else
+#define CONFIG_DISPLAY_OLED_HEIGHT 16
+#endif
+#endif // CONFIG_DISPLAY_OLED_HEIGHT
 
 // Sanity check that the preamble bits are within the supported range.
 #ifndef CONFIG_OPS_DCC_PREAMBLE_BITS
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is not defined and has been set to 11.
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 11
 #elif CONFIG_OPS_DCC_PREAMBLE_BITS < 11
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low and has been reset to 11.
 #undef CONFIG_OPS_DCC_PREAMBLE_BITS
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 11
-#elif CONFIG_OPS_DCC_PREAMBLE_BITS < 16 && !defined(CONFIG_RAILCOM_DISABLED)
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too low and has been reset to 16.
+#elif CONFIG_OPS_DCC_PREAMBLE_BITS < 16 && CONFIG_RAILCOM_CUT_OUT_ENABLED
 #undef CONFIG_OPS_DCC_PREAMBLE_BITS
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 16
 #elif CONFIG_OPS_DCC_PREAMBLE_BITS > 20
-#warning CONFIG_OPS_DCC_PREAMBLE_BITS is set too high and has been reset to 20.
 #undef CONFIG_OPS_DCC_PREAMBLE_BITS
 #define CONFIG_OPS_DCC_PREAMBLE_BITS 20
 #endif
 
 // Sanity check that the preamble bits are within range.
 #ifndef CONFIG_PROG_DCC_PREAMBLE_BITS
-#warning CONFIG_PROG_DCC_PREAMBLE_BITS is not defined and has been set to 22.
 #define CONFIG_PROG_DCC_PREAMBLE_BITS 22
 #elif CONFIG_PROG_DCC_PREAMBLE_BITS < 22 || CONFIG_PROG_DCC_PREAMBLE_BITS > 50
-#warning CONFIG_PROG_DCC_PREAMBLE_BITS is outside of supported range (22-50) and has been reset to 22.
 #undef CONFIG_PROG_DCC_PREAMBLE_BITS
 #define CONFIG_PROG_DCC_PREAMBLE_BITS 22
 #endif
@@ -306,12 +416,12 @@ typedef DummyPin PROG_ENABLE_Pin;
 typedef DummyPin PROG_CURRENT_SENSE_Pin;
 #endif // CONFIG_PROG_TRACK_ENABLED
 
-#if CONFIG_DCC_OLCB_ENABLE_PIN != -1
-/// Enables the OpenLCB DCC signal output.
-GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
-#else
+#if CONFIG_DCC_OLCB_ENABLE_PIN == -1
 /// Enables the OpenLCB DCC signal output.
 typedef DummyPin OLCB_DCC_ENABLE_Pin;
+#else
+/// Enables the OpenLCB DCC signal output.
+GPIO_PIN(OLCB_DCC_ENABLE, GpioOutputSafeLow, CONFIG_DCC_OLCB_ENABLE_PIN);
 #endif //  CONFIG_DCC_OLCB_ENABLE_PIN
 
 /// OpenLCB RailCom detector enable pin.
@@ -319,21 +429,21 @@ typedef DummyPin OLCB_DCC_ENABLE_Pin;
 /// however the API requires a pin to be declared regardless.
 typedef DummyPin OLCB_RAILCOM_TRIGGER_Pin;
 
-#if CONFIG_RAILCOM_DISABLED || CONFIG_RAILCOM_TRIGGER_PIN == -1
+#if CONFIG_RAILCOM_TRIGGER_PIN == -1
 /// RailCom detector enable pin.
 typedef DummyPin RAILCOM_TRIGGER_Pin;
 #else
 /// RailCom detector enable pin.
 GPIO_PIN(RAILCOM_TRIGGER, GpioOutputSafeLow, CONFIG_RAILCOM_TRIGGER_PIN);
-#endif // CONFIG_RAILCOM_DISABLED
+#endif // CONFIG_RAILCOM_TRIGGER_PIN == -1
 
-#if CONFIG_RAILCOM_DISABLED || CONFIG_RAILCOM_SHORT_PIN == -1
+#if CONFIG_RAILCOM_SHORT_PIN == -1
 /// RailCom detector current drain pin.
 typedef DummyPin RAILCOM_SHORT_Pin;
 #else
 /// RailCom detector current drain pin.
-GPIO_PIN(RAILCOM_SHORT, GpioOutputSafeHigh, CONFIG_RAILCOM_DRAIN_PIN);
-#endif
+GPIO_PIN(RAILCOM_SHORT, GpioOutputSafeHigh, CONFIG_RAILCOM_SHORT_PIN);
+#endif // CONFIG_RAILCOM_SHORT_PIN == -1
 
 #if CONFIG_FACTORY_RESET_PIN != -1
 /// Factory reset button pin.
@@ -436,7 +546,7 @@ typedef GpioInitializer<OLED_RESET_Pin, RAILCOM_TRIGGER_Pin, RAILCOM_SHORT_Pin,
 /// RailCom hardware definition
 struct RailComHwDefs
 {
-#if CONFIG_RAILCOM_FULL
+#if CONFIG_RAILCOM_DATA_ENABLED
 #if CONFIG_RAILCOM_UART1
   static constexpr uart_port_t UART = 1;
   static constexpr uart_dev_t *UART_BASE = &UART1;
@@ -466,28 +576,31 @@ struct RailComHwDefs
 #else
   #error Unsupported UART selected for OPS RailCom!
 #endif
-#endif // CONFIG_RAILCOM_FULL
+#endif // CONFIG_RAILCOM_DATA_ENABLED
 
   /// RailCom detector enable pin
   using RAILCOM_TRIGGER_Pin = ::RAILCOM_TRIGGER_Pin;
+
+#if CONFIG_RAILCOM_DATA_ENABLED
   /// RailCom data pin
   static constexpr gpio_num_t RAILCOM_DATA_PIN =
     (gpio_num_t)CONFIG_RAILCOM_DATA_PIN;
   /// RailCom direction pin
   static constexpr gpio_num_t RAILCOM_DIRECTION_PIN =
     (gpio_num_t)CONFIG_RAILCOM_DIRECTION_PIN;
+#endif // CONFIG_RAILCOM_DATA_ENABLED
 
   /// Number of RailCom packets to queue
   static constexpr size_t PACKET_Q_SIZE = CONFIG_RAILCOM_FEEDBACK_QUEUE;
 
   static void hw_init()
   {
-#if CONFIG_RAILCOM_FULL
+#if CONFIG_RAILCOM_DATA_ENABLED
     // initialize the UART
     periph_module_enable(UART_PERIPH);
-    gpio_pad_select_gpio(RAILCOM_DATA_PIN);
+    esp_rom_gpio_pad_select_gpio(RAILCOM_DATA_PIN);
     esp_rom_gpio_connect_in_signal(RAILCOM_DATA_PIN, UART_MATRIX_IDX, false);
-#endif // CONFIG_RAILCOM_FULL
+#endif // CONFIG_RAILCOM_DATA_ENABLED
   }
 
   static constexpr timg_dev_t *TIMER_BASE = &TIMERG0;

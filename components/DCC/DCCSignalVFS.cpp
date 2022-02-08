@@ -16,14 +16,14 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 **********************************************************************/
 
 #include "sdkconfig.h"
+#include <hardware.hxx>
 
-#if !CONFIG_RAILCOM_DISABLED
+#if CONFIG_RAILCOM_CUT_OUT_ENABLED
 #include "Esp32RailComDriver.hxx"
 #endif 
 #include "PrioritizedUpdateLoop.hxx"
 #include "TrackOutputDescriptor.hxx"
 #include "TrackPowerHandler.hxx"
-#include <hardware.hxx>
 
 #include <AccessoryDecoderDatabase.hxx>
 #include <AllTrainNodes.hxx>
@@ -60,6 +60,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 namespace esp32cs
 {
 
+#if CONFIG_PROG_TRACK_ENABLED
 /// Disables the OPS track output and enables the PROG track output.
 static void enable_programming_track()
 {
@@ -81,6 +82,7 @@ static void disable_programming_track()
   DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
     DccOutput::DisableReason::PGM_TRACK_LOCKOUT);
 }
+#endif // CONFIG_PROG_TRACK_ENABLED
 
 // TODO: move this into TrainSearchProtocol
 class EStopPacketSource : public dcc::NonTrainPacketSource,
@@ -163,15 +165,15 @@ private:
   openlcb::Node *node_;
 };
 
-#if CONFIG_RAILCOM_DISABLED
-static NoRailcomDriver railComDriver;
-#else
+#if CONFIG_RAILCOM_CUT_OUT_ENABLED
 static uninitialized<dcc::RailcomHubFlow> railcom_hub;
 #if CONFIG_RAILCOM_DUMP_PACKETS
 static uninitialized<dcc::RailcomPrintfFlow> railcom_dumper;
 #endif // CONFIG_RAILCOM_DUMP_PACKETS
 static esp32cs::Esp32RailComDriver<RailComHwDefs, DccHwDefs::InternalBoosterOutput, DccHwDefs::OpenLCBBoosterOutput> railComDriver;
-#endif // CONFIG_RAILCOM_DISABLED
+#else
+static NoRailcomDriver railComDriver;
+#endif // CONFIG_RAILCOM_CUT_OUT_ENABLED
 static esp32cs::RMTTrackDevice<DccHwDefs, DccHwDefs::InternalBoosterOutput, DccHwDefs::OpenLCBBoosterOutput> track(&railComDriver);
 static uninitialized<dcc::LocalTrackIf> track_interface;
 static uninitialized<esp32cs::PrioritizedUpdateLoop> track_update_loop;
@@ -180,7 +182,9 @@ static uninitialized<TrackPowerBit<DccHwDefs::InternalBoosterOutput, DccHwDefs::
 static uninitialized<openlcb::BitEventConsumer> track_power_consumer;
 static uninitialized<EStopPacketSource> estop_packet_source;
 static uninitialized<openlcb::BitEventConsumer> estop_consumer;
+#if CONFIG_PROG_TRACK_ENABLED
 static uninitialized<ProgrammingTrackBackend> prog_backend;
+#endif
 static uninitialized<esp32cs::AccessoryDecoderDB> accessory_db;
 
 #if CONFIG_OPS_TRACK_ENABLED
@@ -372,6 +376,50 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   // Initialize the RMT signal generator.
   track.hw_init();
 
+#if CONFIG_OPS_TRACK_ENABLED
+  LOG(INFO, "[OPS] EN/PWM: %d,"
+#if CONFIG_DCC_TRACK_BRAKE_PIN != -1
+            " Brake Pin: %d,"
+#endif // CONFIG_DCC_TRACK_BRAKE_PIN != -1
+#if CONFIG_OPSTRACK_ADC_I2C_CHANNEL_1
+            " Current Sense I2C: 1"
+#elif CONFIG_OPSTRACK_ADC_I2C_CHANNEL_2
+            " Current Sense I2C: 2"
+#elif CONFIG_OPSTRACK_ADC_I2C_CHANNEL_3
+            " Current Sense I2C: 3"
+#else
+            " Current Sense Pin: %d (ADC1:%d)"
+#endif // OPSTRACK_ADC_I2C_CHANNEL_1 / 2 / 3
+    , CONFIG_OPS_TRACK_ENABLE_PIN
+#if CONFIG_DCC_TRACK_BRAKE_PIN != -1
+    , CONFIG_DCC_TRACK_BRAKE_PIN
+#endif // CONFIG_DCC_TRACK_BRAKE_PIN != -1
+#if !USE_I2C_FOR_OPS_CURRENT_SENSE
+    , OPS_CURRENT_SENSE_Pin::pin()
+    , OPS_CURRENT_SENSE_Pin::channel()
+#endif // !USE_I2C_FOR_OPS_CURRENT_SENSE
+);
+#endif // CONFIG_OPS_TRACK_ENABLED
+
+#if CONFIG_PROG_TRACK_ENABLED
+  LOG(INFO, "[PROG] EN/PWM: %d,"
+#if CONFIG_PROGTRACK_ADC_I2C_CHANNEL_1
+            " Current Sense I2C: 1"
+#elif CONFIG_PROGTRACK_ADC_I2C_CHANNEL_2
+            " Current Sense I2C: 2"
+#elif CONFIG_PROGTRACK_ADC_I2C_CHANNEL_3
+            " Current Sense I2C: 3"
+#else
+            " Current Sense Pin: %d (ADC1:%d)"
+#endif // PROGTRACK_ADC_I2C_CHANNEL_1 / 2 / 3
+    , CONFIG_PROG_TRACK_ENABLE_PIN
+#if !USE_I2C_FOR_PROG_CURRENT_SENSE
+    , PROG_CURRENT_SENSE_Pin::pin()
+    , PROG_CURRENT_SENSE_Pin::channel()
+#endif // !USE_I2C_FOR_OPS_CURRENT_SENSE
+);
+#endif // CONFIG_OPS_TRACK_ENABLED
+
   track_interface.emplace(svc, CONFIG_DCC_PACKET_POOL_SIZE);
   track_interface->set_fd(open(CONFIG_DCC_VFS_MOUNT_POINT, O_WRONLY));
   track_update_loop.emplace(svc, track_interface.operator->());
@@ -380,13 +428,18 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   track_flow.emplace(svc, track_interface->pool(),
                      track_update_loop.operator->());
 
-#if !CONFIG_RAILCOM_DISABLED
+#if RAILCOM_CUT_OUT_ENABLED
   railcom_hub.emplace(svc);
   railComDriver.hw_init(railcom_hub.operator->());
 #if CONFIG_RAILCOM_DUMP_PACKETS
   railcom_dumper.emplace(railcom_hub.operator->());
 #endif
-#endif // !CONFIG_RAILCOM_DISABLED
+#else // cut-out disabled
+  get_dcc_output(DccOutput::Type::TRACK)->set_railcom_cutout_enabled(
+    DccOutput::RailcomCutout::DISABLED);
+  get_dcc_output(DccOutput::Type::LCC)->set_railcom_cutout_enabled(
+    DccOutput::RailcomCutout::DISABLED);
+#endif // RAILCOM_CUT_OUT_ENABLED
   track_power.emplace(node);
   track_power_consumer.emplace(track_power.operator->());
   estop_packet_source.emplace(node);
@@ -400,22 +453,23 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   track_monitor.emplace(svc, cfg);
 #endif // CONFIG_OPS_TRACK_ENABLED
 
-  // Clear the initialization pending flag
-  DccHwDefs::InternalBoosterOutput::clear_disable_reason(
-        DccOutput::DisableReason::INITIALIZATION_PENDING);
-  DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
-        DccOutput::DisableReason::INITIALIZATION_PENDING);
 #if CONFIG_ENERGIZE_TRACK_ON_STARTUP
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(
-    DccOutput::DisableReason::GLOBAL_EOFF);
+        DccOutput::DisableReason::GLOBAL_EOFF);
   DccHwDefs::OpenLCBBoosterOutput::clear_disable_reason(
         DccOutput::DisableReason::GLOBAL_EOFF);
 #else
   DccHwDefs::InternalBoosterOutput::set_disable_reason(
-    DccOutput::DisableReason::GLOBAL_EOFF);
+        DccOutput::DisableReason::GLOBAL_EOFF);
   DccHwDefs::OpenLCBBoosterOutput::set_disable_reason(
-    DccOutput::DisableReason::GLOBAL_EOFF);
+        DccOutput::DisableReason::GLOBAL_EOFF);
 #endif // CONFIG_ENERGIZE_TRACK_ON_STARTUP
+
+  // Clear the initialization pending flag now that everything is configured.
+  get_dcc_output(DccOutput::Type::TRACK)->clear_disable_output_for_reason(
+    DccOutput::DisableReason::INITIALIZATION_PENDING);
+  get_dcc_output(DccOutput::Type::LCC)->clear_disable_output_for_reason(
+    DccOutput::DisableReason::INITIALIZATION_PENDING);
 }
 
 void shutdown_dcc()

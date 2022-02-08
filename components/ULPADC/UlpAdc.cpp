@@ -49,10 +49,16 @@ static bool ulp_running = false;
 /// NOTE: This is called from an ISR context!
 static void ulp_adc_wakeup(void *param)
 {
+  if (!ulp_running)
+  {
+    return;
+  }
 #if CONFIG_OPS_TRACK_ENABLED
   if (ULP_VAR(ulp_ops_last_reading) > ULP_VAR(ulp_ops_short_threshold))
   {
-    ets_printf("[ULP-ADC] OPS short detected!\n");
+    ets_printf("[ULP-ADC] OPS short detected (%d vs %d)!\n",
+               ULP_VAR(ulp_ops_last_reading),
+               ULP_VAR(ulp_ops_short_threshold));
     DccHwDefs::InternalBoosterOutput::set_disable_reason(DccOutput::DisableReason::SHORTED);
   }
 #endif
@@ -143,6 +149,7 @@ void initialize_ulp_adc()
   ulp_exec_count = 0;
 
 #if CONFIG_OPS_TRACK_ENABLED
+  ulp_ops_last_reading = 0;
 #if CONFIG_CURRENTSENSE_USE_SHUNT
   Fixed16 ops_threshold =
     (float)CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS / mAPerADCStep;
@@ -154,6 +161,7 @@ void initialize_ulp_adc()
          CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 10) << 12) /
          CONFIG_OPS_HBRIDGE_MAX_MILLIAMPS);
 #endif // CONFIG_CURRENTSENSE_USE_SHUNT
+
   // Configure the warning limit to around 75% of the short limit.
   ulp_ops_warning_threshold =
     ((ULP_VAR(ulp_ops_short_threshold) << 1) +
@@ -164,27 +172,30 @@ void initialize_ulp_adc()
   LOG(INFO,
       "[ULP-ADC] OPS Short threshold: %d/4095 (%6.2f mA), "
       "Warning threshold: %d/4095 (%6.2f mA), "
-      "Shutdown threshold: %d/4095 (%6.2f mA)",
+      "Shutdown threshold: %d/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
       ULP_VAR(ulp_ops_short_threshold),
       (ULP_VAR(ulp_ops_short_threshold) * mAPerADCStep),
       ULP_VAR(ulp_ops_warning_threshold),
       (ULP_VAR(ulp_ops_warning_threshold) * mAPerADCStep),
       ULP_VAR(ulp_ops_shutdown_threshold),
-      (ULP_VAR(ulp_ops_shutdown_threshold) * mAPerADCStep));
+      (ULP_VAR(ulp_ops_shutdown_threshold) * mAPerADCStep),
+      PROG_CURRENT_SENSE_Pin::pin(), OPS_CURRENT_SENSE_Pin::channel());
 #else
   LOG(INFO,
       "[ULP-ADC] OPS Short threshold: %d/4095 (%6.2f mA), "
       "Warning threshold: %d/4095 (%6.2f mA), "
-      "Shutdown threshold: %d/4095 (%6.2f mA)",
+      "Shutdown threshold: %d/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
       ULP_VAR(ulp_ops_short_threshold),
       ((ULP_VAR(ulp_ops_short_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f),
       ULP_VAR(ulp_ops_warning_threshold),
       ((ULP_VAR(ulp_ops_warning_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f),
       ULP_VAR(ulp_ops_shutdown_threshold),
-      ((ULP_VAR(ulp_ops_shutdown_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f));
+      ((ULP_VAR(ulp_ops_shutdown_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f),
+      OPS_CURRENT_SENSE_Pin::pin(), OPS_CURRENT_SENSE_Pin::channel());
 #endif // CONFIG_CURRENTSENSE_USE_SHUNT
 #endif // CONFIG_OPS_TRACK_ENABLED
 #if CONFIG_PROG_TRACK_ENABLED
+  ulp_prog_last_reading = 0;
 #if CONFIG_CURRENTSENSE_USE_SHUNT
   Fixed16 prog_threshold = 60.0f / mAPerADCStep;
   // Configure the PROG track ACK limit to ~60mA
@@ -194,11 +205,12 @@ void initialize_ulp_adc()
   ulp_prog_short_threshold = prog_threshold.round();
   LOG(INFO,
       "[ULP-ADC] PROG Ack threshold: %u/4095 (%6.2f mA), "
-      "Short threshold: %u/4095 (%6.2f mA)",
+      "Short threshold: %u/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
       ULP_VAR(ulp_prog_ack_threshold),
       ULP_VAR(ulp_prog_ack_threshold) * mAPerADCStep,
       ULP_VAR(ulp_prog_short_threshold),
-      ULP_VAR(ulp_prog_short_threshold) * mAPerADCStep);
+      ULP_VAR(ulp_prog_short_threshold) * mAPerADCStep,
+      PROG_CURRENT_SENSE_Pin::pin(), PROG_CURRENT_SENSE_Pin::channel());
 #else
   // Configure the PROG track ACK limit to ~60mA
   ulp_prog_ack_threshold = (60 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
@@ -206,11 +218,12 @@ void initialize_ulp_adc()
   ulp_prog_short_threshold = (250 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
   LOG(INFO,
       "[ULP-ADC] PROG Ack threshold: %u/4095 (%6.2f mA), "
-      "Short threshold: %u/4095 (%6.2f mA)",
+      "Short threshold: %u/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
       ULP_VAR(ulp_prog_ack_threshold),
       ((ULP_VAR(ulp_prog_ack_threshold) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f),
       ULP_VAR(ulp_prog_short_threshold),
-      ((ULP_VAR(ulp_prog_short_threshold) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f));
+      ((ULP_VAR(ulp_prog_short_threshold) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f),
+      PROG_CURRENT_SENSE_Pin::pin(), PROG_CURRENT_SENSE_Pin::channel());
 #endif // CONFIG_CURRENTSENSE_USE_SHUNT
 #endif // CONFIG_PROG_TRACK_ENABLED
   // Enable ULP access to ADC1

@@ -214,8 +214,16 @@ void Esp32TrainDatabase::delete_entry(uint16_t address)
     LOG(CONFIG_ROSTER_LOG_LEVEL,
         "[TrainDB] Removing persistent entry for address %u", address);
     trains_.erase(entry);
-    // Remove the locomotive from the train node/instance manager
-    Singleton<AllTrainNodes>::instance()->remove_train_impl(address);
+
+    // Send the request to cleanup the train node to the train node manager via
+    // it's executor. This may occur in the background after this method exits.
+    auto trainMgr = Singleton<AllTrainNodes>::instance();
+    trainMgr->train_service()->executor()->add(
+      new CallbackExecutable([address, trainMgr]()
+      {
+        trainMgr->remove_train_impl(address);
+      }
+    ));
     entryDeleted_ = true;
   }
 }
