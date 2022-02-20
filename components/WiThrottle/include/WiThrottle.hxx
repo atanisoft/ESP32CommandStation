@@ -468,6 +468,10 @@ namespace withrottle
 
         private:
             StateFlowBase::Action entry() override;
+
+            STATE_FLOW_STATE(done);
+            STATE_FLOW_STATE(command_not_recognized);
+            STATE_FLOW_STATE(command_not_supported);
         };
 
         class WiThrottleCommandRawPacket : public WiThrottleCommandBase

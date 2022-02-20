@@ -379,7 +379,7 @@ HtESP32 Command Station (%s) %s
     StateFlowBase::Action WiThrottleClientFlow::send_consist_list()
     {
         // RCL = list only, RCC = control, RCD = roster consist data
-        string data = StringPrintf("RCL%d\n", 0);
+        string data = StringPrintf("RCL%d%s", 0, REQUEST_EOL_CHARACTER_NL);
         return write_repeated(&helper_, fd_, data.data(), data.length(),
             STATE(send_accessory_list));
     }
@@ -395,8 +395,9 @@ HtESP32 Command Station (%s) %s
     StateFlowBase::Action WiThrottleClientFlow::send_power_status()
     {
         auto track = get_dcc_output(DccOutput::Type::TRACK);
-        string data = StringPrintf("PPA%d\n",
-            track->get_disable_output_reasons() == 0);
+        string data = StringPrintf("PPA%d%s",
+            track->get_disable_output_reasons() == 0,
+            REQUEST_EOL_CHARACTER_NL);
         if (heartbeat_)
         {
             return write_repeated(&helper_, fd_, data.data(), data.length(),
@@ -408,7 +409,8 @@ HtESP32 Command Station (%s) %s
 
     StateFlowBase::Action WiThrottleClientFlow::send_heartbeat_config()
     {
-        string data = StringPrintf("*%d\n", heartbeat_);
+        string data =
+            StringPrintf("*%d%s", heartbeat_, REQUEST_EOL_CHARACTER_NL);
         return write_repeated(&helper_, fd_, data.data(), data.length(),
             STATE(read_more_data));
     }

@@ -9,6 +9,7 @@ set(CUSTOM_DEPS
     OpenMRNIDF
     TrainDatabase
     TrainSearchProtocol
+    Utils
 )
 
 set(SOURCE_FILES
