@@ -58,6 +58,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <UlpAdc.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 #include <utils/constants.hxx>
+#include <WiThrottle.hxx>
 
 /// Enable usage of select() for GridConnect connections.
 OVERRIDE_CONST_TRUE(gridconnect_tcp_use_select);
@@ -208,6 +209,22 @@ public:
         LOG(INFO, "[OpenLCB] Train Search Listener: %s",
             dcc_en ? "Enabled" : "Disabled");
         Singleton<commandstation::AllTrainNodes>::instance()->configure(throttles_en);
+
+#if CONFIG_WITHROTTLE_ENABLED
+        uint8_t throttle_heartbeat =
+          CDI_READ_TRIM_DEFAULT(cfg_.advanced().throttle_heartbeat, fd);
+        if (throttle_heartbeat)
+        {
+          LOG(INFO, "[OpenLCB] Throttle Heartbeat period: %d (seconds)",
+              throttle_heartbeat);
+          auto wiThrottle = Singleton<withrottle::WiThrottleServer>::instance();
+          wiThrottle->configure_heartbeat(throttle_heartbeat);
+        }
+        else
+        {
+          LOG(INFO, "[OpenLCB] Throttle Heartbeat disabled");
+        }
+#endif // CONFIG_WITHROTTLE_ENABLED
 
         return ConfigUpdateListener::UpdateAction::UPDATED;
     }

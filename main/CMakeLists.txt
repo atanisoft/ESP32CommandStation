@@ -48,6 +48,7 @@ set(CUSTOM_DEPS
     TrainSearchProtocol
     ULPADC
     Utils
+    WiThrottle
 )
 
 idf_component_register(SRCS ESP32CommandStation.cpp Esp32CoreDumpUtil.cpp WebServer.cpp

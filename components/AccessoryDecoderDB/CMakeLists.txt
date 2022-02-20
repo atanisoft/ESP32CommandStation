@@ -7,6 +7,7 @@ set(CUSTOM_DEPS
     HttpServer
     OpenMRNIDF
     Utils
+    WiThrottle
 )
 
 idf_component_register(SRCS AccessoryDecoderConstants.cpp AccessoryDecoderDB.cpp DccAccessoryDecoder.cpp OpenLCBAccessoryDecoder.cpp

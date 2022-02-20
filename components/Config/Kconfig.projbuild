@@ -710,6 +710,32 @@ menu "ESP32 Command Station Configuration"
             default 1500
     endmenu
 
+    menu "WiThrottle Configuration"
+        config WITHROTTLE_ENABLED
+            bool "Enable WiThrottle interface"
+            default n
+
+        config WITHROTTLE_PORT
+            depends on WITHROTTLE_ENABLED
+            int "Port"
+            default 12090
+
+        config WITHROTTLE_MDNS_SERVICE
+            depends on WITHROTTLE_ENABLED
+            string "mDNS Service Name"
+            default "_withrottle._tcp"
+
+        menu "Advanced Configuration"
+            config WITHROTTLE_MAX_LOCOMOTIVES
+                int "Maximum number of locomotives per connection"
+                default 10
+
+            config WITHROTTLE_MAX_CONNECTIONS
+                int "Maximum number of connections"
+                default 5
+        endmenu
+    endmenu
+
     menu "Status Display Configuration"
         choice DISPLAY_TYPE
             bool "Display Type"

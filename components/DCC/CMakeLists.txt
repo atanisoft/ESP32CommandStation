@@ -14,6 +14,7 @@ set(CUSTOM_DEPS
     TrainSearchProtocol
     ULPADC
     Utils
+    WiThrottle
 )
 
 idf_component_register(SRCS DccConstants.cpp DCCSignalVFS.cpp PrioritizedUpdateLoop.cpp

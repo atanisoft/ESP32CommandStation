@@ -56,6 +56,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <UlpAdc.hxx>
 #include <utils/GpioInitializer.hxx>
 #include <utils/logging.h>
+#include <WiThrottle.hxx>
 
 namespace esp32cs
 {
@@ -186,6 +187,9 @@ static uninitialized<openlcb::BitEventConsumer> estop_consumer;
 static uninitialized<ProgrammingTrackBackend> prog_backend;
 #endif
 static uninitialized<esp32cs::AccessoryDecoderDB> accessory_db;
+#if CONFIG_WITHROTTLE_ENABLED
+static uninitialized<withrottle::WiThrottleServer> withrottle;
+#endif
 
 #if CONFIG_OPS_TRACK_ENABLED
 class TrackMonitorFlow : public StateFlowBase, public DefaultConfigUpdateListener
@@ -452,6 +456,11 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
 #if CONFIG_OPS_TRACK_ENABLED
   track_monitor.emplace(svc, cfg);
 #endif // CONFIG_OPS_TRACK_ENABLED
+
+#if CONFIG_WITHROTTLE_ENABLED
+  withrottle.emplace(node, track_interface.operator->(),
+      CONFIG_WITHROTTLE_PORT, CONFIG_WITHROTTLE_MDNS_SERVICE);
+#endif // CONFIG_WITHROTTLE_ENABLED
 
 #if CONFIG_ENERGIZE_TRACK_ON_STARTUP
   DccHwDefs::InternalBoosterOutput::clear_disable_reason(

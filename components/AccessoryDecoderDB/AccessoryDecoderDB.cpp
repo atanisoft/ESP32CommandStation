@@ -28,6 +28,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <utils/FileUtils.hxx>
 #include <utils/format_utils.hxx>
 #include <utils/StringPrintf.hxx>
+#include <WiThrottle.hxx>
 
 namespace esp32cs
 {
@@ -311,6 +312,11 @@ void AccessoryDecoderDB::set(uint16_t address, bool thrown, bool on_off)
   }
   dirty_ = true;
 #endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
+
+  for (auto cb : callbacks_)
+  {
+    cb(address, thrown, on_off);
+  }
 }
 
 bool AccessoryDecoderDB::toggle(uint16_t address)
@@ -319,6 +325,7 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
     , "[AccessoryDecoderDB] Request to toggle turnout address %d", address);
   OSMutexLock lock(&mux_);
   auto const &elem = FIND_ACCESSORY(address);
+  bool new_state = false;
   if (elem != accessories_.end())
   {
     LOG(CONFIG_TURNOUT_LOG_LEVEL,
@@ -328,23 +335,31 @@ bool AccessoryDecoderDB::toggle(uint16_t address)
       generate_dcc_packet(address, (*elem)->get(), true);
     }
     dirty_ = true;
-    return (*elem)->get();
+    new_state = (*elem)->get();
   }
-
 #if CONFIG_TURNOUT_CREATE_ON_DEMAND
-  LOG(CONFIG_TURNOUT_LOG_LEVEL,
-      "[AccessoryDecoderDB] Turnout not found, creating and toggling");
-
-  // we didn't find it, create it and throw it
-  accessories_.push_back(
-    std::make_unique<DccAccessoryDecoder>(address, std::to_string(address)));
-  if(accessories_.back()->toggle())
+  else
   {
-    generate_dcc_packet(address, accessories_.back()->get());
+    LOG(CONFIG_TURNOUT_LOG_LEVEL,
+        "[AccessoryDecoderDB] Turnout not found, creating and toggling");
+
+    // we didn't find it, create it and throw it
+    accessories_.push_back(
+      std::make_unique<DccAccessoryDecoder>(address, std::to_string(address)));
+    if(accessories_.back()->toggle())
+    {
+      generate_dcc_packet(address, accessories_.back()->get());
+    }
+    dirty_ = true;
+    new_state = accessories_.back()->get();
   }
-  dirty_ = true;
-  return accessories_.back()->get();
 #endif // CONFIG_TURNOUT_CREATE_ON_DEMAND
+
+  for (auto cb : callbacks_)
+  {
+    cb(address, new_state, true);
+  }
+  return new_state;
 }
 
 string AccessoryDecoderDB::to_json(bool readable)
@@ -361,6 +376,29 @@ std::string AccessoryDecoderDB::to_json(const uint16_t address, bool readable)
     return turnout->to_json(readable);
   }
   return "{}";
+}
+
+std::string AccessoryDecoderDB::to_withrottle()
+{
+  OSMutexLock lock(&mux_);
+  string content = "PTT]\[Turnouts}|{Turnout]\[Closed}|{2]\[Thrown}|{4";
+  content.append(withrottle::REQUEST_EOL_CHARACTER_NL);
+  if (accessories_.empty())
+  {
+    return content;
+  }
+  content.append("PTL");
+  for (const auto& turnout : accessories_)
+  {
+    content.append(withrottle::COLLECTION_DELIMITER);
+    content.append(std::to_string(turnout->address()));
+    content.append(withrottle::FIELD_DELIMITER);
+    content.append(turnout->name());
+    content.append(withrottle::FIELD_DELIMITER);
+    content.append(turnout->get() ? "4" : "2");
+  }
+  content.append(withrottle::REQUEST_EOL_CHARACTER_NL);
+  return content;
 }
 
 void AccessoryDecoderDB::createOrUpdateDcc(const uint16_t address,

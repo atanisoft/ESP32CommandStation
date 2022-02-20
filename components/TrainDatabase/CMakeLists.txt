@@ -2,6 +2,7 @@ set(CUSTOM_DEPS
     OpenMRNIDF
     TrainSearchProtocol
     Utils
+    WiThrottle
 )
 
 set(IDF_DEPS

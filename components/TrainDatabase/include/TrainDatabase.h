@@ -28,6 +28,7 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 #include <openlcb/TractionTrain.hxx>
 #include <os/OS.hxx>
 #include <TrainDb.hxx>
+#include <utils/Singleton.hxx>
 #include <utils/Uninitialized.hxx>
 
 #include "sdkconfig.h"
@@ -172,7 +173,8 @@ namespace esp32cs
     bool persist_;
   };
 
-  class Esp32TrainDatabase : public commandstation::TrainDb
+  class Esp32TrainDatabase : public commandstation::TrainDb,
+                             public Singleton<Esp32TrainDatabase>
   {
   public:
     Esp32TrainDatabase(openlcb::SimpleStackBase *stack, Service *service);
@@ -204,6 +206,8 @@ namespace esp32cs
 
     void delete_entry(uint16_t address);
 
+    std::shared_ptr<commandstation::TrainDbEntry> get_entry(const std::string name);
+
     std::shared_ptr<commandstation::TrainDbEntry> get_entry(unsigned train_id) override;
 
     std::shared_ptr<commandstation::TrainDbEntry> find_entry(
@@ -216,8 +220,10 @@ namespace esp32cs
     void set_train_function_label(uint16_t address, uint8_t fn_id, Symbols label);
     void set_train_drive_mode(uint16_t address, DccMode mode);
 
-    std::string get_all_entries_as_json();
-    std::string get_entry_as_json(uint16_t address, bool readable = true);
+    std::string to_json();
+    std::string to_json(uint16_t address, bool readable = true);
+
+    std::string to_withrottle();
 
     openlcb::MemorySpace *get_train_cdi()
     {
@@ -232,7 +238,7 @@ namespace esp32cs
     void persist();
 
   private:
-    std::string get_entry_as_json_locked(uint16_t address, bool readable = true);
+    std::string to_json_locked(uint16_t address, bool readable = true);
     openlcb::SimpleStackBase *stack_;
     bool entryDeleted_{false};
     OSMutex mux_;

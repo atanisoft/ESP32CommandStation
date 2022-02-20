@@ -97,6 +97,9 @@ public:
   /// @return json data for the accessory decoder.
   std::string to_json(const uint16_t address, bool readable = true);
 
+  /// Converts the persistent accessory decoders to the WiThrottle format.
+  std::string to_withrottle();
+
   /// Creates or update a single persistent DCC accessory decoder.
   ///
   /// @param address accessory decoder address (1-2048).
@@ -128,6 +131,18 @@ public:
 
   /// @return number of registered accessory decoders.
   uint16_t count();
+
+  /// Registers a callback function for when any accessory decoder state is
+  /// updated.
+  ///
+  /// @param callback Function to call for updates, see below for signature.
+  ///
+  /// Callback signature:
+  /// void callback(uint16_t address, bool state, bool on_off)
+  ///
+  /// state : true = thrown, false = closed.
+  /// on_off: true if C bit is 1, false if it is 0.
+  void subscribe(std::function<void(uint16_t, bool, bool)> callback);
 
   /// Handle requested identification message.
   /// @param entry registry entry for the event range
@@ -196,6 +211,9 @@ private:
 
   /// @ref OSMutex protecting @ref accessories_.
   OSMutex mux_;
+
+  /// Registered subscribers for accessory decoder updates.
+  std::vector<std::function<void(uint16_t, bool, bool)>> callbacks_;
 };
 
 } // namespace esp32cs
