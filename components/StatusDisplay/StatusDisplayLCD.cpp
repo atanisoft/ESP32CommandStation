@@ -104,13 +104,13 @@ static inline bool send_lcd_nibble(uint8_t addr, uint8_t value, bool data)
     return false;
   }
 
-  ets_delay_us(1);
+  ESP_DELAY_US(1);
   // send without the ENABLE flag set
   if (!send_to_lcd(addr, nibble & ~CONFIG_DISPLAY_LCD_ENABLE_BITMASK))
   {
     return false;
   }
-  ets_delay_us(37);
+  ESP_DELAY_US(37);
   return true;
 }
 
@@ -151,32 +151,32 @@ StateFlowBase::Action StatusDisplay::initLCD()
 
   // send init data to reset to 8 bit mode
   send_to_lcd(i2cAddr_, (LCD_FUNCTION_SET | LCD_8BIT_MODE | CONFIG_DISPLAY_LCD_ENABLE_BITMASK));
-  ets_delay_us(1);
+  ESP_DELAY_US(1);
   send_to_lcd(i2cAddr_, (LCD_FUNCTION_SET | LCD_8BIT_MODE));
-  ets_delay_us(4537);
+  ESP_DELAY_US(4537);
   send_to_lcd(i2cAddr_, (LCD_FUNCTION_SET | LCD_8BIT_MODE | CONFIG_DISPLAY_LCD_ENABLE_BITMASK));
-  ets_delay_us(1);
+  ESP_DELAY_US(1);
   send_to_lcd(i2cAddr_, (LCD_FUNCTION_SET | LCD_8BIT_MODE));
-  ets_delay_us(237);
+  ESP_DELAY_US(237);
   send_to_lcd(i2cAddr_, (LCD_FUNCTION_SET | LCD_8BIT_MODE | CONFIG_DISPLAY_LCD_ENABLE_BITMASK));
-  ets_delay_us(1);
+  ESP_DELAY_US(1);
   send_to_lcd(i2cAddr_, (LCD_FUNCTION_SET | LCD_8BIT_MODE));
-  ets_delay_us(237);
+  ESP_DELAY_US(237);
 
   // switch to four bit mode
   send_to_lcd(i2cAddr_, (LCD_FUNCTION_SET | CONFIG_DISPLAY_LCD_ENABLE_BITMASK));
-  ets_delay_us(1);
+  ESP_DELAY_US(1);
   send_to_lcd(i2cAddr_, LCD_FUNCTION_SET);
-  ets_delay_us(37);
+  ESP_DELAY_US(37);
 
   // send rest of init commands as 4 bit mode
   send_lcd_byte(i2cAddr_, LCD_FUNCTION_SET | LCD_TWO_LINE_MODE, false);
   send_lcd_byte(i2cAddr_, LCD_CMD_DISPLAY_CONTROL | LCD_DISPLAY_ON, false);
   send_lcd_byte(i2cAddr_, LCD_CMD_CLEAR_SCREEN, false);
-  ets_delay_us(1600); // clear takes 1.5ms
+  ESP_DELAY_US(1600); // clear takes 1.5ms
   send_lcd_byte(i2cAddr_, LCD_CMD_ENTRY_MODE | LCD_ENTRY_LEFT_TO_RIGHT, false);
   send_lcd_byte(i2cAddr_, LCD_CMD_RETURN_HOME, false);
-  ets_delay_us(1600); // home takes 1.5ms
+  ESP_DELAY_US(1600); // home takes 1.5ms
   return call_immediately(STATE(update));
 }
 

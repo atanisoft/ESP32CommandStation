@@ -120,7 +120,7 @@ public:
 
   void start_cutout() override
   {
-    ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase1() +
+    ESP_DELAY_US(DCC_BOOSTER::start_railcom_cutout_phase1() +
                  OLCB_DCC_BOOSTER::start_railcom_cutout_phase1());
 
 #if CONFIG_RAILCOM_DATA_ENABLED
@@ -135,7 +135,7 @@ public:
 #endif // CONFIG_RAILCOM_DATA_ENABLED
 
     // enable the RailCom detector
-    ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase2() + 
+    ESP_DELAY_US(DCC_BOOSTER::start_railcom_cutout_phase2() + 
                  OLCB_DCC_BOOSTER::start_railcom_cutout_phase2());
 
     portENTER_CRITICAL_SAFE(&esp32_timer_mux);
@@ -165,7 +165,7 @@ public:
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
 #endif // CONFIG_RAILCOM_DATA_ENABLED
     // disable the RailCom detector
-    ets_delay_us(DCC_BOOSTER::stop_railcom_cutout_phase1() +
+    ESP_DELAY_US(DCC_BOOSTER::stop_railcom_cutout_phase1() +
                  OLCB_DCC_BOOSTER::stop_railcom_cutout_phase1());
     DCC_BOOSTER::stop_railcom_cutout_phase2();
     OLCB_DCC_BOOSTER::stop_railcom_cutout_phase2();

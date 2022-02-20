@@ -54,6 +54,14 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <soc/uart_reg.h>
 #include <soc/timer_periph.h>
 
+#ifndef ESP_DELAY_US
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+#define ESP_DELAY_US(x) esp_rom_delay_us(x)
+#else
+#define ESP_DELAY_US(x) ets_delay_us(x)
+#endif // IDF v5+
+#endif // ESP_DELAY_US
+
 // Validate configured pins are defined and if not disable the feature.
 #ifndef CONFIG_DCC_TRACK_BRAKE_PIN
   #define CONFIG_DCC_TRACK_BRAKE_PIN -1
@@ -648,7 +656,7 @@ struct DccHwDefs
           // disable the brake pin first
           DCC_BRAKE_Pin::set(false);
           // delay 1usec to allow h-bridge to catch up
-          ets_delay_us(1);
+          ESP_DELAY_US(1);
           // enable the h-bridge output pin
           OPS_ENABLE_Pin::set(true);
         }
@@ -657,7 +665,7 @@ struct DccHwDefs
           // disable the h-bridge output pin
           OPS_ENABLE_Pin::set(false);
           // delay 1usec to allow h-bridge to catch up
-          ets_delay_us(1);
+          ESP_DELAY_US(1);
           // enable the h-bridge brake pin
           DCC_BRAKE_Pin::set(true);
         }
