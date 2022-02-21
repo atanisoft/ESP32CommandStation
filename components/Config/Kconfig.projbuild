@@ -733,6 +733,34 @@ menu "ESP32 Command Station Configuration"
             config WITHROTTLE_MAX_CONNECTIONS
                 int "Maximum number of connections"
                 default 5
+
+            config WITHROTTLE_SOCKET_TIMEOUT_MS
+                int "Milliseconds to use for listener socket timeout"
+                default 50
+
+            config WITHROTTLE_READ_BUFFER_SIZE
+                int "Size (bytes) for the receive buffer"
+                default 128
+
+            config WITHROTTLE_CLIENT_READ_TIMEOUT_MS
+                int "Milliseconds to use for client read timeout"
+                default 50
+
+            choice WITHROTTLE_LOGGING
+                bool "Log level"
+                default WITHROTTLE_LOGGING_MINIMAL
+                config WITHROTTLE_LOGGING_VERBOSE
+                    bool "Verbose"
+                config WITHROTTLE_LOGGING_MINIMAL
+                    bool "Minimal"
+            endchoice
+
+            config WITHROTTLE_LOGGING
+                int
+                default 4 if WITHROTTLE_LOGGING_MINIMAL
+                default 3 if WITHROTTLE_LOGGING_VERBOSE
+                default 5
+
         endmenu
     endmenu
 

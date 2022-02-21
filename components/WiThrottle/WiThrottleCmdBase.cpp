@@ -65,4 +65,13 @@ namespace withrottle
         throttleFlow_->commandDispatcher_.register_handler(this, type, WiThrottleCommands::TYPE_MASK);
     }
 
+    StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandBase::logged_response(Callback next)
+    {
+        LOG(CONFIG_WITHROTTLE_LOGGING,
+            "[WiThrottleCommandBase fd:%d] Sending: %s", throttleFlow_->fd_,
+            sendBuf_.c_str());
+        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
+            sendBuf_.length(), next);
+    }
+
 } // namespace withrottle

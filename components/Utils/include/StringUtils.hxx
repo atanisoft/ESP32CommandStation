@@ -33,7 +33,9 @@ namespace esp32cs
     template <const unsigned num, const char separator>
     static inline void inject_seperator(std::string &input)
     {
-        for (auto it = input.begin(); (num + 1) <= std::distance(it, input.end()); ++it)
+        for (auto it = input.begin();
+             (num + 1) <= std::distance(it, input.end());
+             ++it)
         {
             std::advance(it, num);
             it = input.insert(it, separator);
@@ -52,8 +54,8 @@ namespace esp32cs
         return std::stoull(value, nullptr, 16);
     }
 
-    /// Converts an OpenLCB Node ID to a string format injecting a "." every two
-    /// characters.
+    /// Converts an OpenLCB Node ID to a string format injecting a "." every
+    /// two characters.
     ///
     /// @param id Node ID to convert.
     /// @return String representation of the Node ID.
@@ -65,8 +67,8 @@ namespace esp32cs
         return result;
     }
 
-    /// Converts an OpenLCB Event ID to a string format injecting a "." every two
-    /// characters.
+    /// Converts an OpenLCB Event ID to a string format injecting a "." every
+    /// two characters.
     ///
     /// @param id Event ID to convert.
     /// @return String representation of the Event ID.
@@ -78,14 +80,16 @@ namespace esp32cs
         return result;
     }
 
-    /// Modifies (in place) a string to remove null (\0), 0xFF and trailing spaces.
+    /// Modifies (in place) a string to remove null (\0), 0xFF and trailing
+    /// spaces.
     ///
     /// @param value String to be modified.
     /// @param drop_eol When enabled `\r` and `\n` will be removed.
-    static inline void remove_nulls_and_FF(std::string &value, bool drop_eol = false)
+    static inline void remove_nulls_and_FF(
+        std::string &value, bool drop_eol = false)
     {
-        // replace null characters with spaces so the browser can parse the
-        // XML successfully.
+        // replace null characters with spaces so the browser can parse the XML
+        // successfully.
         std::replace(value.begin(), value.end(), '\0', ' ');
 
         // remove 0xff which is a default value for EEPROM data.
@@ -99,6 +103,44 @@ namespace esp32cs
             // replace carriage return characters with spaces.
             std::replace(value.begin(), value.end(), '\r', ' ');
         }
+    }
+
+    /// Utility function for replacement of one (or more) characters in the
+    /// provided string.
+    ///
+    /// @param source string to be modified, this will be updated in-place.
+    /// @param match one (or more) characters to be replaced in @param source.
+    /// @param replacement one (or more) characters used for replacement.
+    static inline void string_replace_all(std::string &source,
+        const std::string& match, const std::string& replacement)
+    {
+        std::string update;
+        std::string::size_type lastPos = 0;
+        std::string::size_type findPos;
+
+        // exit early if the string is not found
+        if (source.find(match) == std::string::npos)
+        {
+            return;
+        }
+
+        // reserve space in the new string based on the length of the incoming
+        // string.
+        update.reserve(source.length());
+
+        // scan the source string for occurrences of the matching string value
+        while(std::string::npos != (findPos = source.find(match, lastPos)))
+        {
+            update.append(source, lastPos, findPos - lastPos);
+            update.append(replacement);
+            lastPos = findPos + match.length();
+        }
+
+        // append any remaining content from the source string
+        update.append(source, lastPos, source.length() - lastPos);
+
+        // relace the source string with the updated value.
+        source.swap(update);
     }
 }
 

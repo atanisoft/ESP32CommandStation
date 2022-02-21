@@ -37,6 +37,8 @@
 #ifndef WITHROTTLE_HXX_
 #define WITHROTTLE_HXX_
 
+#include "sdkconfig.h"
+
 #include <dcc/TrackIf.hxx>
 #include <executor/Dispatcher.hxx>
 #include <executor/Service.hxx>
@@ -84,6 +86,9 @@ namespace withrottle
     /// Maximum number of connections to allow on the WiThrottle server.
     DECLARE_CONST(withrottle_max_connections);
 
+    /// Default port to listen on for incoming connections.
+    DECLARE_CONST(withrottle_default_port);
+
     static constexpr const char * const REQUEST_EOL_CHARACTER_CRNL = "\x0D\x0A";
     static constexpr const char * const REQUEST_EOL_CHARACTER_CR = "\x0D";
     static constexpr const char * const REQUEST_EOL_CHARACTER_NL = "\x0A";
@@ -106,15 +111,12 @@ namespace withrottle
         /// @param mdns @ref MDNS instance to use for publishing mDNS records
         /// when the server is active.
         /// @param track @ref TrackIf to send DCC packets to.
-        /// @param port port to listen for WiThrottle requests on, default is
-        /// 12090.
         /// @param name name to use for the executor, default is "withrottle".
         /// @param service_name mDNS service name to advertise when the server
         /// is active, default is _withrottle._tcp.
         WiThrottleServer(openlcb::Node *node,
                          MDNS *mdns,
                          dcc::TrackIf *track,
-                         uint16_t port = 12090,
                          const std::string &name = "withrottle",
                          const std::string service_name = "_withrottle._tcp");
 
@@ -123,13 +125,9 @@ namespace withrottle
         ///
         /// @param node @ref Node which this server runs on.
         /// @param track @ref TrackIf to send DCC packets to.
-        /// @param port port to listen for WiThrottle requests on, default is
-        /// 12090.
         /// @param service_name mDNS service name to advertise when the server
         /// is active, default is _withrottle._tcp.
-        WiThrottleServer(openlcb::Node *node,
-                         dcc::TrackIf *track,
-                         uint16_t port = 12090,
+        WiThrottleServer(openlcb::Node *node, dcc::TrackIf *track,
                          const std::string service_name = "_withrottle._tcp");
 #endif // CONFIG_IDF_TARGET
 
@@ -166,9 +164,6 @@ namespace withrottle
         /// @ref WiThrottleServer, note this is not necessarily used on all
         /// platforms.
         Executor<1> executor_;
-
-        /// TCP/IP port to listen for requests on.
-        uint16_t port_;
 
         /// @ref SocketListener that will accept() the socket connections and
         /// call the @ref WiThrottleServer when a new client is available.
@@ -364,6 +359,8 @@ namespace withrottle
 
             void register_command_type(WiThrottleCommands type);
             void deregister_command_type(WiThrottleCommands type);
+
+            StateFlowBase::Action logged_response(Callback next);
         };
 
         class WiThrottleCommandLocomotiveLegacy : public WiThrottleCommandBase

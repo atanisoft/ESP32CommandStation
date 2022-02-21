@@ -32,23 +32,54 @@
  * @date 8 Feb 2022
  */
 
+#ifdef ESP32
 #include "sdkconfig.h"
+#endif // ESP32
+
 #include <utils/constants.hxx>
 
 namespace withrottle
 {
 
+#ifndef CONFIG_WITHROTTLE_MAX_LOCOMOTIVES
+#define CONFIG_WITHROTTLE_MAX_LOCOMOTIVES 10
+#endif // CONFIG_WITHROTTLE_MAX_LOCOMOTIVES
+
+#ifndef CONFIG_WITHROTTLE_MAX_CONNECTIONS
+#define CONFIG_WITHROTTLE_MAX_CONNECTIONS 5
+#endif // CONFIG_WITHROTTLE_MAX_CONNECTIONS
+
+#ifndef CONFIG_WITHROTTLE_PORT
+#define CONFIG_WITHROTTLE_PORT 12090
+#endif // CONFIG_WITHROTTLE_PORT
+
+#ifndef CONFIG_WITHROTTLE_SOCKET_TIMEOUT_MS
+#define CONFIG_WITHROTTLE_SOCKET_TIMEOUT_MS 50
+#endif // CONFIG_WITHROTTLE_SOCKET_TIMEOUT_MS
+
+#ifndef CONFIG_WITHROTTLE_READ_BUFFER_SIZE
+#define CONFIG_WITHROTTLE_READ_BUFFER_SIZE 128
+#endif // CONFIG_WITHROTTLE_READ_BUFFER_SIZE
+
+#ifndef CONFIG_WITHROTTLE_CLIENT_READ_TIMEOUT_MS
+#define CONFIG_WITHROTTLE_CLIENT_READ_TIMEOUT_MS 50
+#endif // CONFIG_WITHROTTLE_CLIENT_READ_TIMEOUT_MS
+
 ///////////////////////////////////////////////////////////////////////////////
 // WiThrottle constants
 ///////////////////////////////////////////////////////////////////////////////
 
-DEFAULT_CONST(withrottle_server_stack_size, 4096);
+DEFAULT_CONST(withrottle_server_stack_size, 2048);
 DEFAULT_CONST(withrottle_server_priority, 0);
-DEFAULT_CONST(withrottle_socket_timeout_ms, 50);
-DEFAULT_CONST(withrottle_read_size, 128);
-DEFAULT_CONST(withrottle_client_timeout_ms, 50);
+DEFAULT_CONST(withrottle_socket_timeout_ms,
+    CONFIG_WITHROTTLE_SOCKET_TIMEOUT_MS);
+DEFAULT_CONST(withrottle_read_size,
+    CONFIG_WITHROTTLE_READ_BUFFER_SIZE);
+DEFAULT_CONST(withrottle_client_timeout_ms,
+    CONFIG_WITHROTTLE_CLIENT_READ_TIMEOUT_MS);
 DEFAULT_CONST(withrottle_max_client_locomotives,
     CONFIG_WITHROTTLE_MAX_LOCOMOTIVES);
 DEFAULT_CONST(withrottle_max_connections,
     CONFIG_WITHROTTLE_MAX_CONNECTIONS);
+DEFAULT_CONST(withrottle_default_port, CONFIG_WITHROTTLE_PORT);
 } // namespace http

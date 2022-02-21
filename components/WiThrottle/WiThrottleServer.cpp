@@ -40,16 +40,11 @@
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 
-#ifdef CONFIG_IDF_TARGET
+#ifdef ESP32
 
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
 
-#include <esp_system.h>
-
-// this method is not exposed via the MDNS class today, declare it here so we
-// can call it if needed. This is implemented inside Esp32WiFiManager.cxx.
-void mdns_unpublish(const char *service);
-#endif // CONFIG_IDF_TARGET
+#endif // ESP32
 
 namespace withrottle
 {
@@ -62,7 +57,7 @@ namespace withrottle
     }
 
     WiThrottleServer::WiThrottleServer(openlcb::Node *node, MDNS *mdns,
-                                       dcc::TrackIf *track, uint16_t port,
+                                       dcc::TrackIf *track,
                                        const string &name,
                                        const string service_name)
         : Service(&executor_),
@@ -73,14 +68,13 @@ namespace withrottle
           mdns_service_(service_name),
           executor_(name.c_str(),
                     config_withrottle_server_priority(),
-                    config_withrottle_server_stack_size()),
-          port_(port)
+                    config_withrottle_server_stack_size())
     {
     }
 
-#ifdef CONFIG_IDF_TARGET
+#ifdef ESP32
     WiThrottleServer::WiThrottleServer(openlcb::Node *node,
-                                       dcc::TrackIf *track, uint16_t port,
+                                       dcc::TrackIf *track,
                                        const string service_name)
         : Service(Singleton<Esp32WiFiManager>::instance()->executor()),
           node_(node),
@@ -88,7 +82,6 @@ namespace withrottle
           track_(track),
           mdns_service_(service_name),
           executor_(NO_THREAD()),
-          port_(port),
           externalExecutor_(true)
     {
         // Hook into the Esp32WiFiManager to start/stop the listener
@@ -104,7 +97,7 @@ namespace withrottle
                 stop_listener();
             });
     }
-#endif // CONFIG_IDF_TARGET
+#endif // ESP32
 
     WiThrottleServer::~WiThrottleServer()
     {
@@ -179,18 +172,20 @@ namespace withrottle
             MSEC_TO_USEC(config_withrottle_socket_timeout_ms());
 
         LOG(INFO, "[%s] Starting WiThrottle listener on port %d",
-            name_.c_str(), port_);
-        listener_.emplace(port_, incoming_connection, "WiThrottleSocket");
+            name_.c_str(), config_withrottle_default_port());
+        listener_.emplace(config_withrottle_default_port(),
+            incoming_connection, "WiThrottleSocket");
         active_ = true;
-#ifdef CONFIG_IDF_TARGET
+#ifdef ESP32
         Singleton<Esp32WiFiManager>::instance()->mdns_publish(
-            mdns_service_, port_);
-#else
+            mdns_service_, config_withrottle_default_port());
+#else // NOT ESP32
         if (mdns_)
         {
-            mdns_->publish(name_.c_str(), mdns_service_.c_str(), port_);
+            mdns_->publish(name_.c_str(), mdns_service_.c_str(),
+                config_withrottle_default_port());
         }
-#endif
+#endif // ESP32
     }
 
     void WiThrottleServer::stop_listener()
@@ -200,9 +195,9 @@ namespace withrottle
             LOG(INFO, "[%s] Shutting down WiThrottle listener", name_.c_str());
             listener_.reset();
             active_ = false;
-#ifdef CONFIG_IDF_TARGET
+#ifdef ESP32
             Singleton<Esp32WiFiManager>::instance()->mdns_unpublish(mdns_service_.c_str());
-#endif
+#endif // ESP32
         }
     }
 

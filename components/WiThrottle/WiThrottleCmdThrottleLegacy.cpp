@@ -71,8 +71,7 @@ namespace withrottle
             sendBuf_ =
                 StringPrintf("HMESP32CS: Failed to allocate throttle%s",
                 REQUEST_EOL_CHARACTER_NL);
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(), STATE(done));
+            return logged_response(STATE(done));
         }
 
         if (!throttle_->is_train_assigned() && (
@@ -92,23 +91,27 @@ namespace withrottle
                 auto speed = throttle_->get_speed();
                 speed.set_dcc_128(std::stoi(message()->data()->payload.substr(1)));
                 throttle_->set_speed(speed);
-                LOG(INFO, "[WiThrottleClient: %d] Speed set to:%d",
+                LOG(CONFIG_WITHROTTLE_LOGGING,
+                    "[WiThrottleClient: %d] Speed set to:%d",
                     throttleFlow_->fd_, speed.get_dcc_128());
                 break;
             }
             case 'X':           // e-Stop
             {
                 throttle_->set_emergencystop();
-                LOG(INFO, "[WiThrottleClient: %d] eStop!", throttleFlow_->fd_);
+                LOG(CONFIG_WITHROTTLE_LOGGING, "[WiThrottleClient: %d] eStop!",
+                    throttleFlow_->fd_);
                 break;
             }
             case 'F':           // function
             case 'f':           // function (forced)
+            case 'm':           // momentary function
             {
                 uint8_t state = (message()->data()->payload[1] - '0');
                 uint8_t fn = std::stoi(message()->data()->payload.substr(2));
                 throttle_->set_fn(fn, state);
-                LOG(INFO, "[WiThrottleClient: %d] FN(%d):%s",
+                LOG(CONFIG_WITHROTTLE_LOGGING,
+                    "[WiThrottleClient: %d] FN(%d):%s",
                     throttleFlow_->fd_, fn, state? "On" : "Off");
                 break;
             }
@@ -117,7 +120,8 @@ namespace withrottle
                 auto speed = throttle_->get_speed();
                 speed.set_direction(message()->data()->payload[1] != '0');
                 throttle_->set_speed(speed);
-                LOG(INFO, "[WiThrottleClient: %d] Direction:%s",
+                LOG(CONFIG_WITHROTTLE_LOGGING,
+                    "[WiThrottleClient: %d] Direction:%s",
                     throttleFlow_->fd_,
                     speed.direction() == SpeedType::REVERSE ? "Rev" : "Fwd");
                 break;
@@ -160,16 +164,8 @@ namespace withrottle
                 auto speed = throttle_->get_speed();
                 speed.set_dcc_128(0);
                 throttle_->set_speed(speed);
-                LOG(INFO, "[WiThrottleClient: %d] Idle", throttleFlow_->fd_);
-                break;
-            }
-            case 'm':           // momentary function
-            {
-                uint8_t state = (message()->data()->payload[1] - '0');
-                uint8_t fn = std::stoi(message()->data()->payload.substr(2));
-                throttle_->set_fn(fn, state);
-                LOG(INFO, "[WiThrottleClient: %d] FN(%d):%s",
-                    throttleFlow_->fd_, fn, state? "On" : "Off");
+                LOG(CONFIG_WITHROTTLE_LOGGING, "[WiThrottleClient: %d] Idle",
+                    throttleFlow_->fd_);
                 break;
             }
             case 'q':           // query state
@@ -194,10 +190,10 @@ namespace withrottle
             sendBuf_ =
                 StringPrintf("HMESP32CS: Failed to assign locomotive:%d%s",
                     address_, REQUEST_EOL_CHARACTER_NL);
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(), STATE(done));
+            return logged_response(STATE(done));
         }
-        LOG(INFO, "[WiThrottleClient: %d] Assigned locomotive:%d",
+        LOG(CONFIG_WITHROTTLE_LOGGING,
+            "[WiThrottleClient: %d] Assigned locomotive:%d",
             throttleFlow_->fd_, address_);
         return invoke_subflow_and_wait(throttle_, STATE(loco_state_loaded),
             TractionThrottleCommands::LOAD_STATE);
@@ -213,16 +209,15 @@ namespace withrottle
             sendBuf_ =
                 StringPrintf("HMESP32CS: Failed to release locomotive:%d%s",
                     address_, REQUEST_EOL_CHARACTER_NL);
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(), STATE(done));
+            return logged_response(STATE(done));
         }
-        LOG(INFO, "[WiThrottleClient: %d] Released locomotive:%d",
+        LOG(CONFIG_WITHROTTLE_LOGGING,
+            "[WiThrottleClient: %d] Released locomotive:%d",
             throttleFlow_->fd_, address_);
         sendBuf_ = StringPrintf("%cNot Set%s", throttleKey_,
             REQUEST_EOL_CHARACTER_NL);
         throttleFlow_->release_throttle(throttle_);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(done));
+        return logged_response(STATE(done));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotiveLegacy::loco_state_loaded()
@@ -244,8 +239,7 @@ namespace withrottle
                 addressType_ == TrainAddressType::DCC_LONG_ADDRESS ? 'L' : 'S',
                 address_, REQUEST_EOL_CHARACTER_NL);
         }
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), nextState);
+        return logged_response(nextState);
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotiveLegacy::send_function_labels()
@@ -305,9 +299,7 @@ namespace withrottle
                         break;
                 }
             }
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(),
-                STATE(send_function_states));
+            return logged_response(STATE(send_function_states));
         }
         return yield_and_call(STATE(send_function_states));
     }
@@ -326,8 +318,7 @@ namespace withrottle
                 COLLECTION_DELIMITER, state, fn, FIELD_DELIMITER));
         }
         sendBuf_.append(REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(done));
+        return logged_response(STATE(done));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotiveLegacy::done()
@@ -339,7 +330,6 @@ namespace withrottle
     {
         sendBuf_ = StringPrintf("HMESP32CS: Command not understood.%s",
             REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(done));
+        return logged_response(STATE(done));
     }
 } // namespace withrottle

@@ -134,8 +134,7 @@ namespace withrottle
                     sendBuf_ =
                         StringPrintf("HMESP32CS: Roster entry not found:%s%s",
                         train_name.c_str(), REQUEST_EOL_CHARACTER_NL);
-                    return write_repeated(&helper_, throttleFlow_->fd_,
-                        sendBuf_.data(), sendBuf_.length(), STATE(done));
+                    return logged_response(STATE(done));
                 }
             }
 
@@ -147,8 +146,7 @@ namespace withrottle
                                 "reached, locomotive %d not added.%s",
                     config_withrottle_max_client_locomotives(), address_,
                     REQUEST_EOL_CHARACTER_NL);
-                return write_repeated(&helper_, throttleFlow_->fd_,
-                    sendBuf_.data(), sendBuf_.length(), STATE(done));
+                return logged_response(STATE(done));
             }
             auto node_id = TractionDefs::train_node_id_from_legacy(
                 addressType_, address_);
@@ -181,8 +179,7 @@ namespace withrottle
             sendBuf_ =
                 StringPrintf("HMESP32CS: Locomotive steal not implemented.%s",
                 REQUEST_EOL_CHARACTER_NL);
-            return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-                sendBuf_.length(), STATE(done));
+            return logged_response(STATE(done));
         }
         else if (action == 'A')
         {
@@ -273,8 +270,7 @@ namespace withrottle
             sendBuf_ =
                 StringPrintf("HMESP32CS: No locomotive has been assigned to "
                              "this throttle!%s", REQUEST_EOL_CHARACTER_NL);
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(), STATE(done));
+            return logged_response(STATE(done));
         }
         // extract the address type from the node assigned node id.
         if (addressType_ == TrainAddressType::UNSPECIFIED)
@@ -327,8 +323,7 @@ namespace withrottle
                         sendBuf_ =
                             StringPrintf("HMESP32CS: Roster entry not found:%s%s",
                             entry_name.c_str(), REQUEST_EOL_CHARACTER_NL);
-                        return write_repeated(&helper_, throttleFlow_->fd_,
-                            sendBuf_.data(), sendBuf_.length(), nextState);
+                        return logged_response(nextState);
                     }
                     break;
                 }
@@ -344,8 +339,7 @@ namespace withrottle
                         throttleKey_, addressTypeChar_, address_,
                         COMMAND_PAYLOAD_DELIMITER, state, fn,
                         REQUEST_EOL_CHARACTER_NL));
-                    return write_repeated(&helper_, throttleFlow_->fd_,
-                        sendBuf_.data(), sendBuf_.length(), nextState);
+                    return logged_response(nextState);
                 }
                 break;
             case 'I':           // Idle
@@ -416,8 +410,7 @@ namespace withrottle
                     {
                         return yield_and_call(STATE(command_not_recognized));
                     }
-                    return write_repeated(&helper_, throttleFlow_->fd_,
-                        sendBuf_.data(), sendBuf_.length(), nextState);
+                    return logged_response(nextState);
                 }
             case 'R':           // Set direction
                 {
@@ -429,8 +422,7 @@ namespace withrottle
                             COMMAND_PAYLOAD_DELIMITER,
                             speed.direction() != SpeedType::REVERSE,
                             REQUEST_EOL_CHARACTER_NL);
-                    return write_repeated(&helper_, throttleFlow_->fd_,
-                        sendBuf_.data(), sendBuf_.length(), nextState);
+                    return logged_response(nextState);
                 }
             case 's':           // Set speed step mode
                 {
@@ -465,9 +457,7 @@ namespace withrottle
                             addressTypeChar_, address_,
                             COMMAND_PAYLOAD_DELIMITER, speed_step,
                             REQUEST_EOL_CHARACTER_NL);
-                
-                    return write_repeated(&helper_, throttleFlow_->fd_,
-                        sendBuf_.data(), sendBuf_.length(), nextState);
+                    return logged_response(nextState);
                 }
             case 'X':           // Set eStop
                 throttle_->set_emergencystop();
@@ -488,8 +478,7 @@ namespace withrottle
             sendBuf_ =
                 StringPrintf("HMESP32CS: Failed to assign locomotive:%d%s",
                     address_, REQUEST_EOL_CHARACTER_NL);
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(), STATE(done));
+            return logged_response(STATE(done));
         }
         LOG(INFO, "[WiThrottleClient: %d] Assigned locomotive:%d",
             throttleFlow_->fd_, address_);
@@ -507,8 +496,7 @@ namespace withrottle
             sendBuf_ =
                 StringPrintf("HMESP32CS: Failed to release locomotive:%d%s",
                     address_, REQUEST_EOL_CHARACTER_NL);
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(), STATE(done));
+            return logged_response(STATE(done));
         }
         LOG(INFO, "[WiThrottleClient: %d] Released locomotive:%d",
             throttleFlow_->fd_, address_);
@@ -521,8 +509,7 @@ namespace withrottle
         {
             nextState = STATE(release_next_loco);
         }
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), nextState);
+        return logged_response(nextState);
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::release_next_loco()
@@ -558,8 +545,7 @@ namespace withrottle
                 addressTypeChar_, address_, COMMAND_PAYLOAD_DELIMITER,
                 REQUEST_EOL_CHARACTER_NL);
         }
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), nextState);
+        return logged_response(nextState);
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::send_function_labels()
@@ -616,16 +602,13 @@ namespace withrottle
                         break;
                 }
             }
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(),
-                STATE(send_function_states));
+            return logged_response(STATE(send_function_states));
         }
         return yield_and_call(STATE(send_function_states));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::send_function_states()
     {
-        Callback next = STATE(send_loco_speed);
         sendBuf_ =
             StringPrintf("M%cA%c%d%s", throttleKey_, addressTypeChar_,
                 address_, COMMAND_PAYLOAD_DELIMITER);
@@ -640,8 +623,7 @@ namespace withrottle
                 addressTypeChar_, address_, COMMAND_PAYLOAD_DELIMITER, state,
                 fn, REQUEST_EOL_CHARACTER_NL));
         }
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), next);
+        return logged_response(STATE(send_loco_speed));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::send_loco_speed()
@@ -667,9 +649,7 @@ namespace withrottle
             StringPrintf("M%cA%c%d%sV%d%s", throttleKey_, addressTypeChar_,
                 address_, COMMAND_PAYLOAD_DELIMITER, speed_step,
                 REQUEST_EOL_CHARACTER_NL);
-        
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(send_loco_direction));
+        return logged_response(STATE(send_loco_direction));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::send_loco_direction()
@@ -680,8 +660,7 @@ namespace withrottle
             address_, COMMAND_PAYLOAD_DELIMITER,
             (speed.direction() != SpeedType::REVERSE),
             REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(send_loco_stepmode));
+        return logged_response(STATE(send_loco_stepmode));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::send_loco_stepmode()
@@ -711,8 +690,7 @@ namespace withrottle
             StringPrintf("M%cA%c%d%sS%d%s", throttleKey_, addressTypeChar_,
             address_, COMMAND_PAYLOAD_DELIMITER, speed_step,
             REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(done));
+        return logged_response(STATE(done));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::done()
@@ -724,15 +702,13 @@ namespace withrottle
     {
         sendBuf_ = StringPrintf("HMESP32CS: Command not understood.%s",
             REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(done));
+        return logged_response(STATE(done));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::command_not_supported()
     {
         sendBuf_ = StringPrintf("HMESP32CS: Command not supported.%s",
             REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(done));
+        return logged_response(STATE(done));
     }
 } // namespace withrottle

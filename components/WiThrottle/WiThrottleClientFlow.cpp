@@ -39,48 +39,11 @@
 #include <AccessoryDecoderDatabase.hxx>
 #include <dcc/DccOutput.hxx>
 #include <HttpStringUtils.h>
+#include <StringUtils.hxx>
 #include <TrainDatabase.h>
 
 namespace withrottle
 {
-    /// Utility function for replacement of one (or more) characters in the
-    /// provided string.
-    ///
-    /// @param source string to be modified, this will be updated in-place.
-    /// @param match one (or more) characters to be replaced in @param source.
-    /// @param replacement one (or more) characters used for replacement.
-    static inline void string_replace_all(std::string &source,
-        const std::string& match, const std::string& replacement)
-    {
-        std::string update;
-        std::string::size_type lastPos = 0;
-        std::string::size_type findPos;
-
-        // exit early if the string is not found
-        if (source.find(match) == std::string::npos)
-        {
-            return;
-        }
-
-        // reserve space in the new string based on the length of the incoming
-        // string.
-        update.reserve(source.length());
-
-        // scan the source string for occurrences of the matching string value
-        while(std::string::npos != (findPos = source.find(match, lastPos)))
-        {
-            update.append(source, lastPos, findPos - lastPos);
-            update.append(replacement);
-            lastPos = findPos + match.length();
-        }
-
-        // append any remaining content from the source string
-        update.append(source, lastPos, source.length() - lastPos);
-
-        // relace the source string with the updated value.
-        source.swap(update);
-    }
-
     WiThrottleClientFlow::WiThrottleClientFlow(
         WiThrottleServer *server, int fd, uint32_t remote_ip, uint8_t heartbeat)
         : StateFlowBase(server), remoteIP_(remote_ip), fd_(fd),
@@ -93,13 +56,14 @@ namespace withrottle
         buf_.resize(readSize_);
         reqData_.reserve(readSize_ + 1);
         start_flow(STATE(read_more_data));
-        LOG(INFO, "[WiThrottleClient fd:%d] Connected.", fd_);
+        LOG(CONFIG_WITHROTTLE_LOGGING, "[WiThrottleClient fd:%d] Connected.",
+            fd_);
     }
 
     WiThrottleClientFlow::~WiThrottleClientFlow()
     {
         server_->connectionCount_--;
-        LOG(INFO, "[WiThrottleClient fd:%d] Closed", fd_);
+        LOG(CONFIG_WITHROTTLE_LOGGING, "[WiThrottleClient fd:%d] Closed", fd_);
         ::close(fd_);
 
         // cleanup any created throttles
@@ -127,9 +91,9 @@ namespace withrottle
 
         // replace occurrences of various end of line characters with a single
         // variant that we can use internally.
-        string_replace_all(reqData_, REQUEST_EOL_CHARACTER_CRNL,
+        esp32cs::string_replace_all(reqData_, REQUEST_EOL_CHARACTER_CRNL,
             REQUEST_EOL_CHARACTER_NL);
-        string_replace_all(reqData_, REQUEST_EOL_CHARACTER_CR,
+        esp32cs::string_replace_all(reqData_, REQUEST_EOL_CHARACTER_CR,
             REQUEST_EOL_CHARACTER_NL);
 
         // if we don't have an EOL string in the data yet, get more data
@@ -146,15 +110,17 @@ namespace withrottle
             REQUEST_EOL_CHARACTER_NL, false);
 
         // drop whatever has been tokenized so we don't process it again
-        LOG(INFO, "[WiThrottleClient fd:%d] parsed: %zu / %zu, commands: %zu",
-            fd_, parsed, reqData_.length(), commands.size());
+        LOG(CONFIG_WITHROTTLE_LOGGING,
+            "[WiThrottleClient fd:%d] parsed: %zu / %zu, commands: %zu", fd_,
+            parsed, reqData_.length(), commands.size());
         reqData_.erase(0, parsed);
 
         size_t count = 0;
         for (auto &line : commands)
         {
             count++;
-            LOG(INFO, "[WiThrottleClient fd:%d] (%zu/%zu): ||%s||", fd_, count,
+            LOG(CONFIG_WITHROTTLE_LOGGING,
+                "[WiThrottleClient fd:%d] (%zu/%zu): ||%s||", fd_, count,
                 commands.size(), line.c_str());
             
             bool dispatch = false;
@@ -173,8 +139,9 @@ namespace withrottle
                     }
                     else
                     {
-                        LOG(INFO, "[WiThrottleClient fd:%d] throttle(%c): %s",
-                            fd_, line[1], line.substr(1).c_str());
+                        LOG(CONFIG_WITHROTTLE_LOGGING,
+                            "[WiThrottleClient fd:%d] throttle(%c): %s", fd_,
+                            line[1], line.substr(1).c_str());
                         switch(line[2])
                         {
                             case 'A':
@@ -211,7 +178,8 @@ namespace withrottle
                     else
                     {
                         udid_.assign(line.substr(2));
-                        LOG(INFO, "[WiThrottleClient fd:%d] UDID: %s", fd_,
+                        LOG(CONFIG_WITHROTTLE_LOGGING,
+                            "[WiThrottleClient fd:%d] UDID: %s", fd_,
                             udid_.c_str());
                     }
                     break;
@@ -228,7 +196,8 @@ namespace withrottle
                     else
                     {
                         name_.assign(line.substr(1));
-                        LOG(INFO, "[WiThrottleClient fd:%d] Name: %s", fd_,
+                        LOG(CONFIG_WITHROTTLE_LOGGING,
+                            "[WiThrottleClient fd:%d] Name: %s", fd_,
                             name_.c_str());
                         
                         // received a valid name, proceed to sending the CS
@@ -279,11 +248,13 @@ namespace withrottle
                     {
                         if (line[1] == '+')             // Enable
                         {
-                            LOG(INFO, "Enabling Heartbeat Timer");
+                            LOG(CONFIG_WITHROTTLE_LOGGING,
+                                "Enabling Heartbeat Timer");
                         }
                         else                            // Disable
                         {
-                            LOG(INFO, "Disabling Heartbeat Timer");
+                            LOG(CONFIG_WITHROTTLE_LOGGING,
+                                "Disabling Heartbeat Timer");
                         }
                     }
                     else
@@ -312,7 +283,8 @@ namespace withrottle
 
     StateFlowBase::Action WiThrottleClientFlow::shutdown()
     {
-        LOG(INFO, "[WiThrottleClient fd:%d] Shutting down connection", fd_);
+        LOG(CONFIG_WITHROTTLE_LOGGING,
+            "[WiThrottleClient fd:%d] Shutting down connection", fd_);
 
         if (throttles_.empty())
         {
@@ -335,7 +307,7 @@ namespace withrottle
         throttleIter_++;
         if (throttle->is_train_assigned())
         {
-            LOG(INFO,
+            LOG(CONFIG_WITHROTTLE_LOGGING,
                 "[WiThrottleClient fd:%d] Releasing train from throttle '%c'",
                 fd_, throttle_id);
             invoke_subflow_and_wait(throttle, STATE(shutdown_throttles),
@@ -343,7 +315,7 @@ namespace withrottle
         }
         else
         {
-            LOG(INFO,
+            LOG(CONFIG_WITHROTTLE_LOGGING,
                 "[WiThrottleClient fd:%d] Throttle '%c' appears to be idle",
                 fd_, throttle_id);
         }
@@ -352,7 +324,8 @@ namespace withrottle
 
     StateFlowBase::Action WiThrottleClientFlow::read_more_data()
     {
-        LOG(INFO, "[WiThrottleClient fd:%d] Requesting more data", fd_);
+        LOG(CONFIG_WITHROTTLE_LOGGING,
+            "[WiThrottleClient fd:%d] Requesting more data", fd_);
         return read_repeated_with_timeout(&helper_, timeout_, fd_, buf_.data(),
                                           readSize_, STATE(parse));
     }

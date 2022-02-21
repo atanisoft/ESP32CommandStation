@@ -66,16 +66,14 @@ namespace withrottle
                 Singleton<EventBroadcastHelper>::instance()->send_event(
                     Defs::EMERGENCY_OFF_EVENT);
                 sendBuf_ = StringPrintf("PPA0%s", REQUEST_EOL_CHARACTER_NL);
-                return write_repeated(&helper_, throttleFlow_->fd_,
-                    sendBuf_.data(), sendBuf_.length(), STATE(done));
+                return logged_response(STATE(done));
             }
             else                                        // On
             {
                 Singleton<EventBroadcastHelper>::instance()->send_event(
                     Defs::CLEAR_EMERGENCY_OFF_EVENT);
                 sendBuf_ = StringPrintf("PPA1%s", REQUEST_EOL_CHARACTER_NL);
-                return write_repeated(&helper_, throttleFlow_->fd_,
-                    sendBuf_.data(), sendBuf_.length(), STATE(done));
+                return logged_response(STATE(done));
             }
         }
         else if (message()->data()->payload[0] == 'T' &&
@@ -113,8 +111,7 @@ namespace withrottle
             // TODO: move this to client flow via accessorydb subscription
             sendBuf_ = StringPrintf("PTA%c%d%s", state, address,
                 REQUEST_EOL_CHARACTER_NL);
-            return write_repeated(&helper_, throttleFlow_->fd_,
-                sendBuf_.data(), sendBuf_.length(), STATE(done));
+            return logged_response(STATE(done));
         }
         else if (message()->data()->payload[0] == 'R' &&
                  message()->data()->payload[1] == 'A')  // Routes
@@ -136,15 +133,13 @@ namespace withrottle
             throttleFlow_->fd_, message()->data()->payload.c_str());
         sendBuf_ = StringPrintf("HMESP32CS: Command not understood.%s",
             REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(done));
+        return logged_response(STATE(done));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandPanel::command_not_supported()
     {
         sendBuf_ = StringPrintf("HMESP32CS: Command not supported.%s",
             REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
-            sendBuf_.length(), STATE(done));
+        return logged_response(STATE(done));
     }
 } // namespace withrottle

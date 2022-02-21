@@ -459,7 +459,7 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
 
 #if CONFIG_WITHROTTLE_ENABLED
   withrottle.emplace(node, track_interface.operator->(),
-      CONFIG_WITHROTTLE_PORT, CONFIG_WITHROTTLE_MDNS_SERVICE);
+      CONFIG_WITHROTTLE_MDNS_SERVICE);
 #endif // CONFIG_WITHROTTLE_ENABLED
 
 #if CONFIG_ENERGIZE_TRACK_ON_STARTUP
