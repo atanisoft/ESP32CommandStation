@@ -15,7 +15,6 @@ jobs:
       max-parallel: 3
       matrix:
         target:
-          - esp32-v4.3-PCB
           - esp32-v4.4-L298
           - esp32-v4.4-LMD18200
           - esp32-v4.4-BTS7960B
