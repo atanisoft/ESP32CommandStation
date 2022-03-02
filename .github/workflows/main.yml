@@ -35,11 +35,11 @@ jobs:
         with:
           msg: ${{ matrix.target }}
           separator: '-'
-      - name: Configure default pinmaps for ${{ steps.target.outputs._2 }}
+      - name: Configure default pin mapping
         run: |
           echo "CONFIG_ESP32CS_${{ steps.target.outputs._2 }}=y" > sdkconfig
       - name: Build
-        uses: atanisoft/esp-idf-ci-action@latest
+        uses: atanisoft/esp-idf-ci-action@main
         with:
           esp_idf_version: ${{ steps.target.outputs._1 }}
           esp_target: ${{ steps.target.outputs._0 }}
