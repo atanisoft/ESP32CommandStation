@@ -54,7 +54,7 @@ jobs:
           egrep 'I2C|STATUS|FACTORY|BOOTLOADER|TWAI' sdkconfig | grep _PIN | egrep -v '^#'> binaries/pinmap.txt
           egrep 'CONFIG_SD_SPI' sdkconfig | egrep -v '^#' >> binaries/pinmap.txt
           egrep 'CONFIG_WIFI_SOFTAP_[SSID|PASSWORD]|CONFIG_WIFI_STATION' sdkconfig | egrep -v '^#' >> binaries/wifi.txt
-          cat .github/${{ steps.target.outputs._2 }}_pinmap.txt >> binaries/pinmap.txt
+          cat .github/pinmap_${{ steps.target.outputs._2 }}.txt >> binaries/pinmap.txt
           cat .github/adc_pinmap_${{ steps.target.outputs._0 }}.txt >> binaries/pinmap.txt
       - name: Package binaries
         uses: actions/upload-artifact@v1
