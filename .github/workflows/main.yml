@@ -41,7 +41,7 @@ jobs:
         uses: atanisoft/esp-idf-ci-action@main
         with:
           esp_idf_version: ${{ steps.target.outputs._1 }}
-          esp_target: ${{ steps.target.outputs._0 }}
+          target: ${{ steps.target.outputs._0 }}
       - name: Prepare Binaries
         run: |
           mkdir -p binaries
