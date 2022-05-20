@@ -432,7 +432,7 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
   track_flow.emplace(svc, track_interface->pool(),
                      track_update_loop.operator->());
 
-#if RAILCOM_CUT_OUT_ENABLED
+#if CONFIG_RAILCOM_CUT_OUT_ENABLED
   railcom_hub.emplace(svc);
   railComDriver.hw_init(railcom_hub.operator->());
 #if CONFIG_RAILCOM_DUMP_PACKETS
@@ -443,7 +443,7 @@ void init_dcc(openlcb::Node *node, Service *svc, const TrackOutputConfig &cfg)
     DccOutput::RailcomCutout::DISABLED);
   get_dcc_output(DccOutput::Type::LCC)->set_railcom_cutout_enabled(
     DccOutput::RailcomCutout::DISABLED);
-#endif // RAILCOM_CUT_OUT_ENABLED
+#endif // CONFIG_RAILCOM_CUT_OUT_ENABLED
   track_power.emplace(node);
   track_power_consumer.emplace(track_power.operator->());
   estop_packet_source.emplace(node);
