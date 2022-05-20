@@ -107,7 +107,7 @@ namespace withrottle
             case 'f':           // function (forced)
             case 'm':           // momentary function
             {
-                uint8_t state = (message()->data()->payload[1] - '0');
+                uint8_t state = (message()->data()->payload.at(1) - '0');
                 uint8_t fn = std::stoi(message()->data()->payload.substr(2));
                 throttle_->set_fn(fn, state);
                 LOG(CONFIG_WITHROTTLE_LOGGING,
@@ -118,7 +118,7 @@ namespace withrottle
             case 'R':           // direction
             {
                 auto speed = throttle_->get_speed();
-                speed.set_direction(message()->data()->payload[1] != '0');
+                speed.set_direction(message()->data()->payload.at(1) != '0');
                 throttle_->set_speed(speed);
                 LOG(CONFIG_WITHROTTLE_LOGGING,
                     "[WiThrottleClient: %d] Direction:%s",
@@ -145,6 +145,7 @@ namespace withrottle
                 addressType_ = TrainAddressType::DCC_LONG_ADDRESS;
                 auto node_id = TractionDefs::train_node_id_from_legacy(
                     addressType_, address_);
+                verify_locomotive_node(node_id);
                 return invoke_subflow_and_wait(throttle_, STATE(loco_assigned),
                    TractionThrottleCommands::ASSIGN_TRAIN, node_id, 0);
                 break;
@@ -155,6 +156,7 @@ namespace withrottle
                 addressType_ = TrainAddressType::DCC_SHORT_ADDRESS;
                 auto node_id = TractionDefs::train_node_id_from_legacy(
                     addressType_, address_);
+                verify_locomotive_node(node_id);
                 return invoke_subflow_and_wait(throttle_, STATE(loco_assigned),
                    openlcb::TractionThrottleCommands::ASSIGN_TRAIN, node_id, 0);
                 break;

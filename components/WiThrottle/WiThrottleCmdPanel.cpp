@@ -58,28 +58,28 @@ namespace withrottle
 
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandPanel::entry()
     {
-        if (message()->data()->payload[0] == 'P' &&
-            message()->data()->payload[1] == 'A')       // Track Power
+        if (message()->data()->payload.at(0) == 'P' &&
+            message()->data()->payload.at(1) == 'A')       // Track Power
         {
-            if (message()->data()->payload[2] == '1')   // Off
-            {
-                Singleton<EventBroadcastHelper>::instance()->send_event(
-                    Defs::EMERGENCY_OFF_EVENT);
-                sendBuf_ = StringPrintf("PPA0%s", REQUEST_EOL_CHARACTER_NL);
-                return logged_response(STATE(done));
-            }
-            else                                        // On
+            if (message()->data()->payload.at(2) == '1')   // On
             {
                 Singleton<EventBroadcastHelper>::instance()->send_event(
                     Defs::CLEAR_EMERGENCY_OFF_EVENT);
                 sendBuf_ = StringPrintf("PPA1%s", REQUEST_EOL_CHARACTER_NL);
                 return logged_response(STATE(done));
             }
+            else                                        // Off
+            {
+                Singleton<EventBroadcastHelper>::instance()->send_event(
+                    Defs::EMERGENCY_OFF_EVENT);
+                sendBuf_ = StringPrintf("PPA0%s", REQUEST_EOL_CHARACTER_NL);
+                return logged_response(STATE(done));
+            }
         }
-        else if (message()->data()->payload[0] == 'T' &&
-                 message()->data()->payload[1] == 'A')  // Accessory
+        else if (message()->data()->payload.at(0) == 'T' &&
+                 message()->data()->payload.at(1) == 'A')  // Accessory
         {
-            uint8_t state = message()->data()->payload[2];
+            uint8_t state = message()->data()->payload.at(2);
             auto accessory = Singleton<AccessoryDecoderDB>::instance();
             uint16_t address = std::stoi(message()->data()->payload.substr(3));
             if (state == 'T')                       // thrown
@@ -113,8 +113,8 @@ namespace withrottle
                 REQUEST_EOL_CHARACTER_NL);
             return logged_response(STATE(done));
         }
-        else if (message()->data()->payload[0] == 'R' &&
-                 message()->data()->payload[1] == 'A')  // Routes
+        else if (message()->data()->payload.at(0) == 'R' &&
+                 message()->data()->payload.at(1) == 'A')  // Routes
         {
             return yield_and_call(STATE(command_not_supported));    
         }

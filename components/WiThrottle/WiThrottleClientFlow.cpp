@@ -77,7 +77,6 @@ namespace withrottle
 
     StateFlowBase::Action WiThrottleClientFlow::parse()
     {
-        Callback nextState = STATE(read_more_data);
         if (helper_.hasError_)
         {
             return call_immediately(STATE(shutdown));
@@ -102,9 +101,9 @@ namespace withrottle
             return yield_and_call(STATE(read_more_data));
         }
 
-        // parse the data we have into delimited lines of requests, this will
-        // leave some data in the reqData_ which will need to be re-parsed on
-        // next run.
+        // parse the data we have into delimited lines of requests, this may
+        // leave some data in the reqData_ which will need to be re-parsed when
+        // additional data is available.
         vector<string> commands;
         size_t parsed = http::tokenize(reqData_, commands,
             REQUEST_EOL_CHARACTER_NL, false);
@@ -124,8 +123,9 @@ namespace withrottle
                 commands.size(), line.c_str());
             
             bool dispatch = false;
-            nextCommand_->data()->command = static_cast<WiThrottleCommands>(line[0]);
-            switch(line[0])
+            nextCommand_->data()->command =
+                static_cast<WiThrottleCommands>(line.at(0));
+            switch(nextCommand_->data()->command)
             {
                 case WiThrottleCommands::PRIMARY:       // T
                 case WiThrottleCommands::SECONDARY:     // S
@@ -141,8 +141,8 @@ namespace withrottle
                     {
                         LOG(CONFIG_WITHROTTLE_LOGGING,
                             "[WiThrottleClient fd:%d] throttle(%c): %s", fd_,
-                            line[1], line.substr(1).c_str());
-                        switch(line[2])
+                            line.at(1), line.substr(1).c_str());
+                        switch(line.at(2))
                         {
                             case 'A':
                             case '+':
@@ -152,7 +152,7 @@ namespace withrottle
                             default:
                                 LOG_ERROR(
                                     "[WiThrottleClient fd:%d] Unrecognized "
-                                    "Throttle command code: %c", fd_, line[2]);
+                                    "Throttle command code: %c", fd_, line.at(2));
                                 break;
                         }
                     }
@@ -167,13 +167,12 @@ namespace withrottle
                 }
                 case WiThrottleCommands::SET_ID:        // HU{id}
                 {
-                    if (line.length() < 3 || line[1] != 'U')
+                    if (line.length() < 3 || line.at(1) != 'U')
                     {
                         LOG_ERROR("[WiThrottleClient fd:%d] UDID does not "
-                                  "appear to be valid, rejecting",
-                            fd_);
+                                  "appear to be valid, rejecting", fd_);
                         // invalid UDID detected, shutdown the connection
-                        nextState = STATE(shutdown);
+                        return yield_and_call(STATE(shutdown));
                     }
                     else
                     {
@@ -181,6 +180,8 @@ namespace withrottle
                         LOG(CONFIG_WITHROTTLE_LOGGING,
                             "[WiThrottleClient fd:%d] UDID: %s", fd_,
                             udid_.c_str());
+                        // check for more lines to process
+                        continue;
                     }
                     break;
                 }
@@ -191,7 +192,7 @@ namespace withrottle
                         LOG_ERROR("[WiThrottleClient fd:%d] Throttle name was "
                                   "not provided!", fd_);
                         // invalid name detected, shutdown the connection
-                        nextState = STATE(shutdown);
+                        return yield_and_call(STATE(shutdown));
                     }
                     else
                     {
@@ -203,16 +204,17 @@ namespace withrottle
                         // received a valid name, proceed to sending the CS
                         // information to the client, this will include all
                         // locomotives, consists, accessories, routes, etc.
-                        nextState = STATE(send_cs_info_packets);
+                        return yield_and_call(STATE(send_cs_info_packets));
                     }
+                    break;
                 }
                 case WiThrottleCommands::ROSTER:        // R
                 {
-                    if (line.length() < 2 || line[1] != 'C')
+                    if (line.length() < 2 || line.at(1) != 'C')
                     {
                         LOG_ERROR("[WiThrottleClient fd:%d] Roster command "
-                                  "does not appear to be valid, rejecting",
-                            fd_);
+                                  "does not appear to be valid, rejecting: %s",
+                            fd_, line.c_str());
                     }
                     else
                     {
@@ -223,9 +225,9 @@ namespace withrottle
                 case WiThrottleCommands::PANEL:         // P
                 {
                     if (line.length() < 2 || (
-                        line[1] != 'P' &&               // track power
-                        line[1] != 'T' &&               // turnouts
-                        line[1] != 'R' ))               // routes
+                        line.at(1) != 'P' &&               // track power
+                        line.at(1) != 'T' &&               // turnouts
+                        line.at(1) != 'R' ))               // routes
                     {
                         LOG_ERROR("[WiThrottleClient fd:%d] Panel command "
                                   "does not appear to be valid, rejecting",
@@ -244,18 +246,15 @@ namespace withrottle
                 }
                 case WiThrottleCommands::HEARTBEAT:     // *
                 {
+                    // TODO: Add background timer to wake up flow when
+                    // heartbeat has been enabled but not received. When this
+                    // occurs the client should be disconnected after releasing
+                    // any assigned locomotives.
                     if (line.length() > 1)
                     {
-                        if (line[1] == '+')             // Enable
-                        {
-                            LOG(CONFIG_WITHROTTLE_LOGGING,
-                                "Enabling Heartbeat Timer");
-                        }
-                        else                            // Disable
-                        {
-                            LOG(CONFIG_WITHROTTLE_LOGGING,
-                                "Disabling Heartbeat Timer");
-                        }
+                        bool enabled = (line.at(1) == '+');
+                        LOG(CONFIG_WITHROTTLE_LOGGING, "%s Heartbeat Timer",
+                            enabled ? "Enabling" : "Disabling");
                     }
                     else
                     {
@@ -263,6 +262,8 @@ namespace withrottle
                     }
                     break;
                 }
+                case WiThrottleCommands::TYPE_MASK:
+                    break;
             }
             if (dispatch)
             {
@@ -273,12 +274,12 @@ namespace withrottle
             else
             {
                 LOG(WARNING,
-                    "[WiThrottleClient fd:%d] requested command was discarded",
-                    fd_);
+                    "[WiThrottleClient fd:%d] requested command was discarded:%s",
+                    fd_, line.c_str());
             }
         }
 
-        return yield_and_call(nextState);
+        return yield_and_call(STATE(read_more_data));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::shutdown()
@@ -324,8 +325,8 @@ namespace withrottle
 
     StateFlowBase::Action WiThrottleClientFlow::read_more_data()
     {
-        LOG(CONFIG_WITHROTTLE_LOGGING,
-            "[WiThrottleClient fd:%d] Requesting more data", fd_);
+        /*LOG(CONFIG_WITHROTTLE_LOGGING,
+            "[WiThrottleClient fd:%d] Requesting more data", fd_);*/
         return read_repeated_with_timeout(&helper_, timeout_, fd_, buf_.data(),
                                           readSize_, STATE(parse));
     }
@@ -337,32 +338,28 @@ R"raw(VN2.0
 HTESP32CS
 HtESP32 Command Station (%s) %s
 )raw", CONFIG_IDF_TARGET, openlcb::SNIP_STATIC_DATA.software_version);
-        return write_repeated(&helper_, fd_, data.data(), data.length(),
-            STATE(send_roster_list));
+        return logged_response(data, STATE(send_roster_list));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::send_roster_list()
     {
         auto train_db = Singleton<esp32cs::Esp32TrainDatabase>::instance();
         string data = train_db->to_withrottle();
-        return write_repeated(&helper_, fd_, data.data(), data.length(),
-            STATE(send_consist_list));
+        return logged_response(data, STATE(send_consist_list));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::send_consist_list()
     {
         // RCL = list only, RCC = control, RCD = roster consist data
         string data = StringPrintf("RCL%d%s", 0, REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, fd_, data.data(), data.length(),
-            STATE(send_accessory_list));
+        return logged_response(data, STATE(send_accessory_list));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::send_accessory_list()
     {
         auto accessory_db = Singleton<esp32cs::AccessoryDecoderDB>::instance();
         string data = accessory_db->to_withrottle();
-        return write_repeated(&helper_, fd_, data.data(), data.length(),
-            STATE(send_power_status));
+        return logged_response(data, STATE(send_power_status));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::send_power_status()
@@ -373,24 +370,29 @@ HtESP32 Command Station (%s) %s
             REQUEST_EOL_CHARACTER_NL);
         if (heartbeat_)
         {
-            return write_repeated(&helper_, fd_, data.data(), data.length(),
-                STATE(send_heartbeat_config));
+            return logged_response(data, STATE(send_heartbeat_config));
         }
-        return write_repeated(&helper_, fd_, data.data(), data.length(),
-            STATE(read_more_data));
+        return logged_response(data, STATE(read_more_data));
     }
 
     StateFlowBase::Action WiThrottleClientFlow::send_heartbeat_config()
     {
         string data =
             StringPrintf("*%d%s", heartbeat_, REQUEST_EOL_CHARACTER_NL);
-        return write_repeated(&helper_, fd_, data.data(), data.length(),
-            STATE(read_more_data));
+        return logged_response(data, STATE(read_more_data));
     }
 
     void WiThrottleClientFlow::trigger_shutdown()
     {
         reset_flow(STATE(shutdown));
+    }
+
+    StateFlowBase::Action WiThrottleClientFlow::logged_response(std::string message, Callback next)
+    {
+        LOG(CONFIG_WITHROTTLE_LOGGING,
+            "[WiThrottleClient fd:%d] Sending: %s", fd_, message.c_str());
+        return write_repeated(&helper_, fd_, message.data(), message.length(),
+            next);
     }
 
     openlcb::TractionThrottle *WiThrottleClientFlow::get_throttle(
@@ -400,6 +402,8 @@ HtESP32 Command Station (%s) %s
         auto entry = std::find_if(throttles_.begin(), throttles_.end(),
         [key, address](auto &ent)
         {
+            // FIXME: This doesn't work as expected and will always return the
+            // first entry only.
             if (*address == 0)
             {
                 return ent.key == key;

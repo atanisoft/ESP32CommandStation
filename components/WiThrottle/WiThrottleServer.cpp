@@ -142,7 +142,7 @@ namespace withrottle
         // Reconfigure the socket for non-blocking operations
         ::fcntl(fd, F_SETFL, O_RDWR | O_NONBLOCK);
 
-        // Start the HTTP processing flow or close the socket if we fail to allocate
+        // Start the processing flow or close the socket if we fail to allocate
         // the request handler.
         auto *req = new (std::nothrow) WiThrottleClientFlow(
             this, fd, ntohl(source.sin_addr.s_addr), throttleHeartbeat_);

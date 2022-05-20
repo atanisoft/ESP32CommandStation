@@ -361,6 +361,8 @@ namespace withrottle
             void deregister_command_type(WiThrottleCommands type);
 
             StateFlowBase::Action logged_response(Callback next);
+
+            void verify_locomotive_node(openlcb::NodeID node_id);
         };
 
         class WiThrottleCommandLocomotiveLegacy : public WiThrottleCommandBase
@@ -507,6 +509,7 @@ namespace withrottle
         STATE_FLOW_STATE(send_heartbeat_config);
 
         void trigger_shutdown();
+        StateFlowBase::Action logged_response(std::string message, Callback next);
         openlcb::TractionThrottle *get_throttle(uint8_t key, uint32_t *address);
         void release_throttle(openlcb::TractionThrottle *throttle);
     };

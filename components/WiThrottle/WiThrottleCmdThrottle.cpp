@@ -71,8 +71,8 @@ namespace withrottle
             return yield_and_call(STATE(command_not_recognized));
         }
 
-        throttleKey_ = message()->data()->payload[0];
-        uint8_t action = message()->data()->payload[1];
+        throttleKey_ = message()->data()->payload.at(0);
+        uint8_t action = message()->data()->payload.at(1);
         // remove the throttle key and action.
         message()->data()->payload.erase(0, 2);
 
@@ -83,21 +83,21 @@ namespace withrottle
 
         // Extract target locomotive address from the first part of the provided
         // payload, if it is '*' the code will default to 
-        if (command_parts.first[0] == 'L')
+        if (command_parts.first.at(0) == 'L')
         {
             addressTypeChar_ = 'L';
             addressType_ = TrainAddressType::DCC_LONG_ADDRESS;
             address_ = std::stoi(command_parts.first.substr(1));
             driveMode_ = DccMode::DCC_DEFAULT;
         }
-        else if (command_parts.first[0] == 'S')
+        else if (command_parts.first.at(0) == 'S')
         {            
             addressTypeChar_ = 'S';
             addressType_ = TrainAddressType::DCC_SHORT_ADDRESS;
             address_ = std::stoi(command_parts.first.substr(1));
             driveMode_ = DccMode::DCC_DEFAULT;
         }
-        else if (command_parts.first[0] == '*')
+        else if (command_parts.first.at(0) == '*')
         {
             // command is for all locomotives on this throttle key.
             addressType_ = TrainAddressType::UNSPECIFIED;
@@ -126,7 +126,7 @@ namespace withrottle
             // up the roster entry and extract it's address / type rather than
             // the provided values.
             if (!message()->data()->payload.empty() &&
-                message()->data()->payload[0] == 'E')
+                message()->data()->payload.at(0) == 'E')
             {
                 auto train_name = message()->data()->payload.substr(1);
                 if (!lookup_roster_entry(train_name))
@@ -150,6 +150,7 @@ namespace withrottle
             }
             auto node_id = TractionDefs::train_node_id_from_legacy(
                 addressType_, address_);
+            verify_locomotive_node(node_id);
             return invoke_subflow_and_wait(throttle_, STATE(loco_assigned),
                 TractionThrottleCommands::ASSIGN_TRAIN, node_id,
                 listenForUpdates_);
@@ -234,38 +235,42 @@ namespace withrottle
     StateFlowBase::Action WiThrottleClientFlow::WiThrottleCommandLocomotive::parse_loco_action()
     {
         Callback nextState = STATE(done);
+        uint32_t lastAddress = address_;
         // handle 'Q' (quit) immediately and exit early.
-        if (message()->data()->payload[0] == 'Q')
+        if (message()->data()->payload.at(0) == 'Q')
         {
             throttleFlow_->trigger_shutdown();
             return call_immediately(STATE(done));
         }
         else if (addressType_ == TrainAddressType::UNSPECIFIED)
         {
-            if (message()->data()->payload[0] == 'C' || // consist
-                message()->data()->payload[0] == 'c' || // consist
-                message()->data()->payload[0] == 'E' || // roster entry
-                message()->data()->payload[0] == 'L' || // set address
-                message()->data()->payload[0] == 'S')   // set address
+            if (message()->data()->payload.at(0) == 'C' || // consist
+                message()->data()->payload.at(0) == 'c' || // consist
+                message()->data()->payload.at(0) == 'E' || // roster entry
+                message()->data()->payload.at(0) == 'L' || // set address
+                message()->data()->payload.at(0) == 'S')   // set address
             {
                 return yield_and_call(STATE(command_not_supported));
             }
+            // FIXME: this needs to be fixed as it doesn't work.
             // reset the address and retrieve the next throttle
             address_ = 0;
             nextState = STATE(parse_loco_action);
         }
         throttle_ =
             throttleFlow_->get_throttle(throttleKey_, &address_);
-        if (throttle_ == nullptr)
+        if (throttle_ == nullptr || (
+            addressType_ == TrainAddressType::UNSPECIFIED &&
+            lastAddress == address_))
         {
             return yield_and_call(STATE(done));
         }
         if (!throttle_->is_train_assigned() &&
-            message()->data()->payload[0] != 'L' && // set address
-            message()->data()->payload[0] != 'S' && // set address
-            message()->data()->payload[0] != 'E' && // roster entry
-            message()->data()->payload[0] != 'C' && // consist
-            message()->data()->payload[0] != 'c')   // consist
+            message()->data()->payload.at(0) != 'L' && // set address
+            message()->data()->payload.at(0) != 'S' && // set address
+            message()->data()->payload.at(0) != 'E' && // roster entry
+            message()->data()->payload.at(0) != 'C' && // consist
+            message()->data()->payload.at(0) != 'c')   // consist
         {
             sendBuf_ =
                 StringPrintf("HMESP32CS: No locomotive has been assigned to "
@@ -296,7 +301,7 @@ namespace withrottle
             }
         }
 
-        switch (message()->data()->payload[0])
+        switch (message()->data()->payload.at(0))
         {
             case 'C':           // Consist
             case 'c':
@@ -313,6 +318,7 @@ namespace withrottle
                     {
                         auto node_id = TractionDefs::train_node_id_from_legacy(
                             addressType_, address_);
+                        verify_locomotive_node(node_id);
                         return invoke_subflow_and_wait(throttle_,
                             STATE(loco_assigned),
                             TractionThrottleCommands::ASSIGN_TRAIN, node_id,
@@ -331,7 +337,7 @@ namespace withrottle
             case 'f':           // Set function (forced)
             case 'm':           // Set momentary
                 {
-                    uint16_t state = message()->data()->payload[1] - '0';
+                    uint16_t state = message()->data()->payload.at(1) - '0';
                     uint32_t fn =
                         std::stoi(message()->data()->payload.substr(2));
                     throttle_->set_fn(fn, state);
@@ -354,7 +360,7 @@ namespace withrottle
             case 'S':           // Set address
                 {
                     address_ = std::stoi(message()->data()->payload.substr(1));
-                    if (message()->data()->payload[0] == 'S')
+                    if (message()->data()->payload.at(0) == 'S')
                     {
                         addressType_ = TrainAddressType::DCC_SHORT_ADDRESS;
                     }
@@ -364,6 +370,7 @@ namespace withrottle
                     }
                     auto node_id = TractionDefs::train_node_id_from_legacy(
                         addressType_, address_);
+                    verify_locomotive_node(node_id);
                     return invoke_subflow_and_wait(throttle_,
                         STATE(loco_assigned),
                         TractionThrottleCommands::ASSIGN_TRAIN, node_id,
@@ -373,7 +380,7 @@ namespace withrottle
             case 'q':           // Query state
                 {
                     auto speed = throttle_->get_speed();
-                    if (message()->data()->payload[1] == 'R')
+                    if (message()->data()->payload.at(1) == 'R')
                     {
                         sendBuf_ =
                             StringPrintf("M%cA%c%d%sV%d%s", throttleKey_,
@@ -382,7 +389,7 @@ namespace withrottle
                                 (speed.direction() != SpeedType::REVERSE),
                                 REQUEST_EOL_CHARACTER_NL);
                     }
-                    else if (message()->data()->payload[1] == 'V')
+                    else if (message()->data()->payload.at(1) == 'V')
                     {
                         int speed_step = 0;
                         if (driveMode_ == DccMode::DCC_14 ||
@@ -396,7 +403,9 @@ namespace withrottle
                             speed_step = speed.get_dcc_28() & 0x1F;
                         }
                         else if (driveMode_ == DccMode::DCC_128 ||
-                                 driveMode_ == DccMode::DCC_128_LONG_ADDRESS)
+                                 driveMode_ == DccMode::DCC_128_LONG_ADDRESS ||
+                                 driveMode_ == DccMode::DCC_DEFAULT ||
+                                 driveMode_ == DccMode::DCC_DEFAULT_LONG_ADDRESS)
                         {
                             speed_step = speed.get_dcc_128() & 0x7F;
                         }
@@ -415,7 +424,7 @@ namespace withrottle
             case 'R':           // Set direction
                 {
                     auto speed = throttle_->get_speed();
-                    speed.set_direction(message()->data()->payload[1] == '0');
+                    speed.set_direction(message()->data()->payload.at(1) == '0');
                     sendBuf_ =
                         StringPrintf("M%cA%c%d%sR%d%s", throttleKey_,
                             addressTypeChar_, address_,
@@ -446,7 +455,9 @@ namespace withrottle
                         new_speed.set_dcc_28(speed_step);
                     }
                     else if (driveMode_ == DccMode::DCC_128 ||
-                            driveMode_ == DccMode::DCC_128_LONG_ADDRESS)
+                             driveMode_ == DccMode::DCC_128_LONG_ADDRESS ||
+                             driveMode_ == DccMode::DCC_DEFAULT ||
+                             driveMode_ == DccMode::DCC_DEFAULT_LONG_ADDRESS)
                     {
                         new_speed.set_dcc_128(speed_step);
                     }
@@ -475,6 +486,8 @@ namespace withrottle
         m->unref();
         if (error)
         {
+            LOG_ERROR("[WiThrottleClient: %d] Locomotive:%d assigment failed: %04x",
+                throttleFlow_->fd_, address_, m->data()->resultCode);
             sendBuf_ =
                 StringPrintf("HMESP32CS: Failed to assign locomotive:%d%s",
                     address_, REQUEST_EOL_CHARACTER_NL);
@@ -641,7 +654,9 @@ namespace withrottle
             speed_step = speed.get_dcc_28() & 0x1F;
         }
         else if (driveMode_ == DccMode::DCC_128 ||
-                 driveMode_ == DccMode::DCC_128_LONG_ADDRESS)
+                 driveMode_ == DccMode::DCC_128_LONG_ADDRESS ||
+                 driveMode_ == DccMode::DCC_DEFAULT ||
+                 driveMode_ == DccMode::DCC_DEFAULT_LONG_ADDRESS)
         {
             speed_step = speed.get_dcc_128() & 0x7F;
         }
@@ -677,7 +692,9 @@ namespace withrottle
             speed_step = 2;
         }
         else if (driveMode_ == DccMode::DCC_128 ||
-                 driveMode_ == DccMode::DCC_128_LONG_ADDRESS)
+                 driveMode_ == DccMode::DCC_128_LONG_ADDRESS ||
+                 driveMode_ == DccMode::DCC_DEFAULT ||
+                 driveMode_ == DccMode::DCC_DEFAULT_LONG_ADDRESS)
         {
             speed_step = 1;
         }

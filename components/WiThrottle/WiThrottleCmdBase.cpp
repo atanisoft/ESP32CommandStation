@@ -36,8 +36,10 @@
 
 #include "WiThrottle.hxx"
 
+#include <AllTrainNodes.hxx>
 #include <dcc/DccOutput.hxx>
 #include <HttpStringUtils.h>
+#include <StringUtils.hxx>
 
 namespace withrottle
 {
@@ -72,6 +74,32 @@ namespace withrottle
             sendBuf_.c_str());
         return write_repeated(&helper_, throttleFlow_->fd_, sendBuf_.data(),
             sendBuf_.length(), next);
+    }
+
+    void WiThrottleClientFlow::WiThrottleCommandBase::verify_locomotive_node(openlcb::NodeID node_id)
+    {
+        // TODO: this should really send out a train search request
+        if (throttleFlow_->server_->node_->iface()->lookup_local_node(node_id) == nullptr)
+        {
+            LOG(INFO,
+                "[WiThrottleCommandBase fd:%d] Node:%s not yet created, "
+                "trying to create.", throttleFlow_->fd_,
+                esp32cs::node_id_to_string(node_id).c_str());
+            auto train_server = Singleton<commandstation::AllTrainNodes>::instance();
+            dcc::TrainAddressType type = dcc::TrainAddressType::UNSUPPORTED;
+            uint32_t address =  0;
+            if (openlcb::TractionDefs::legacy_address_from_train_node_id(node_id, &type, &address))
+            {
+                if (type == dcc::TrainAddressType::DCC_SHORT_ADDRESS)
+                {
+                    train_server->allocate_node(commandstation::DccMode::DCC_128, address);
+                }
+                else if (type == dcc::TrainAddressType::DCC_LONG_ADDRESS)
+                {
+                    train_server->allocate_node(commandstation::DccMode::DCC_128_LONG_ADDRESS, address);
+                }
+            }
+        }
     }
 
 } // namespace withrottle
