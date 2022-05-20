@@ -326,6 +326,7 @@ void app_main()
           leds.set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN_BLINK);
         }
     });
+    wifi_manager.display_configuration();
     // declare EventBroadcastHelper first since it is used in the
     // OpenLCBFactoryResetHelper code for brownout event publishing.
     esp32cs::EventBroadcastHelper event_helper(stack.service(), stack.node());
@@ -422,7 +423,7 @@ void log_output(char* buf, int size)
   {
     const std::lock_guard<std::mutex> lock(log_mux);
     buf[size] = '\0';
-    printf("%s\n", buf);
+    puts(buf);
   }
 }
 
