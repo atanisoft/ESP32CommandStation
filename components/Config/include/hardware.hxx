@@ -35,6 +35,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <dcc/DccOutput.hxx>
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
 #include <esp_private/periph_ctrl.h>
+#include <driver/rmt_types_legacy.h>
 #else // IDF v4.x (or earlier)
 #include <driver/periph_ctrl.h>
 #endif // IDF v5+
