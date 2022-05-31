@@ -383,10 +383,6 @@ void app_main()
     init_webserver(&wifi_manager, &nvs, stack.node(),
                    stack.memory_config_handler(), &train_db);
 
-#if CONFIG_FASTCLOCK
-    fastclock.start();
-#endif // CONFIG_FASTCLOCK
-
     // hand-off to the OpenMRN stack executor
     stack.loop_executor();
   }

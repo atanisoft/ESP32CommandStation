@@ -465,7 +465,10 @@ namespace esp32cs
   {
     if (fastclock.operator->() != nullptr)
     {
-      fastclock->stop();
+      if (fastclock->is_running())
+      {
+        fastclock->stop();
+      }
       fastclock->set_rate_quarters(nvsConfig.fastclock_rate);
       fastclock->set_year(nvsConfig.fastclock_year + 1900);
       fastclock->set_date(nvsConfig.fastclock_month, nvsConfig.fastclock_day);
@@ -535,6 +538,7 @@ namespace esp32cs
       fastclock->set_year(nvsConfig.fastclock_year + 1900);
       fastclock->set_date(nvsConfig.fastclock_month, nvsConfig.fastclock_day);
       fastclock->set_time(nvsConfig.fastclock_hour, nvsConfig.fastclock_minute);
+      fastclock->start();
     }
   }
 
