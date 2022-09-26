@@ -56,10 +56,7 @@ public:
   void configure(bool enabled);
 
   /// Stops the background persistence task.
-  void stop()
-  {
-    persistFlow_.stop();
-  }
+  void stop();
 
   /// Deletes all persistent accessory decoder records
   void clear();
@@ -129,6 +126,22 @@ public:
   /// @return number of registered accessory decoders.
   uint16_t count();
 
+  /// Callback function for accessory decoder change reports.
+  ///
+  /// Signature:
+  /// void callback(uint16_t address, bool state, bool on_off)
+  ///
+  /// state : true = thrown, false = closed.
+  /// on_off: true if C bit is 1, false if it is 0.
+  typedef std::function<void(uint16_t, bool, bool)> AccessoryChangeCallback;
+
+  /// Registers a callback function for when any accessory decoder state is
+  /// updated.
+  ///
+  /// @param callback @ref AccessoryChangeCallback to be invoked when an
+  /// accessory decoder changes state.
+  void subscribe(AccessoryChangeCallback callback);
+
   /// Handle requested identification message.
   /// @param entry registry entry for the event range
   /// @param event information about the incoming message
@@ -196,6 +209,9 @@ private:
 
   /// @ref OSMutex protecting @ref accessories_.
   OSMutex mux_;
+
+  /// Registered subscribers for accessory decoder updates.
+  std::vector<AccessoryChangeCallback> callbacks_;
 };
 
 } // namespace esp32cs

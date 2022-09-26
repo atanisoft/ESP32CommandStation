@@ -38,6 +38,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <FileSystem.hxx>
 #include <EventBroadcastHelper.hxx>
 #include <FactoryResetHelper.hxx>
+#include <freertos_drivers/esp32/Esp32CoreDumpUtil.hxx>
 #include <freertos_drivers/esp32/Esp32SocInfo.hxx>
 #include <freertos_drivers/esp32/Esp32HardwareTwai.hxx>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
@@ -226,6 +227,77 @@ private:
     const uint8_t resetReason_;
 };
 
+/// Utility method that verifies if a core dump exists in the flash partition.
+///
+/// When one is found the on-board LEDs will be set to:
+/// WIFI_STA:   YELLOW
+/// WIFI_AP:    RED
+/// BOOTLOADER: YELLOW
+/// OPS_TRACK:  RED
+/// PROG_TRACK: YELLOW
+/// and will blink in alterating fashion.
+///
+/// When ESP-IDF v4.4+ is used the coredump will be converted to a text file
+/// which will be available on the SD card as "coredump.txt". For earlier
+/// ESP-IDF versions no conversion is possible.
+///
+/// After the conversion of the core dump is complete the CS will attempt to
+/// verify if the user has requested the core dump to be erased from flash
+/// by pressing and holding the FACTORY_RESET button for at least one second
+/// during the first fifteen seconds of the blinking LED pattern. If the
+/// FACTORY_RESET button is not pressed during this period the CS will halt
+/// execution with the blink pattern continued.
+///
+/// For ESP-IDF v4.3 it is necessary to use espcoredump.py to extract the core
+/// dump as: python espcoredump.py --port /dev/ttyUSB0 --baud 115200 info_corefile --core-format elf --off 0x370000 ESP32CommandStation.elf
+void check_for_coredump()
+{
+#if CONFIG_CRASH_COLLECT_CORE_DUMP
+  if (Esp32CoreDumpUtil::is_present())
+  {
+    auto leds = Singleton<StatusLED>::instance();
+    // Give visual indication that there is a core dump using yellow and red
+    // blinking LEDs.
+    leds->set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::YELLOW_BLINK, true);
+    leds->set(StatusLED::LED::WIFI_AP, StatusLED::COLOR::RED_BLINK);
+    leds->set(StatusLED::LED::BOOTLOADER, StatusLED::COLOR::YELLOW_BLINK, true);
+    leds->set(StatusLED::LED::OPS_TRACK, StatusLED::COLOR::RED_BLINK);
+    leds->set(StatusLED::LED::PROG_TRACK, StatusLED::COLOR::YELLOW_BLINK, true);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,4,0)
+    esp32cs::mount_fs(false);
+    Esp32CoreDumpUtil::display("/fs/coredump.txt");
+    esp32cs::unmount_fs();
+#else // IDF v4.3
+    for (size_t count = CONFIG_CRASH_CLEANUP_TIMEOUT_SEC;
+         count > 0 && !cleanup_coredump; count--)
+    {
+      vTaskDelay(pdMS_TO_TICKS(1000));
+      cleanup_coredump = FACTORY_RESET_BUTTON_Pin::instance()->is_clr();
+      if (cleanup_coredump)
+      {
+        leds->set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::OFF);
+        vTaskDelay(pdMS_TO_TICKS(500));
+      }
+    }
+
+#if CONFIG_CRASH_HALT_ON_STARTUP
+    if (!cleanup_coredump)
+    {
+      // since factory reset was not pressed, halt execution.
+      vTaskDelay(portMAX_DELAY);
+    }
+
+#endif // CONFIG_CRASH_HALT_ON_STARTUP
+#endif // IDF v4.4+
+
+    Esp32CoreDumpUtil::cleanup();
+
+    // Clear LEDs
+    leds->clear();
+  }
+#endif // CONFIG_CRASH_COLLECT_CORE_DUMP
+}
+
 extern "C"
 {
 
@@ -254,7 +326,7 @@ void app_main()
   NvsManager nvs;
   StatusLED leds;
   nvs.init(reset_reason);
-  check_for_coredump();
+  check_for_coredump();  
 
   if (nvs.start_stack())
   {
@@ -309,6 +381,8 @@ void app_main()
           leds.set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::GREEN_BLINK);
         }
     });
+    wifi_manager.display_configuration();
+
     // declare EventBroadcastHelper first since it is used in the
     // OpenLCBFactoryResetHelper code for brownout event publishing.
     esp32cs::EventBroadcastHelper event_helper(stack.service(), stack.node());
@@ -365,10 +439,6 @@ void app_main()
     init_webserver(&wifi_manager, &nvs, stack.node(),
                    stack.memory_config_handler(), &train_db);
 
-#if CONFIG_FASTCLOCK
-    fastclock.start();
-#endif // CONFIG_FASTCLOCK
-
     // hand-off to the OpenMRN stack executor
     stack.loop_executor();
   }
@@ -405,7 +475,7 @@ void log_output(char* buf, int size)
   {
     const std::lock_guard<std::mutex> lock(log_mux);
     buf[size] = '\0';
-    printf("%s\n", buf);
+    puts(buf);
   }
 }
 

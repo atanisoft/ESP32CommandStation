@@ -50,7 +50,7 @@ set(CUSTOM_DEPS
     Utils
 )
 
-idf_component_register(SRCS ESP32CommandStation.cpp Esp32CoreDumpUtil.cpp WebServer.cpp
+idf_component_register(SRCS ESP32CommandStation.cpp WebServer.cpp
                        REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 
 ###############################################################################

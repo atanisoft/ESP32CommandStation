@@ -17,6 +17,7 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 
 #include "TrainDatabase.h"
 
+#include <algorithm>
 #include <AllTrainNodes.hxx>
 #include <CDIXMLGenerator.hxx>
 #include <cJSON.h>
@@ -144,6 +145,23 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
       return train->get_legacy_address() == id;           \
     })
 
+// Case insensitive matching by name
+#define FIND_TRAIN_BY_NAME(name)                                \
+  std::find_if(trains_.begin(), trains_.end(),                  \
+    [name](const auto &train)                                   \
+    {                                                           \
+      auto entry_name = train->get_train_name();                \
+      if (entry_name.size() != name.size())                     \
+      {                                                         \
+        return false;                                           \
+      }                                                         \
+      return std::equal(entry_name.begin(), entry_name.end(),   \
+                        name.begin(), name.end(),               \
+                        [](unsigned char a, unsigned char b) {  \
+                          return tolower(a) == tolower(b);      \
+                        });                                     \
+    })
+
 #define FIND_TRAIN_HINT(id, id2)                          \
   std::find_if(trains_.begin(), trains_.end(),            \
     [id,id2](const auto &train)                           \
@@ -239,6 +257,17 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::get_entry(unsigned train_id)
   }
   // check if the train_id is a locomotive address that we know of
   auto entry = FIND_TRAIN(train_id);
+  if (entry != trains_.end())
+  {
+    return *entry;
+  }
+  return nullptr;
+}
+
+std::shared_ptr<commandstation::TrainDbEntry> Esp32TrainDatabase::get_entry(const string name)
+{
+  OSMutexLock lock(&mux_);
+  auto entry = FIND_TRAIN_BY_NAME(name);
   if (entry != trains_.end())
   {
     return *entry;
@@ -396,7 +425,7 @@ void Esp32TrainDatabase::set_train_drive_mode(uint16_t address, commandstation::
   }
 }
 
-string Esp32TrainDatabase::get_all_entries_as_json()
+string Esp32TrainDatabase::to_json()
 {
   OSMutexLock lock(&mux_);
   string res = "[";
@@ -412,13 +441,13 @@ string Esp32TrainDatabase::get_all_entries_as_json()
   return res;
 }
 
-string Esp32TrainDatabase::get_entry_as_json(uint16_t address, bool readable)
+string Esp32TrainDatabase::to_json(uint16_t address, bool readable)
 {
   OSMutexLock lock(&mux_);
-  return get_entry_as_json_locked(address, readable);
+  return to_json_locked(address, readable);
 }
 
-string Esp32TrainDatabase::get_entry_as_json_locked(uint16_t address, bool readable)
+string Esp32TrainDatabase::to_json_locked(uint16_t address, bool readable)
 {
   std::string serialized = "{}";
   auto entry = FIND_TRAIN(address);

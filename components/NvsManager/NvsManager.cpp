@@ -465,7 +465,10 @@ namespace esp32cs
   {
     if (fastclock.operator->() != nullptr)
     {
-      fastclock->stop();
+      if (fastclock->is_running())
+      {
+        fastclock->stop();
+      }
       fastclock->set_rate_quarters(nvsConfig.fastclock_rate);
       fastclock->set_year(nvsConfig.fastclock_year + 1900);
       fastclock->set_date(nvsConfig.fastclock_month, nvsConfig.fastclock_day);
@@ -650,6 +653,7 @@ void bootloader_led(enum BootloaderLed led, bool value)
                value ? esp32cs::StatusLED::COLOR::GREEN : esp32cs::StatusLED::COLOR::OFF);
     }
 }
+
 /// Initializes the node specific bootloader hardware (LEDs)
 void bootloader_hw_set_to_safe(void)
 {
