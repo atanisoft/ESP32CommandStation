@@ -145,6 +145,11 @@ void AccessoryDecoderDB::configure(bool enabled)
   }
 }
 
+void AccessoryDecoderDB::stop()
+{
+  persistFlow_.stop();
+}
+
 void AccessoryDecoderDB::handle_identify_global(const EventRegistryEntry &entry,
                                                 EventReport *event,
                                                 BarrierNotifiable *done)

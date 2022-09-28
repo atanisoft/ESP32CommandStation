@@ -551,6 +551,4 @@ extern const uint16_t CDI_EVENT_OFFSETS[] =
 };
 }  // namespace openlcb
 
-#undef CDI_TO_STRING
-
 #endif // CDI_HXX_

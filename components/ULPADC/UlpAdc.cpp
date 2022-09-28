@@ -20,6 +20,7 @@ COPYRIGHT (c) 2021 Mike Dunston
 #include "ulp_adc_ops.h"
 #include <dcc/ProgrammingTrackBackend.hxx>
 #include <driver/rtc_cntl.h>
+#include <esp32/rom/ets_sys.h>
 #include <esp32/ulp.h>
 #include <hardware.hxx>
 #include <soc/rtc_cntl_reg.h>

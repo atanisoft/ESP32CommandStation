@@ -794,12 +794,12 @@ HTTP_HANDLER_IMPL(process_loco, request)
     if (request->method() == HttpMethod::GET &&
         !request->has_param("address"))
     {
-      return new JsonResponse(traindb->get_all_entries_as_json());
+      return new JsonResponse(traindb->to_json());
     }
     else if (request->has_param("address"))
     {
       uint16_t address = request->param("address", 0);
-      if (address == 0 || address > 10239)
+      if (address == 0 || address > dcc::DccLongAddress::ADDRESS_MAX)
       {
         LOG_ERROR("[WebSrv] Invalid address provided: %d", address);
         request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
@@ -811,7 +811,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
       }
       else if (request->method() == HttpMethod::GET)
       {
-        return new JsonResponse(traindb->get_entry_as_json(address));
+        return new JsonResponse(traindb->to_json(address));
       }
       else
       {
@@ -833,7 +833,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
             traindb->set_train_function_label(address, fn, label);
           }
         }
-        return new JsonResponse(traindb->get_entry_as_json(address));
+        return new JsonResponse(traindb->to_json(address));
       }
     }
   }
