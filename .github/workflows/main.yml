@@ -19,6 +19,7 @@ jobs:
           - esp32-v4.4-LMD18200
           - esp32-v4.4-BTS7960B
           - esp32-v4.4-PCB
+          - esp32s2-v4.4-L298
           #- esp32-latest-L298
           #- esp32-latest-LMD18200
           #- esp32-latest-BTS7960B

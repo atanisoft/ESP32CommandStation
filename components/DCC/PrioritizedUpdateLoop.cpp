@@ -161,6 +161,8 @@ uint64_t get_current_time()
 }
 #elif CONFIG_IDF_TARGET_ESP32
 uint64_t get_current_time() __attribute__((alias("esp_timer_get_time")));
+#elif CONFIG_IDF_TARGET_ESP32S2
+#define get_current_time esp_timer_get_time
 #elif CONFIG_IDF_TARGET_ESP32S3
 #define get_current_time esp_timer_get_time
 #endif

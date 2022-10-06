@@ -33,7 +33,9 @@
  */
 
 #include <esp_system.h>
+#if CONFIG_IDF_TARGET_ESP32
 #include <hal/wdt_hal.h>
+#endif
 #include <openlcb/SimpleStack.hxx>
 #include <soc/rtc.h>
 #include <utils/AutoSyncFileFlow.hxx>
@@ -88,6 +90,7 @@ public:
             unmount_fs();
             // restart the node
             LOG(INFO, "[Reboot] Restarting!");
+#if CONFIG_IDF_TARGET_ESP32
             // NOTE: This is not using esp_restart() since that will not force
             // the RTC to be restarted. This code will instead force a restart
             // via the RTC_WDT which will restart everything.
@@ -122,6 +125,9 @@ public:
             {
                 // do nothing
             }
+#elif CONFIG_IDF_TARGET_ESP32S2
+            esp_restart();
+#endif
         });
     }
 private:

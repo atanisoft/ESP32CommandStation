@@ -36,7 +36,11 @@ StatusLED::StatusLED()
 
 static constexpr uint32_t LED_UPDATE_TASK_STACK = 2048;
 static constexpr BaseType_t LED_UPDATE_TASK_PRIORITY = 3;
+#if CONFIG_IDF_TARGET_ESP32S2
+static constexpr BaseType_t LED_UPDATE_TASK_CORE = PRO_CPU_NUM;
+#else
 static constexpr BaseType_t LED_UPDATE_TASK_CORE = APP_CPU_NUM;
+#endif
 static constexpr TickType_t LED_UPDATE_INTERVAL = 
   pdMS_TO_TICKS(CONFIG_STATUS_LED_UPDATE_INTERVAL_MSEC);
 

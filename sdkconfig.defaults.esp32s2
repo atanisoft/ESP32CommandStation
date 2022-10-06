@@ -1,0 +1,12 @@
+
+#
+# ESP32 Specific
+#
+# NOTE: ESP-IDF defaults to 160Mhz mode!
+CONFIG_ESP32S2_DEFAULT_CPU_FREQ_240=y
+CONFIG_ESP32S2_DEBUG_OCDAWARE=n
+
+#
+# Ultra Low Power (ULP) Co-processor
+#
+CONFIG_ESP32S2_ULP_COPROC_ENABLED=y

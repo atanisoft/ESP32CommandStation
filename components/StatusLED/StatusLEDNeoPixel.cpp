@@ -53,8 +53,13 @@ namespace esp32cs
 #endif
 
 #if CONFIG_STATUS_LED_DATA_PIN == -1 || defined(CONFIG_STATUS_LED_TYPE_WS2811)
+#if CONFIG_IDF_TARGET_ESP32S2
+#define NEO_METHOD NeoEsp32Rmt1Ws2811Method
+#define NEO_METHOD_NAME "RMT(1)-Ws2811"
+#else
 #define NEO_METHOD NeoEsp32Rmt6Ws2811Method
 #define NEO_METHOD_NAME "RMT(6)-Ws2811"
+#endif
 #elif defined(CONFIG_STATUS_LED_TYPE_WS281X)
 #define NEO_METHOD NeoEsp32Rmt6Ws2812xMethod
 #define NEO_METHOD_NAME "RMT(6)-Ws2812"

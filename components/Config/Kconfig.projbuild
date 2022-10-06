@@ -28,6 +28,18 @@
 #
 ###############################################################################
 
+config ESP32CS_GPIO_OUTPUT_PIN_MAX
+    int
+    default 33 if IDF_TARGET_ESP32
+    default 46 if IDF_TARGET_ESP32S2
+    default 48 if IDF_TARGET_ESP32S3
+
+config ESP32CS_GPIO_INPUT_PIN_MAX
+    int
+    default 39 if IDF_TARGET_ESP32
+    default 46 if IDF_TARGET_ESP32S2
+    default 48 if IDF_TARGET_ESP32S3
+    
 menu "ESP32 Command Station Configuration"
     choice ESP32CS_MODEL_HBRIDGE
         bool "ESP32 / H-Bridge Selection"
@@ -856,9 +868,9 @@ menu "ESP32 Command Station Configuration"
             depends on ESP32CS_CUSTOM
             config DCC_TRACK_SIGNAL_PIN
                 int "Track signal/direction pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 16 if IDF_TARGET_ESP32
+                default 21 if IDF_TARGET_ESP32S2
                 default 10 if IDF_TARGET_ESP32S3
                 help
                     This pin will transition HIGH/LOW based on the DCC signal
@@ -868,8 +880,7 @@ menu "ESP32 Command Station Configuration"
 
             config DCC_TRACK_BRAKE_PIN
                 int "Track brake pin"
-                range -1 33 if IDF_TARGET_ESP32
-                range -1 48 if IDF_TARGET_ESP32S3
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default -1
                 help
                     This pin is used for the H-Bridge brake pin. If used, this
@@ -881,7 +892,7 @@ menu "ESP32 Command Station Configuration"
             depends on IDF_TARGET_ESP32S3 && ESP32CS_CUSTOM
             config DCC_OLCB_ENABLE_PIN
                 int "OpenLCB DCC Enable Pin"
-                range -1 48
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 12
                 help
                     This pin will be HIGH when the H-Bridge output should be
@@ -894,9 +905,9 @@ menu "ESP32 Command Station Configuration"
             depends on OPS_TRACK_ENABLED && ESP32CS_CUSTOM
             config OPS_TRACK_ENABLE_PIN
                 int "OPS Track enable/pwm pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 17 if IDF_TARGET_ESP32
+                default 8 if IDF_TARGET_ESP32S2
                 default 11 if IDF_TARGET_ESP32S3
                 help
                     This pin will be HIGH when the H-Bridge output should be
@@ -910,53 +921,53 @@ menu "ESP32 Command Station Configuration"
                     This is used for short circuit detection.
                 default OPSTRACK_ADC_CHANNEL_0
                 config OPSTRACK_ADC_CHANNEL_0
-                    bool "ADC1 Channel 0 (ESP32:GPIO 36, ESP32-S3:GPIO1)"
+                    bool "ADC1 Channel 0 (ESP32:GPIO 36, ESP32-S2:GPIO1, ESP32-S3:GPIO1)"
                 config OPSTRACK_ADC_CHANNEL_1
-                    bool "ADC1 Channel 1 (ESP32-S3:GPIO2)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 1 (ESP32-S2:GPIO2, ESP32-S3:GPIO2)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC_CHANNEL_2
-                    bool "ADC1 Channel 2 (ESP32-S3:GPIO2)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 2 (ESP32-S2:GPIO3, ESP32-S3:GPIO3)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC_CHANNEL_3
-                    bool "ADC1 Channel 3 (ESP32:GPIO 39, ESP32-S3:GPIO4)"
+                    bool "ADC1 Channel 3 (ESP32:GPIO 39, ESP32-S2:GPIO4, ESP32-S3:GPIO4)"
                 config OPSTRACK_ADC_CHANNEL_4
-                    bool "ADC1 Channel 4 (ESP32:GPIO 32, ESP32-S3:GPIO5)"
+                    bool "ADC1 Channel 4 (ESP32:GPIO 32, ESP32-S2:GPIO5, ESP32-S3:GPIO5)"
                 config OPSTRACK_ADC_CHANNEL_5
-                    bool "ADC1 Channel 5 (ESP32:GPIO 33, ESP32-S3:GPIO6)"
+                    bool "ADC1 Channel 5 (ESP32:GPIO 33, ESP32-S2:GPIO6, ESP32-S3:GPIO6)"
                 config OPSTRACK_ADC_CHANNEL_6
-                    bool "ADC1 Channel 6 (ESP32:GPIO 34, ESP32-S3:GPIO7)"
+                    bool "ADC1 Channel 6 (ESP32:GPIO 34, ESP32-S2:GPIO7, ESP32-S3:GPIO7)"
                 config OPSTRACK_ADC_CHANNEL_7
-                    bool "ADC1 Channel 7 (ESP32:GPIO 35, ESP32-S3:GPIO8)"
+                    bool "ADC1 Channel 7 (ESP32:GPIO 35, ESP32-S2:GPIO8, ESP32-S3:GPIO8)"
                 config OPSTRACK_ADC_CHANNEL_8
-                    bool "ADC1 Channel 8 (ESP32-S3:GPIO9)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 8 (ESP32-S2:GPIO9, ESP32-S3:GPIO9)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC_CHANNEL_9
-                    bool "ADC1 Channel 9 (ESP32-S3:GPIO10)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 9 (ESP32-S2:GPIO10, ESP32-S3:GPIO10)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_0
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO11)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO11, ESP32-S3:GPIO11)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_1
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO12)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO12, ESP32-S3:GPIO12)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_2
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO13)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO13, ESP32-S3:GPIO13)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_3
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO14)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO14, ESP32-S3:GPIO14)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_4
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO15)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO15, ESP32-S3:GPIO15)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_5
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO16)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO16, ESP32-S3:GPIO16)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_6
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO17)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO17, ESP32-S3:GPIO17)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_7
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO18)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO18, ESP32-S3:GPIO18)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC2_CHANNEL_8
                     bool "ADC2 Channel 0 (ESP32-S3:GPIO19)"
                     depends on IDF_TARGET_ESP32S3
@@ -965,13 +976,13 @@ menu "ESP32 Command Station Configuration"
                     depends on IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC_I2C_CHANNEL_1
                     bool "I2C ADC Channel 1"
-                    depends on IDF_TARGET_ESP32S3
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC_I2C_CHANNEL_2
                     bool "I2C ADC Channel 2"
-                    depends on IDF_TARGET_ESP32S3
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config OPSTRACK_ADC_I2C_CHANNEL_3
                     bool "I2C ADC Channel 3"
-                    depends on IDF_TARGET_ESP32S3
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
             endchoice
         endmenu
 
@@ -979,8 +990,7 @@ menu "ESP32 Command Station Configuration"
             depends on PROG_TRACK_ENABLED && ESP32CS_CUSTOM
             config PROG_TRACK_ENABLE_PIN
                 int "PROG Track enable/pwm pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 18 if IDF_TARGET_ESP32
                 default 9 if IDF_TARGET_ESP32S3
                 help
@@ -995,53 +1005,53 @@ menu "ESP32 Command Station Configuration"
                     This is used for short circuit detection.
                 default PROGTRACK_ADC_CHANNEL_3
                 config PROGTRACK_ADC_CHANNEL_0
-                    bool "ADC1 Channel 0 (ESP32:GPIO 36, ESP32-S3:GPIO1)"
+                    bool "ADC1 Channel 0 (ESP32:GPIO 36, ESP32-S2:GPIO1, ESP32-S3:GPIO1)"
                 config PROGTRACK_ADC_CHANNEL_1
-                    bool "ADC1 Channel 1 (ESP32-S3:GPIO2)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 1 (ESP32-S2:GPIO2, ESP32-S3:GPIO2)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC_CHANNEL_2
-                    bool "ADC1 Channel 2 (ESP32-S3:GPIO2)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 2 (ESP32-S2:GPIO3, ESP32-S3:GPIO3)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC_CHANNEL_3
-                    bool "ADC1 Channel 3 (ESP32:GPIO 39, ESP32-S3:GPIO4)"
+                    bool "ADC1 Channel 3 (ESP32:GPIO 39, ESP32-S2:GPIO4, ESP32-S3:GPIO4)"
                 config PROGTRACK_ADC_CHANNEL_4
-                    bool "ADC1 Channel 4 (ESP32:GPIO 32, ESP32-S3:GPIO5)"
+                    bool "ADC1 Channel 4 (ESP32:GPIO 32, ESP32-S2:GPIO5, ESP32-S3:GPIO5)"
                 config PROGTRACK_ADC_CHANNEL_5
-                    bool "ADC1 Channel 5 (ESP32:GPIO 33, ESP32-S3:GPIO6)"
+                    bool "ADC1 Channel 5 (ESP32:GPIO 33, ESP32-S2:GPIO6, ESP32-S3:GPIO6)"
                 config PROGTRACK_ADC_CHANNEL_6
-                    bool "ADC1 Channel 6 (ESP32:GPIO 34, ESP32-S3:GPIO7)"
+                    bool "ADC1 Channel 6 (ESP32:GPIO 34, ESP32-S2:GPIO7, ESP32-S3:GPIO7)"
                 config PROGTRACK_ADC_CHANNEL_7
-                    bool "ADC1 Channel 7 (ESP32:GPIO 35, ESP32-S3:GPIO8)"
+                    bool "ADC1 Channel 7 (ESP32:GPIO 35, ESP32-S2:GPIO8, ESP32-S3:GPIO8)"
                 config PROGTRACK_ADC_CHANNEL_8
-                    bool "ADC1 Channel 8 (ESP32-S3:GPIO9)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 8 (ESP32-S2:GPIO9, ESP32-S3:GPIO9)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC_CHANNEL_9
-                    bool "ADC1 Channel 9 (ESP32-S3:GPIO10)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 9 (ESP32-S2:GPIO10, ESP32-S3:GPIO10)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_0
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO11)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO11, ESP32-S3:GPIO11)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_1
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO12)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO12, ESP32-S3:GPIO12)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_2
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO13)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO13, ESP32-S3:GPIO13)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_3
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO14)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO14, ESP32-S3:GPIO14)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_4
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO15)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO15, ESP32-S3:GPIO15)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_5
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO16)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO16, ESP32-S3:GPIO16)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_6
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO17)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO17, ESP32-S3:GPIO17)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_7
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO18)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO18, ESP32-S3:GPIO18)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config PROGTRACK_ADC2_CHANNEL_8
                     bool "ADC2 Channel 0 (ESP32-S3:GPIO19)"
                     depends on IDF_TARGET_ESP32S3
@@ -1064,8 +1074,7 @@ menu "ESP32 Command Station Configuration"
             depends on ESP32CS_CUSTOM
             config RAILCOM_TRIGGER_PIN
                 int "Enable pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 12 if IDF_TARGET_ESP32
                 default 21 if IDF_TARGET_ESP32S3
                 depends on RAILCOM_CUT_OUT_ENABLED
@@ -1075,8 +1084,7 @@ menu "ESP32 Command Station Configuration"
 
             config RAILCOM_DATA_PIN
                 int "Data pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 26 if IDF_TARGET_ESP32
                 default 47 if IDF_TARGET_ESP32S3
                 depends on RAILCOM_DATA_ENABLED
@@ -1086,8 +1094,7 @@ menu "ESP32 Command Station Configuration"
 
             config RAILCOM_DIRECTION_PIN
                 int "Direction pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 25 if IDF_TARGET_ESP32
                 default 48 if IDF_TARGET_ESP32S3
                 depends on RAILCOM_DATA_ENABLED
@@ -1097,7 +1104,7 @@ menu "ESP32 Command Station Configuration"
 
             config RAILCOM_SHORT_PIN
                 int "Short pin"
-                range 0 48
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 45 if IDF_TARGET_ESP32S3
                 depends on RAILCOM_DATA_ENABLED && IDF_TARGET_ESP32S3
                 help
@@ -1110,25 +1117,25 @@ menu "ESP32 Command Station Configuration"
         menu "I2C"
             config I2C_SCL_PIN
                 int "SCL pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 21 if IDF_TARGET_ESP32
+                default 34 if IDF_TARGET_ESP32S2
                 default 18 if IDF_TARGET_ESP32S3
                 help
                     This pin is used for the I2C clock output.
 
             config I2C_SDA_PIN
                 int "SDA pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 23 if IDF_TARGET_ESP32
+                default 33 if IDF_TARGET_ESP32S2
                 default 8 if IDF_TARGET_ESP32S3
                 help
                     This pin is used for I2C data.
 
             config I2C_ADC_ALERT_PIN
                 int "ADC Alert pin"
-                range -1 48
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 46
                 depends on IDF_TARGET_ESP32S3
                 help
@@ -1139,7 +1146,7 @@ menu "ESP32 Command Station Configuration"
         menu "Status LED"
             config STATUS_LED_DATA_PIN
                 int "Addressable RGB Data pin"
-                range -1 33
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default -1
                 depends on IDF_TARGET_ESP32
                 help
@@ -1150,31 +1157,31 @@ menu "ESP32 Command Station Configuration"
 
             config STATUS_LED_WIFI_STA_PIN
                 int "WiFi Active LED pin"
-                range -1 48
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 15
                 depends on IDF_TARGET_ESP32S3
 
             config STATUS_LED_WIFI_AP_PIN
                 int "SoftAP Active LED pin"
-                range -1 48
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 7
                 depends on IDF_TARGET_ESP32S3
 
             config STATUS_LED_BOOTLOADER_ACTIVE_PIN
                 int "Bootloader Active LED pin"
-                range -1 48
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 6
                 depends on IDF_TARGET_ESP32S3
 
             config STATUS_LED_OPS_ACTIVE_PIN
                 int "OPS Track Active LED pin"
-                range -1 48
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 5
                 depends on IDF_TARGET_ESP32S3
 
             config STATUS_LED_PROG_ACTIVE_PIN
                 int "PROG Track Active LED pin"
-                range -1 48
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 4
                 depends on IDF_TARGET_ESP32S3
         endmenu
@@ -1182,8 +1189,7 @@ menu "ESP32 Command Station Configuration"
         menu "Status Display"
             config OLED_RESET_PIN
                 int "OLED Reset pin"
-                range -1 33 if IDF_TARGET_ESP32
-                range -1 48 if IDF_TARGET_ESP32S3
+                range -1 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default -1
                 help
                     If the connected OLED display requires a reset pulse during
@@ -1194,8 +1200,7 @@ menu "ESP32 Command Station Configuration"
         menu "Buttons"
             config FACTORY_RESET_PIN
                 int "Factory Reset pin"
-                range -1 39 if IDF_TARGET_ESP32
-                range -1 48 if IDF_TARGET_ESP32S3
+                range -1 ESP32CS_GPIO_INPUT_PIN_MAX
                 default -1
                 help
                     When this pin is pulled to GND during startup for 10 seconds the
@@ -1206,8 +1211,7 @@ menu "ESP32 Command Station Configuration"
 
             config BOOTLOADER_PIN
                 int "Bootloader Request pin"
-                range -1 39 if IDF_TARGET_ESP32
-                range -1 48 if IDF_TARGET_ESP32S3
+                range -1 ESP32CS_GPIO_INPUT_PIN_MAX
                 default -1
                 help
                     When this pin is pulled to GND during startup the ESP32 Command
@@ -1219,18 +1223,18 @@ menu "ESP32 Command Station Configuration"
         menu "TWAI (CAN)"
             config OLCB_TWAI_RX_PIN
                 int "RX pin"
-                range 0 39 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_INPUT_PIN_MAX
                 default 4 if IDF_TARGET_ESP32
+                default 5 if IDF_TARGET_ESP32S2
                 default 16 if IDF_TARGET_ESP32S3
                 help
                     This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 R (RX) pin.
         
             config OLCB_TWAI_TX_PIN
                 int "TX pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
+                range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 default 5 if IDF_TARGET_ESP32
+                default 6 if IDF_TARGET_ESP32S2
                 default 17 if IDF_TARGET_ESP32S3
                 help
                     This is the ESP32 pin connected to the SN6565HVD23x/MCP2551 D (TX) pin.
@@ -1248,53 +1252,53 @@ menu "ESP32 Command Station Configuration"
                 config TEMPSENSOR_DISABLED
                     bool "Disabled"
                 config TEMPSENSOR_ADC_CHANNEL_0
-                    bool "ADC1 Channel 0 (ESP32:GPIO 36, ESP32-S3:GPIO1)"
+                    bool "ADC1 Channel 0 (ESP32:GPIO 36, ESP32-S2:GPIO1, ESP32-S3:GPIO1)"
                 config TEMPSENSOR_ADC_CHANNEL_1
-                    bool "ADC1 Channel 1 (ESP32-S3:GPIO2)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 1 (ESP32-S2:GPIO2, ESP32-S3:GPIO2)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC_CHANNEL_2
-                    bool "ADC1 Channel 2 (ESP32-S3:GPIO2)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 2 (ESP32-S2:GPIO3, ESP32-S3:GPIO3)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC_CHANNEL_3
-                    bool "ADC1 Channel 3 (ESP32:GPIO 39, ESP32-S3:GPIO4)"
+                    bool "ADC1 Channel 3 (ESP32:GPIO 39, ESP32-S2:GPIO4, ESP32-S3:GPIO4)"
                 config TEMPSENSOR_ADC_CHANNEL_4
-                    bool "ADC1 Channel 4 (ESP32:GPIO 32, ESP32-S3:GPIO5)"
+                    bool "ADC1 Channel 4 (ESP32:GPIO 32, ESP32-S2:GPIO5, ESP32-S3:GPIO5)"
                 config TEMPSENSOR_ADC_CHANNEL_5
-                    bool "ADC1 Channel 5 (ESP32:GPIO 33, ESP32-S3:GPIO6)"
+                    bool "ADC1 Channel 5 (ESP32:GPIO 33, ESP32-S2:GPIO6, ESP32-S3:GPIO6)"
                 config TEMPSENSOR_ADC_CHANNEL_6
-                    bool "ADC1 Channel 6 (ESP32:GPIO 34, ESP32-S3:GPIO7)"
+                    bool "ADC1 Channel 6 (ESP32:GPIO 34, ESP32-S2:GPIO7, ESP32-S3:GPIO7)"
                 config TEMPSENSOR_ADC_CHANNEL_7
-                    bool "ADC1 Channel 7 (ESP32:GPIO 35, ESP32-S3:GPIO8)"
+                    bool "ADC1 Channel 7 (ESP32:GPIO 35, ESP32-S2:GPIO8, ESP32-S3:GPIO8)"
                 config TEMPSENSOR_ADC_CHANNEL_8
-                    bool "ADC1 Channel 8 (ESP32-S3:GPIO9)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 8 (ESP32-S2:GPIO9, ESP32-S3:GPIO9)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC_CHANNEL_9
-                    bool "ADC1 Channel 9 (ESP32-S3:GPIO10)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC1 Channel 9 (ESP32-S2:GPIO10, ESP32-S3:GPIO10)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_0
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO11)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO11, ESP32-S3:GPIO11)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_1
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO12)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO12, ESP32-S3:GPIO12)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_2
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO13)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO13, ESP32-S3:GPIO13)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_3
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO14)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO14, SP32-S3:GPIO14)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_4
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO15)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO15, ESP32-S3:GPIO15)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_5
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO16)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO16, ESP32-S3:GPIO16)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_6
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO17)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO17, ESP32-S3:GPIO17)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_7
-                    bool "ADC2 Channel 0 (ESP32-S3:GPIO18)"
-                    depends on IDF_TARGET_ESP32S3
+                    bool "ADC2 Channel 0 (ESP32-S2:GPIO18, ESP32-S3:GPIO18)"
+                    depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config TEMPSENSOR_ADC2_CHANNEL_8
                     bool "ADC2 Channel 0 (ESP32-S3:GPIO19)"
                     depends on IDF_TARGET_ESP32S3
@@ -1354,24 +1358,24 @@ menu "ESP32 Command Station Configuration"
                 visible if IDF_TARGET_ESP32S3
                 config SD_SPI_MISO
                     int "MISO pin"
+                    range 0 ESP32CS_GPIO_INPUT_PIN_MAX
                     default 2 if IDF_TARGET_ESP32
                     default 41 if IDF_TARGET_ESP32S3
-                    range 0 48 if IDF_TARGET_ESP32S3
                 config SD_SPI_MOSI
                     int "MOSI pin"
+                    range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                     default 15 if IDF_TARGET_ESP32
                     default 40 if IDF_TARGET_ESP32S3
-                    range 0 48 if IDF_TARGET_ESP32S3
                 config SD_SPI_CLOCK
                     int "Clock pin"
+                    range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                     default 14 if IDF_TARGET_ESP32
                     default 39 if IDF_TARGET_ESP32S3
-                    range 0 48 if IDF_TARGET_ESP32S3
                 config SD_SPI_SELECT
                     int "Chip Select pin"
+                    range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                     default 13 if IDF_TARGET_ESP32
                     default 42 if IDF_TARGET_ESP32S3
-                    range 0 48 if IDF_TARGET_ESP32S3
             endmenu
 
             menu "SD MMC Pins"
@@ -1381,32 +1385,32 @@ menu "ESP32 Command Station Configuration"
                     int "Clock pin"
                     default 14 if IDF_TARGET_ESP32
                     default 39 if IDF_TARGET_ESP32S3
-                    range 0 48 if IDF_TARGET_ESP32S3
+                    range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 config SD_MMC_CMD
                     int "Command pin"
                     default 15 if IDF_TARGET_ESP32
                     default 40 if IDF_TARGET_ESP32S3
-                    range 0 48 if IDF_TARGET_ESP32S3
+                    range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                 config SD_MMC_DATA_0
                     int "Data 0 pin"
                     default 2 if IDF_TARGET_ESP32
                     default 41 if IDF_TARGET_ESP32S3
-                    range 0 48 if IDF_TARGET_ESP32S3
+                    range 0 ESP32CS_GPIO_INPUT_PIN_MAX
                 config SD_MMC_DATA_1
                     int "Data 1 pin"
                     default 4 if IDF_TARGET_ESP32
                     default -1 if IDF_TARGET_ESP32S3
-                    range -1 48 if IDF_TARGET_ESP32S3
+                    range -1 ESP32CS_GPIO_INPUT_PIN_MAX
                 config SD_MMC_DATA_2
                     int "Data 2 pin"
                     default 12 if IDF_TARGET_ESP32
                     default -1 if IDF_TARGET_ESP32S3
-                    range -1 48 if IDF_TARGET_ESP32S3
+                    range -1 ESP32CS_GPIO_INPUT_PIN_MAX
                 config SD_MMC_DATA_3
                     int "Data 3 pin"
                     default 13 if IDF_TARGET_ESP32
                     default -1 if IDF_TARGET_ESP32S3
-                    range -1 48 if IDF_TARGET_ESP32S3
+                    range -1 ESP32CS_GPIO_INPUT_PIN_MAX
             endmenu
         endmenu
     endmenu

@@ -20,8 +20,13 @@ COPYRIGHT (c) 2021 Mike Dunston
 #include "ulp_adc_ops.h"
 #include <dcc/ProgrammingTrackBackend.hxx>
 #include <driver/rtc_cntl.h>
+#if CONFIG_IDF_TARGET_ESP32
 #include <esp32/rom/ets_sys.h>
 #include <esp32/ulp.h>
+#elif CONFIG_IDF_TARGET_ESP32S2
+#include <esp32s2/rom/ets_sys.h>
+#include <esp32s2/ulp.h>
+#endif
 #include <hardware.hxx>
 #include <soc/rtc_cntl_reg.h>
 #include <utils/Fixed16.hxx>
@@ -130,9 +135,15 @@ static constexpr float mAPerADCStep = 0.8056f;
 void initialize_ulp_adc()
 {
   LOG(INFO, "[ULP-ADC] Registering ULP wakeup ISR");
+#if CONFIG_IDF_TARGET_ESP32
   // register ISR callback for ULP wake-up event.
   ESP_ERROR_CHECK(
     rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_SAR_INT_ST_M));
+#elif CONFIG_IDF_TARGET_ESP32S2
+  // register ISR callback for ULP wake-up event.
+  ESP_ERROR_CHECK(
+    rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_ULP_CP_INT_ST_M));
+#endif
 
   // set bit to allow wakeup by the ULP even though the main SoC is not in a
   // deep sleep state.

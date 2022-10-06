@@ -264,6 +264,10 @@ private:
   /// generation. With three memory blocks it is possible to send up to 192
   /// bits per DCC packet with up to 50 preamble bits.
   static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = 6;
+#elif CONFIG_IDF_TARGET_ESP32S2
+  /// Maximum number of RMT memory blocks to allow for the DCC signal
+  /// generation.
+  static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = SOC_RMT_TX_CANDIDATES_PER_GROUP;
 #elif CONFIG_IDF_TARGET_ESP32S3
   /// Maximum number of RMT memory blocks to allow for the DCC signal
   /// generation.
