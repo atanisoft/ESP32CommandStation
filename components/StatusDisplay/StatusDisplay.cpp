@@ -1,26 +1,17 @@
-/**********************************************************************
-ESP32 COMMAND STATION
-
-COPYRIGHT (c) 2017-2020 Mike Dunston
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see http://www.gnu.org/licenses
-**********************************************************************/
+/*
+ * SPDX-FileCopyrightText: 2017-2022 Mike Dunston (atanisoft)
+ *
+ * SPDX-License-Identifier: GPL-3.0
+ * 
+ * This file is part of ESP32 Command Station.
+ */
 
 #include "sdkconfig.h"
 #include "NvsManager.hxx"
 #include "StatusDisplay.hxx"
 #include "hardware.hxx"
 
-#include <AllTrainNodes.hxx>
+#include <locomgr/LocoManager.hxx>
 #include <driver/i2c.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
@@ -262,7 +253,7 @@ StateFlowBase::Action StatusDisplay::update()
     else if (rotatingIndex_ == 2)
     {
       uint8_t loco_count =
-        Singleton<commandstation::AllTrainNodes>::instance()->active_locos();
+        Singleton<trainmgr::LocoManager>::instance()->active_locos();
       status("Active Locos:%3d", loco_count);
     }
     else if (rotatingIndex_ == 3)

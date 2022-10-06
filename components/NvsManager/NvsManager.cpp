@@ -1,19 +1,10 @@
-/**********************************************************************
-ESP32 COMMAND STATION
-
-COPYRIGHT (c) 2017-2021 Mike Dunston
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see http://www.gnu.org/licenses
-**********************************************************************/
+/*
+ * SPDX-FileCopyrightText: 2017-2022 Mike Dunston (atanisoft)
+ *
+ * SPDX-License-Identifier: GPL-3.0
+ * 
+ * This file is part of ESP32 Command Station.
+ */
 
 #include "NvsManager.hxx"
 #include "NodeIdMemoryConfigSpace.hxx"
@@ -22,7 +13,6 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include "WiFiMemoryConfigSpace.hxx"
 #include "sdkconfig.h"
 #include "hardware.hxx"
-#include "StringUtils.hxx"
 #if CONFIG_IDF_TARGET_ESP32
 #include <esp32/rom/rtc.h>
 #elif CONFIG_IDF_TARGET_ESP32S3
@@ -229,7 +219,7 @@ namespace esp32cs
   {
     // display current configuration settings.
     LOG(INFO, "[NVS] Node ID: %s",
-        node_id_to_string(nvsConfig.node_id).c_str());
+        utils::node_id_to_string(nvsConfig.node_id).c_str());
     LOG(INFO, "[NVS] WiFi Mode: %s (%d)", WIFI_MODES[nvsConfig.wifi_mode],
         nvsConfig.wifi_mode);
     LOG(INFO, "[NVS] Hostname Prefix: %s", nvsConfig.hostname_prefix);
@@ -256,7 +246,7 @@ namespace esp32cs
     if (nvsConfig.fastclock_enabled)
     {
       LOG(INFO, "[NVS] FastClock(%s): %04d-%02d-%02d %02d:%02d",
-          node_id_to_string(nvsConfig.fastclock_id).c_str(),
+          utils::node_id_to_string(nvsConfig.fastclock_id).c_str(),
           nvsConfig.fastclock_year + 1900, nvsConfig.fastclock_month,
           nvsConfig.fastclock_day, nvsConfig.fastclock_hour,
           nvsConfig.fastclock_minute);

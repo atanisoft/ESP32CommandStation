@@ -16,10 +16,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 **********************************************************************/
 
 #include "CDIClient.hxx"
-#include <StringUtils.hxx>
 #include <HttpStringUtils.h>
 #include <utils/Base64.hxx>
-#include "StringUtils.hxx"
+#include <utils/StringUtils.hxx>
 
 using openlcb::DatagramClient;
 using openlcb::Defs;
@@ -41,7 +40,7 @@ StateFlowBase::Action CDIClient::entry()
   case CDIClientRequest::CMD_READ:
     LOG(VERBOSE,
         "[CDI:%s] Requesting %zu bytes from offset %zu",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str(),
+        utils::node_id_to_string(request()->target_node.id).c_str(),
         request()->size, request()->offs);
     return invoke_subflow_and_wait(&client_, STATE(read_complete),
                                    MemoryConfigClientRequest::READ_PART,
@@ -50,7 +49,7 @@ StateFlowBase::Action CDIClient::entry()
                                    request()->offs, request()->size);
   case CDIClientRequest::CMD_WRITE:
     LOG(VERBOSE, "[CDI:%s] Writing %zu bytes to offset %zu",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str(),
+        utils::node_id_to_string(request()->target_node.id).c_str(),
         request()->size, request()->offs);
     return invoke_subflow_and_wait(&client_, STATE(write_complete),
                                    MemoryConfigClientRequest::WRITE,
@@ -59,13 +58,13 @@ StateFlowBase::Action CDIClient::entry()
                                    request()->offs, request()->value);
   case CDIClientRequest::CMD_UPDATE_COMPLETE:
     LOG(VERBOSE, "[CDI:%s] Sending update-complete",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str());
+        utils::node_id_to_string(request()->target_node.id).c_str());
     return invoke_subflow_and_wait(&client_, STATE(update_complete),
                                    MemoryConfigClientRequest::UPDATE_COMPLETE,
                                    request()->target_node);
   case CDIClientRequest::CMD_REBOOT:
     LOG(VERBOSE, "[CDI:%s] Sending request to reboot",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str());
+        utils::node_id_to_string(request()->target_node.id).c_str());
     invoke_subflow_and_ignore_result(&client_,
                                      MemoryConfigClientRequest::REBOOT, request()->target_node);
     return return_ok();
@@ -77,13 +76,13 @@ StateFlowBase::Action CDIClient::read_complete()
 {
   auto b = get_buffer_deleter(full_allocation_result(&client_));
   LOG(VERBOSE, "[CDI:%s] read bytes request returned with code: %d",
-      esp32cs::node_id_to_string(request()->target_node.id).c_str(),
+      utils::node_id_to_string(request()->target_node.id).c_str(),
       b->data()->resultCode);
   string response;
   if (b->data()->resultCode)
   {
     LOG(VERBOSE, "[CDI:%s] non-zero result code, sending error response.",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str());
+        utils::node_id_to_string(request()->target_node.id).c_str());
     response =
         StringPrintf(
             R"!^!({"res":"error","error":"request failed: %d","id":%d})!^!",
@@ -92,11 +91,11 @@ StateFlowBase::Action CDIClient::read_complete()
   else
   {
     LOG(VERBOSE, "[CDI:%s] Received %zu bytes from offset %zu",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str(),
+        utils::node_id_to_string(request()->target_node.id).c_str(),
         request()->size, request()->offs);
     if (request()->type == "str")
     {
-      esp32cs::remove_nulls_and_FF(b->data()->payload);
+      utils::remove_nulls_and_FF(b->data()->payload);
       response =
           StringPrintf(
               R"!^!({"res":"field","tgt":"%s","val":"%s","type":"%s","id":%d})!^!",
@@ -142,13 +141,13 @@ StateFlowBase::Action CDIClient::write_complete()
 {
   auto b = get_buffer_deleter(full_allocation_result(&client_));
   LOG(VERBOSE, "[CDI:%s] write bytes request returned with code: %d",
-      esp32cs::node_id_to_string(request()->target_node.id).c_str(),
+      utils::node_id_to_string(request()->target_node.id).c_str(),
       b->data()->resultCode);
   string response;
   if (b->data()->resultCode)
   {
     LOG(VERBOSE, "[CDI:%s] non-zero result code, sending error response.",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str());
+        utils::node_id_to_string(request()->target_node.id).c_str());
     response =
         StringPrintf(
             R"!^!({"res":"error","error":"request failed: %d","id":%d})!^!", b->data()->resultCode, request()->req_id);
@@ -156,7 +155,7 @@ StateFlowBase::Action CDIClient::write_complete()
   else
   {
     LOG(VERBOSE, "[CDI:%s] Write request processed successfully.",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str());
+        utils::node_id_to_string(request()->target_node.id).c_str());
     response =
         StringPrintf(R"!^!({"res":"saved","tgt":"%s","id":%d})!^!", request()->target.c_str(), request()->req_id);
   }
@@ -170,13 +169,13 @@ StateFlowBase::Action CDIClient::update_complete()
 {
   auto b = get_buffer_deleter(full_allocation_result(&client_));
   LOG(VERBOSE, "[CDI:%s] update-complete request returned with code: %d",
-      esp32cs::node_id_to_string(request()->target_node.id).c_str(),
+      utils::node_id_to_string(request()->target_node.id).c_str(),
       b->data()->resultCode);
   string response;
   if (b->data()->resultCode)
   {
     LOG(VERBOSE, "[CDI:%s] non-zero result code, sending error response.",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str());
+        utils::node_id_to_string(request()->target_node.id).c_str());
     response =
         StringPrintf(
             R"!^!({"res":"error","error":"request failed: %d","id":%d})!^!", b->data()->resultCode, request()->req_id);
@@ -184,7 +183,7 @@ StateFlowBase::Action CDIClient::update_complete()
   else
   {
     LOG(VERBOSE, "[CDI:%s] update-complete request processed successfully.",
-        esp32cs::node_id_to_string(request()->target_node.id).c_str());
+        utils::node_id_to_string(request()->target_node.id).c_str());
     response =
         StringPrintf(R"!^!({"res":"update-complete","id":%d})!^!", request()->req_id);
   }

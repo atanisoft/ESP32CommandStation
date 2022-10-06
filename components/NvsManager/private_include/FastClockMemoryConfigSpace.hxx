@@ -1,19 +1,10 @@
-/**********************************************************************
-ESP32 COMMAND STATION
-
-COPYRIGHT (c) 2017-2021 Mike Dunston
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see http://www.gnu.org/licenses
-**********************************************************************/
+/*
+ * SPDX-FileCopyrightText: 2017-2022 Mike Dunston (atanisoft)
+ *
+ * SPDX-License-Identifier: GPL-3.0
+ * 
+ * This file is part of ESP32 Command Station.
+ */
 
 #ifndef FASTCLOCK_MEMORY_CONFIG_SPACE_HXX_
 #define FASTCLOCK_MEMORY_CONFIG_SPACE_HXX_
@@ -23,8 +14,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <openlcb/VirtualMemorySpace.hxx>
 #include <utils/format_utils.hxx>
 #include <utils/logging.h>
-#include <StringUtils.hxx>
-#include <FastClockConfigurationGroup.hxx>
+#include <utils/StringUtils.hxx>
 
 #include "NvsManagerStruct.hxx"
 #include "sdkconfig.h"
@@ -90,6 +80,7 @@ namespace esp32cs
         {
             return [this, offset](unsigned repeat, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 LOG(INFO, "[FastClockMemCfg:%02x-RD] offs: %d", SPACE, offset);
                 T value = (T)0;
                 switch(offset)
@@ -118,7 +109,6 @@ namespace esp32cs
                     default:
                         LOG_ERROR("[FastClockMemCfg:%02x-RD] request for unrecognized offset:%d", SPACE, offset);
                 }
-                done->notify();
                 return value;
             };
         }
@@ -128,6 +118,7 @@ namespace esp32cs
         {
             return [this, offset](unsigned repeat, T value, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 LOG(INFO, "[FastClockMemCfg:%02x-WR] offs: %d", SPACE, offset);
                 switch(offset)
                 {
@@ -155,7 +146,6 @@ namespace esp32cs
                     default:
                         LOG_ERROR("[FastClockMemCfg:%02x-WR] request for unrecognized offset:%d", SPACE, offset);
                 }
-                done->notify();
             };
         }
         std::function<void(unsigned repeat, string *value, BarrierNotifiable *done)>
@@ -163,17 +153,17 @@ namespace esp32cs
         {
             return [this, offset](unsigned repeat, string *value, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 LOG(INFO, "[FastClockMemCfg:%02x-RDSTR] offs: %d", SPACE, offset);
                 switch (offset)
                 {
                     case FastClockConfigHolder.id().offset():
-                        *value = node_id_to_string(config_->fastclock_id);
+                        *value = utils::node_id_to_string(config_->fastclock_id);
                         break;
                     default:
                         LOG_ERROR("[FastClockMemCfg:%02x-RDSTR] request for unrecognized offset:%d", SPACE, offset);
                         *value = "";
                 }
-                done->notify();
             };
         }
         std::function<void(unsigned repeat, string value, BarrierNotifiable *done)>
@@ -181,6 +171,7 @@ namespace esp32cs
         {
             return [this, offset](unsigned repeat, string value, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 // strip off nulls (if found)
                 value.erase(
                     std::remove(value.begin(), value.end(), '\0'), value.end());
@@ -189,12 +180,11 @@ namespace esp32cs
                 switch(offset)
                 {
                     case FastClockConfigHolder.id().offset():
-                        config_->fastclock_id = string_to_uint64(value);
+                        config_->fastclock_id = utils::string_to_uint64(value);
                         break;
                     default:
                         LOG_ERROR("[FastClockMemCfg:%02x-WDSTR] request for unrecognized offset:%d", SPACE, offset);
                 }
-                done->notify();
             };
         }
     };

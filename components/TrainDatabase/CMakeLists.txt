@@ -1,6 +1,6 @@
 set(CUSTOM_DEPS
+    OpenMRNExtensions
     OpenMRNIDF
-    TrainSearchProtocol
     Utils
 )
 

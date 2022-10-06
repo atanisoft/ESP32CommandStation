@@ -15,8 +15,6 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
   along with this program.  If not, see http://www.gnu.org/licenses
 **********************************************************************/
 
-#include "StringUtils.hxx"
-
 #include <Httpd.h>
 #include <HttpStringUtils.h>
 #include <openlcb/MemoryConfigClient.hxx>

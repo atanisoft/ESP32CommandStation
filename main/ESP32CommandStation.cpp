@@ -16,9 +16,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 **********************************************************************/
 
 #include "sdkconfig.h"
-#include "ThermalMonitorFlow.hxx"
 #include <AccessoryDecoderDatabase.hxx>
-#include <AllTrainNodes.hxx>
 #include <cdi.hxx>
 #include <dcc/Packet.hxx>
 #include <dcc/PacketSource.hxx>
@@ -45,6 +43,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <hardware.hxx>
 #include <HealthMonitor.hxx>
 #include <Httpd.h>
+#if 0
+#include <locodb/LocoDatabaseVirtualMemorySpace.hxx>
+#endif
 #include <mutex>
 #include <NodeRebootHelper.hxx>
 #include <NvsManager.hxx>
@@ -55,7 +56,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <openlcb/SimpleStack.hxx>
 #include <StatusDisplay.hxx>
 #include <StatusLED.hxx>
-#include <TrainDatabase.h>
+#include <ThermalMonitorFlow.hxx>
+#include <TrainDatabase.hxx>
+#include <TrainManager.hxx>
 #include <UlpAdc.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 #include <utils/constants.hxx>
@@ -106,6 +109,13 @@ OVERRIDE_CONST(local_alias_cache_size, CONFIG_OLCB_LOCAL_ALIAS_COUNT);
 /// Generate GridConnect frames with a newline appended to each frame.
 OVERRIDE_CONST_TRUE(gc_generate_newlines);
 #endif // CONFIG_OLCB_GC_NEWLINES
+
+/// ESP32 CS does not support the Marklin protocol.
+OVERRIDE_CONST_FALSE(trainmgr_support_marklin);
+
+#ifndef CONFIG_ROSTER_AUTO_IDLE_NEW_LOCOS
+OVERRIDE_CONST_FALSE(trainmgr_automatically_create_train_impl);
+#endif // CONFIG_ROSTER_AUTO_IDLE_NEW_LOCOS
 
 /// CDI configuration for the ESP32 Commmand Station.
 /// Offset is set to zero and is likely to be removed in the future.
@@ -208,7 +218,7 @@ public:
           CDI_READ_TRIM_DEFAULT(cfg_.advanced().enable_throttles, fd);
         LOG(INFO, "[OpenLCB] Train Search Listener: %s",
             dcc_en ? "Enabled" : "Disabled");
-        Singleton<commandstation::AllTrainNodes>::instance()->configure(throttles_en);
+        Singleton<locomgr::LocoManager>::instance()->set_enabled(throttles_en);
 
         return ConfigUpdateListener::UpdateAction::UPDATED;
     }
@@ -310,7 +320,7 @@ void app_main()
       app_data->idf_ver);
   LOG(INFO, "Running from: %s", esp_ota_get_running_partition()->label);
   LOG(INFO, "ESP32 Command Station uses the OpenMRN library\n"
-            "Copyright (c) 2019-2021, OpenMRN\n"
+            "Copyright (c) 2019-2022, OpenMRN\n"
             "All rights reserved.");
   LOG(INFO, "[SNIP] version:%d, manufacturer:%s, model:%s, hw-v:%s, sw-v:%s",
       openlcb::SNIP_STATIC_DATA.version,
@@ -335,7 +345,7 @@ void app_main()
     esp32cs::initialize_ulp_adc();
 
     // initialize the OpenMRN stack and dependent components
-    openlcb::SimpleCanStack stack(nvs.node_id());;
+    openlcb::SimpleCanStack stack(nvs.node_id());
     Esp32WiFiManager wifi_manager(nvs.station_ssid(), nvs.station_password(),
                                   &stack, cfg.seg().olcb().wifi(),
                                   nvs.wifi_mode(),
@@ -394,11 +404,11 @@ void app_main()
                                           &wifi_manager, &nvs);
     openlcb::TrainService trainService(stack.iface());
     esp32cs::Esp32TrainDatabase train_db(&stack, &wifi_manager);
-    commandstation::AllTrainNodes trains(&train_db, &trainService,
-                                         stack.info_flow(),
-                                         stack.memory_config_handler(),
-                                         train_db.get_train_cdi(),
-                                         train_db.get_temp_train_cdi());
+    trainmanager::TrainManager train_mgr(&trainService, stack.info_flow(),
+                                         stack.memory_config_handler());
+#if 0
+    locodb::LocoDatabaseVirtualMemorySpace train_db_vms(&stack);
+#endif
     MDNS mdns;
     http::Httpd httpd(&wifi_manager, &mdns);
     esp32cs::ThermalMonitorFlow thermal_monitor(&wifi_manager,

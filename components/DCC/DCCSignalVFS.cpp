@@ -1,19 +1,10 @@
-/**********************************************************************
-ESP32 COMMAND STATION
-
-COPYRIGHT (c) 2020-2021 Mike Dunston
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see http://www.gnu.org/licenses
-**********************************************************************/
+/*
+ * SPDX-FileCopyrightText: 2020-2022 Mike Dunston (atanisoft)
+ *
+ * SPDX-License-Identifier: GPL-3.0
+ * 
+ * This file is part of ESP32 Command Station.
+ */
 
 #include "sdkconfig.h"
 #include <hardware.hxx>
@@ -26,7 +17,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include "TrackPowerHandler.hxx"
 
 #include <AccessoryDecoderDatabase.hxx>
-#include <AllTrainNodes.hxx>
+#include <locomgr/LocoManager.hxx>
 #include <dcc/DccOutput.hxx>
 #include <dcc/LocalTrackIf.hxx>
 #include <dcc/ProgrammingTrackBackend.hxx>
@@ -52,7 +43,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 #include <RMTTrackDevice.hxx>
 #include <soc/rtc_cntl_reg.h>
 #include <StatusDisplay.hxx>
-#include <StringUtils.hxx>
+#include <utils/StringUtils.hxx>
 #include <UlpAdc.hxx>
 #include <utils/GpioInitializer.hxx>
 #include <utils/logging.h>
@@ -84,19 +75,18 @@ static void disable_programming_track()
 }
 #endif // CONFIG_PROG_TRACK_ENABLED
 
-// TODO: move this into TrainSearchProtocol
 class EStopPacketSource : public dcc::NonTrainPacketSource,
                           public openlcb::BitEventInterface
 {
 public:
   EStopPacketSource(openlcb::Node *node)
-    : openlcb::BitEventInterface(openlcb::Defs::EMERGENCY_STOP_EVENT
-                               , openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT),
+    : openlcb::BitEventInterface(openlcb::Defs::EMERGENCY_STOP_EVENT,
+                                 openlcb::Defs::CLEAR_EMERGENCY_STOP_EVENT),
     node_(node)
   {
     LOG(INFO, "[eStop] Registering OpenLCB event consumer (On:%s, Off:%s)",
-        event_id_to_string(event_on()).c_str(),
-        event_id_to_string(event_off()).c_str());
+        utils::event_id_to_string(event_on()).c_str(),
+        utils::event_id_to_string(event_off()).c_str());
   }
 
   bool is_enabled()
@@ -109,11 +99,12 @@ public:
     LOG(VERBOSE, "[eStop] Query event state: %d", is_enabled());
     if (is_enabled())
     {
-      LOG(VERBOSE, "[eStop] ON (%s)", event_id_to_string(event_on()).c_str());
+      LOG(VERBOSE, "[eStop] ON (%s)",
+          utils::event_id_to_string(event_on()).c_str());
       return openlcb::EventState::VALID;
     }
-      LOG(VERBOSE, "[eStop] OFF (%s)",
-          event_id_to_string(event_off()).c_str());
+    LOG(VERBOSE, "[eStop] OFF (%s)",
+        utils::event_id_to_string(event_off()).c_str());
     return openlcb::EventState::INVALID;
   }
 
@@ -127,19 +118,7 @@ public:
     if (new_value)
     {
       LOG(INFO, "[eStop] Received eStop request, sending eStop to all trains.");
-      auto trains = Singleton<commandstation::AllTrainNodes>::instance();
-      for (size_t id = 0; id < trains->size(); id++)
-      {
-        auto nodeid = trains->get_train_node_id(id);
-        if (nodeid)
-        {
-          auto loco = trains->get_train_impl(nodeid, false);
-          if (loco)
-          {
-            loco->set_emergencystop();
-          }
-        }
-      }
+      Singleton<locomgr::LocoManager>::instance()->estop_all_trains();
       packet_processor_add_refresh_source(this, dcc::UpdateLoopBase::ESTOP_PRIORITY);
     }
     else
@@ -157,8 +136,8 @@ public:
 
   void get_next_packet(unsigned code, dcc::Packet* packet)
   {
-    packet->set_dcc_speed14(dcc::DccShortAddress(0), true, false
-                          , dcc::Packet::EMERGENCY_STOP);
+    packet->set_dcc_speed14(dcc::DccShortAddress(0), true, false,
+                            dcc::Packet::EMERGENCY_STOP);
   }
 private:
   bool enabled_{false};

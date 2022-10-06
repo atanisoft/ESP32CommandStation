@@ -16,9 +16,8 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 **********************************************************************/
 
 #include "CDIDownloader.hxx"
-#include "StringUtils.hxx"
 #include <utils/Base64.hxx>
-#include "StringUtils.hxx"
+#include <utils/StringUtils.hxx>
 
 CDIDownloadHandler::CDIDownloadHandler(Service *service, openlcb::Node *node,
                     openlcb::MemoryConfigHandler *memcfg)
@@ -30,11 +29,11 @@ CDIDownloadHandler::CDIDownloadHandler(Service *service, openlcb::Node *node,
 StateFlowBase::Action CDIDownloadHandler::entry()
 {
     LOG(VERBOSE, "[CDI:%s] Requesting CDI XML",
-        esp32cs::node_id_to_string(request()->target.id).c_str());
+        utils::node_id_to_string(request()->target.id).c_str());
     string res = DOWNLOAD_START;
     res += "\n";
     request()->socket->send_text(res);
-    targetNodeId_ = esp32cs::node_id_to_string(request()->target.id);
+    targetNodeId_ = utils::node_id_to_string(request()->target.id);
     return call_immediately(STATE(download_segment));
 }
 
@@ -77,7 +76,7 @@ StateFlowBase::Action CDIDownloadHandler::segment_complete()
         // out-of-bounds when reading beyond the payload size.
         bool eofFound = (b->data()->payload.find('\0') != std::string::npos);
 
-        esp32cs::remove_nulls_and_FF(b->data()->payload, true);
+        utils::remove_nulls_and_FF(b->data()->payload, true);
 
         string encoded =
             StringPrintf(STREAM_SEGMENT_PART, request()->segment++,

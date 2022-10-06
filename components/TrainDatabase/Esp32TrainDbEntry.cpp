@@ -1,225 +1,93 @@
-/**********************************************************************
-ESP32 COMMAND STATION
+/*
+ * SPDX-FileCopyrightText: 2019-2022 Mike Dunston (atanisoft)
+ *
+ * SPDX-License-Identifier: GPL-3.0
+ * 
+ * This file is part of ESP32 Command Station.
+ */
 
-COPYRIGHT (c) 2019-2021 Mike Dunston
+#include "TrainDatabase.hxx"
 
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see http://www.gnu.org/licenses
-**********************************************************************/
-
-#include "TrainDatabase.h"
-
-#include <AllTrainNodes.hxx>
-
-#include <TrainDbCdi.hxx>
-#include <StringUtils.hxx>
+#include <algorithm>
+#include <locodb/LocoDatabase.hxx>
 #include <utils/StringPrintf.hxx>
 
 namespace esp32cs
 {
 
-using commandstation::DccMode;
-using commandstation::AllTrainNodes;
+using locodb::DriveMode;
+using locodb::Function;
 using openlcb::NodeID;
 using openlcb::TractionDefs;
 
-// This should really be defined inside TractionDefs.hxx and used by the call
-// to TractionDefs::train_node_id_from_legacy().
-static constexpr uint64_t const OLCB_NODE_ID_USER = 0x050101010000ULL;
-
-Esp32TrainDbEntry::Esp32TrainDbEntry(Esp32PersistentTrainData data,
-                                     Esp32TrainDatabase *db, bool persist)
-  : data_(data), db_(db), dirty_(true), persist_(persist)
+Esp32TrainDbEntry::Esp32TrainDbEntry(Esp32TrainDatabase *db, uint16_t address,
+                                     DriveMode mode,
+                                     std::vector<Function> functions,
+                                     std::string name, std::string description,
+                                     bool auto_idle, bool modified)
+  : LocoDatabaseEntry(name, description, address, mode, auto_idle), db_(db)
 {
+  set_modified(modified);
   // Set the mode to DCC-128 if the default was selected
-  if (data_.mode == DCCMODE_DEFAULT || data_.mode == DCC_DEFAULT)
+  if (mode_ == DriveMode::DEFAULT ||
+      mode_ == DriveMode::DCC_DEFAULT)
   {
-    data_.mode = DCC_128;
+    mode_ = DriveMode::DCC_128;
   }
-  else if (data_.mode == DCC_DEFAULT_LONG_ADDRESS)
+  else if (mode_ == DriveMode::DCC_DEFAULT_LONG_ADDRESS)
   {
-    data_.mode = DCC_128_LONG_ADDRESS;
+    mode_ = DriveMode::DCC_128_LONG_ADDRESS;
   }
-  recalcuate_max_fn();
+  for (Function fn : functions)
+  {
+    functions_.push_back(fn);
+  }
+  if (functions_.empty())
+  {
+    functions_.push_back(Function::HEADLIGHT);
+    functions_.push_back(Function::BELL);
+    functions_.push_back(Function::HORN);
+  }
+  while (functions_.size() < locodb::MAX_LOCO_FUNCTIONS)
+  {
+    functions_.push_back(Function::UNKNOWN);
+  }
 }
 
-string Esp32TrainDbEntry::identifier()
-{
-  dcc::TrainAddressType addrType =
-    dcc_mode_to_address_type((DccMode)data_.mode, data_.address);
-  if (addrType == dcc::TrainAddressType::DCC_SHORT_ADDRESS ||
-      addrType == dcc::TrainAddressType::DCC_LONG_ADDRESS)
-  {
-    string prefix = "long_address";
-    if (addrType == dcc::TrainAddressType::DCC_SHORT_ADDRESS)
-    {
-      prefix = "short_address";
-    }
-    if ((data_.mode & DCC_SS_MASK) == 1)
-    {
-      return StringPrintf("dcc_14/%s/%d", prefix.c_str(), data_.address);
-    }
-    else if ((data_.mode & DCC_SS_MASK) == 2)
-    {
-      return StringPrintf("dcc_28/%s/%d", prefix.c_str(), data_.address);
-    }
-    else
-    {
-      return StringPrintf("dcc_128/%s/%d", prefix.c_str(), data_.address);
-    }
-  }
-  return StringPrintf("unknown/%d", data_.address);
-}
+static constexpr uint64_t const OLCB_NODE_ID_NAMESPACE   = 0x050101010000ULL;
 
 NodeID Esp32TrainDbEntry::get_traction_node()
 {
-  if (data_.mode == DCCMODE_OLCBUSER)
+  if (mode_ == DriveMode::OLCBUSER)
   {
-    return static_cast<NodeID>(OLCB_NODE_ID_USER | data_.address);
+    return static_cast<NodeID>(OLCB_NODE_ID_NAMESPACE | address_);
   }
   else
   {
     return TractionDefs::train_node_id_from_legacy(
-        dcc_mode_to_address_type((DccMode)data_.mode, data_.address), data_.address);
+        drive_mode_to_address_type(mode_, address_), address_);
   }
 }
 
-void Esp32TrainDbEntry::set_train_name(string name)
+ssize_t Esp32TrainDbEntry::file_offset()
 {
-  if (data_.name.compare(name))
+  if (is_persistable())
   {
-    if (name.length() > MAX_TRAIN_NAME_LEN)
-    {
-      LOG(WARNING,
-          "[Train:%d] Truncating name: %s -> %s", data_.address,
-          name.c_str(),
-          name.substr(0, MAX_TRAIN_NAME_LEN).c_str());
-      name.resize(MAX_TRAIN_NAME_LEN);
-    }
-    LOG(INFO, "[Train:%d] Setting name:%s", data_.address, name.c_str());
-    data_.name = std::move(name);
-    dirty_ = true;
+    return db_->get_index(address_);
   }
-}
-
-void Esp32TrainDbEntry::set_train_description(std::string description)
-{
-  
-  if (description.length() > MAX_TRAIN_DESC_LEN)
-  {
-    LOG(WARNING,
-        "[Train:%d] Truncating description: %s -> %s", data_.address,
-        description.c_str(),
-        description.substr(0, MAX_TRAIN_DESC_LEN).c_str());
-    description.resize(MAX_TRAIN_DESC_LEN);
-  }
-  LOG(INFO, "[Train:%d] Setting description:%s", data_.address,
-      description.c_str());
-  data_.description = std::move(description);
-  dirty_ = true;
-}
-
-void Esp32TrainDbEntry::set_legacy_address(uint16_t address)
-{
-  if (data_.address != address)
-  {
-    LOG(INFO, "[Train:%d] Updating address to:%d", data_.address, address);
-    data_.address = address;
-    dirty_ = true;
-  }
-}
-
-void Esp32TrainDbEntry::set_legacy_drive_mode(DccMode mode)
-{
-  if (data_.mode != mode)
-  {
-    LOG(INFO, "[Train:%d] Updating drive mode to:%d", data_.address, mode);
-    data_.mode = mode;
-    dirty_ = true;
-  }
-}
-
-Symbols Esp32TrainDbEntry::get_function_label(unsigned fn_id)
-{
-  // if the function id is larger than our max list reject it
-  if (fn_id > maxFn_)
-  {
-    return FN_NONEXISTANT;
-  }
-  // return the mapping for the function
-  return data_.functions[fn_id];
-}
-
-void Esp32TrainDbEntry::set_function_label(unsigned fn_id, Symbols label)
-{
-  if (data_.functions[fn_id] != label)
-  {
-    LOG(INFO, "[Train:%d] Setting fn:%d to %d", data_.address, fn_id, label);
-    data_.functions[fn_id] = label;
-    dirty_ = true;
-    recalcuate_max_fn();
-  }
-}
-
-void Esp32TrainDbEntry::set_auto_idle(bool idle)
-{
-  if (data_.automatic_idle != idle)
-  {
-    LOG(INFO, "[Train:%d] Setting auto-idle: %s", data_.address,
-        idle ? "On" : "Off");
-    data_.automatic_idle = idle;
-    dirty_ = true;
-  }
-}
-
-int Esp32TrainDbEntry::file_offset()
-{
-  if (persist_)
-  {
-    return db_->get_index(data_.address);
-  }
-  // non-persistent entries should not have an offset
   return -1;
-}
-
-void Esp32TrainDbEntry::recalcuate_max_fn()
-{
-  // recalculate the maxFn_ based on the first occurrence of FN_NONEXISTANT
-  // and if not found default to the size of the functions labels vector.
-  auto e = std::find_if(data_.functions.begin(), data_.functions.end()
-                      , [](const uint8_t &e)
-  {
-    return e == FN_NONEXISTANT;
-  });
-
-  if (e != data_.functions.end())
-  {
-    maxFn_ = std::distance(data_.functions.begin(), e);
-  }
-  else
-  {
-    maxFn_ = data_.functions.size();
-  }
 }
 
 std::string Esp32TrainDbEntry::to_json(bool readable)
 {
   string json = R"!^!({"addr":)!^!";
-  json += integer_to_string(data_.address);
+  json += integer_to_string(address_);
   json += R"!^!(,"name":")!^!";
-  json += data_.name;
+  json += name_;
   json += R"!^!(","desc":")!^!";
-  json += data_.description;
+  json += description_;
   json += R"!^!(","idle":)!^!";
-  if (data_.automatic_idle)
+  if (idle_)
   {
     json += R"!^!(true,)!^!";
   }
@@ -228,93 +96,45 @@ std::string Esp32TrainDbEntry::to_json(bool readable)
     json += R"!^!(false,)!^!";
   }
   json += R"!^!("mode":{"type":)!^!";
-  json += integer_to_string(data_.mode);
+  json += integer_to_string(mode_);
   if (readable)
   {
-    switch (data_.mode)
+    const char* label = drive_mode_to_string(mode_);
+    if (label)
     {
-      case DCCMODE_OLCBUSER:
-        json += R"!^!(,"name":"DCC-OlcbUser")!^!";
-        break;
-      case DCC_DEFAULT:
-        json += R"!^!(,"name":"DCC (auto speed step)")!^!";
-        break;
-      case DCC_14:
-        json += R"!^!(,"name":"DCC (14 speed step)")!^!";
-        break;
-      case DCC_14_LONG_ADDRESS:
-        json += R"!^!(,"name":"DCC (14 speed step, long address)")!^!";
-        break;
-      case DCC_28:
-        json += R"!^!(,"name":"DCC (28 speed step)")!^!";
-        break;
-      case DCC_28_LONG_ADDRESS:
-        json += R"!^!(,"name":"DCC (28 speed step, long address)")!^!";
-        break;
-      case DCC_128:
-        json += R"!^!(,"name":"DCC (128 speed step)")!^!";
-        break;
-      case DCC_128_LONG_ADDRESS:
-        json += R"!^!(,"name":"DCC (128 speed step, long address)")!^!";
-        break;
-      case DCCMODE_DEFAULT:
-      default:
-        json += R"!^!(,"name":"DCC (default)")!^!";
-        break;
+      json += StringPrintf(R"!^!(,"name":"%s")!^!", label);
+    }
+    else
+    {
+      json += R"!^!(,"name":"DCC (default)")!^!";
     }
   }
   json += R"!^!(},"fn":[)!^!";
-  for (size_t idx = 0; idx < DCC_MAX_FN; idx++)
+  size_t fn_id = 0;
+  for (Function fn : functions_)
   {
-    if (idx > 0)
+    if (fn_id > 0)
     {
       json += ",";
     }
     json += R"!^!({"id":)!^!";
-    json += integer_to_string(idx);
+    json += integer_to_string(fn_id);
     json += R"!^!(,"type":)!^!";
-    json += integer_to_string(data_.functions[idx]);
+    json += integer_to_string(fn);
     if (readable)
     {
-      switch (data_.functions[idx])
+      const char* label = locodb::function_to_string(fn);
+      if (label)
       {
-        case FN_NONEXISTANT:
-          json += R"!^!(,"name":"N/A")!^!";
-          break;
-        case LIGHT:
-          json += R"!^!(,"name":"Light")!^!";
-          break;
-        case HORN:
-          json += R"!^!(,"name":"Horn")!^!";
-          break;
-        case BELL:
-          json += R"!^!(,"name":"Bell")!^!";
-          break;
-        case WHISTLE:
-          json += R"!^!(,"name":"Whistle")!^!";
-          break;
-        case SHUNT:
-          json += R"!^!(,"name":"Shunting mode")!^!";
-          break;
-        case MOMENTUM:
-          json += R"!^!(,"name":"Momentum")!^!";
-          break;
-        case MUTE:
-          json += R"!^!(,"name":"Mute")!^!";
-          break;
-        case GENERIC:
-          json += R"!^!(,"name":"Function")!^!";
-          break;
-        case COUPLER:
-          json += R"!^!(,"name":"Coupler")!^!";
-          break;
-        case FN_UNKNOWN:
-        default:
-          json += R"!^!(,"name":"Unknown")!^!";
-          break;
+        json += StringPrintf(R"!^!(,"name":"%s")!^!", label);
+      }
+      else
+      {
+        json += StringPrintf(R"!^!(,"name":"f%d")!^!", fn_id);
       }
     }
     json += R"!^!(})!^!";
+    fn_id++;
   }
   json += R"!^!(]})!^!";
   json.shrink_to_fit();

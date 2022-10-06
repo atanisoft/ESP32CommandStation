@@ -41,11 +41,12 @@ set(CUSTOM_DEPS
     HttpServer
     NeoPixelBus
     NvsManager
+    OpenMRNExtensions
     OpenMRNIDF
     StatusDisplay
     StatusLED
     TrainDatabase
-    TrainSearchProtocol
+    TrainManager
     ULPADC
     Utils
 )

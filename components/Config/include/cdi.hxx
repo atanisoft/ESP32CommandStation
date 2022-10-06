@@ -26,6 +26,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include "ThermalConfigurationGroup.hxx"
 #include "TrackOutputDescriptor.hxx"
 #include "WiFiConfigurationGroup.hxx"
+#if 0
+#include <locodb/LocoDatabaseVirtualMemorySpace.hxx>
+#endif
 #include <openlcb/ConfigRepresentation.hxx>
 #include <openlcb/MemoryConfig.hxx>
 
@@ -67,6 +70,10 @@ CDI_GROUP_ENTRY(fastclock, FastClockConfiguration, Name("Fast Clock"));
 /// OpenLCB Real Time Clock configuration.
 CDI_GROUP_ENTRY(realtime_clock, RealTimeClockConfiguration,
                 Name("Real-time Clock"));
+#if 0
+CDI_GROUP_ENTRY(loco_db, locodb::TrainDatabaseSegment,
+                Name("Locomotive Roster"));
+#endif
 CDI_GROUP_END();
 
 } // namespace esp32cs
@@ -539,7 +546,64 @@ Common ID values:
 01.01.00.00.01.02 - Alternate Clock 1
 01.01.00.00.01.03 - Alternate Clock 2</description>
 </string>
+</segment>)xmlpayload"
+#if 0
+<segment space='187' origin='2048'>
+<name>Locomotive Roster</name>
+<int size='2'>
+<name>Entry Number</name>
+<description>Locomotive Database entry number, write to this value and refresh other fields to load current values.</description>
+<default>0</default>
+</int>
+<int size='2'>
+<name>Entry Number</name>
+<description>Maximum value Locomotive Database entry number, read-only. Attempting to write to this value will be ignored.</description>
+<default>0</default>
+</int>
+<int size='2'>
+<name>Address</name>
+<description>Track protocol address of the train.</description>
+<default>0</default>
+</int>
+<int size='1'>
+<name>Protocol</name>
+<description>Protocol to use on the track for driving this train.</description>
+<default>11</default>
+<map><relation><property>9</property><value>DCC (14 speed steps)</value></relation><relation><property>10</property><value>DCC (28 speed steps)</value></relation><relation><property>11</property><value>DCC (128 speed steps)</value></relation><relation><property>13</property><value>DCC (14 speed steps, long address)</value></relation><relation><property>14</property><value>DCC (28 speed steps, long address)</value></relation><relation><property>15</property><value>DCC (128 speed steps, long address)</value></relation><relation><property>4</property><value>Marklin (default)</value></relation><relation><property>5</property><value>Marklin v1 (F0 only)</value></relation><relation><property>6</property><value>Marklin v2 (F0-F4)</value></relation><relation><property>7</property><value>Marklin v2+ (F0-F8, two addresses)</value></relation></map>
+</int>
+<string size='63'>
+<name>Name</name>
+<description>Identifies the train node on the LCC bus.</description>
+</string>
+<string size='64'>
+<name>Description</name>
+<description>Describes the train node on the LCC bus.</description>
+</string>
+<group>
+<name>F0</name>
+<description>F0 is permanently assigned to the Headlight.</description>
+<group offset='2'/>
+</group>
+<group replication='28'>
+<name>Functions</name>
+<description>Defines what each function button does.</description>
+<repname>Fn</repname>
+<int size='1'>
+<name>Display</name>
+<description>Defines how throttles display this function.</description>
+<default>0</default>
+<map><relation><property>0</property><value>Not Available</value></relation><relation><property>1</property><value>Headlight</value></relation><relation><property>4</property><value>Engine</value></relation><relation><property>6</property><value>Announce</value></relation><relation><property>7</property><value>Shunting Mode</value></relation><relation><property>8</property><value>Momentum</value></relation><relation><property>9</property><value>Uncouple</value></relation><relation><property>10</property><value>Smoke</value></relation><relation><property>11</property><value>Pantograph</value></relation><relation><property>12</property><value>Far Light</value></relation><relation><property>13</property><value>Bell</value></relation><relation><property>14</property><value>Horn</value></relation><relation><property>15</property><value>Whistle</value></relation><relation><property>16</property><value>Light</value></relation><relation><property>17</property><value>Mute</value></relation><relation><property>127</property><value>Unknown</value></relation><relation><property>255</property><value>Undefined</value></relation></map>
+</int>
+<int size='1'>
+<name>Momentary</name>
+<description>Momentary functions are automatically turned off when you release the respective button on the throttles.</description>
+<default>0</default>
+<map><relation><property>0</property><value>Latching</value></relation><relation><property>1</property><value>Momentary</value></relation></map>
+</int>
+</group>
 </segment>
+#endif
+R"xmlpayload(
 </cdi>
 )xmlpayload";
 extern const size_t CDI_SIZE;

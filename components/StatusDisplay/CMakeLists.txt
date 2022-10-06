@@ -6,7 +6,7 @@ set(CUSTOM_DEPS
     Config
     NvsManager
     OpenMRNIDF
-    TrainSearchProtocol
+    OpenMRNExtensions
 )
 
 idf_component_register(SRCS StatusDisplay.cpp StatusDisplayLCD.cpp StatusDisplayOLED.cpp

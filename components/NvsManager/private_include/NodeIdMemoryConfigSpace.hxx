@@ -1,19 +1,10 @@
-/**********************************************************************
-ESP32 COMMAND STATION
-
-COPYRIGHT (c) 2017-2021 Mike Dunston
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see http://www.gnu.org/licenses
-**********************************************************************/
+/*
+ * SPDX-FileCopyrightText: 2017-2022 Mike Dunston (atanisoft)
+ *
+ * SPDX-License-Identifier: GPL-3.0
+ * 
+ * This file is part of ESP32 Command Station.
+ */
 
 #ifndef NODEID_MEMORY_CONFIG_SPACE_HXX_
 #define NODEID_MEMORY_CONFIG_SPACE_HXX_
@@ -26,7 +17,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <utils/logging.h>
 #include <utils/Singleton.hxx>
 
-#include "StringUtils.hxx"
+#include <utils/StringUtils.hxx>
 #include "sdkconfig.h"
 
 namespace esp32cs
@@ -48,25 +39,25 @@ public:
     /// be registered with.
     /// @param node_id is the current node identifier.
     NodeIdMemoryConfigSpace(openlcb::SimpleStackBase *stack, NvsManager *nvs)
-      : nvs_(nvs), id_(node_id_to_string(nvs->node_id())),
+      : nvs_(nvs), id_(utils::node_id_to_string(nvs->node_id())),
         nodeid_(nvs->node_id())
     {
         register_string(node_id_config.node_id(),
             [&](unsigned repeat, string *contents, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 LOG(VERBOSE, "[NodeIdMemCfg-READ] %s", id_.c_str());
                 *contents = id_;
-                done->notify();
             },
             [&](unsigned repeat, string contents, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 LOG(VERBOSE, "[NodeIdMemCfg-WRITE] %s", contents.c_str());
-                uint64_t new_node_id = string_to_uint64(contents);
+                uint64_t new_node_id = utils::string_to_uint64(contents);
                 nvs->node_id(new_node_id);
                 updated_ = true;
                 nodeid_ = new_node_id;
                 id_ = std::move(contents);
-                done->notify();
             }
         );
         LOG(INFO, "[NodeIdMemCfg:%02x] NodeID: %s", SPACE, id_.c_str());

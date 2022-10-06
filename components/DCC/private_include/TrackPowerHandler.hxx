@@ -19,7 +19,7 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 
 #include <dcc/DccOutput.hxx>
 #include <openlcb/EventHandlerTemplates.hxx>
-#include <StringUtils.hxx>
+#include <utils/StringUtils.hxx>
 
 namespace esp32cs
 {
@@ -35,8 +35,8 @@ public:
   {
     LOG(INFO,
        "[Track Power] Registering OpenLCB event consumer (On:%s, Off:%s)",
-       event_id_to_string(event_on()).c_str(),
-       event_id_to_string(event_off()).c_str());
+       utils::event_id_to_string(event_on()).c_str(),
+       utils::event_id_to_string(event_off()).c_str());
   }
 
   openlcb::EventState get_current_state() override
@@ -46,11 +46,11 @@ public:
     if (DCC_BOOSTER::should_be_enabled())
     {
       LOG(VERBOSE, "[Track Power] ON (%s)",
-          event_id_to_string(event_on()).c_str());
+          utils::event_id_to_string(event_on()).c_str());
       return openlcb::EventState::VALID;
     }
       LOG(VERBOSE, "[Track Power] OFF (%s)",
-          event_id_to_string(event_off()).c_str());
+          utils::event_id_to_string(event_off()).c_str());
     return openlcb::EventState::INVALID;
   }
 
