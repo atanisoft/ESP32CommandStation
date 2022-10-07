@@ -1351,35 +1351,40 @@ menu "ESP32 Command Station Configuration"
                         Selecting this option uses SDMMC mode for accessing the SD
                         card. This usually results in higher performance but may
                         not work on all ESP32 boards.
+                    depends on IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
             endchoice
 
             menu "SD SPI Pins"
-                # SD SPI pin mapping is only configurable on the ESP32-S3
-                visible if IDF_TARGET_ESP32S3
+                # SD SPI pin mapping is configurable on the ESP32-S2 and ESP32-S3
+                visible if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
                 config SD_SPI_MISO
                     int "MISO pin"
                     range 0 ESP32CS_GPIO_INPUT_PIN_MAX
                     default 2 if IDF_TARGET_ESP32
+                    default 1 if IDF_TARGET_ESP32S2
                     default 41 if IDF_TARGET_ESP32S3
                 config SD_SPI_MOSI
                     int "MOSI pin"
                     range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                     default 15 if IDF_TARGET_ESP32
+                    default 2 if IDF_TARGET_ESP32S2
                     default 40 if IDF_TARGET_ESP32S3
                 config SD_SPI_CLOCK
                     int "Clock pin"
                     range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                     default 14 if IDF_TARGET_ESP32
+                    default 3 if IDF_TARGET_ESP32S2
                     default 39 if IDF_TARGET_ESP32S3
                 config SD_SPI_SELECT
                     int "Chip Select pin"
                     range 0 ESP32CS_GPIO_OUTPUT_PIN_MAX
                     default 13 if IDF_TARGET_ESP32
+                    default 4 if IDF_TARGET_ESP32S2
                     default 42 if IDF_TARGET_ESP32S3
             endmenu
 
             menu "SD MMC Pins"
-                # SD_MMC pin mapping is only configurable on the ESP32-S3
+                # SD_MMC pin mapping is configurable on the ESP32-S3
                 visible if IDF_TARGET_ESP32S3
                 config SD_MMC_CLOCK
                     int "Clock pin"

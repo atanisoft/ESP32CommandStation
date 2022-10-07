@@ -43,17 +43,21 @@ jobs:
         with:
           esp_idf_version: ${{ steps.target.outputs._1 }}
           target: ${{ steps.target.outputs._0 }}
-      - name: Prepare Binaries
+      - name: Stage binaries
         run: |
-          mkdir -p binaries
+          set +x
+          mkdir binaries
           cp .github/firmwarereadme.txt binaries/readme.txt
           cp build/ESP32CommandStation.bin binaries
           cp build/partition_table/partition-table.bin binaries
           cp build/ota_data_initial.bin binaries
           cp build/bootloader/bootloader.bin binaries
+      - name: Extract configuration for binaries
+        run: |
+          set +x
           egrep 'I2C|STATUS|FACTORY|BOOTLOADER|TWAI' sdkconfig | grep _PIN | egrep -v '^#'> binaries/pinmap.txt
-          egrep 'CONFIG_SD_SPI' sdkconfig | egrep -v '^#' >> binaries/pinmap.txt
-          egrep 'CONFIG_WIFI_SOFTAP_[SSID|PASSWORD]|CONFIG_WIFI_STATION' sdkconfig | egrep -v '^#' >> binaries/wifi.txt
+          egrep 'CONFIG_SD_' sdkconfig | egrep -v '^#' >> binaries/pinmap.txt
+          egrep 'SOFTAP_SSID|SOFTAP_PASSWORD|CONFIG_WIFI_STATION' sdkconfig | egrep -v '^#' >> binaries/wifi.txt
           cat .github/pinmap_${{ steps.target.outputs._2 }}.txt >> binaries/pinmap.txt
           cat .github/adc_pinmap_${{ steps.target.outputs._0 }}.txt >> binaries/pinmap.txt
       - name: Package binaries
