@@ -5,16 +5,24 @@
  * SPDX-License-Identifier: MIT
  */
 
-
 #include "locodb/Defs.hxx"
 #include "locodb/LocoDatabase.hxx"
 #include "trainsearch/Defs.hxx"
 
 #include <cctype>
 #include <openlcb/TractionDefs.hxx>
+#include <utils/logging.h>
 
 namespace trainsearch
 {
+
+#ifndef TSP_LOG_LEVEL
+#ifdef CONFIG_TSP_LOGGING_LEVEL
+#define TSP_LOG_LEVEL CONFIG_TSP_LOGGING_LEVEL
+#else
+#define TSP_LOG_LEVEL VERBOSE
+#endif // CONFIG_TSP_LOGGING_LEVEL
+#endif // TSP_LOG_LEVEL
 
 using dcc::TrainAddressType;
 using locodb::DriveMode;
@@ -275,13 +283,15 @@ uint8_t TrainSearchDefs::match_query_to_node(
       // matches.
       return MATCH_ANY | ADDRESS_ONLY | EXACT;
     }
+#if TSP_LOG_LEVEL >= VERBOSE
     else
     {
-      LOG(CONFIG_TSP_LOGGING_LEVEL,
+      LOG(TSP_LOG_LEVEL,
           "exact match failed due to mode: desired %d actual %d",
           static_cast<int>(desired_address_type),
           static_cast<int>(actual_address_type));
     }
+#endif
     has_address_prefix_match = ((event & EXACT) == 0);
   }
   if (((event & EXACT) == 0) && address_type_match)\

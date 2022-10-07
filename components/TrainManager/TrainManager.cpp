@@ -17,20 +17,29 @@
 #include "TrainSnipHandler.hxx"
 
 #include <algorithm>
-
 #include <dcc/Loco.hxx>
 #include <functional>
-#include <trainsearch/TrainSearchProtocolServer.hxx>
+#include <locodb/LocoDatabaseEntryCdi.hxx>
+
 #include <openlcb/EventHandlerTemplates.hxx>
 #include <openlcb/MemoryConfig.hxx>
 #include <openlcb/TractionDefs.hxx>
 #include <openlcb/TractionTrain.hxx>
-#include <utils/StringUtils.hxx>
-#include <locodb/LocoDatabaseEntryCdi.hxx>
+#include <trainsearch/TrainSearchProtocolServer.hxx>
 #include <utils/format_utils.hxx>
+#include <utils/logging.h>
+#include <utils/StringUtils.hxx>
 
 namespace trainmanager
 {
+
+#ifndef TRAINMGR_LOGLEVEL
+#ifdef CONFIG_TSP_LOGGING_LEVEL
+#define TRAINMGR_LOGLEVEL CONFIG_TSP_LOGGING_LEVEL
+#else
+#define TRAINMGR_LOGLEVEL VERBOSE
+#endif // TRAINMGR_LOGLEVEL
+#endif // TRAINMGR_LOGLEVEL
 
 using dcc::TrainAddressType;
 using locodb::DriveMode;
@@ -100,9 +109,10 @@ void TrainManager::delete_train(DriveMode drive_type, int address)
   {
     LazyInitTrainNode *impl = (*ent);
     impl->iface()->delete_local_node(impl);
-    LOG(CONFIG_TSP_LOGGING_LEVEL,
-        "[TrainManager] %s deleted as it used address:%d",
+#if TRAINMGR_LOGLEVEL >= VERBOSE
+    LOG(TRAINMGR_LOGLEVEL, "[TrainManager] %s deleted as it used address:%d",
         utils::node_id_to_string(impl->node_id()).c_str(), address);
+#endif // TRAINMGR_LOGLEVEL >= VERBOSE
     delete impl;
     trains_.erase(ent);
   }
@@ -129,14 +139,16 @@ TrainImpl* TrainManager::find_or_create_train(DriveMode drive_type, int address)
       });
     if (ent != trains_.end())
     {
-      LOG(CONFIG_TSP_LOGGING_LEVEL,
+#if TRAINMGR_LOGLEVEL >= VERBOSE
+      LOG(TRAINMGR_LOGLEVEL,
           "[TrainManager] Found %s matching drive: %d with address %d",
           utils::node_id_to_string((*ent)->node_id()).c_str(),
           static_cast<int>(drive_type), address);
+#endif // TRAINMGR_LOGLEVEL >= VERBOSE
       return (*ent)->train();
     }
   }
-  LOG(CONFIG_TSP_LOGGING_LEVEL,
+  LOG(TRAINMGR_LOGLEVEL,
       "[TrainManager] No existing loco found for drive: %d address %d, trying "
       "to allocate", drive_type, address);
   // no active train was found with the drive type and address, attempt to
@@ -144,10 +156,12 @@ TrainImpl* TrainManager::find_or_create_train(DriveMode drive_type, int address)
   auto impl = find_node(create_train_node(drive_type, address));
   if (impl)
   {
-    LOG(CONFIG_TSP_LOGGING_LEVEL,
+#if TRAINMGR_LOGLEVEL >= VERBOSE
+    LOG(TRAINMGR_LOGLEVEL,
         "[TrainManager] %s created for drive: %d with address %d",
         utils::node_id_to_string(impl->node_id()).c_str(),
         static_cast<int>(drive_type), address);
+#endif // TRAINMGR_LOGLEVEL >= VERBOSE
     return impl->train();
   }
   LOG_ERROR("[TrainManager] Failed to locate/create locomotive for drive: %d "
@@ -212,13 +226,18 @@ LazyInitTrainNode* TrainManager::find_node(NodeID node_id, bool allocate)
                 static_cast<int>(type));
       return nullptr;
     }
-    LOG(CONFIG_TSP_LOGGING_LEVEL, "[TrainManager] Checking db for node id: %s",
+#if TRAINMGR_LOGLEVEL >= VERBOSE
+    LOG(TRAINMGR_LOGLEVEL, "[TrainManager] Checking db for node id: %s",
         utils::node_id_to_string(node_id).c_str());
+#endif // TRAINMGR_LOGLEVEL >= VERBOSE
+
     auto train = Singleton<LocoDatabase>::instance()->get_entry(node_id, addr);
     if (train != nullptr)
     {
-      LOG(CONFIG_TSP_LOGGING_LEVEL, "[TrainManager] Matched %s",
+#if TRAINMGR_LOGLEVEL >= VERBOSE
+      LOG(TRAINMGR_LOGLEVEL, "[TrainManager] Matched %s",
           train->identifier().c_str());
+#endif // TRAINMGR_LOGLEVEL >= VERBOSE
       return create_impl(train->file_offset(), train->get_legacy_drive_mode(),
                          train->get_legacy_address());
     }
@@ -244,21 +263,23 @@ NodeID TrainManager::get_train_node_id(size_t offset)
     }
   }
 
-  LOG(CONFIG_TSP_LOGGING_LEVEL,
+  LOG(TRAINMGR_LOGLEVEL,
       "[TrainManager] no active train with offset %zu, checking db", offset);
   auto ent = Singleton<LocoDatabase>::instance()->get_entry(offset);
   if (ent)
   {
-    LOG(CONFIG_TSP_LOGGING_LEVEL,
+#if TRAINMGR_LOGLEVEL >= VERBOSE
+    LOG(TRAINMGR_LOGLEVEL,
         "[TrainManager] found existing db entry %s, creating node %s",
         ent->identifier().c_str(),
         utils::node_id_to_string(ent->get_traction_node()).c_str());
+#endif // TRAINMGR_LOGLEVEL >= VERBOSE
     create_impl(offset, ent->get_legacy_drive_mode(),
                 ent->get_legacy_address());
     return ent->get_traction_node();
   }
 
-  LOG(CONFIG_TSP_LOGGING_LEVEL,
+  LOG(TRAINMGR_LOGLEVEL,
       "[TrainManager] no train node found for index %d, giving up", offset);
   return 0;
 }
@@ -272,10 +293,11 @@ LazyInitTrainNode* TrainManager::create_impl(
     OSMutexLock l(&trainsLock_);
     trains_.push_back(impl);
   }
-  LOG(CONFIG_TSP_LOGGING_LEVEL,
-      "[TrainManager] %s created for drive:%d with address:%d",
+#if TRAINMGR_LOGLEVEL >= VERBOSE
+  LOG(TRAINMGR_LOGLEVEL, "[TrainManager] %s created for drive:%d with addr:%d",
       utils::node_id_to_string(impl->node_id()).c_str(),
       static_cast<int>(mode), address);
+#endif // TRAINMGR_LOGLEVEL >= VERBOSE
   return impl;
 }
 
@@ -307,10 +329,11 @@ NodeID TrainManager::create_train_node(DriveMode drive_type, uint16_t address)
     // TODO: should we remove the new entry?
     return 0;
   }
-  LOG(CONFIG_TSP_LOGGING_LEVEL,
-      "[TrainManager] %s created for drive:%s (%d) with address:%d",
+#if TRAINMGR_LOGLEVEL >= VERBOSE
+  LOG(TRAINMGR_LOGLEVEL, "[TrainManager] %s created for mode:%s address:%d",
       utils::node_id_to_string(impl->node_id()).c_str(),
-      locodb::drive_mode_to_string(drive_type), static_cast<int>(drive_type), address);
+      locodb::drive_mode_to_string(drive_type), address);
+#endif // TRAINMGR_LOGLEVEL >= VERBOSE
   return impl->node_id();
 }
 

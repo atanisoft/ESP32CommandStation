@@ -12,6 +12,7 @@
 #include <openlcb/Node.hxx>
 #include <openlcb/VirtualMemorySpace.hxx>
 #include <locodb/LocoDatabaseEntryCdi.hxx>
+#include <utils/logging.h>
 
 namespace trainmanager
 {
@@ -22,11 +23,11 @@ using locodb::LocoDatabase;
 using locodb::TrainConfigDef;
 
 #ifndef TRAINCONFIG_LOGLEVEL
-#ifdef CONFIG_TSP_LOGGING_LEVEL
-#define TRAINCONFIG_LOGLEVEL CONFIG_TSP_LOGGING_LEVEL
+#ifdef CONFIG_LOCOMGR_CONFIG_LOGGING
+#define TRAINCONFIG_LOGLEVEL CONFIG_LOCOMGR_CONFIG_LOGGING
 #else
 #define TRAINCONFIG_LOGLEVEL VERBOSE
-#endif // CONFIG_TSP_LOGGING_LEVEL
+#endif // CONFIG_LOCOMGR_CONFIG_LOGGING
 #endif // TRAINCONFIG_LOGLEVEL
 
 static constexpr TrainConfigDef cfg_holder(TrainConfigDef::group_opts().offset());
@@ -95,10 +96,11 @@ PersistentTrainConfigSpace::typed_reader(int index)
       case cfg_holder.train().fn().all_functions().entry<0>().icon().offset():
       {
         uint8_t label = train_->get_function_def(repeat + 1);
+#if TRAINCONFIG_LOGLEVEL >= VERBOSE
         LOG(TRAINCONFIG_LOGLEVEL, "[FN: %d/%s] orig label: %d",
             repeat + 1, train_->identifier().c_str(), label);
-        if (label == Function::UNINITIALIZED ||
-            label == Function::MOMENTARY)
+#endif // TRAINCONFIG_LOGLEVEL >= VERBOSE
+        if (label == Function::UNINITIALIZED || label == Function::MOMENTARY)
         {
           label = Function::UNKNOWN;
         }
@@ -106,15 +108,19 @@ PersistentTrainConfigSpace::typed_reader(int index)
         {
           label &= ~Function::MOMENTARY;
         }
+#if TRAINCONFIG_LOGLEVEL >= VERBOSE
         LOG(TRAINCONFIG_LOGLEVEL, "[FN: %d/%s] returning label as: %d",
             repeat + 1, train_->identifier().c_str(), label);
+#endif // TRAINCONFIG_LOGLEVEL >= VERBOSE
         return (T)label;
       }
       case cfg_holder.train().fn().all_functions().entry<0>().is_momentary().offset():
       {
         uint8_t label = train_->get_function_def(repeat + 1);
+#if TRAINCONFIG_LOGLEVEL >= VERBOSE
         LOG(TRAINCONFIG_LOGLEVEL, "[FN: %d/%s] label: %d", repeat + 1,
             train_->identifier().c_str(), label);
+#endif // TRAINCONFIG_LOGLEVEL >= VERBOSE
         if (label != Function::UNKNOWN &&
             label != Function::UNINITIALIZED &&
             label != Function::MOMENTARY)

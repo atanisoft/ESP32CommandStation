@@ -11,10 +11,18 @@
 #include <locodb/LocoDatabase.hxx>
 #include <openlcb/MemoryConfig.hxx>
 #include <openlcb/Node.hxx>
-
+#include <utils/logging.h>
 
 namespace trainmanager
 {
+#ifndef TRAINCONFIG_LOGLEVEL
+#ifdef CONFIG_LOCOMGR_CONFIG_LOGGING
+#define TRAINCONFIG_LOGLEVEL CONFIG_LOCOMGR_CONFIG_LOGGING
+#else
+#define TRAINCONFIG_LOGLEVEL VERBOSE
+#endif // CONFIG_LOCOMGR_CONFIG_LOGGING
+#endif // TRAINCONFIG_LOGLEVEL
+
 using openlcb::Defs;
 using openlcb::MemorySpace;
 using openlcb::Node;
@@ -46,8 +54,9 @@ MemorySpace::address_t TrainFDISpace::max_address()
   return 16 << 20;
 }
 
-size_t TrainFDISpace::read(address_t source, uint8_t *dst, size_t len, errorcode_t *error,
-                            Notifiable *again)
+size_t TrainFDISpace::read(
+  address_t source, uint8_t *dst, size_t len, errorcode_t *error,
+  Notifiable *again)
 {
   if (source <= gen_.file_offset())
   {
@@ -56,13 +65,14 @@ size_t TrainFDISpace::read(address_t source, uint8_t *dst, size_t len, errorcode
   ssize_t result = gen_.read(source, dst, len);
   if (result < 0)
   {
-    LOG_ERROR("[TrainFDI] Read failure: %u, %zu: %zu (%s)", source, len, result, strerror(errno));
+    LOG_ERROR("[TrainFDI] Read failure: %u, %zu: %zu (%s)", source, len,
+              result, strerror(errno));
     *error = Defs::ERROR_PERMANENT;
     return 0;
   }
   if (result == 0)
   {
-    LOG(CONFIG_TSP_LOGGING_LEVEL, "[TrainFDI] Out-of-bounds read: %u, %zu",
+    LOG(TRAINCONFIG_LOGLEVEL, "[TrainFDI] Out-of-bounds read: %u, %zu",
         source, len);
     *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
   }

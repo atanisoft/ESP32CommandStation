@@ -338,20 +338,22 @@ menu "ESP32 Command Station Configuration"
                     default value should be sufficient.
                     
             menu "RMT"
-                choice DCC_RMT_LOGGING
-                    bool "Log level"
-                    default DCC_RMT_LOGGING_MINIMAL
-                    config DCC_RMT_LOGGING_VERBOSE
-                        bool "Verbose"
-                    config DCC_RMT_LOGGING_MINIMAL
-                        bool "Minimal"
-                endchoice
+                menu "Logging"
+                    choice DCC_RMT_LOGGING
+                        bool "RMT Log level"
+                        default DCC_RMT_LOGGING_MINIMAL
+                        config DCC_RMT_LOGGING_VERBOSE
+                            bool "Verbose"
+                        config DCC_RMT_LOGGING_MINIMAL
+                            bool "Minimal"
+                    endchoice
 
-                config DCC_RMT_LOG_LEVEL
-                    int
-                    default 4 if DCC_RMT_LOGGING_MINIMAL
-                    default 3 if DCC_RMT_LOGGING_VERBOSE
-                    default 5
+                    config DCC_RMT_LOG_LEVEL
+                        int
+                        default 4 if DCC_RMT_LOGGING_MINIMAL
+                        default 3 if DCC_RMT_LOGGING_VERBOSE
+                        default 5
+                endmenu
 
                 config DCC_RMT_EMC_SPREAD
                     bool "EMC spectrum spreading"
@@ -532,24 +534,6 @@ menu "ESP32 Command Station Configuration"
                     help
                         This is the clock ID that will be created and advertised.
                         Real-Time clock defaults to 0x010100000101.
-            endmenu
-        endmenu
-
-        menu "Train Search Protocol"
-            menu "Advanced Configuration"
-                choice TSP_LOGGING
-                    bool "Log level"
-                    default TSP_LOGGING_MINIMAL
-                    config TSP_LOGGING_VERBOSE
-                        bool "Verbose"
-                    config TSP_LOGGING_MINIMAL
-                        bool "Minimal"
-                endchoice
-                config TSP_LOGGING_LEVEL
-                    int
-                    default 4 if TSP_LOGGING_MINIMAL
-                    default 3 if TSP_LOGGING_VERBOSE
-                    default 5
             endmenu
         endmenu
 
@@ -1493,33 +1477,37 @@ menu "ESP32 Command Station Configuration"
                 int "Number of seconds between automatic persistence of accessory decoder database"
                 default 30
 
-            choice TURNOUT_LOGGING
-                bool "Log level"
-                default TURNOUT_LOGGING_MINIMAL
-                config TURNOUT_LOGGING_VERBOSE
-                    bool "Verbose"
-                config TURNOUT_LOGGING_MINIMAL
-                    bool "Minimal"
-            endchoice
-
-            config TURNOUT_LOG_LEVEL
-                int
-                default 4 if TURNOUT_LOGGING_MINIMAL
-                default 3 if TURNOUT_LOGGING_VERBOSE
-                default 5
+            menu "Logging"
+                choice TURNOUT_LOGGING
+                    bool "Log level"
+                    default TURNOUT_LOGGING_MINIMAL
+                    config TURNOUT_LOGGING_VERBOSE
+                        bool "Verbose"
+                    config TURNOUT_LOGGING_MINIMAL
+                        bool "Minimal"
+                endchoice
+                config TURNOUT_LOG_LEVEL
+                    int
+                    default 4 if TURNOUT_LOGGING_MINIMAL
+                    default 3 if TURNOUT_LOGGING_VERBOSE
+                    default 5
+            endmenu
         endmenu
     endmenu
 
-    menu "Locomotive Roster"
+    menu "Locomotive Management"
         config ROSTER_AUTO_IDLE_NEW_LOCOS
-            bool "Enable automatic idle for newly created roster entries"
+            bool "Enable automatic idle for new locomotive roster entries?"
             default n
             help
-                By enabling this option, when any roster entry is newly added to
-                the database it will default to automatic idle.
+                By enabling this option, when any roster entry is newly added
+                to the database it will default to automatic idle.
+                Additionally, any automatic idle locomotives will receive DCC
+                packets automatically even if not currently in use. These will
+                default to speed step 0 (not moving).
 
         config ROSTER_AUTO_CREATE_ENTRIES
-            bool "Create roster entry for new locomotives on first use"
+            bool "Automatically create new locomotive roster entries on first use?"
             default y
             help
                 By enabling this option, any train that is requested that does not
@@ -1536,20 +1524,105 @@ menu "ESP32 Command Station Configuration"
                     done to minimize the number of write operations when roster entries
                     are modified.
 
-            choice ROSTER_LOGGING
-                bool "Log level"
-                default ROSTER_LOGGING_MINIMAL
-                config ROSTER_LOGGING_VERBOSE
-                    bool "Verbose"
-                config ROSTER_LOGGING_MINIMAL
-                    bool "Minimal"
-            endchoice
+            menu "Logging"
+                choice ROSTER_LOGGING
+                    bool "Roster Log level"
+                    default ROSTER_LOGGING_MINIMAL
+                    config ROSTER_LOGGING_VERBOSE
+                        bool "Verbose"
+                    config ROSTER_LOGGING_MINIMAL
+                        bool "Minimal"
+                endchoice
+                config ROSTER_LOG_LEVEL
+                    int
+                    default 4 if ROSTER_LOGGING_MINIMAL
+                    default 3 if ROSTER_LOGGING_VERBOSE
+                    default 5
 
-            config ROSTER_LOG_LEVEL
-                int
-                default 4 if ROSTER_LOGGING_MINIMAL
-                default 3 if ROSTER_LOGGING_VERBOSE
-                default 5
+                choice TSP_LOGGING
+                    bool "Train Search Log level"
+                    default TSP_LOGGING_MINIMAL
+                    config TSP_LOGGING_VERBOSE
+                        bool "Verbose"
+                    config TSP_LOGGING_MINIMAL
+                        bool "Minimal"
+                endchoice
+                config TSP_LOGGING_LEVEL
+                    int
+                    default 4 if TSP_LOGGING_MINIMAL
+                    default 3 if TSP_LOGGING_VERBOSE
+                    default 5
+    
+                choice LOCODB_VMS_LOGGING
+                    bool "Locomotive Roster MemorySpace Log level"
+                    default LOCODB_VMS_LOGGING_MINIMAL
+                    config LOCODB_VMS_LOGGING_VERBOSE
+                        bool "Verbose"
+                    config LOCODB_VMS_LOGGING_MINIMAL
+                        bool "Minimal"
+                endchoice
+                config LOCODB_VMS_LOGGING_LEVEL
+                    int
+                    default 4 if LOCODB_VMS_LOGGING_MINIMAL
+                    default 3 if LOCODB_VMS_LOGGING_VERBOSE
+                    default 5
+        
+                choice LOCOMGR_LOGGING
+                    bool "Locomotive Manager Log level"
+                    default LOCOMGR_LOGGING_MINIMAL
+                    config LOCOMGR_LOGGING_VERBOSE
+                        bool "Verbose"
+                    config LOCOMGR_LOGGING_MINIMAL
+                        bool "Minimal"
+                endchoice
+                config LOCOMGR_LOGGING_LEVEL
+                    int
+                    default 4 if LOCOMGR_LOGGING_MINIMAL
+                    default 3 if LOCOMGR_LOGGING_VERBOSE
+                    default 5
+
+                choice LOCOMGR_NODE_LOGGING
+                    bool "Locomotive Node Log level"
+                    default LOCOMGR_NODE_LOGGING_MINIMAL
+                    config LOCOMGR_NODE_LOGGING_VERBOSE
+                        bool "Verbose"
+                    config LOCOMGR_NODE_LOGGING_MINIMAL
+                        bool "Minimal"
+                endchoice
+                config LOCOMGR_NODE_LOGGING_LEVEL
+                    int
+                    default 4 if LOCOMGR_NODE_LOGGING_MINIMAL
+                    default 3 if LOCOMGR_NODE_LOGGING_VERBOSE
+                    default 5
+
+                choice LOCOMGR_CONFIG_LOGGING
+                    bool "Locomotive Configuration Log level"
+                    default LOCOMGR_CONFIG_LOGGING_MINIMAL
+                    config LOCOMGR_CONFIG_LOGGING_VERBOSE
+                        bool "Verbose"
+                    config LOCOMGR_CONFIG_LOGGING_MINIMAL
+                        bool "Minimal"
+                endchoice
+                config LOCOMGR_CONFIG_LOGGING_LEVEL
+                    int
+                    default 4 if LOCOMGR_CONFIG_LOGGING_MINIMAL
+                    default 3 if LOCOMGR_CONFIG_LOGGING_VERBOSE
+                    default 5
+
+                choice LOCOMGR_IDENT_LOGGING
+                    bool "Locomotive Configuration Log level"
+                    default LOCOMGR_IDENT_LOGGING_MINIMAL
+                    config LOCOMGR_IDENT_LOGGING_VERBOSE
+                        bool "Verbose"
+                    config LOCOMGR_IDENT_LOGGING_MINIMAL
+                        bool "Minimal"
+                endchoice
+                config LOCOMGR_IDENT_LOGGING_LEVEL
+                    int
+                    default 4 if LOCOMGR_IDENT_LOGGING_MINIMAL
+                    default 3 if LOCOMGR_IDENT_LOGGING_VERBOSE
+                    default 5
+            endmenu
         endmenu
     endmenu
 

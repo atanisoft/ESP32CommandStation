@@ -11,9 +11,18 @@
 #include <openlcb/Defs.hxx>
 #include <openlcb/If.hxx>
 #include <openlcb/TractionDefs.hxx>
+#include <utils/logging.h>
 
 namespace trainmanager
 {
+
+#ifndef TRAINIDENT_LOGLEVEL
+#ifdef CONFIG_LOCOMGR_IDENT_LOGGING_LEVEL
+#define TRAINIDENT_LOGLEVEL CONFIG_LOCOMGR_IDENT_LOGGING_LEVEL
+#else
+#define TRAINIDENT_LOGLEVEL VERBOSE
+#endif // CONFIG_LOCOMGR_IDENT_LOGGING_LEVEL
+#endif // TRAINIDENT_LOGLEVEL
 
 using openlcb::Defs;
 using openlcb::IncomingMessageStateFlow;
@@ -39,9 +48,11 @@ StateFlowBase::Action TrainIdentifyHandler::entry()
   if (!m->payload.empty() && m->payload.size() == 6)
   {
     target_ = openlcb::buffer_to_node_id(m->payload);
-    LOG(CONFIG_TSP_LOGGING_LEVEL,
+#if TRAINIDENT_LOGLEVEL >= VERBOSE
+    LOG(TRAINIDENT_LOGLEVEL,
         "[TrainIdent] received global identify for node %s",
         utils::node_id_to_string(target_).c_str());
+#endif // TRAINIDENT_LOGLEVEL >= VERBOSE
     openlcb::NodeID masked = target_ & TractionDefs::NODE_ID_MASK;
     if ((masked == TractionDefs::NODE_ID_DCC ||
          masked == TractionDefs::NODE_ID_MARKLIN_MOTOROLA ||
@@ -49,11 +60,10 @@ StateFlowBase::Action TrainIdentifyHandler::entry()
          parent_->is_valid_train_node(target_))
 
     {
-      LOG(CONFIG_TSP_LOGGING_LEVEL,
-          "[TrainIdent] matched a known train db entry");
+      LOG(TRAINIDENT_LOGLEVEL, "[TrainIdent] matched a known train db entry");
       release();
       return allocate_and_call(iface()->global_message_write_flow(),
-                                STATE(send_train_ident));
+                               STATE(send_train_ident));
     }
   }
   return release_and_exit();

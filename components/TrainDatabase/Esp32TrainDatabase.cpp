@@ -9,11 +9,12 @@
 #include "TrainDatabase.hxx"
 
 #include <algorithm>
-#include <locomgr/LocoManager.hxx>
 #include <cJSON.h>
+#include <locomgr/LocoManager.hxx>
 #include <openlcb/SimpleStack.hxx>
-#include <utils/StringUtils.hxx>
 #include <utils/FileUtils.hxx>
+#include <utils/StringUtils.hxx>
+#include <utils/logging.h>
 
 namespace esp32cs
 {
@@ -28,7 +29,6 @@ static constexpr const char * TRAIN_DB_JSON_FILE = "/fs/trains.json";
 Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
                                        Service *service)
 {
-  LOG(INFO, "[TrainDB] Refreshing train CDI files...");
   struct stat statbuf;
   if (!stat(TRAIN_DB_JSON_FILE, &statbuf))
   {
@@ -136,7 +136,10 @@ std::shared_ptr<LocoDatabaseEntry> Esp32TrainDatabase::create_or_update(
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
-    LOG(INFO, "[TrainDB] Found existing entry:%s.", (*entry)->identifier().c_str());
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
+    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Found existing entry:%s.",
+        (*entry)->identifier().c_str());
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
     (*entry)->set_train_name(name);
     (*entry)->set_train_description(description);
     (*entry)->set_legacy_drive_mode(mode);
@@ -148,9 +151,11 @@ std::shared_ptr<LocoDatabaseEntry> Esp32TrainDatabase::create_or_update(
   std::vector<Function> functions;
   trains_.emplace_back(
     new Esp32TrainDbEntry(this, address, mode, functions, name, description, idle));
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   LOG(CONFIG_ROSTER_LOG_LEVEL,
       "[TrainDB] No entry was found, created new entry:%s.",
       trains_[index]->identifier().c_str());
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   return trains_[index];
 }
 
@@ -167,8 +172,10 @@ int Esp32TrainDatabase::get_index(size_t address)
 
 bool Esp32TrainDatabase::is_valid_train(openlcb::NodeID train_id)
 {
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] searching for train with id: %s",
       utils::node_id_to_string(train_id).c_str());
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   dcc::TrainAddressType type;
   uint32_t addr =  0;
   // verify that it is a valid train node id
@@ -256,14 +263,18 @@ std::shared_ptr<LocoDatabaseEntry> Esp32TrainDatabase::get_entry(
   openlcb::NodeID node_id, unsigned hint)
 {
   OSMutexLock lock(&mux_);
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   LOG(CONFIG_ROSTER_LOG_LEVEL,
       "[TrainDB] Searching for Train Node:%s, Hint:%u",
       utils::node_id_to_string(node_id).c_str(), hint);
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   auto entry = FIND_TRAIN_HINT(node_id, hint);
   if (entry != trains_.end())
   {
-    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Found existing entry: %s."
-      , (*entry)->identifier().c_str());
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
+    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Found existing entry: %s.",
+        (*entry)->identifier().c_str());
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
     return *entry;
   }
   LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] No entry found!");
@@ -383,8 +394,8 @@ void Esp32TrainDatabase::set_train_function_label(uint16_t address, uint8_t fn_i
   }
   else
   {
-    LOG_ERROR("[TrainDB] train %u not found, unable to set function definition!"
-            , address);
+    LOG_ERROR("[TrainDB] train %u not found, unable to set function definition!",
+              address);
   }
 }
 

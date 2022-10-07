@@ -10,6 +10,7 @@
 #include <dcc/Loco.hxx>
 #include <locomgr/Defs.hxx>
 #include <openlcb/TractionTrain.hxx>
+#include <utils/logging.h>
 
 namespace trainmanager
 {
@@ -28,11 +29,11 @@ using openlcb::TractionDefs;
 using openlcb::TrainService;
 
 #ifndef NODE_LOG_LEVEL
-#ifdef CONFIG_TSP_LOGGING_LEVEL
-#define NODE_LOG_LEVEL CONFIG_TSP_LOGGING_LEVEL
+#ifdef LOCOMGR_NODE_LOGGING_LEVEL
+#define NODE_LOG_LEVEL LOCOMGR_NODE_LOGGING_LEVEL
 #else
 #define NODE_LOG_LEVEL VERBOSE
-#endif // CONFIG_TSP_LOGGING_LEVEL
+#endif // LOCOMGR_NODE_LOGGING_LEVEL
 #endif // NODE_LOG_LEVEL
 
 LazyInitTrainNode::LazyInitTrainNode(
