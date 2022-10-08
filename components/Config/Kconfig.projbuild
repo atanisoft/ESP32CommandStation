@@ -64,25 +64,18 @@ menu "ESP32 Command Station Configuration"
     choice "ESP32 CS PCB Version"
         depends on ESP32CS_PCB
         bool "ESP32 CS PCB Version"
-        default ESP32CS_PCB_V200 if CONFIG_IDF_TARGET_ESP32S3
-        default ESP32CS_PCB_V150
+        default ESP32CS_PCB_V200
 
         config ESP32CS_PCB_V150
-            bool "v1.5.0"
+            bool "v1.5.0 (ESP32 SMT)"
             depends on IDF_TARGET_ESP32
             select CURRENTSENSE_USE_SHUNT
             select OPS_TRACK_ENABLED
             select PROG_TRACK_ENABLED
 
-        config ESP32CS_PCB_V130_OPS_ONLY
-            bool "v1.3.0 (OPS Only)"
-            depends on IDF_TARGET_ESP32
-            select OPS_TRACK_ENABLED
-
         config ESP32CS_PCB_V200
-            bool "v2.0.0"
-            depends on IDF_TARGET_ESP32S3
-            select CURRENTSENSE_USE_SHUNT
+            bool "v2.0.0 (ESP32 THT)"
+            depends on IDF_TARGET_ESP32
             select OPS_TRACK_ENABLED
             select PROG_TRACK_ENABLED
     endchoice
