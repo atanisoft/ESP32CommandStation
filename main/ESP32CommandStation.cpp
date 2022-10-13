@@ -57,6 +57,15 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <openlcb/SimpleStack.hxx>
 #include <StatusDisplay.hxx>
 #include <StatusLED.hxx>
+#if CONFIG_TINYUSB
+#include <tinyusb.h>
+#include <tusb_cdc_acm.h>
+#include <tusb_console.h>
+#if CONFIG_IDF_TARGET_ESP32S2
+#include <esp32s2/rom/usb/chip_usb_dw_wrapper.h>
+#include <esp32s2/rom/usb/usb_persist.h>
+#endif
+#endif
 #include <TrainDatabase.h>
 #include <UlpAdc.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
@@ -303,9 +312,148 @@ void check_for_coredump()
 extern "C"
 {
 
+#if CONFIG_TINYUSB
+
+/// USB CDC line state.
+typedef enum
+{
+  /// No device is connected.
+  LINE_STATE_DISCONNECTED,
+
+  /// A device is connected.
+  LINE_STATE_CONNECTED,
+
+  /// This state is reached by deasserting DTR and RTS asserted and is the
+  /// first step used by esptool.py to enter download mode.
+  LINE_STATE_MAYBE_ENTER_DOWNLOAD_DTR,
+
+  /// This state is reached by asserting both DTR and RTS. This normally will
+  /// happen when a device is connected to the USB port. It is also the
+  /// second state used by esptool.py to enter download mode.
+  LINE_STATE_MAYBE_CONNECTED,
+
+  /// This state is reached by asserting DTR and deasserting RTS. This is the
+  /// third step used by esptool.py to enter download mode.
+  LINE_STATE_MAYBE_ENTER_DOWNLOAD_RTS,
+
+  /// This state is used by the usb shutdown hook to trigger a restart into
+  /// esptool binary download mode.
+  ///
+  /// NOTE: This is not the same as DFU download mode.
+  LINE_STATE_REQUEST_DOWNLOAD,
+
+  /// This state is used by the usb shutdown hook to trigger a restart into
+  /// DFU download mode.
+  LINE_STATE_REQUEST_DOWNLOAD_DFU
+} esp_line_state_t;
+
+esp_line_state_t cdc_line_state;
+
+void cdc_line_state_change(int itf, cdcacm_event_t *event)
+{
+  if (event->type == CDC_EVENT_LINE_STATE_CHANGED)
+  {
+    if (!event->line_state_changed_data.dtr &&
+        event->line_state_changed_data.rts)
+    {
+      if (cdc_line_state == LINE_STATE_DISCONNECTED ||
+          cdc_line_state == LINE_STATE_CONNECTED)
+      {
+        cdc_line_state = LINE_STATE_MAYBE_ENTER_DOWNLOAD_DTR;
+      }
+      else
+      {
+        cdc_line_state = LINE_STATE_DISCONNECTED;
+      }
+    }
+    else if (event->line_state_changed_data.dtr &&
+             event->line_state_changed_data.rts)
+    {
+      if (cdc_line_state == LINE_STATE_MAYBE_ENTER_DOWNLOAD_DTR)
+      {
+        cdc_line_state = LINE_STATE_MAYBE_CONNECTED;
+      }
+      else
+      {
+        cdc_line_state = LINE_STATE_CONNECTED;
+      }
+    }
+    else if (event->line_state_changed_data.dtr &&
+             !event->line_state_changed_data.rts)
+    {
+      if (cdc_line_state == LINE_STATE_MAYBE_CONNECTED)
+      {
+        cdc_line_state = LINE_STATE_MAYBE_ENTER_DOWNLOAD_RTS;
+      }
+      else
+      {
+        cdc_line_state = LINE_STATE_DISCONNECTED;
+      }
+    }
+    else if (!event->line_state_changed_data.dtr &&
+             !event->line_state_changed_data.rts)
+    {
+      if (cdc_line_state == LINE_STATE_MAYBE_ENTER_DOWNLOAD_RTS)
+      {
+        // request to restart in download mode
+        cdc_line_state = LINE_STATE_REQUEST_DOWNLOAD;
+      }
+      else
+      {
+        cdc_line_state = LINE_STATE_DISCONNECTED;
+      }
+    }
+    if (cdc_line_state == LINE_STATE_REQUEST_DOWNLOAD ||
+        cdc_line_state == LINE_STATE_REQUEST_DOWNLOAD_DFU)
+    {
+        REG_SET_BIT(RTC_CNTL_USB_CONF_REG, RTC_CNTL_IO_MUX_RESET_DISABLE);
+        REG_SET_BIT(RTC_CNTL_USB_CONF_REG, RTC_CNTL_USB_RESET_DISABLE);
+
+        periph_module_disable(PERIPH_TIMG1_MODULE);
+        if (cdc_line_state == LINE_STATE_REQUEST_DOWNLOAD)
+        {
+            chip_usb_set_persist_flags(USBDC_PERSIST_ENA);
+        }
+        else
+        {
+            chip_usb_set_persist_flags(USBDC_BOOT_DFU);
+            periph_module_disable(PERIPH_TIMG0_MODULE);
+        }
+
+        REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+        SET_PERI_REG_MASK(RTC_CNTL_OPTIONS0_REG, RTC_CNTL_SW_PROCPU_RST);
+        esp_restart();
+    }
+  }
+}
+
+void start_tinyusb()
+{
+  const tinyusb_config_t tusb_cfg = {};
+
+  ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+
+#if CONFIG_TINYUSB_CDC_ENABLED
+  tinyusb_config_cdcacm_t acm_cfg = {};
+  acm_cfg.callback_line_state_changed = cdc_line_state_change;
+  ESP_ERROR_CHECK(tusb_cdc_acm_init(&acm_cfg));
+
+  esp_tusb_init_console(TINYUSB_CDC_ACM_0); // log to usb
+#endif // CONFIG_TINYUSB_CDC_ENABLED
+
+  // sleep for 5sec to allow TinyUSB time to work
+  vTaskDelay(pdMS_TO_TICKS(5000));
+
+}
+#endif // CONFIG_TINYUSB
+
 /// Application main entry point.
 void app_main()
 {
+#if CONFIG_TINYUSB
+  start_tinyusb();
+#endif // CONFIG_TINYUSB
+
   const esp_app_desc_t *app_data = esp_ota_get_app_description();
   LOG(INFO, "\n\nESP32 Command Station starting up...");
   LOG(INFO, "Compiled on %s %s using IDF %s", app_data->date, app_data->time,
@@ -390,23 +538,27 @@ void app_main()
     esp32cs::EventBroadcastHelper event_helper(stack.service(), stack.node());
     esp32cs::FactoryResetHelper factory_reset_helper(cfg.userinfo());
     OpenLCBFactoryResetHelper olcb_factory_reset(cfg.seg().olcb(), reset_reason);
-    esp32cs::DelayRebootHelper delayed_reboot(&wifi_manager);
-    esp32cs::HealthMonitor health_monitor(&wifi_manager);
-    esp32cs::StatusDisplay status_display(&wifi_manager,
-                                          &wifi_manager, &nvs);
     openlcb::TrainService trainService(stack.iface());
-    esp32cs::Esp32TrainDatabase train_db(&stack, &wifi_manager);
+    Service *bg_service = &wifi_manager;
+
+#ifdef CONFIG_IDF_TARGET_ESP32S2
+    bg_service = stack.service();
+#endif // CONFIG_IDF_TARGET_ESP32S2
+    esp32cs::DelayRebootHelper delayed_reboot(bg_service);
+    esp32cs::HealthMonitor health_monitor(bg_service);
+    esp32cs::StatusDisplay status_display(bg_service,
+                                          &wifi_manager, &nvs);
+    esp32cs::Esp32TrainDatabase train_db(&stack, bg_service);
     commandstation::AllTrainNodes trains(&train_db, &trainService,
                                          stack.info_flow(),
                                          stack.memory_config_handler(),
                                          train_db.get_train_cdi(),
                                          train_db.get_temp_train_cdi());
-    MDNS mdns;
-    http::Httpd httpd(&wifi_manager, &mdns);
-    esp32cs::ThermalMonitorFlow thermal_monitor(&wifi_manager,
+
+    esp32cs::ThermalMonitorFlow thermal_monitor(bg_service,
                                                 stack.node(),
                                                 cfg.seg().thermal());
-    esp32cs::init_dcc(stack.node(), stack.service(), cfg.seg().track());
+    esp32cs::init_dcc(stack.node(), bg_service, cfg.seg().track());
     nvs.register_virtual_memory_spaces(&stack);
     nvs.register_clocks(stack.node(), &wifi_manager);
 
@@ -438,8 +590,11 @@ void app_main()
     stack.print_all_packets();
 #endif
 
+
+#ifndef CONFIG_IDF_TARGET_ESP32S2
     init_webserver(&wifi_manager, &nvs, stack.node(),
                    stack.memory_config_handler(), &train_db);
+#endif // !CONFIG_IDF_TARGET_ESP32S2
 
     // hand-off to the OpenMRN stack executor
     stack.loop_executor();

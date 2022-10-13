@@ -29,6 +29,11 @@ set(IDF_DEPS
     soc
 )
 
+idf_build_get_property(target IDF_TARGET)
+if(${target} STREQUAL "esp32s2")
+    list(APPEND IDF_DEPS tinyusb)
+endif()
+
 # starting in IDF v5 esp_ipc component has been merged into esp_system
 if (IDF_VERSION_MAJOR LESS 5)
     list(APPEND IDF_DEPS esp_ipc)

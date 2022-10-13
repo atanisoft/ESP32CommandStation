@@ -258,31 +258,20 @@ private:
   /// Maximum number of bytes to support for DCC packets.
   static constexpr uint8_t MAX_DCC_DLC_LEN = 6;
 
-
 #if CONFIG_IDF_TARGET_ESP32
   /// Maximum number of RMT memory blocks to allow for the DCC signal
   /// generation. With three memory blocks it is possible to send up to 192
   /// bits per DCC packet with up to 50 preamble bits.
   static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = 6;
-#elif CONFIG_IDF_TARGET_ESP32S2
-  /// Maximum number of RMT memory blocks to allow for the DCC signal
-  /// generation.
-  static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = SOC_RMT_TX_CANDIDATES_PER_GROUP;
-#elif CONFIG_IDF_TARGET_ESP32S3
+#else
   /// Maximum number of RMT memory blocks to allow for the DCC signal
   /// generation.
   static constexpr uint8_t MAX_RMT_MEMORY_BLOCKS = SOC_RMT_TX_CANDIDATES_PER_GROUP;
 #endif
 
-#if defined(SOC_RMT_MEM_WORDS_PER_CHANNEL)
   /// Maximum number of bits that can be transmitted as one packet.
   static constexpr uint16_t MAX_RMT_ENCODED_BITS =
     SOC_RMT_MEM_WORDS_PER_CHANNEL * MAX_RMT_MEMORY_BLOCKS;
-#else
-  /// Maximum number of bits that can be transmitted as one packet.
-  static constexpr uint16_t MAX_RMT_ENCODED_BITS =
-    SOC_RMT_CHANNEL_MEM_WORDS * MAX_RMT_MEMORY_BLOCKS;
-#endif
 
   /// malloc() capabilities to use for the DCC packet queue. This is configured
   /// to use internal 8-bit capable memory only.

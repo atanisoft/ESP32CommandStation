@@ -13,6 +13,10 @@ if(${target} STREQUAL "esp32s3")
     idf_component_register(SRCS UlpAdcEsp32S3.cpp
                            INCLUDE_DIRS "include"
                            REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
+elseif(${target} STREQUAL "esp32s2")
+    idf_component_register(SRCS UlpAdcEsp32S3.cpp
+                           INCLUDE_DIRS "include"
+                           REQUIRES "${IDF_DEPS} ${CUSTOM_DEPS}")
 else()
     idf_component_register(SRCS UlpAdc.cpp
                            INCLUDE_DIRS "include"

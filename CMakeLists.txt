@@ -31,7 +31,7 @@ set(EXCLUDE_COMPONENTS
     "esp_http_client" "esp_http_server" "esp_https_ota" "esp_https_server"
     "esp_lcd" "esp_local_ctrl" "esp_serial_slave_link" "esp_websocket_client"
     "freemodbus" "idf_test" "mqtt" "nghttp" "perfmon" "protobuf-c" "protocomm"
-    "tcp_transport" "tinyusb" "unity" "wifi_provisioning")
+    "tcp_transport" "unity" "wifi_provisioning")
 
 project(ESP32CommandStation)
 

@@ -1,12 +1,42 @@
-
 #
-# ESP32 Specific
+# ESP32-S2 Specific
 #
 # NOTE: ESP-IDF defaults to 160Mhz mode!
 CONFIG_ESP32S2_DEFAULT_CPU_FREQ_240=y
 CONFIG_ESP32S2_DEBUG_OCDAWARE=n
 
 #
+# Compiler options
+#
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+
+#
 # Ultra Low Power (ULP) Co-processor
 #
 CONFIG_ESP32S2_ULP_COPROC_ENABLED=y
+
+#
+# LwIP configuration
+#
+CONFIG_LWIP_MAX_SOCKETS=10
+
+#
+# TinyUSB Stack
+#
+CONFIG_TINYUSB=y
+
+#
+# Descriptor configuration
+#
+CONFIG_TINYUSB_DESC_MANUFACTURER_STRING="atanisoft.github.io"
+CONFIG_TINYUSB_DESC_PRODUCT_STRING="ESP32 Command Station"
+CONFIG_TINYUSB_DESC_CDC_STRING="ESP32 Command Station"
+# end of Descriptor configuration
+
+#
+# Communication Device Class (CDC)
+#
+CONFIG_TINYUSB_CDC_ENABLED=y
+CONFIG_TINYUSB_CDC_TX_BUFSIZE=128
+# end of Communication Device Class (CDC)
+# end of TinyUSB Stack
