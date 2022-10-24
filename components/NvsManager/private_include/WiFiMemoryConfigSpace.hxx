@@ -27,6 +27,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include "NvsManagerStruct.hxx"
 #include "sdkconfig.h"
+#include "AbstractVirtualMemorySpace.hxx"
 
 namespace esp32cs
 {
@@ -35,7 +36,8 @@ namespace esp32cs
 
     /// Virtual memory space that allows reconfiguration of the persistent node
     /// identifier.
-    class WiFiMemoryConfigSpace : public openlcb::VirtualMemorySpace
+    class WiFiMemoryConfigSpace : public openlcb::VirtualMemorySpace,
+                                  public AbstractVirtualMemorySpace
     {
     public:
         /// Constructor.
@@ -141,21 +143,25 @@ namespace esp32cs
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] wifi_mode: %d",
                             SPACE, value);
                         config_->wifi_mode = (wifi_mode_t)value;
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.softap().auth().offset():
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_auth: %d",
                             SPACE, value);
                         config_->softap_auth = (wifi_auth_mode_t)value;
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.softap().channel().offset():
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_channel: %d",
                             SPACE, value);
                         config_->softap_channel = value;
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.sntp().enabled().offset():
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] sntp_enabled: %d",
                             SPACE, value);
                         config_->sntp_enabled = value;
+                        set_modified(true);
                         break;
                     default:
                         LOG_ERROR("[WiFiMemCfg:%02x-WR] request for "
@@ -245,11 +251,13 @@ namespace esp32cs
                             "[WiFiMemCfg:%02x-RD] hostname_prefix: %s", SPACE,
                             value.c_str());
                         str_populate(config_->hostname_prefix, value.c_str());
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.station().ssid().offset():
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] station_ssid: %s",
                             SPACE, value.c_str());
                         str_populate(config_->station_ssid, value.c_str());
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.station().password().offset():
                         if (value.rfind("***", 0) == 0)
@@ -261,11 +269,13 @@ namespace esp32cs
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] station_pass: %s",
                             SPACE, value.c_str());
                         str_populate(config_->station_pass, value.c_str());
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.softap().ssid().offset():
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_ssid: %s",
                             SPACE, value.c_str());
                         str_populate(config_->softap_ssid, value.c_str());
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.softap().password().offset():
                         if (value.rfind("***", 0) == 0)
@@ -277,16 +287,19 @@ namespace esp32cs
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] softap_pass: %s",
                             SPACE, value.c_str());
                         str_populate(config_->softap_pass, value.c_str());
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.sntp().server().offset():
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] sntp_server: %s",
                             SPACE, value.c_str());
                         str_populate(config_->sntp_server, value.c_str());
+                        set_modified(true);
                         break;
                     case WiFiConfigHolder.sntp().timezone().offset():
                         LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] timezone: %s",
                             SPACE, value.c_str());
                         str_populate(config_->timezone, value.c_str());
+                        set_modified(true);
                         break;
                     default:
                         LOG_ERROR("[WiFiMemCfg:%02x-WSTR] request for "
