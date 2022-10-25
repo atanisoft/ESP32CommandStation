@@ -639,7 +639,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               $('#' + json.tgt).val(pad_hex(json.val, 16));
             } else if (json.type === 'str') {
               try {
-                $('#' + json.tgt).val(atob(json.val));
+                $('#' + json.tgt).val(atob(json.val).trim());
               } catch (error) {
                 console.error(error, json);
                 $('#' + json.tgt).val('decode failure');
