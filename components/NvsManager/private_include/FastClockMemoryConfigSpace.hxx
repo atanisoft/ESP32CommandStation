@@ -26,6 +26,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <StringUtils.hxx>
 #include <FastClockConfigurationGroup.hxx>
 
+#include "AbstractVirtualMemorySpace.hxx"
 #include "NvsManagerStruct.hxx"
 #include "sdkconfig.h"
 
@@ -36,7 +37,8 @@ namespace esp32cs
 
     /// Virtual memory space that allows reconfiguration of the persistent node
     /// identifier.
-    class FastClockMemoryConfigSpace : public openlcb::VirtualMemorySpace
+    class FastClockMemoryConfigSpace : public openlcb::VirtualMemorySpace,
+                                       public AbstractVirtualMemorySpace
     {
     public:
         /// Constructor.
@@ -133,24 +135,31 @@ namespace esp32cs
                 {
                     case FastClockConfigHolder.enabled().offset():
                         config_->fastclock_enabled = value;
+                        set_modified(true);
                         break;
                     case FastClockConfigHolder.year().offset():
                         config_->fastclock_year = value - 1900;
+                        set_modified(true);
                         break;
                     case FastClockConfigHolder.month().offset():
                         config_->fastclock_month = value;
+                        set_modified(true);
                         break;
                     case FastClockConfigHolder.day().offset():
                         config_->fastclock_day = value;
+                        set_modified(true);
                         break;
                     case FastClockConfigHolder.hour().offset():
                         config_->fastclock_hour = value;
+                        set_modified(true);
                         break;
                     case FastClockConfigHolder.minute().offset():
                         config_->fastclock_minute = value;
+                        set_modified(true);
                         break;
                     case FastClockConfigHolder.rate().offset():
                         config_->fastclock_rate = value;
+                        set_modified(true);
                         break;
                     default:
                         LOG_ERROR("[FastClockMemCfg:%02x-WR] request for unrecognized offset:%d", SPACE, offset);
@@ -190,6 +199,7 @@ namespace esp32cs
                 {
                     case FastClockConfigHolder.id().offset():
                         config_->fastclock_id = string_to_uint64(value);
+                        set_modified(true);
                         break;
                     default:
                         LOG_ERROR("[FastClockMemCfg:%02x-WDSTR] request for unrecognized offset:%d", SPACE, offset);

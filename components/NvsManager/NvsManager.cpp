@@ -492,8 +492,17 @@ namespace esp32cs
       persist_configuration();
     }
   }
+
   bool NvsManager::memory_spaces_modified()
   {
+    if (node_id_memoryspace->modified() ||
+        wifi_memory_space->modified() ||
+        fastclock_memory_space->modified() ||
+        realtimeclock_memory_space->modified())
+    {
+      persist_configuration();
+      return true;
+    }
     return false;
   }
 

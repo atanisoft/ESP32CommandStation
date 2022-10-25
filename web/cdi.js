@@ -44,6 +44,7 @@ function save_cdi_field(field) {
         } else {
             value = value.substr(0, size);
         }
+        value = value.trim();
     }
     ws_tx(JSON.stringify({
         req: 'cdi',
