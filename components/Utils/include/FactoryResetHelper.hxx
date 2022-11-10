@@ -39,12 +39,12 @@ public:
         AutoNotify n(done);
         LOG(VERBOSE, "[CFG] apply_configuration(%d, %d)", fd, initial_load);
 
-        // If this is not our initial load and the node id has changed we need
-        // to force a reboot
+        // If this is not our initial load and virtual memory spaces have been
+        // modified we will likely need a reboot.
         if (!initial_load &&
             Singleton<NvsManager>::instance()->memory_spaces_modified())
         {
-            LOG(WARNING, "[CFG] NVS has been updated requiring a restart.");
+            LOG(WARNING, "[CFG] NVS has been updated requesting a restart.");
             return ConfigUpdateListener::UpdateAction::REBOOT_NEEDED;
         }
 

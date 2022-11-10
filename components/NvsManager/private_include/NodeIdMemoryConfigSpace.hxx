@@ -19,6 +19,7 @@
 
 #include <utils/StringUtils.hxx>
 #include "sdkconfig.h"
+#include "AbstractVirtualMemorySpace.hxx"
 
 namespace esp32cs
 {
@@ -30,7 +31,8 @@ NodeIdConfig node_id_config(CONFIG_OLCB_NODEID_MEMORY_SPACE_OFFSET);
 /// identifier.
 class NodeIdMemoryConfigSpace
     : public openlcb::VirtualMemorySpace,
-      public Singleton<NodeIdMemoryConfigSpace>
+      public Singleton<NodeIdMemoryConfigSpace>,
+      public AbstractVirtualMemorySpace
 {
 public:
     /// Constructor.
@@ -55,7 +57,7 @@ public:
                 LOG(VERBOSE, "[NodeIdMemCfg-WRITE] %s", contents.c_str());
                 uint64_t new_node_id = utils::string_to_uint64(contents);
                 nvs->node_id(new_node_id);
-                updated_ = true;
+                set_modified(true);
                 nodeid_ = new_node_id;
                 id_ = std::move(contents);
             }
@@ -71,12 +73,6 @@ public:
         return nodeid_;
     }
 
-    /// @return true if the node identifier has been changed via this virtual
-    /// memory space, false otherwise.
-    bool updated()
-    {
-        return updated_;
-    }
 private:
     static constexpr uint8_t SPACE = CONFIG_OLCB_NODEID_MEMORY_SPACE_ID;
     NvsManager *nvs_;
@@ -87,9 +83,6 @@ private:
 
     /// temporary holder for the currently assigned node id.
     uint64_t nodeid_{0};
-
-    /// Flag indicating that the node-id has been changed via the memory space.
-    bool updated_{false};
 };
 
 } // namespace esp32cs

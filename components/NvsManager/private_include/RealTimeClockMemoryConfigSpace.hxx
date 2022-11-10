@@ -18,6 +18,7 @@
 
 #include "NvsManagerStruct.hxx"
 #include "sdkconfig.h"
+#include "AbstractVirtualMemorySpace.hxx"
 
 namespace esp32cs
 {
@@ -26,7 +27,8 @@ namespace esp32cs
 
     /// Virtual memory space that allows reconfiguration of the persistent node
     /// identifier.
-    class RealTimeClockMemoryConfigSpace : public openlcb::VirtualMemorySpace
+    class RealTimeClockMemoryConfigSpace : public openlcb::VirtualMemorySpace,
+                                           public AbstractVirtualMemorySpace
     {
     public:
         /// Constructor.
@@ -100,6 +102,7 @@ namespace esp32cs
                 {
                     case RealTimeClockConfigHolder.enabled().offset():
                         config_->fastclock_enabled = value;
+                        set_modified(true);
                         break;
                     default:
                         LOG_ERROR("[RealTimeClockMemCfg:%02x-WR] request for "
@@ -143,6 +146,7 @@ namespace esp32cs
                 {
                     case RealTimeClockConfigHolder.id().offset():
                         config_->fastclock_id = utils::string_to_uint64(value);
+                        set_modified(true);
                         break;
                     default:
                         LOG_ERROR("[RealTimeClockMemCfg:%02x-WSTR] request for "
