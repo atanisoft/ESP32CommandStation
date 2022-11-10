@@ -1,6 +1,5 @@
 set(CUSTOM_DEPS
     OpenMRNExtensions
-    OpenMRNIDF
     Utils
 )
 

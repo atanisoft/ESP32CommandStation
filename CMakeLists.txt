@@ -13,13 +13,9 @@ elseif (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR EQUAL 3)
     message(STATUS "It is recommended to build ESP32 Command Station with IDF v4.4 (or newer)")
 elseif (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR LESS 3)
     message(FATAL_ERROR "ESP32 Command Station requires IDF v4.3 (or newer)")
+elseif (IDF_VERSION_MAJOR EQUAL 5)
+    message(STATUS "ESP32 Command Station does not support IDF v5.x at this time")
 endif()
-
-###############################################################################
-# Verify submodules are up-to-date
-###############################################################################
-
-git_submodule_check(${CMAKE_CURRENT_SOURCE_DIR})
 
 ###############################################################################
 # Disable ESP-IDF components that are not required for this project. This will

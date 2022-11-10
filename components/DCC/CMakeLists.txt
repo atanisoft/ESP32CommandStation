@@ -10,7 +10,6 @@ set(CUSTOM_DEPS
     Config
     AccessoryDecoderDB
     OpenMRNExtensions
-    OpenMRNIDF
     StatusDisplay
     ULPADC
     Utils

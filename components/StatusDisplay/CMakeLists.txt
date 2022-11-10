@@ -5,7 +5,6 @@ set(IDF_DEPS
 set(CUSTOM_DEPS
     Config
     NvsManager
-    OpenMRNIDF
     OpenMRNExtensions
 )
 
