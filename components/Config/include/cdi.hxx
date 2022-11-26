@@ -26,7 +26,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include "ThermalConfigurationGroup.hxx"
 #include "TrackOutputDescriptor.hxx"
 #include "WiFiConfigurationGroup.hxx"
-#if 0
+#if CONFIG_ROSTER_EXPOSE_VMS
 #include <locodb/LocoDatabaseVirtualMemorySpace.hxx>
 #endif
 #include <openlcb/ConfigRepresentation.hxx>
@@ -70,7 +70,7 @@ CDI_GROUP_ENTRY(fastclock, FastClockConfiguration, Name("Fast Clock"));
 /// OpenLCB Real Time Clock configuration.
 CDI_GROUP_ENTRY(realtime_clock, RealTimeClockConfiguration,
                 Name("Real-time Clock"));
-#if 0
+#if CONFIG_ROSTER_EXPOSE_VMS
 CDI_GROUP_ENTRY(loco_db, locodb::TrainDatabaseSegment,
                 Name("Locomotive Roster"));
 #endif
