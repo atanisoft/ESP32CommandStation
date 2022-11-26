@@ -9,9 +9,8 @@ set(IDF_DEPS
 set(CUSTOM_DEPS
     Config
     AccessoryDecoderDB
-    OpenMRNIDF
+    OpenMRNExtensions
     StatusDisplay
-    TrainSearchProtocol
     ULPADC
     Utils
 )

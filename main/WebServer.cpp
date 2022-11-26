@@ -17,7 +17,6 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 
 #include "sdkconfig.h"
 
-#include <AllTrainNodes.hxx>
 #include <CDIClient.hxx>
 #include <CDIDownloader.hxx>
 #include <cJSON.h>
@@ -35,16 +34,18 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <NvsManager.hxx>
 #include <OTAWatcher.hxx>
 #include <StatusLED.hxx>
-#include <StringUtils.hxx>
-#include <TrainDatabase.h>
+#include <TrainDatabase.hxx>
+#include <locomgr/LocoManager.hxx>
 #include <AccessoryDecoderDatabase.hxx>
 #include <UlpAdc.hxx>
 #include <utils/FileUtils.hxx>
 #include <utils/SocketClientParams.hxx>
 #include <utils/StringPrintf.hxx>
+#include <utils/StringUtils.hxx>
 
-using commandstation::AllTrainNodes;
-using commandstation::DccMode;
+using locodb::DriveMode;
+using locodb::Function;
+using locomgr::LocoManager;
 using dcc::SpeedType;
 using esp32cs::AccessoryDecoderDB;
 using esp32cs::AccessoryType;
@@ -116,22 +117,22 @@ extern const size_t cdiJsGz_size asm("cdi_js_gz_length");
 // TODO: add accessory method that wraps this usage
 #define GET_LOCO_VIA_EXECUTOR(NAME, address)                                   \
   openlcb::TrainImpl *NAME = nullptr;                                          \
-  Singleton<AllTrainNodes>::instance()->train_service()->executor()->sync_run( \
+  Singleton<LocoManager>::instance()->train_service()->executor()->sync_run(   \
       ([&]()                                                                   \
-       { NAME = Singleton<AllTrainNodes>::instance()->get_train_impl(          \
-             DccMode::DCC_128, address); }));
+       { NAME = Singleton<LocoManager>::instance()->find_or_create_train(      \
+             DriveMode::DCC_128, address); }));
 
 // TODO: add accessory method that wraps this usage
-#define REMOVE_LOCO_VIA_EXECUTOR(addr)                                         \
-  Singleton<AllTrainNodes>::instance()->train_service()->executor()->sync_run( \
-      ([&]()                                                                   \
-       { Singleton<AllTrainNodes>::instance()->remove_train_impl(addr); }));
+#define REMOVE_LOCO_VIA_EXECUTOR(addr)                                        \
+  Singleton<LocoManager>::instance()->train_service()->executor()->sync_run(  \
+      ([&]()                                                                  \
+       { Singleton<LocoManager>::instance()->delete_train(DriveMode::DCC_ANY, addr); }));
 
 uninitialized<CDIClient> cdi_client;
 uninitialized<CDIDownloadHandler> cdi_downloader;
 static NodeHandle cs_node_handle;
 static NvsManager *nvs;
-static Esp32TrainDatabase *traindb;
+static Esp32TrainDatabase *cs_traindb;
 
 #ifndef CONFIG_STATUS_LED_DATA_PIN
 #define CONFIG_STATUS_LED_DATA_PIN -1
@@ -148,7 +149,7 @@ void init_webserver(Service *service, NvsManager *nvs_mgr, openlcb::Node *node,
                     Esp32TrainDatabase *train_db)
 {
   nvs = nvs_mgr;
-  traindb = train_db;
+  cs_traindb = train_db;
   auto httpd = Singleton<Httpd>::instance();
   cs_node_handle = NodeHandle(nvs->node_id());
   cdi_client.emplace(service, node, mem_cfg);
@@ -283,7 +284,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
           }
           else if (param_type == "evt")
           {
-            uint64_t data = esp32cs::string_to_uint64(string(raw_value->valuestring));
+            uint64_t data = utils::string_to_uint64(string(raw_value->valuestring));
             value.clear();
             value.push_back((data >> 56) & 0xFF);
             value.push_back((data >> 48) & 0xFF);
@@ -367,7 +368,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         string value = cJSON_GetObjectItem(root, "evt")->valuestring;
         LOG(VERBOSE, "[WS:%d] Sending event: %s", req_id->valueint,
             value.c_str());
-        uint64_t eventID = esp32cs::string_to_uint64(value);
+        uint64_t eventID = utils::string_to_uint64(value);
         Singleton<EventBroadcastHelper>::instance()->send_event(eventID);
         response =
             StringPrintf(R"!^!({"res":"event","evt":"%s","id":%d})!^!",
@@ -513,16 +514,16 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
               req_id->valueint, address);
           string name = cJSON_GetObjectItem(root, "name")->valuestring;
           string description = cJSON_GetObjectItem(root, "desc")->valuestring;
-          DccMode mode =
-              static_cast<DccMode>(cJSON_GetObjectItem(root, "mode")->valueint);
+          DriveMode mode =
+              static_cast<DriveMode>(cJSON_GetObjectItem(root, "mode")->valueint);
           bool idle = cJSON_IsTrue(cJSON_GetObjectItem(root, "idle"));
-          traindb->create_or_update(address, name, description, mode, idle);
+          cs_traindb->create_or_update(address, name, description, mode, idle);
         }
         else if (action == "delete")
         {
           LOG(VERBOSE, "[WS:%d] Deleting roster entry %d",
               req_id->valueint, address);
-          traindb->delete_entry(address);
+          cs_traindb->remove_entry(address, DriveMode::DCC_ANY);
         }
         response =
             StringPrintf(R"!^!({"res":"roster","act":"%s","tgt":"%s","id":%d})!^!",
@@ -753,7 +754,7 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
       StringPrintf(R"!^!({"addr":%d,"spd":%d,"dir":"%s","fn":[)!^!",
                    t->legacy_address(), (int)t->get_speed().mph(),
                    t->get_speed().direction() == dcc::SpeedType::REVERSE ? "REV" : "FWD");
-  for (size_t funcID = 0; funcID < commandstation::DCC_MAX_FN; funcID++)
+  for (size_t funcID = 0; funcID < locodb::MAX_LOCO_FUNCTIONS; funcID++)
   {
     if (funcID)
     {
@@ -794,7 +795,7 @@ HTTP_HANDLER_IMPL(process_loco, request)
     if (request->method() == HttpMethod::GET &&
         !request->has_param("address"))
     {
-      return new JsonResponse(traindb->to_json());
+      return new JsonResponse(cs_traindb->to_json());
     }
     else if (request->has_param("address"))
     {
@@ -806,34 +807,34 @@ HTTP_HANDLER_IMPL(process_loco, request)
       }
       else if (request->method() == HttpMethod::DELETE)
       {
-        traindb->delete_entry(address);
+        cs_traindb->remove_entry(address, DriveMode::DCC_ANY);
         request->set_status(HttpStatusCode::STATUS_NO_CONTENT);
       }
       else if (request->method() == HttpMethod::GET)
       {
-        return new JsonResponse(traindb->to_json(address));
+        return new JsonResponse(cs_traindb->to_json(address));
       }
       else
       {
         string name = request->param("name");
         string description = request->param("desc");
-        DccMode mode = static_cast<commandstation::DccMode>(
-            request->param("mode", DccMode::DCC_128));
+        DriveMode mode = static_cast<DriveMode>(
+            request->param("mode", DriveMode::DCC_128));
         bool idle = request->param("idle", false);
-        traindb->create_or_update(address, name, description, mode, idle);
+        cs_traindb->create_or_update(address, name, description, mode, idle);
         // search for and remap functions if present
-        for (uint8_t fn = 1; fn < commandstation::DCC_MAX_FN; fn++)
+        for (uint8_t fn = 1; fn < locodb::MAX_LOCO_FUNCTIONS; fn++)
         {
           string fArg = StringPrintf("f%d", fn);
           if (request->has_param(fArg.c_str()))
           {
-            commandstation::Symbols label =
-                static_cast<commandstation::Symbols>(
-                    request->param(fArg, commandstation::Symbols::FN_UNKNOWN));
-            traindb->set_train_function_label(address, fn, label);
+            Function label =
+                static_cast<Function>(
+                    request->param(fArg, Function::UNKNOWN));
+            cs_traindb->set_train_function_label(address, fn, label);
           }
         }
-        return new JsonResponse(traindb->to_json(address));
+        return new JsonResponse(cs_traindb->to_json(address));
       }
     }
   }
@@ -847,13 +848,13 @@ HTTP_HANDLER_IMPL(process_loco, request)
     {
       // get all active locomotives
       string res = "[";
-      auto trains = Singleton<commandstation::AllTrainNodes>::instance();
+      auto trains = Singleton<LocoManager>::instance();
       for (size_t id = 0; id < trains->size(); id++)
       {
         auto nodeid = trains->get_train_node_id(id);
         if (nodeid)
         {
-          auto loco = trains->get_train_impl(nodeid, false);
+          auto loco = trains->find_train(nodeid);
           if (loco)
           {
             if (res.length() > 1)

@@ -4,8 +4,6 @@ set(IDF_DEPS
 
 set(CUSTOM_DEPS
     Config
-    HttpServer
-    OpenMRNIDF
     Utils
 )
 

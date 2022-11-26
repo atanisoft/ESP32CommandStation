@@ -19,9 +19,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #define FACTORY_RESET_HELPER_HXX_
 
 #include <NvsManager.hxx>
-#include <StringUtils.hxx>
 #include <utils/ConfigUpdateListener.hxx>
 #include <utils/logging.h>
+#include <utils/StringUtils.hxx>
 
 namespace esp32cs
 {
@@ -57,7 +57,7 @@ public:
         // set the name of the node to the SNIP model name
         cfg_.name().write(fd, openlcb::SNIP_STATIC_DATA.model_name);
         std::string node_id =
-            esp32cs::node_id_to_string(
+            utils::node_id_to_string(
                 Singleton<NvsManager>::instance()->node_id());
         cfg_.description().write(fd, node_id.c_str());
     }

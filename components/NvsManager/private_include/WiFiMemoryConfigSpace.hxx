@@ -97,6 +97,7 @@ namespace esp32cs
         {
             return [this, offset](unsigned repeat, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] offs: %d", SPACE, offset);
                 T value = (T)0;
                 switch(offset)
@@ -125,7 +126,6 @@ namespace esp32cs
                         LOG_ERROR("[WiFiMemCfg:%02x-RD] request for "
                                   "unrecognized offset:%d", SPACE, offset);
                 }
-                done->notify();
                 return value;
             };
         }
@@ -135,6 +135,7 @@ namespace esp32cs
         {
             return [this, offset](unsigned repeat, T value, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 LOG(VERBOSE, "[WiFiMemCfg:%02x-WR] offs: %d, value: %d",
                     SPACE, offset, (uint32_t)value);
                 switch(offset)
@@ -167,7 +168,6 @@ namespace esp32cs
                         LOG_ERROR("[WiFiMemCfg:%02x-WR] request for "
                                   "unrecognized offset:%d", SPACE, offset);
                 }
-                done->notify();
             };
         }
         std::function<void(unsigned repeat, string *value, BarrierNotifiable *done)>
@@ -175,6 +175,7 @@ namespace esp32cs
         {
             return [this, offset](unsigned repeat, string *value, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] offs: %d", SPACE, offset);
                 switch (offset)
                 {
@@ -231,7 +232,6 @@ namespace esp32cs
                                   "unrecognized offset:%d", SPACE, offset);
                         *value = "";
                 }
-                done->notify();
             };
         }
         std::function<void(unsigned repeat, string value, BarrierNotifiable *done)>
@@ -239,6 +239,7 @@ namespace esp32cs
         {
             return [this, offset](unsigned repeat, string value, BarrierNotifiable *done)
             {
+                AutoNotify n(done);
                 // strip off nulls (if found)
                 value.erase(
                     std::remove(value.begin(), value.end(), '\0'), value.end());
@@ -305,7 +306,6 @@ namespace esp32cs
                         LOG_ERROR("[WiFiMemCfg:%02x-WSTR] request for "
                                   "unrecognized offset:%d", SPACE, offset);
                 }
-                done->notify();
             };
         }
     };

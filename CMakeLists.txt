@@ -13,13 +13,9 @@ elseif (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR EQUAL 3)
     message(STATUS "It is recommended to build ESP32 Command Station with IDF v4.4 (or newer)")
 elseif (IDF_VERSION_MAJOR EQUAL 4 AND IDF_VERSION_MINOR LESS 3)
     message(FATAL_ERROR "ESP32 Command Station requires IDF v4.3 (or newer)")
+elseif (IDF_VERSION_MAJOR EQUAL 5)
+    message(STATUS "ESP32 Command Station does not support IDF v5.x at this time")
 endif()
-
-###############################################################################
-# Verify submodules are up-to-date
-###############################################################################
-
-git_submodule_check(${CMAKE_CURRENT_SOURCE_DIR})
 
 ###############################################################################
 # Disable ESP-IDF components that are not required for this project. This will
@@ -68,9 +64,17 @@ string(SUBSTRING "${project_ver}" 0 20 SNIP_SW_VERSION)
 idf_build_get_property(project_name PROJECT_NAME)
 string(SUBSTRING "${project_name}" 0 40 SNIP_PROJECT_NAME)
 
-set(SNIP_HW_VERSION "1.0.0")
 set(SNIP_PROJECT_PAGE "atanisoft.github.io")
 set(CDI_VERSION "0x0200")
+
+if(CONFIG_ESP32CS_PCB_V150)
+set(SNIP_HW_VERSION "1.5.0")
+elseif(CONFIG_ESP32CS_PCB_V200)
+set(SNIP_HW_VERSION "2.0.0")
+else()
+set(SNIP_HW_VERSION "1.0.0")
+endif()
+
 message(STATUS "SNIP: ${SNIP_PROJECT_NAME}/${SNIP_PROJECT_PAGE}/${SNIP_SW_VERSION}/${SNIP_HW_VERSION}")
 
 idf_build_set_property(COMPILE_DEFINITIONS "-DSNIP_PROJECT_PAGE=\"${SNIP_PROJECT_PAGE}\"" APPEND)

@@ -22,7 +22,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <executor/Service.hxx>
 #include <openlcb/SimpleStack.hxx>
 #include <utils/Singleton.hxx>
-#include <StringUtils.hxx>
+#include <utils/StringUtils.hxx>
 
 namespace esp32cs
 {
@@ -67,7 +67,7 @@ private:
         StateFlowBase::Action entry() override
         {
             LOG(VERBOSE, "[EventHelper] Sending: %s",
-                esp32cs::event_id_to_string(request()->eventID).c_str());
+                utils::event_id_to_string(request()->eventID).c_str());
             writer_.WriteAsync(node_, openlcb::Defs::MTI_EVENT_REPORT,
                                openlcb::WriteHelper::global(),
                                openlcb::eventid_to_buffer(request()->eventID),

@@ -1,62 +1,34 @@
-/**********************************************************************
-ESP32 COMMAND STATION
+/*
+ * SPDX-FileCopyrightText: 2019-2022 Mike Dunston (atanisoft)
+ *
+ * SPDX-License-Identifier: GPL-3.0
+ * 
+ * This file is part of ESP32 Command Station.
+ */
 
-COPYRIGHT (c) 2019-2021 Mike Dunston
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see http://www.gnu.org/licenses
-**********************************************************************/
-
-#include "TrainDatabase.h"
+#include "TrainDatabase.hxx"
 
 #include <algorithm>
-#include <AllTrainNodes.hxx>
-#include <CDIXMLGenerator.hxx>
 #include <cJSON.h>
-#include <TrainDbCdi.hxx>
+#include <locomgr/LocoManager.hxx>
 #include <openlcb/SimpleStack.hxx>
-#include <StringUtils.hxx>
 #include <utils/FileUtils.hxx>
+#include <utils/StringUtils.hxx>
+#include <utils/logging.h>
 
 namespace esp32cs
 {
 
-using commandstation::DccMode;
-using commandstation::AllTrainNodes;
+using locodb::DriveMode;
+using locodb::Function;
+using locodb::LocoDatabaseEntry;
 using openlcb::TractionDefs;
 
 static constexpr const char * TRAIN_DB_JSON_FILE = "/fs/trains.json";
-static constexpr const char * PERSISTED_TRAIN_CDI = "/fs/train.xml";
-static constexpr const char * TEMP_TRAIN_CDI = "/fs/tmptrain.xml";
-
-void validate_train_cdi()
-{
-  commandstation::TrainConfigDef train_cfg(0);
-  CDIXMLGenerator::create_config_descriptor_xml(train_cfg, PERSISTED_TRAIN_CDI, nullptr);
-}
-
-void validate_temp_train_cdi()
-{
-  commandstation::TrainTmpConfigDef temp_train_cfg(0);
-  CDIXMLGenerator::create_config_descriptor_xml(temp_train_cfg, TEMP_TRAIN_CDI, nullptr);
-}
 
 Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
                                        Service *service)
 {
-  LOG(INFO, "[TrainDB] Refreshing train CDI files...");
-  validate_train_cdi();
-  validate_temp_train_cdi();
-  trainCdiFile_.emplace(PERSISTED_TRAIN_CDI);
-  tempTrainCdiFile_.emplace(TEMP_TRAIN_CDI);
   struct stat statbuf;
   if (!stat(TRAIN_DB_JSON_FILE, &statbuf))
   {
@@ -69,53 +41,40 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
       cJSON_ArrayForEach(entry, root)
       {
         cJSON *mode = cJSON_GetObjectItem(entry, "mode");
-        Esp32PersistentTrainData data(
-          cJSON_GetObjectItem(entry, "addr")->valueint,
-          cJSON_GetObjectItem(entry, "name")->valuestring,
-          cJSON_GetObjectItem(entry, "desc")->valuestring,
-          static_cast<DccMode>(cJSON_GetObjectItem(mode, "type")->valueint),
-          cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle")));
         cJSON *functions = cJSON_GetObjectItem(entry, "fn");
+        uint16_t address = cJSON_GetObjectItem(entry, "addr")->valueint;
+        std::string name = cJSON_GetObjectItem(entry, "name")->valuestring;
+        std::string desc = cJSON_GetObjectItem(entry, "desc")->valuestring;
+        DriveMode drive_mode =
+          static_cast<DriveMode>(cJSON_GetObjectItem(mode, "type")->valueint);
+        bool idle = cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle"));
+        std::vector<Function> fns;
+        // reserve spots for all supported functions
+        fns.reserve(locodb::MAX_LOCO_FUNCTIONS);
         if (cJSON_IsArray(functions))
         { 
           cJSON *function;
           cJSON_ArrayForEach(function, functions)
           {
             uint8_t id = cJSON_GetObjectItem(function, "id")->valueint;
-            Symbols type =
-              static_cast<Symbols>(
+            Function type =
+              static_cast<Function>(
                 cJSON_GetObjectItem(function, "type")->valueint);
             LOG(CONFIG_ROSTER_LOG_LEVEL,
-                "[TrainDB:%d] function: %d -> %d", data.address, id, type);
-            data.functions[id] = type;
+                "[TrainDB:%d] function: %d -> %d", address, id, type);
+            fns[id] = type;
           }
         }
-        auto train = std::make_shared<Esp32TrainDbEntry>(data, this);
-        train->reset_dirty();
+        auto train =
+          std::make_shared<Esp32TrainDbEntry>(this, address, drive_mode,
+                                              fns, name, desc, idle,
+                                              false /* modified */);
         LOG(CONFIG_ROSTER_LOG_LEVEL,
             "[TrainDB-%zu] Registering %s, name:%s, desc:%s, idle:%s",
             trains_.size(), train->identifier().c_str(),
             train->get_train_name().c_str(),
             train->get_train_description().c_str(),
-            train->is_auto_idle() ? "On" : "Off");
-        stack->executor()->add(new CallbackExecutable([train]()
-        {
-          auto trainMgr = Singleton<AllTrainNodes>::instance();
-          if (train->is_auto_idle())
-          {
-            // allocate the node and retrieve the train instance so that it
-            // will be idling and ready-to-use.
-            trainMgr->get_train_impl(train->get_legacy_drive_mode(),
-                                     train->get_legacy_address());
-          }
-          else
-          {
-            // allocate the node only so it shows up in OpenLCB node list. The
-            // train instance will be created upon first usage.
-            trainMgr->allocate_node(train->get_legacy_drive_mode(),
-                                    train->get_legacy_address());
-          }
-        }));
+            train->is_automatic_idle() ? "On" : "Off");
         trains_.emplace_back(train);
       }
     }
@@ -170,8 +129,8 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
              train->get_legacy_address() == id2;          \
     })
 
-std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::create_or_update(
-  uint16_t address, string name, string description, DccMode mode, bool idle)
+std::shared_ptr<LocoDatabaseEntry> Esp32TrainDatabase::create_or_update(
+  uint16_t address, string name, string description, DriveMode mode, bool idle)
 {
   OSMutexLock lock(&mux_);
   LOG(CONFIG_ROSTER_LOG_LEVEL,
@@ -179,24 +138,30 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::create_or_update(
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
-    LOG(INFO, "[TrainDB] Found existing entry:%s.", (*entry)->identifier().c_str());
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
+    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Found existing entry:%s.",
+        (*entry)->identifier().c_str());
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
     (*entry)->set_train_name(name);
     (*entry)->set_train_description(description);
     (*entry)->set_legacy_drive_mode(mode);
-    (*entry)->set_auto_idle(idle);
+    (*entry)->set_automatic_idle(idle);
     return *entry;
   }
   auto index = trains_.size();
+
+  std::vector<Function> functions;
   trains_.emplace_back(
-    new Esp32TrainDbEntry(
-      Esp32PersistentTrainData(address, name, description, mode, idle), this));
+    new Esp32TrainDbEntry(this, address, mode, functions, name, description, idle));
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   LOG(CONFIG_ROSTER_LOG_LEVEL,
       "[TrainDB] No entry was found, created new entry:%s.",
       trains_[index]->identifier().c_str());
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   return trains_[index];
 }
 
-int Esp32TrainDatabase::get_index(unsigned address)
+int Esp32TrainDatabase::get_index(size_t address)
 {
   auto ent = FIND_TRAIN(address);
   if (ent != trains_.end())
@@ -207,10 +172,12 @@ int Esp32TrainDatabase::get_index(unsigned address)
   return -1;
 }
 
-bool Esp32TrainDatabase::is_train_id_known(openlcb::NodeID train_id)
+bool Esp32TrainDatabase::is_valid_train(openlcb::NodeID train_id)
 {
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] searching for train with id: %s",
-      esp32cs::node_id_to_string(train_id).c_str());
+      utils::node_id_to_string(train_id).c_str());
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   dcc::TrainAddressType type;
   uint32_t addr =  0;
   // verify that it is a valid train node id
@@ -223,7 +190,26 @@ bool Esp32TrainDatabase::is_train_id_known(openlcb::NodeID train_id)
   return false;
 }
 
-void Esp32TrainDatabase::delete_entry(uint16_t address)
+void Esp32TrainDatabase::remove_entry(size_t train_id)
+{
+  uint16_t addr = 0;
+  DriveMode mode = DriveMode::DEFAULT;
+  {
+    OSMutexLock lock(&mux_);
+    if (train_id < trains_.size())
+    {
+      addr = trains_[train_id]->get_legacy_address();
+      mode = trains_[train_id]->get_legacy_drive_mode();
+    }
+    else
+    {
+      return;
+    }
+  }
+  remove_entry(addr, mode);
+}
+
+void Esp32TrainDatabase::remove_entry(uint16_t address, DriveMode mode)
 {
   OSMutexLock lock(&mux_);
   auto entry = FIND_TRAIN(address);
@@ -233,20 +219,20 @@ void Esp32TrainDatabase::delete_entry(uint16_t address)
         "[TrainDB] Removing persistent entry for address %u", address);
     trains_.erase(entry);
 
+    entryDeleted_ = true;
+
     // Send the request to cleanup the train node to the train node manager via
     // it's executor. This may occur in the background after this method exits.
-    auto trainMgr = Singleton<AllTrainNodes>::instance();
-    trainMgr->train_service()->executor()->add(
-      new CallbackExecutable([address, trainMgr]()
+    Singleton<locomgr::LocoManager>::instance()->train_service()->executor()->add(
+      new CallbackExecutable([mode, address]()
       {
-        trainMgr->remove_train_impl(address);
+        Singleton<locomgr::LocoManager>::instance()->delete_train(mode, address);
       }
     ));
-    entryDeleted_ = true;
   }
 }
 
-std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::get_entry(unsigned train_id)
+std::shared_ptr<LocoDatabaseEntry> Esp32TrainDatabase::get_entry(size_t train_id)
 {
   OSMutexLock lock(&mux_);
   LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] get_entry(%u) : %zu", train_id,
@@ -264,7 +250,7 @@ std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::get_entry(unsigned train_id)
   return nullptr;
 }
 
-std::shared_ptr<commandstation::TrainDbEntry> Esp32TrainDatabase::get_entry(const string name)
+std::shared_ptr<LocoDatabaseEntry> Esp32TrainDatabase::get_entry(const string &name)
 {
   OSMutexLock lock(&mux_);
   auto entry = FIND_TRAIN_BY_NAME(name);
@@ -275,30 +261,34 @@ std::shared_ptr<commandstation::TrainDbEntry> Esp32TrainDatabase::get_entry(cons
   return nullptr;
 }
 
-std::shared_ptr<TrainDbEntry> Esp32TrainDatabase::find_entry(openlcb::NodeID node_id
-                                                           , unsigned hint)
+std::shared_ptr<LocoDatabaseEntry> Esp32TrainDatabase::get_entry(
+  openlcb::NodeID node_id, unsigned hint)
 {
   OSMutexLock lock(&mux_);
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   LOG(CONFIG_ROSTER_LOG_LEVEL,
       "[TrainDB] Searching for Train Node:%s, Hint:%u",
-      esp32cs::node_id_to_string(node_id).c_str(), hint);
+      utils::node_id_to_string(node_id).c_str(), hint);
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
   auto entry = FIND_TRAIN_HINT(node_id, hint);
   if (entry != trains_.end())
   {
-    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Found existing entry: %s."
-      , (*entry)->identifier().c_str());
+#if CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
+    LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Found existing entry: %s.",
+        (*entry)->identifier().c_str());
+#endif // CONFIG_ROSTER_LOG_LEVEL >= VERBOSE
     return *entry;
   }
   LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] No entry found!");
   return nullptr;
 }
 
-// The caller of this method expects a zero based index into the vector. This
-// may be changed in the future to use the loco address instead.
-unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
+// The caller of this method expects a zero based index into the vector.
+size_t Esp32TrainDatabase::create_entry(uint16_t address, DriveMode mode)
 {
   OSMutexLock lock(&mux_);
   size_t index = 0;
+  std::string name = std::to_string(address);
 
   LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Searching for loco %d", address);
 
@@ -314,29 +304,20 @@ unsigned Esp32TrainDatabase::add_dynamic_entry(uint16_t address, DccMode mode)
   {
     // track the index for the new train entry
     index = trains_.size();
+    std::vector<Function> functions;
 
 #ifdef CONFIG_ROSTER_AUTO_CREATE_ENTRIES
     LOG(CONFIG_ROSTER_LOG_LEVEL,
         "[TrainDB] Creating persistent roster entry for locomotive %d.",
         address);
-
-    // create the new entry, it will default to being marked dirty so it will
-    // automatically persist.
-    trains_.emplace_back(
-      new Esp32TrainDbEntry(
-        Esp32PersistentTrainData(address, std::to_string(address),
-                                 std::to_string(address), mode), this));
 #else
-    LOG(INFO
-      , "[TrainDB] Adding temporary roster entry for locomotive %d."
-      , address);
-    // create the new entry and do not mark it as dirty so it doesn't
-    // automatically persist. If the locomotive is later edited via the web UI
-    // it will be marked as dirty and persisted at that point.
+    LOG(INFO, "[TrainDB] Adding temporary roster entry for locomotive %d.",
+        address);
+#endif
     trains_.emplace_back(
-      new Esp32TrainDbEntry(
-        Esp32PersistentTrainData(address, std::to_string(address),
-                                 std::to_string(address), mode), this, false));
+      new Esp32TrainDbEntry(this, address, mode, functions, name, name));
+#ifndef CONFIG_ROSTER_AUTO_CREATE_ENTRIES
+  trains_.back()->set_persistable_flag(false);
 #endif
   }
   return index;
@@ -351,6 +332,9 @@ void Esp32TrainDatabase::set_train_name(uint16_t address, std::string name)
   if (entry != trains_.end())
   {
     (*entry)->set_train_name(name);
+#ifndef CONFIG_ROSTER_AUTO_CREATE_ENTRIES
+    (*entry)->set_persistable_flag(false);
+#endif
   }
   else
   {
@@ -367,6 +351,9 @@ void Esp32TrainDatabase::set_train_description(uint16_t address, std::string des
   if (entry != trains_.end())
   {
     (*entry)->set_train_description(description);
+#ifndef CONFIG_ROSTER_AUTO_CREATE_ENTRIES
+    (*entry)->set_persistable_flag(false);
+#endif
   }
   else
   {
@@ -382,7 +369,10 @@ void Esp32TrainDatabase::set_train_auto_idle(uint16_t address, bool idle)
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
-    (*entry)->set_auto_idle(idle);
+    (*entry)->set_automatic_idle(idle);
+#ifndef CONFIG_ROSTER_AUTO_CREATE_ENTRIES
+    (*entry)->set_persistable_flag(false);
+#endif
   }
   else
   {
@@ -391,7 +381,7 @@ void Esp32TrainDatabase::set_train_auto_idle(uint16_t address, bool idle)
   }
 }
 
-void Esp32TrainDatabase::set_train_function_label(uint16_t address, uint8_t fn_id, Symbols label)
+void Esp32TrainDatabase::set_train_function_label(uint16_t address, uint8_t fn_id, Function fndef)
 {
   OSMutexLock lock(&mux_);
   LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Searching for train with address %u",
@@ -399,16 +389,19 @@ void Esp32TrainDatabase::set_train_function_label(uint16_t address, uint8_t fn_i
   auto entry = FIND_TRAIN(address);
   if (entry != trains_.end())
   {
-    (*entry)->set_function_label(fn_id, label);
+    (*entry)->set_function_def(fn_id, fndef);
+#ifndef CONFIG_ROSTER_AUTO_CREATE_ENTRIES
+    (*entry)->set_persistable_flag(false);
+#endif
   }
   else
   {
-    LOG_ERROR("[TrainDB] train %u not found, unable to set function label!"
-            , address);
+    LOG_ERROR("[TrainDB] train %u not found, unable to set function definition!",
+              address);
   }
 }
 
-void Esp32TrainDatabase::set_train_drive_mode(uint16_t address, commandstation::DccMode mode)
+void Esp32TrainDatabase::set_train_drive_mode(uint16_t address, DriveMode mode)
 {
   OSMutexLock lock(&mux_);
   LOG(CONFIG_ROSTER_LOG_LEVEL, "[TrainDB] Searching for train with address %u",
@@ -417,6 +410,9 @@ void Esp32TrainDatabase::set_train_drive_mode(uint16_t address, commandstation::
   if (entry != trains_.end())
   {
     (*entry)->set_legacy_drive_mode(mode);
+#ifndef CONFIG_ROSTER_AUTO_CREATE_ENTRIES
+    (*entry)->set_persistable_flag(false);
+#endif
   }
   else
   {
@@ -466,7 +462,7 @@ void Esp32TrainDatabase::persist()
   auto ent = std::find_if(trains_.begin(), trains_.end(),
     [](const auto &train)
     {
-      return train->is_dirty() && train->is_persisted();
+      return train->needs_persist();
     });
   if (ent != trains_.end() || entryDeleted_)
   {
@@ -476,7 +472,7 @@ void Esp32TrainDatabase::persist()
     size_t count = 0;
     for (auto entry : trains_)
     {
-      if (entry->is_persisted())
+      if (entry->is_persistable())
       {
         if (count)
         {
@@ -485,7 +481,7 @@ void Esp32TrainDatabase::persist()
         serialized += entry->to_json(false);
         count++;
       }
-      entry->reset_dirty();
+      entry->reset_persist_flag();
     }
     serialized += "]";
     write_string_to_file(TRAIN_DB_JSON_FILE, serialized);

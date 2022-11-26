@@ -131,12 +131,10 @@ bool mount_fs_sdspi()
         .sclk_io_num = CONFIG_SD_SPI_CLOCK,
         .quadwp_io_num = GPIO_NUM_NC,
         .quadhd_io_num = GPIO_NUM_NC,
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,4,0)
         .data4_io_num = GPIO_NUM_NC,
         .data5_io_num = GPIO_NUM_NC,
         .data6_io_num = GPIO_NUM_NC,
         .data7_io_num = GPIO_NUM_NC,
-#endif // IDF v4.4+
         .max_transfer_sz = 0,
         .flags = SPICOMMON_BUSFLAG_SCLK | SPICOMMON_BUSFLAG_MISO |
                  SPICOMMON_BUSFLAG_MOSI,

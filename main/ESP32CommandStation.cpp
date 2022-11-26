@@ -16,9 +16,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 **********************************************************************/
 
 #include "sdkconfig.h"
-#include "ThermalMonitorFlow.hxx"
 #include <AccessoryDecoderDatabase.hxx>
-#include <AllTrainNodes.hxx>
 #include <cdi.hxx>
 #include <dcc/Packet.hxx>
 #include <dcc/PacketSource.hxx>
@@ -45,6 +43,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <hardware.hxx>
 #include <HealthMonitor.hxx>
 #include <Httpd.h>
+#if CONFIG_ROSTER_EXPOSE_VMS
+#include <locodb/LocoDatabaseVirtualMemorySpace.hxx>
+#endif
 #include <mutex>
 #include <NodeRebootHelper.hxx>
 #include <NvsManager.hxx>
@@ -55,7 +56,9 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <openlcb/SimpleStack.hxx>
 #include <StatusDisplay.hxx>
 #include <StatusLED.hxx>
-#include <TrainDatabase.h>
+#include <ThermalMonitorFlow.hxx>
+#include <TrainDatabase.hxx>
+#include <TrainManager.hxx>
 #include <UlpAdc.hxx>
 #include <utils/AutoSyncFileFlow.hxx>
 #include <utils/constants.hxx>
@@ -102,10 +105,21 @@ OVERRIDE_CONST(local_nodes_count, 0);
 /// have extras available for virtual train nodes.
 OVERRIDE_CONST(local_alias_cache_size, CONFIG_OLCB_LOCAL_ALIAS_COUNT);
 
+/// Allow adjustment of the CAN TX/RX buffer sizes via config.
+OVERRIDE_CONST(can_tx_buffer_size, CONFIG_OLCB_TWAI_TX_BUFFER_SIZE);
+OVERRIDE_CONST(can_rx_buffer_size, CONFIG_OLCB_TWAI_RX_BUFFER_SIZE);
+
 #if CONFIG_OLCB_GC_NEWLINES
 /// Generate GridConnect frames with a newline appended to each frame.
 OVERRIDE_CONST_TRUE(gc_generate_newlines);
 #endif // CONFIG_OLCB_GC_NEWLINES
+
+/// ESP32 CS does not support the Marklin protocol.
+OVERRIDE_CONST_FALSE(trainmgr_support_marklin);
+
+#ifndef CONFIG_ROSTER_AUTO_IDLE_NEW_LOCOS
+OVERRIDE_CONST_FALSE(trainmgr_automatically_create_train_impl);
+#endif // CONFIG_ROSTER_AUTO_IDLE_NEW_LOCOS
 
 /// CDI configuration for the ESP32 Commmand Station.
 /// Offset is set to zero and is likely to be removed in the future.
@@ -208,7 +222,7 @@ public:
           CDI_READ_TRIM_DEFAULT(cfg_.advanced().enable_throttles, fd);
         LOG(INFO, "[OpenLCB] Train Search Listener: %s",
             dcc_en ? "Enabled" : "Disabled");
-        Singleton<commandstation::AllTrainNodes>::instance()->configure(throttles_en);
+        Singleton<locomgr::LocoManager>::instance()->set_enabled(throttles_en);
 
         return ConfigUpdateListener::UpdateAction::UPDATED;
     }
@@ -247,9 +261,6 @@ private:
 /// during the first fifteen seconds of the blinking LED pattern. If the
 /// FACTORY_RESET button is not pressed during this period the CS will halt
 /// execution with the blink pattern continued.
-///
-/// For ESP-IDF v4.3 it is necessary to use espcoredump.py to extract the core
-/// dump as: python espcoredump.py --port /dev/ttyUSB0 --baud 115200 info_corefile --core-format elf --off 0x370000 ESP32CommandStation.elf
 void check_for_coredump()
 {
 #if CONFIG_CRASH_COLLECT_CORE_DUMP
@@ -263,33 +274,9 @@ void check_for_coredump()
     leds->set(StatusLED::LED::BOOTLOADER, StatusLED::COLOR::YELLOW_BLINK, true);
     leds->set(StatusLED::LED::OPS_TRACK, StatusLED::COLOR::RED_BLINK);
     leds->set(StatusLED::LED::PROG_TRACK, StatusLED::COLOR::YELLOW_BLINK, true);
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4,4,0)
     esp32cs::mount_fs(false);
     Esp32CoreDumpUtil::display("/fs/coredump.txt");
     esp32cs::unmount_fs();
-#else // IDF v4.3
-    for (size_t count = CONFIG_CRASH_CLEANUP_TIMEOUT_SEC;
-         count > 0 && !cleanup_coredump; count--)
-    {
-      vTaskDelay(pdMS_TO_TICKS(1000));
-      cleanup_coredump = FACTORY_RESET_BUTTON_Pin::instance()->is_clr();
-      if (cleanup_coredump)
-      {
-        leds->set(StatusLED::LED::WIFI_STA, StatusLED::COLOR::OFF);
-        vTaskDelay(pdMS_TO_TICKS(500));
-      }
-    }
-
-#if CONFIG_CRASH_HALT_ON_STARTUP
-    if (!cleanup_coredump)
-    {
-      // since factory reset was not pressed, halt execution.
-      vTaskDelay(portMAX_DELAY);
-    }
-
-#endif // CONFIG_CRASH_HALT_ON_STARTUP
-#endif // IDF v4.4+
-
     Esp32CoreDumpUtil::cleanup();
 
     // Clear LEDs
@@ -310,7 +297,7 @@ void app_main()
       app_data->idf_ver);
   LOG(INFO, "Running from: %s", esp_ota_get_running_partition()->label);
   LOG(INFO, "ESP32 Command Station uses the OpenMRN library\n"
-            "Copyright (c) 2019-2021, OpenMRN\n"
+            "Copyright (c) 2019-2022, OpenMRN\n"
             "All rights reserved.");
   LOG(INFO, "[SNIP] version:%d, manufacturer:%s, model:%s, hw-v:%s, sw-v:%s",
       openlcb::SNIP_STATIC_DATA.version,
@@ -335,7 +322,7 @@ void app_main()
     esp32cs::initialize_ulp_adc();
 
     // initialize the OpenMRN stack and dependent components
-    openlcb::SimpleCanStack stack(nvs.node_id());;
+    openlcb::SimpleCanStack stack(nvs.node_id());
     Esp32WiFiManager wifi_manager(nvs.station_ssid(), nvs.station_password(),
                                   &stack, cfg.seg().olcb().wifi(),
                                   nvs.wifi_mode(),
@@ -394,11 +381,10 @@ void app_main()
                                           &wifi_manager, &nvs);
     openlcb::TrainService trainService(stack.iface());
     esp32cs::Esp32TrainDatabase train_db(&stack, &wifi_manager);
-    commandstation::AllTrainNodes trains(&train_db, &trainService,
-                                         stack.info_flow(),
-                                         stack.memory_config_handler(),
-                                         train_db.get_train_cdi(),
-                                         train_db.get_temp_train_cdi());
+#if CONFIG_ROSTER_EXPOSE_VMS
+    locodb::LocoDatabaseVirtualMemorySpace train_db_vms(&stack);
+#endif // CONFIG_ROSTER_EXPOSE_VMS
+
     MDNS mdns;
     http::Httpd httpd(&wifi_manager, &mdns);
     esp32cs::ThermalMonitorFlow thermal_monitor(&wifi_manager,
@@ -407,6 +393,10 @@ void app_main()
     esp32cs::init_dcc(stack.node(), stack.service(), cfg.seg().track());
     nvs.register_virtual_memory_spaces(&stack);
     nvs.register_clocks(stack.node(), &wifi_manager);
+
+    // Initialize after DCC since there is a dependency on UpdataLoop
+    trainmanager::TrainManager train_mgr(&trainService, stack.info_flow(),
+                                         stack.memory_config_handler());
 
     // Create config file and initiate factory reset if it doesn't exist or is
     // otherwise corrupted.

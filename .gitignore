@@ -10,3 +10,5 @@ docs/esp32cs.tag
 docs/warnings
 web/*.gz
 pcb/*.*-bak
+managed_components
+dependencies.lock

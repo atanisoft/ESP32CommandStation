@@ -38,14 +38,13 @@ set(CUSTOM_DEPS
     AccessoryDecoderDB
     Config
     DCC
-    HttpServer
     NeoPixelBus
     NvsManager
-    OpenMRNIDF
+    OpenMRNExtensions
     StatusDisplay
     StatusLED
     TrainDatabase
-    TrainSearchProtocol
+    TrainManager
     ULPADC
     Utils
 )
