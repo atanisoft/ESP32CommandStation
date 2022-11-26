@@ -103,15 +103,23 @@ void TrainManager::delete_train(DriveMode drive_type, int address)
   auto ent = std::find_if(trains_.begin(), trains_.end(),
     [drive_type, address](const auto &impl)
     {
+      // If the drive type is DCC_ANY or MARLIN_ANY ignore the drive mode and
+      // use only the address for removal.
+      if (drive_type == DriveMode::DCC_ANY ||
+          drive_type == DriveMode::MARKLIN_ANY)
+      {
+        return impl->address() == address;
+      }
       return impl->address() == address && impl->mode() == drive_type;
     });
   if (ent != trains_.end())
   {
     LazyInitTrainNode *impl = (*ent);
-    impl->iface()->delete_local_node(impl);
 #if TRAINMGR_LOGLEVEL >= VERBOSE
-    LOG(TRAINMGR_LOGLEVEL, "[TrainManager] %s deleted as it used address:%d",
-        utils::node_id_to_string(impl->node_id()).c_str(), address);
+    LOG(TRAINMGR_LOGLEVEL,
+        "[TrainManager] %s deleted as it used address:%d, drive_type:%s",
+        utils::node_id_to_string(impl->node_id()).c_str(), address,
+        locodb::drive_mode_to_string(drive_type));
 #endif // TRAINMGR_LOGLEVEL >= VERBOSE
     delete impl;
     trains_.erase(ent);
