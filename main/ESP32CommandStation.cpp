@@ -105,6 +105,10 @@ OVERRIDE_CONST(local_nodes_count, 0);
 /// have extras available for virtual train nodes.
 OVERRIDE_CONST(local_alias_cache_size, CONFIG_OLCB_LOCAL_ALIAS_COUNT);
 
+/// Allow adjustment of the CAN TX/RX buffer sizes via config.
+OVERRIDE_CONST(can_tx_buffer_size, CONFIG_OLCB_TWAI_TX_BUFFER_SIZE);
+OVERRIDE_CONST(can_rx_buffer_size, CONFIG_OLCB_TWAI_RX_BUFFER_SIZE);
+
 #if CONFIG_OLCB_GC_NEWLINES
 /// Generate GridConnect frames with a newline appended to each frame.
 OVERRIDE_CONST_TRUE(gc_generate_newlines);

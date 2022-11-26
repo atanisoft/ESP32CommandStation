@@ -663,6 +663,16 @@ menu "ESP32 Command Station Configuration"
                     Enabling this option will generate a newline character after
                     every GridConnect packet that is sent out. This is generally
                     only needed for debug purposes.
+
+            config OLCB_TWAI_RX_BUFFER_SIZE
+                int "Number of TWAI (CAN) packets to queue for RX"
+                range 16 128
+                default 32
+        
+            config OLCB_TWAI_TX_BUFFER_SIZE
+                int "Number of TWAI (CAN) packets to queue for TX"
+                range 16 128
+                default 32
         endmenu
 
         config OLCB_NODEID_MEMORY_SPACE_ID
