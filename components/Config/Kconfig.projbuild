@@ -427,9 +427,20 @@ menu "ESP32 Command Station Configuration"
     endmenu
 
     menu "OpenLCB Configuration"
+        config OLCB_NODE_AUTO_ASSIGN
+            bool "Automatically assign Node ID"
+            default y
+            help
+                When this option is enabled the OpenLCB Node ID will automatically
+                be assigned based on the MAC address of the ESP32. The node ID will
+                be: 02.02.05.{mac 3}.{mac 4}.{mac 5}
+                where {mac 3}, {mac 4} and {mac 5} are the guaranteed unique
+                portion of the ESP32 MAC address.
+
         config OLCB_NODE_ID
             hex "Node ID"
             default 0x05020103FFFE
+            depends on !OLCB_NODE_AUTO_ASSIGN
             help 
                 This is the OpenLCB node identifier for the ESP32 Command Station.
                 It is recommended, but not required, to request your own ID
@@ -1516,6 +1527,13 @@ menu "ESP32 Command Station Configuration"
                     this many seconds to persistant storage (SPIFFS or SD). This is
                     done to minimize the number of write operations when roster entries
                     are modified.
+
+            config ROSTER_EXPOSE_VMS
+                bool "Expose Locomotive Roster as OpenLCB MemorySpace"
+                default n
+                help
+                    Enabling this option will expose an OpenLCB MemorySpace which can
+                    be used to interact with the Locomotive Roster.
 
             menu "Logging"
                 choice ROSTER_LOGGING

@@ -547,7 +547,7 @@ Common ID values:
 01.01.00.00.01.03 - Alternate Clock 2</description>
 </string>
 </segment>)xmlpayload"
-#if 0
+#if CONFIG_ROSTER_EXPOSE_VMS
 <segment space='187' origin='2048'>
 <name>Locomotive Roster</name>
 <int size='2'>

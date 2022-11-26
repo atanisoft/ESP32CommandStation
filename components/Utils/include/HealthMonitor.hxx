@@ -70,7 +70,7 @@ private:
         struct tm ti;
         gettimeofday(&tv, NULL);
         localtime_r(&tv.tv_sec, &ti);
-        LOG(INFO, "%02d:%02d:%02d.%03ld:: heap: %.2fkB/%.2fKb (max block size: %.2fkB), "
+        LOG(INFO, "%02d:%02d:%02d.%03ld: heap: %.2fkB/%.2fKb (max block size: %.2fkB), "
 #if CONFIG_SPIRAM
                   "PSRAM: %.2fkB/%.2fKb (max block size: %.2fkB), "
 #endif // CONFIG_SPIRAM

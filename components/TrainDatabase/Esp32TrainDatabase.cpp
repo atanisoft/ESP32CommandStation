@@ -49,6 +49,8 @@ Esp32TrainDatabase::Esp32TrainDatabase(openlcb::SimpleStackBase *stack,
           static_cast<DriveMode>(cJSON_GetObjectItem(mode, "type")->valueint);
         bool idle = cJSON_IsTrue(cJSON_GetObjectItem(entry, "idle"));
         std::vector<Function> fns;
+        // reserve spots for all supported functions
+        fns.reserve(locodb::MAX_LOCO_FUNCTIONS);
         if (cJSON_IsArray(functions))
         { 
           cJSON *function;

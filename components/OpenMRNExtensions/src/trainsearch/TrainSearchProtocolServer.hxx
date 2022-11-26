@@ -224,7 +224,6 @@ public:
     {
       LOG(TSP_LOG_LEVEL, "event:%s",
           utils::event_id_to_string(message()->data()->event_).c_str());
-      release();
       if (message()->data()->event_ == REQUEST_GLOBAL_IDENTIFY)
       {
         LOG(TSP_LOG_LEVEL, "global REQUEST_GLOBAL_IDENTIFY");
@@ -233,7 +232,7 @@ public:
         {
           LOG(TSP_LOG_LEVEL, "duplicate global REQUEST_GLOBAL_IDENTIFY");
           // Duplicate global identify, or the previous one was already handled.
-          return exit();
+          return release_and_exit();
         }
         parent_->pendingGlobalIdentify_ = false;
       }
@@ -245,7 +244,7 @@ public:
         {
           LOG(TSP_LOG_LEVEL, "duplicate global IS_TRAIN_EVENT");
           // Duplicate is_train, or the previous one was already handled.
-          return exit();
+          return release_and_exit();
         }
         parent_->pendingIsTrain_ = false;
       }
@@ -373,7 +372,7 @@ public:
       }
       LOG(TSP_LOG_LEVEL,
           "No matches were found in Locomotive Roster, giving up.");
-      return exit();
+      return release_and_exit();
     }
 
     /// This state is called when we reach the end of the @ref LocoDatabase
@@ -388,7 +387,7 @@ public:
       {
         LOG(WARNING, "Decided to allocate node but failed. type=%d addr=%u",
             static_cast<int>(mode), address);
-        return exit();
+        return release_and_exit();
       }
       return call_immediately(STATE(wait_for_node));
     }
@@ -418,7 +417,7 @@ public:
       b->data()->reset(Defs::MTI_PRODUCER_IDENTIFIED_VALID, newNodeId_,
                        openlcb::eventid_to_buffer(message()->data()->event_));
       messageFlow_->send(b);
-      return exit();
+      return release_and_exit();
     }
 
   private:

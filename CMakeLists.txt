@@ -64,9 +64,17 @@ string(SUBSTRING "${project_ver}" 0 20 SNIP_SW_VERSION)
 idf_build_get_property(project_name PROJECT_NAME)
 string(SUBSTRING "${project_name}" 0 40 SNIP_PROJECT_NAME)
 
-set(SNIP_HW_VERSION "1.0.0")
 set(SNIP_PROJECT_PAGE "atanisoft.github.io")
 set(CDI_VERSION "0x0200")
+
+if(CONFIG_ESP32CS_PCB_V150)
+set(SNIP_HW_VERSION "1.5.0")
+elseif(CONFIG_ESP32CS_PCB_V200)
+set(SNIP_HW_VERSION "2.0.0")
+else()
+set(SNIP_HW_VERSION "1.0.0")
+endif()
+
 message(STATUS "SNIP: ${SNIP_PROJECT_NAME}/${SNIP_PROJECT_PAGE}/${SNIP_SW_VERSION}/${SNIP_HW_VERSION}")
 
 idf_build_set_property(COMPILE_DEFINITIONS "-DSNIP_PROJECT_PAGE=\"${SNIP_PROJECT_PAGE}\"" APPEND)

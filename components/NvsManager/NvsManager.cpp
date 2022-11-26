@@ -186,7 +186,17 @@ namespace esp32cs
   static inline void reset_nvs_config_to_defaults()
   {
     memset(&nvsConfig, 0, sizeof(node_config_t));
+
+#if CONFIG_OLCB_NODE_AUTO_ASSIGN
+    uint8_t softap_mac_addr[6];
+    ESP_ERROR_CHECK(esp_read_mac(softap_mac_addr, ESP_MAC_WIFI_SOFTAP));
+    nvsConfig.node_id = 0x020205000000;
+    nvsConfig.node_id |= ((uint64_t)softap_mac_addr[3] << 16);
+    nvsConfig.node_id |= ((uint64_t)softap_mac_addr[4] << 8);
+    nvsConfig.node_id |= ((uint64_t)softap_mac_addr[5]);
+#else
     nvsConfig.node_id = CONFIG_OLCB_NODE_ID;
+#endif
     nvsConfig.wifi_mode = (wifi_mode_t)CONFIG_WIFI_MODE;
     str_populate(nvsConfig.hostname_prefix, CONFIG_WIFI_HOSTNAME_PREFIX);
     str_populate(nvsConfig.station_ssid, CONFIG_WIFI_STATION_SSID);
