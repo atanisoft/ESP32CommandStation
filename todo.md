@@ -12,6 +12,11 @@
     - StatusLED: APP_CPU priority 3
     - HttpServer: Listener runs standalone, HttpServer leverages Esp32WiFiManager Executor.
     - TWAI: ISR APP_CPU, task float priority is one less than LwIP.
+* [x] AccessoryDecoderDB: Verify all functionality.
+* [x] AccessoryDecoderDB: Directly consume OpenLCB events.
+* [x] AccessoryDecoderDB: Add name to decoder.
+* [x] Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
+* [x] Build: Migrate to IDF components rather than submodules?
 * [ ] DCC: ULP current sense / ACK.
     - [x] Implementation of ULP code to read ADC and wake main SoC when thresholds breached.
     - [x] Disable track when short occurs.
@@ -21,25 +26,21 @@
 * [x] DCC: ProgrammingTrackBackend support (UWT-100 dependency).
 * [x] Deps: Remove nlohmann_json dependency in favor of cJSON.
 * [ ] Docs: Add user guide and how to build guide under docs tree.
+* [x] FastClock: Re-add FastClock support.
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.
+* [x] TempSensor: Move ADC read into ULP.
 * [x] TrainDB: reduce function types to: light, horn (momentary), bell, mute, coupler, other, other (momentary).
 * [x] TrainDB: Remove Marklin support.
 * [x] TrainDB: Enable editing via loco CDI.
 * [x] TrainDB: Expose via Memory Space?
-* [x] AccessoryDecoderDB: Verify all functionality.
-* [x] AccessoryDecoderDB: Directly consume OpenLCB events.
-* [x] AccessoryDecoderDB: Add name to decoder.
-* [x] TempSensor: Move ADC read into ULP.
+* [x] TrainSearch: General code formatting / cleanup
 * [x] WebUI: Cross check against WebServer.cpp for uniformity in parameters/json.
-* [ ] WebUI: Test all endpoints.
 * [x] WebUI: Roster save via WS.
 * [x] WebUI: Expose FastClock configuration (non-realtime).
-* [x] FastClock: Re-add FastClock support.
-* [x] Build: Add automatic config selector for PCB, "Uno" form-factor with L298, etc.
-* [x] Build: Migrate to IDF components rather than submodules?
-* [x] TrainSearch: General code formatting / cleanup
+* [ ] WebUI: Expose Programming Track
+* [ ] WebUI: Test all endpoints.
 
 ### Nice to have for v2.0
 
@@ -54,7 +55,6 @@
 * WebUI: Add function name/label editing via web interface.
 * WebUI: Show remaining characters for various text fields.
 * WebUI: Filtering of accessories/locos.
-* CDI/WebUI: Expose ProgrammingTrack
 
 ### Future planning
 
