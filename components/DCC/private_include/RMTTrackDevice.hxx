@@ -28,6 +28,7 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 #include <freertos/queue.h>
 #include <freertos_drivers/arduino/RailcomDriver.hxx>
 #include <soc/soc_caps.h>
+#include <stdint.h>
 #include <utils/logging.h>
 #include <utils/macros.h>
 
@@ -104,8 +105,9 @@ public:
     uint8_t memoryBlocks = (maxBitCount / RMT_MEM_ITEM_NUM) + 1;
     HASSERT(memoryBlocks <= MAX_RMT_MEMORY_BLOCKS);
     LOG(INFO,
-        "[DCC-RMT-%d] DCC config: zero:%duS, one:%duS, preamble-bits:%d/%d, "
-        "wave:%s, signal pin:%d, RMT-mem:%d (blocks:%d), RMT-CLK:%s (%d)",
+        "[DCC-RMT-%d] DCC config: zero:%duS, one:%duS, preamble-bits:%" PRIu32
+        "/%" PRIu32 ", wave:%s, signal pin:%d, RMT-mem:%d (blocks:%d), "
+        "RMT-CLK:%s (%d)",
         HW::RMT_CHANNEL, HW::DCC_ZERO_RMT_TICKS, HW::DCC_ONE_RMT_TICKS,
         HW::DCC_PREAMBLE_BITS, HW::DCC_SERVICE_MODE_PREAMBLE_BITS,
         HW::RMT_WAVE_FMT, HW::DCC_SIGNAL_PIN_NUM, maxBitCount,

@@ -65,15 +65,15 @@ size_t TrainFDISpace::read(
   ssize_t result = gen_.read(source, dst, len);
   if (result < 0)
   {
-    LOG_ERROR("[TrainFDI] Read failure: %u, %zu: %zu (%s)", source, len,
-              result, strerror(errno));
+    LOG_ERROR("[TrainFDI] Read failure: %" PRIu32 ", %zu: %zu (%s)", source,
+              len, result, strerror(errno));
     *error = Defs::ERROR_PERMANENT;
     return 0;
   }
   if (result == 0)
   {
-    LOG(TRAINCONFIG_LOGLEVEL, "[TrainFDI] Out-of-bounds read: %u, %zu",
-        source, len);
+    LOG(TRAINCONFIG_LOGLEVEL,
+        "[TrainFDI] Out-of-bounds read: %" PRIu32 ", %zu", source, len);
     *error = openlcb::MemoryConfigDefs::ERROR_OUT_OF_BOUNDS;
   }
   else

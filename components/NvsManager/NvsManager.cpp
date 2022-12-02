@@ -19,6 +19,9 @@
 #include <esp32s3/rom/rtc.h>
 #endif
 #include <esp_err.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+#include <esp_mac.h>
+#endif
 #include <esp_partition.h>
 #include <esp_wifi_types.h>
 #include <freertos_drivers/esp32/Esp32BootloaderHal.hxx>

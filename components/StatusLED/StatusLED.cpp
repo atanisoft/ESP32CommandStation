@@ -16,6 +16,7 @@ COPYRIGHT (c) 2019-2021 Mike Dunston
 **********************************************************************/
 
 #include "StatusLED.hxx"
+#include <atomic>
 #include <freertos_includes.h>
 
 namespace esp32cs
@@ -40,13 +41,20 @@ static constexpr BaseType_t LED_UPDATE_TASK_CORE = APP_CPU_NUM;
 static constexpr TickType_t LED_UPDATE_INTERVAL = 
   pdMS_TO_TICKS(CONFIG_STATUS_LED_UPDATE_INTERVAL_MSEC);
 
+
+static std::atomic_bool needUpdate_ = false;
+
 static void led_update(void *arg)
 {
   StatusLED *led = (StatusLED *)arg;
   while(true)
   {
     vTaskDelay(LED_UPDATE_INTERVAL);
-    led->refresh();
+    if (needUpdate_)
+    {
+      led->refresh();
+      needUpdate_ = false;
+    }
   }
 }
 
@@ -61,6 +69,7 @@ void StatusLED::set(const LED led, const COLOR color, const bool on)
 {
   colors_[led] = color;
   state_[led] = on;
+  needUpdate_ = true;
 }
 
 void StatusLED::clear()
@@ -70,6 +79,18 @@ void StatusLED::clear()
     colors_[index] = OFF;
     state_[index] = false;
   }
+  needUpdate_ = true;
+}
+
+void StatusLED::setBrightness(uint8_t level)
+{
+  brightness_ = level;
+  needUpdate_ = true;
+}
+
+uint8_t StatusLED::getBrightness()
+{
+  return brightness_;
 }
 
 } // namespace esp32cs

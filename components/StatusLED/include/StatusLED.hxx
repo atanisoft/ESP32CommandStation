@@ -39,15 +39,15 @@ class StatusLED : public Singleton<StatusLED>
 public:
   enum COLOR : uint8_t
   {
-    OFF
-  , RED
-  , GREEN
-  , YELLOW
-  , BLUE
-  , RED_BLINK
-  , GREEN_BLINK
-  , BLUE_BLINK
-  , YELLOW_BLINK
+    OFF,
+    RED,
+    GREEN,
+    YELLOW,
+    BLUE,
+    RED_BLINK,
+    GREEN_BLINK,
+    BLUE_BLINK,
+    YELLOW_BLINK
   };
 
   enum LED : uint8_t
@@ -62,23 +62,17 @@ public:
 
   StatusLED();
   void hw_init();
-  void set(const LED led, const COLOR color, const bool on = false);
-  void clear();
-  void setBrightness(uint8_t level)
-  {
-    brightness_ = level;
-  }
-  uint8_t getBrightness()
-  {
-    return brightness_;
-  }
-  void start_task();
-
   /// Refreshes the LEDs.
   ///
   /// NOTE: This is not intended to be called from outside of the StatuLED
   /// module.
   void refresh();
+
+  void start_task();
+  void set(const LED led, const COLOR color, const bool on = false);
+  void clear();
+  void setBrightness(uint8_t level);
+  uint8_t getBrightness();
 
 private:
   uint8_t brightness_{CONFIG_STATUS_LED_BRIGHTNESS};

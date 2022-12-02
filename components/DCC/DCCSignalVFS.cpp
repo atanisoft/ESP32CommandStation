@@ -242,8 +242,8 @@ private:
     }
     else if (DccHwDefs::InternalBoosterOutput::should_be_enabled())
     {
-      LOG(INFO, "[Track] Usage: %d/%d, %d mA", last_reading, short_limit,
-          esp32cs::get_ops_load());
+      LOG(INFO, "[Track] Usage: %" PRIu16 "/%" PRIu16 ", %" PRIu32 " mA",
+          last_reading, short_limit, esp32cs::get_ops_load());
       status->track_power("Track: %d mA%c", esp32cs::get_ops_load(),
                           last_reading > warn_limit ? '!' : ' ');
     }

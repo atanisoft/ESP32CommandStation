@@ -20,6 +20,7 @@ COPYRIGHT (c) 2021 Mike Dunston
 #include "ulp_adc_ops.h"
 #include <dcc/ProgrammingTrackBackend.hxx>
 #include <driver/rtc_cntl.h>
+#include <esp_idf_version.h>
 #include <esp32/rom/ets_sys.h>
 #include <esp32/ulp.h>
 #include <hardware.hxx>
@@ -57,7 +58,7 @@ static void ulp_adc_wakeup(void *param)
 #if CONFIG_OPS_TRACK_ENABLED
   if (ULP_VAR(ulp_ops_last_reading) > ULP_VAR(ulp_ops_short_threshold))
   {
-    ets_printf("[ULP-ADC] OPS short detected (%d vs %d)!\n",
+    ets_printf("[ULP-ADC] OPS short detected (%" PRIu32 " vs %" PRIu32 ")!\n",
                ULP_VAR(ulp_ops_last_reading),
                ULP_VAR(ulp_ops_short_threshold));
     DccHwDefs::InternalBoosterOutput::set_disable_reason(DccOutput::DisableReason::SHORTED);
@@ -130,9 +131,15 @@ static constexpr float mAPerADCStep = 0.8056f;
 void initialize_ulp_adc()
 {
   LOG(INFO, "[ULP-ADC] Registering ULP wakeup ISR");
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+  // register ISR callback for ULP wake-up event.
+  ESP_ERROR_CHECK(
+    rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_SAR_INT_ST_M, 0));
+#else
   // register ISR callback for ULP wake-up event.
   ESP_ERROR_CHECK(
     rtc_isr_register(ulp_adc_wakeup, NULL, RTC_CNTL_SAR_INT_ST_M));
+#endif
 
   // set bit to allow wakeup by the ULP even though the main SoC is not in a
   // deep sleep state.
@@ -171,9 +178,9 @@ void initialize_ulp_adc()
   ulp_ops_shutdown_threshold = 4090;
 #if CONFIG_CURRENTSENSE_USE_SHUNT
   LOG(INFO,
-      "[ULP-ADC] OPS Short threshold: %d/4095 (%6.2f mA), "
-      "Warning threshold: %d/4095 (%6.2f mA), "
-      "Shutdown threshold: %d/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
+      "[ULP-ADC] OPS Short threshold: %" PRIu32 "/4095 (%6.2f mA), "
+      "Warning threshold: %" PRIu32 "/4095 (%6.2f mA), "
+      "Shutdown threshold: %" PRIu32 "/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
       ULP_VAR(ulp_ops_short_threshold),
       (ULP_VAR(ulp_ops_short_threshold) * mAPerADCStep),
       ULP_VAR(ulp_ops_warning_threshold),
@@ -183,9 +190,9 @@ void initialize_ulp_adc()
       PROG_CURRENT_SENSE_Pin::pin(), OPS_CURRENT_SENSE_Pin::channel());
 #else
   LOG(INFO,
-      "[ULP-ADC] OPS Short threshold: %d/4095 (%6.2f mA), "
-      "Warning threshold: %d/4095 (%6.2f mA), "
-      "Shutdown threshold: %d/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
+      "[ULP-ADC] OPS Short threshold: %" PRIu32 "/4095 (%6.2f mA), "
+      "Warning threshold: %" PRIu32 "/4095 (%6.2f mA), "
+      "Shutdown threshold: %" PRIu32 "/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
       ULP_VAR(ulp_ops_short_threshold),
       ((ULP_VAR(ulp_ops_short_threshold) * CONFIG_OPS_HBRIDGE_LIMIT_MILLIAMPS) / 4096.0f),
       ULP_VAR(ulp_ops_warning_threshold),
@@ -205,8 +212,8 @@ void initialize_ulp_adc()
   // Configure the PROG track short limit to ~250mA
   ulp_prog_short_threshold = prog_threshold.round();
   LOG(INFO,
-      "[ULP-ADC] PROG Ack threshold: %u/4095 (%6.2f mA), "
-      "Short threshold: %u/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
+      "[ULP-ADC] PROG Ack threshold: %" PRIu32 "/4095 (%6.2f mA), "
+      "Short threshold: %" PRIu32 "/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
       ULP_VAR(ulp_prog_ack_threshold),
       ULP_VAR(ulp_prog_ack_threshold) * mAPerADCStep,
       ULP_VAR(ulp_prog_short_threshold),
@@ -218,8 +225,8 @@ void initialize_ulp_adc()
   // Configure the PROG track short limit to ~250mA
   ulp_prog_short_threshold = (250 << 12) / CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS;
   LOG(INFO,
-      "[ULP-ADC] PROG Ack threshold: %u/4095 (%6.2f mA), "
-      "Short threshold: %u/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
+      "[ULP-ADC] PROG Ack threshold: %" PRIu32 "/4095 (%6.2f mA), "
+      "Short threshold: %" PRIu32 "/4095 (%6.2f mA), Pin: %d (ADC1:%d)",
       ULP_VAR(ulp_prog_ack_threshold),
       ((ULP_VAR(ulp_prog_ack_threshold) * CONFIG_PROG_HBRIDGE_MAX_MILLIAMPS) / 4096.0f),
       ULP_VAR(ulp_prog_short_threshold),

@@ -23,7 +23,6 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <dcc/UpdateLoop.hxx>
 #include <DCCSignalVFS.hxx>
 #include <DelayRebootHelper.hxx>
-#include <esp_adc_cal.h>
 #include <esp_core_dump.h>
 #include <esp_ipc.h>
 #include <esp_log.h>
@@ -291,7 +290,11 @@ extern "C"
 /// Application main entry point.
 void app_main()
 {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+  const esp_app_desc_t *app_data = esp_app_get_description();
+#else
   const esp_app_desc_t *app_data = esp_ota_get_app_description();
+#endif // IDF v5.0+
   LOG(INFO, "\n\nESP32 Command Station starting up...");
   LOG(INFO, "Compiled on %s %s using IDF %s", app_data->date, app_data->time,
       app_data->idf_ver);

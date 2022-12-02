@@ -98,7 +98,6 @@ namespace esp32cs
             return [this, offset](unsigned repeat, BarrierNotifiable *done)
             {
                 AutoNotify n(done);
-                LOG(VERBOSE, "[WiFiMemCfg:%02x-RD] offs: %d", SPACE, offset);
                 T value = (T)0;
                 switch(offset)
                 {
@@ -136,8 +135,6 @@ namespace esp32cs
             return [this, offset](unsigned repeat, T value, BarrierNotifiable *done)
             {
                 AutoNotify n(done);
-                LOG(VERBOSE, "[WiFiMemCfg:%02x-WR] offs: %d, value: %d",
-                    SPACE, offset, (uint32_t)value);
                 switch(offset)
                 {
                     case WiFiConfigHolder.wifi_mode().offset():
@@ -176,7 +173,6 @@ namespace esp32cs
             return [this, offset](unsigned repeat, string *value, BarrierNotifiable *done)
             {
                 AutoNotify n(done);
-                LOG(VERBOSE, "[WiFiMemCfg:%02x-RDSTR] offs: %d", SPACE, offset);
                 switch (offset)
                 {
                     case WiFiConfigHolder.hostname_prefix().offset():
@@ -243,8 +239,6 @@ namespace esp32cs
                 // strip off nulls (if found)
                 value.erase(
                     std::remove(value.begin(), value.end(), '\0'), value.end());
-                LOG(VERBOSE, "[WiFiMemCfg:%02x-WRSTR] offs: %d, value:%s",
-                    SPACE, offset, value.c_str());
                 switch(offset)
                 {
                     case WiFiConfigHolder.hostname_prefix().offset():

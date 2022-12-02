@@ -18,7 +18,12 @@ COPYRIGHT (c) 2021 Mike Dunston
 #ifndef SPINLOCK_HXX_
 #define SPINLOCK_HXX_
 
+#include <esp_idf_version.h>
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
 #include <soc/spinlock.h>
+#else
+#include <spinlock.h>
+#endif // IDF v5
 
 namespace esp32cs
 {

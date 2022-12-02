@@ -38,6 +38,8 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #else // IDF v4.x (or earlier)
 #include <driver/periph_ctrl.h>
 #endif // IDF v5+
+// TODO: move this to new IDF v5.0 API.
+#include <driver/rmt.h>
 #include <driver/timer.h>
 #include <esp_rom_gpio.h>
 #include <freertos_drivers/arduino/DummyGPIO.hxx>

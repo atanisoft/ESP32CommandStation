@@ -154,8 +154,13 @@ void init_webserver(Service *service, NvsManager *nvs_mgr, openlcb::Node *node,
   cs_node_handle = NodeHandle(nvs->node_id());
   cdi_client.emplace(service, node, mem_cfg);
   cdi_downloader.emplace(service, node, mem_cfg);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+  httpd->captive_portal(
+      StringPrintf(CAPTIVE_PORTAL_HTML, esp_app_get_description()->version));
+#else
   httpd->captive_portal(
       StringPrintf(CAPTIVE_PORTAL_HTML, esp_ota_get_app_description()->version));
+#endif // IDF v5.0+
   httpd->static_uri("/", indexHtmlGz, indexHtmlGz_size, MIME_TYPE_TEXT_HTML, HTTP_ENCODING_GZIP, false);
   httpd->static_uri("/loco-32x32.png", loco32x32, loco32x32_size, MIME_TYPE_IMAGE_PNG);
   httpd->static_uri("/cash.min.js", cashJsGz, cashJsGz_size, MIME_TYPE_TEXT_JAVASCRIPT, HTTP_ENCODING_GZIP);
@@ -189,7 +194,11 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
     }
     else if (!strcmp(req_type->valuestring, "info"))
     {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+      const esp_app_desc_t *app_data = esp_app_get_description();
+#else
       const esp_app_desc_t *app_data = esp_ota_get_app_description();
+#endif // IDF v5.0+
       const esp_partition_t *partition = esp_ota_get_running_partition();
       response =
           StringPrintf(R"!^!({"res":"info","timestamp":"%s %s","ota":"%s","snip_name":"%s","snip_hw":"%s","snip_sw":"%s","node_id":"%s","statusLED":%s,"statusLEDBrightness":%d,"id":%d})!^!",
@@ -557,7 +566,7 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
       else
       {
         response =
-            StringPrintf(R"!^!({"res":"status","id":%d,"track":"On","usage":%d})!^!",
+            StringPrintf(R"!^!({"res":"status","id":%d,"track":"On","usage":%)!^!" PRIu32 R"!^!(})!^!",
                          req_id->valueint, esp32cs::get_ops_load());
       }
     }
@@ -751,7 +760,7 @@ string convert_loco_to_json(openlcb::TrainImpl *t)
     return "{}";
   }
   string res =
-      StringPrintf(R"!^!({"addr":%d,"spd":%d,"dir":"%s","fn":[)!^!",
+      StringPrintf(R"!^!({"addr":%)!^!" PRIu32 R"!^!(,"spd":%d,"dir":"%s","fn":[)!^!",
                    t->legacy_address(), (int)t->get_speed().mph(),
                    t->get_speed().direction() == dcc::SpeedType::REVERSE ? "REV" : "FWD");
   for (size_t funcID = 0; funcID < locodb::MAX_LOCO_FUNCTIONS; funcID++)

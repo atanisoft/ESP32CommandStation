@@ -17,7 +17,13 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 
 #include "sdkconfig.h"
 #include <driver/adc.h>
+#include <esp_idf_version.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+#include <esp_adc/adc_cali.h>
+#include <esp_adc/adc_cali_scheme.h>
+#else
 #include <esp_adc_cal.h>
+#endif // IDF < v5.0
 #include <EventBroadcastHelper.hxx>
 #include <executor/StateFlow.hxx>
 #include <hardware.hxx>
@@ -109,6 +115,31 @@ public:
         // monitoring.
         if (enabled)
         {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+#if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
+            LOG(INFO "calibration scheme version is Curve Fitting");
+            adc_cali_curve_fitting_config_t cali_config =
+            {
+                .unit_id = ADC_UNIT_1,
+                .atten = ADC_ATTEN_DB_11,
+                .bitwidth = ADC_WIDTH_BIT_12,
+            };
+            ESP_ERROR_CHECK(
+                adc_cali_create_scheme_curve_fitting(&cali_config, &calibration_));
+#endif
+
+#if ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
+            LOG(INFO "calibration scheme version is Line Fitting");
+            adc_cali_line_fitting_config_t cali_config =
+            {
+                .unit_id = ADC_UNIT_1,
+                .atten = ADC_ATTEN_DB_11,
+                .bitwidth = ADC_WIDTH_BIT_12,
+            };
+            ESP_ERROR_CHECK(
+                adc_cali_create_scheme_line_fitting(&cali_config, &calibration_));
+#endif
+#else // IDF v4.x
             esp_adc_cal_value_t calibration_type =
                 esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11,
                                          ADC_WIDTH_BIT_12, DEFAULT_ADC_VREF,
@@ -119,6 +150,8 @@ public:
                 calibration_type == ESP_ADC_CAL_VAL_EFUSE_TP ? "two-point" :
                 "default", calibration_.vref, MV_PER_C.to_float(),
                 MV_AT_ZERO_C);
+#endif // IDF v5.0+
+
             LOG(INFO,
                 "[Thermal] Warning: %dC (event:%s), Shutdown: %dC (event:%s)",
                 warningTemp_.round(),
@@ -154,8 +187,10 @@ public:
     }
 
 private:
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
     /// Default ADC voltage reference value.
     static constexpr uint32_t DEFAULT_ADC_VREF = 1100;
+#endif // IDF v4.x
 
     /// Millivolts for zero degrees C.
     static constexpr uint32_t MV_AT_ZERO_C = CONFIG_THERMALMONITOR_ZERO_MV;
@@ -172,8 +207,13 @@ private:
     /// Event callback handler.
     openlcb::CallbackEventHandler eventHandler_;
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+    /// ADC Calibration handle.
+    adc_cali_handle_t calibration_;
+#else
     /// ADC Calibration settings.
     esp_adc_cal_characteristics_t calibration_;
+#endif // IDF v5.0+
 
     /// Current state of the temperature sensor.
     Fixed16 lastReading_{0};
@@ -225,9 +265,16 @@ private:
     /// Reads the external temperature sensor connected to an ADC pin.
     Fixed16 read_external_temperature()
     {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+        uint32_t temperature = 0;
+        ESP_ERROR_CHECK(
+            adc_cali_raw_to_voltage(calibration_, get_last_tempsensor_reading(),
+                                    &temperature));
+#else
         uint32_t temperature =
             esp_adc_cal_raw_to_voltage(get_last_tempsensor_reading(),
                                        &calibration_);
+#endif
         Fixed16 tempAtZero = temperature - MV_AT_ZERO_C;
         return tempAtZero / MV_PER_C;
     }

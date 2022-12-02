@@ -25,6 +25,11 @@ COPYRIGHT (c) 2020 Mike Dunston
 #include <esp_rom_gpio.h>
 #if ESP_IDF_VERSION_MAJOR >= 5
 #include <esp_private/esp_clk.h>
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#include <esp32/rom/ets_sys.h>
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#include <esp32s2/rom/ets_sys.h>
+#endif // ESP variant
 #elif CONFIG_IDF_TARGET_ESP32
 #include <esp32/clk.h>
 #elif CONFIG_IDF_TARGET_ESP32S3

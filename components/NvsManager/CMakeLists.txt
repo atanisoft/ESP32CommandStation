@@ -1,6 +1,7 @@
 set(IDF_DEPS
     app_update
     nvs_flash
+    esp_wifi
 )
 
 set(CUSTOM_DEPS

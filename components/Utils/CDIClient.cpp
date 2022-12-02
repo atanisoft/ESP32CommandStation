@@ -85,7 +85,7 @@ StateFlowBase::Action CDIClient::read_complete()
         utils::node_id_to_string(request()->target_node.id).c_str());
     response =
         StringPrintf(
-            R"!^!({"res":"error","error":"request failed: %d","id":%d})!^!",
+            R"!^!({"res":"error","error":"request failed: %d","id":%)!^!" PRIu32 R"!^!(})!^!",
             b->data()->resultCode, request()->req_id);
   }
   else
@@ -98,7 +98,7 @@ StateFlowBase::Action CDIClient::read_complete()
       utils::remove_nulls_and_FF(b->data()->payload);
       response =
           StringPrintf(
-              R"!^!({"res":"field","tgt":"%s","val":"%s","type":"%s","id":%d})!^!",
+              R"!^!({"res":"field","tgt":"%s","val":"%s","type":"%s","id":%)!^!" PRIu32 R"!^!(})!^!",
               request()->target.c_str(),
               base64_encode(b->data()->payload).c_str(),
               request()->type.c_str(), request()->req_id);
@@ -120,7 +120,9 @@ StateFlowBase::Action CDIClient::read_complete()
       }
       response =
           StringPrintf(
-              R"!^!({"res":"field","tgt":"%s","val":"%d","type":"%s","id":%d})!^!", request()->target.c_str(), data, request()->type.c_str(), request()->req_id);
+              R"!^!({"res":"field","tgt":"%s","val":"%)!^!" PRIu32 R"!^!(","type":"%s","id":%)!^!" PRIu32 R"!^!(})!^!",
+              request()->target.c_str(), data, request()->type.c_str(),
+              request()->req_id);
     }
     else if (request()->type == "evt")
     {
@@ -128,7 +130,10 @@ StateFlowBase::Action CDIClient::read_complete()
       memcpy(&event_id, b->data()->payload.data(), sizeof(uint64_t));
       response =
           StringPrintf(
-              R"!^!({"res":"field","tgt":"%s","val":"%s","type":"%s","id":%d})!^!", request()->target.c_str(), uint64_to_string_hex(be64toh(event_id)).c_str(), request()->type.c_str(), request()->req_id);
+              R"!^!({"res":"field","tgt":"%s","val":"%s","type":"%s","id":%)!^!" PRIu32 R"!^!(})!^!",
+              request()->target.c_str(),
+              uint64_to_string_hex(be64toh(event_id)).c_str(),
+              request()->type.c_str(), request()->req_id);
     }
   }
   LOG(VERBOSE, "[CDI-READ] %s", response.c_str());
@@ -150,14 +155,16 @@ StateFlowBase::Action CDIClient::write_complete()
         utils::node_id_to_string(request()->target_node.id).c_str());
     response =
         StringPrintf(
-            R"!^!({"res":"error","error":"request failed: %d","id":%d})!^!", b->data()->resultCode, request()->req_id);
+            R"!^!({"res":"error","error":"request failed: %d","id":%)!^!" PRIu32 R"!^!(})!^!",
+            b->data()->resultCode, request()->req_id);
   }
   else
   {
     LOG(VERBOSE, "[CDI:%s] Write request processed successfully.",
         utils::node_id_to_string(request()->target_node.id).c_str());
     response =
-        StringPrintf(R"!^!({"res":"saved","tgt":"%s","id":%d})!^!", request()->target.c_str(), request()->req_id);
+        StringPrintf(R"!^!({"res":"saved","tgt":"%s","id":%)!^!" PRIu32 R"!^!(})!^!",
+        request()->target.c_str(), request()->req_id);
   }
   LOG(VERBOSE, "[CDI-WRITE] %s", response.c_str());
   response += "\n";
@@ -178,14 +185,16 @@ StateFlowBase::Action CDIClient::update_complete()
         utils::node_id_to_string(request()->target_node.id).c_str());
     response =
         StringPrintf(
-            R"!^!({"res":"error","error":"request failed: %d","id":%d})!^!", b->data()->resultCode, request()->req_id);
+            R"!^!({"res":"error","error":"request failed: %d","id":%)!^!" PRIu32 R"!^!(})!^!",
+            b->data()->resultCode, request()->req_id);
   }
   else
   {
     LOG(VERBOSE, "[CDI:%s] update-complete request processed successfully.",
         utils::node_id_to_string(request()->target_node.id).c_str());
     response =
-        StringPrintf(R"!^!({"res":"update-complete","id":%d})!^!", request()->req_id);
+        StringPrintf(R"!^!({"res":"update-complete","id":%)!^!" PRIu32 R"!^!(})!^!",
+        request()->req_id);
   }
   LOG(VERBOSE, "[CDI-UPDATE-COMPLETE] %s", response.c_str());
   response += "\n";

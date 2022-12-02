@@ -20,7 +20,6 @@ set(IDF_DEPS
     bootloader_support
     driver
     efuse
-    esp_adc_cal
     esp_common
     esp_system
     espcoredump

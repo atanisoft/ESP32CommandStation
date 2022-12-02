@@ -20,6 +20,15 @@ COPYRIGHT (c) 2017-2020 Mike Dunston
 #include "hardware.hxx"
 
 #include <driver/i2c.h>
+#include <esp_idf_version.h>
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,0,0)
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#include <esp32/rom/ets_sys.h>
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#include <esp32s2/rom/ets_sys.h>
+#endif // ESP variant
+#endif // IDF v5.0+
 
 namespace esp32cs
 {
