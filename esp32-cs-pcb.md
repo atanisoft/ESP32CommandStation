@@ -15,18 +15,7 @@ The ESP32 Command Station works quite well with off the shelf components, howeve
 The PCB has been designed utilizing a combination of SMD and through-hole components.
 
 Below is a rendering of the ESP32 Command Station PCB:
-![esp32cspcb.png](esp32cspcb.png "Rendered PCB image")
-![esp32cspcb2.png](esp32cspcb2.png "Rendered PCB image")
-
-### Gerber files
-These can be used with any PCB manufacturing company.
-
-* v1.5.2 - Coming soon
-
-### PCBA Services
-Some PCB manufactures offer PCBA. The files below can possibly be used for such purposes:
-
-* v1.5.2 - Coming soon
+![esp32cspcb.png](esp32cspcb.jpg "Rendered PCB image")
 
 ## Schematic and BOM
 
