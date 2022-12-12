@@ -41,8 +41,7 @@ static constexpr BaseType_t LED_UPDATE_TASK_CORE = APP_CPU_NUM;
 static constexpr TickType_t LED_UPDATE_INTERVAL = 
   pdMS_TO_TICKS(CONFIG_STATUS_LED_UPDATE_INTERVAL_MSEC);
 
-
-static std::atomic_bool needUpdate_ = false;
+static std::atomic_bool needUpdate_;
 
 static void led_update(void *arg)
 {
@@ -60,6 +59,7 @@ static void led_update(void *arg)
 
 void StatusLED::start_task()
 {
+  needUpdate_ = false;
   xTaskCreatePinnedToCore(led_update, "StatusLED", LED_UPDATE_TASK_STACK, this,
                           LED_UPDATE_TASK_PRIORITY, nullptr /* task handle */,
                           LED_UPDATE_TASK_CORE);

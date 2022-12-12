@@ -78,7 +78,9 @@ public:
 
 #if CONFIG_RAILCOM_DATA_ENABLED
     HW::hw_init();
-    LOG(INFO, "[RailCom] Initializing detector using UART %d", HW::UART);
+    LOG(INFO, "[RailCom] Initializing detector using UART %d, RX pin: %d",
+        HW::UART, HW::RAILCOM_DATA_PIN);
+
     portENTER_CRITICAL_SAFE(&esp32_uart_mux);
     // enable the UART clock and disable the reset bit
     DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, HW::UART_CLOCK_EN_BIT);
@@ -100,8 +102,9 @@ public:
 
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
     ESP_ERROR_CHECK(
-      esp_intr_alloc(HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED
-                   , esp32_railcom_uart_isr<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>, this, nullptr));
+      esp_intr_alloc(HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED,
+                     esp32_railcom_uart_isr<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>,
+                     this, nullptr));
 #endif // CONFIG_RAILCOM_DATA_ENABLED
 
     LOG(INFO, "[RailCom] Configuring hardware timer (%d:%d)...", HW::TIMER_GRP,
