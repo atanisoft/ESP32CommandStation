@@ -16,6 +16,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 **********************************************************************/
 
 #include "CDIDownloader.hxx"
+#include <openlcb/SimpleNodeInfoDefs.hxx>
 #include <utils/Base64.hxx>
 #include <utils/StringUtils.hxx>
 
@@ -95,8 +96,10 @@ StateFlowBase::Action CDIDownloadHandler::segment_complete()
             string serialized =
                     StringPrintf(
                         R"!^!("node_id":%)!^!" PRIu64 R"!^!(,"has_snip":true,"has_cdi":true,)!^!"
-                        R"!^!("has_fdi":false,"is_train":false)!^!",
-                        request()->target.id);
+                        R"!^!("has_fdi":false,"is_train":false,"sw_ver":"%s","hw_ver":"%s")!^!",
+                        request()->target.id,
+                        openlcb::SNIP_STATIC_DATA.software_version,
+                        openlcb::SNIP_STATIC_DATA.hardware_version);
             encoded =
                 StringPrintf(DOWNLOAD_COMPLETE, request()->field.c_str(),
                     serialized.c_str());

@@ -466,7 +466,7 @@ namespace esp32cs
 
   void NvsManager::restart_fast_clock()
   {
-    if (fastclock.operator->() != nullptr)
+    if (nvsConfig.fastclock_enabled)
     {
       if (fastclock->is_running())
       {
@@ -482,7 +482,7 @@ namespace esp32cs
 
   void NvsManager::save_fast_clock_time()
   {
-    if (fastclock.operator->() != nullptr)
+    if (nvsConfig.fastclock_enabled)
     {
       struct tm current_time;
       fastclock->gmtime_r(&current_time);

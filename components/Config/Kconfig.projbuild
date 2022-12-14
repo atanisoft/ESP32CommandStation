@@ -1709,4 +1709,14 @@ menu "ESP32 Command Station Configuration"
         endchoice
     endmenu
 
+    menu "Http Server configuration"
+        visible if !WIFI_MODE_OFF
+        config HTTP_PORT
+            int "Http Listener port"
+            default 80
+            help
+                This is the port that the built-in HttpServer will listen on
+                when WiFi is enabled. Note that when changing this value it may
+                prevent the captive portal functionality from working correctly.
+    endmenu
 endmenu

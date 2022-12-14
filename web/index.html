@@ -74,7 +74,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       <button class="btn btn-primary" onclick="showTab('#tab-accessories', this);">Accessory Decoders</button>
       <button class="btn btn-primary" onclick="showTab('#tab-roster', this);">Locomotive Roster</button>
       <button class="btn btn-primary" onclick="showTab('#tab-olcbconfig', this);">OpenLCB Configuration</button>
-      <button class="btn btn-primary" onclick="showTab('#tab-ota', this);">Firmware Update</button>
+      <button class="btn btn-primary" onclick="showTab('#tab-ota', this);">Software Update</button>
     </section>
   </header>
   <div class="container">
@@ -340,13 +340,15 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     </div>
     <div class="container" style="display:none;" id="tab-olcbconfig">
       <div class="empty bg-dark" id="olcbconfig-empty">
-        <div class="empty-title">Downloading node metadata</div>
+        <div class="empty-title">Downloading configuration metadata</div>
         <div class="empty-subtitle">
           <div class="columns" id="node-cdi-download">
             <div class="column">Bytes received:</div>
             <div class="column" id="node-cdi-byte-count">Pending</div>
           </div>
-          <div class="columns" id="node-cdi-status" style="display:none;"></div>
+          <div class="columns" id="node-cdi-status" style="display:none;">
+            <div class="column" id="node-cdi-status-text"></div>
+          </div>
         </div>
       </div>
       <div id="olcbconfig-content">
@@ -415,14 +417,12 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
     </div>
     <div class="container" style="display:none;" id="tab-ota">
       <div class="columns">
-        <form id="cs-ota-form" class="form-horizontal">
-          <div class="input-group">
-            <span class="input-group-addon addon-lg text-light bg-dark">Firmware:</span>
-            <input class="form-input input-lg" type="file" name="cs-ota-firmware"
-              placeholder="ESP32CommandStation.bin" />
-            <button class="btn btn-primary input-group-btn btn-lg" id="cs-ota-upload">Upload</button>
-          </div>
-        </form>
+        <div class="input-group">
+          <span class="input-group-addon addon-lg text-light bg-dark">Firmware:</span>
+          <input class="form-input input-lg" type="file" id="firmware_file"
+            placeholder="ESP32CommandStation.bin" />
+          <button class="btn btn-primary input-group-btn btn-lg" id="cs-ota-upload" onclick="upload_ota()">Upload</button>
+        </div>
       </div>
     </div>
     <div class="modal" id="active-locos">
@@ -731,7 +731,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             } else if (json.hasOwnProperty('done')) {
               $('#' + json.tgt).toggleClass('loading');
               $('#node-cdi-download').hide();
-              $('#node-cdi-status').text('Node metadata parsing in progress');
+              $('#node-cdi-status-text').text('Parsing configuration metadata...');
               $('#node-cdi-status').show();
               console.log('CDI Size:', cdi_download.length);
               var node_id = pad_hex(json.node_id.toString(16), 12);
@@ -741,7 +741,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               } else {
                 $('#node_cfg_sw_version').text('Not Available');
               }
-              if (json.hasOwnProperty('sw_ver')) {
+              if (json.hasOwnProperty('hw_ver')) {
                 $('#node_cfg_hw_version').text(json.hw_ver);
               } else {
                 $('#node_cfg_hw_version').text('Not Available');
@@ -759,7 +759,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               $('#node-cfg-tabs').append(String.format('<li class="tab-item"><a href="#" id="cdi_tab_link-node_info" onclick="showCDISection(\'node_info\',this);">Node Info</a></li>'));
               $(cdi_doc).find('segment').each((x, seg) => {
                 var segment = new CdiSegment(seg, node_id);
-                $('#node-cdi-status').text(String.format('Processing {0}', segment.get_name));
+                $('#node-cdi-status-text').text(String.format('Processing segment: {0}', segment.get_name));
                 if (segment.is_space(CDI_SPACE_ACDI_USER)) {
                   segment.render('#node_info_dynamic');
                 } else {
@@ -813,7 +813,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         return;
       }
       $('#ws-status').addClass('flash');
-      var socketUrl = String.format('ws://{0}:{1}/ws', window.location.host, window.location.port);
+      var socketUrl = String.format('ws://{0}/ws', window.location.host);
       try {
         ws = new WebSocket(socketUrl);
         ws.addEventListener('open', ws_opened);
@@ -1259,7 +1259,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       }
     }
     function refreshCDI(button) {
-      $('#node-cdi-status').text('');
+      $('#node-cdi-status-text').text('');
       $('#olcbconfig-empty').show();
       $('#olcbconfig-content').hide();
       if (!cdi_loaded) {
@@ -1316,6 +1316,29 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       $(String.format('#cdi_tab-{0}', section)).show();
       $(String.format('#cdi_tab_link-{0}', section)).removeClass('inactive');
       $(String.format('#cdi_tab_link-{0}', section)).addClass('active');
+    }
+
+    function upload_ota() {
+      var xhr = new XMLHttpRequest();
+      var file = $('#firmware_file')[0].files[0];
+      if (file.size > (1024 * 1024 * 2)) {
+        showErrorDialog("Firmware is too large for upload, aborting!");
+        return;
+      }
+      var data = new FormData();
+      data.append('firmware', file, 'firmware.bin');
+      $('#cs-ota-upload').hide();
+      fetch('/update', { method: 'POST', body: data })
+        .then(response => response.text())
+        .then(text => {
+          console.log(text);
+          reload_page();
+        })
+        .catch((error) => {
+          showErrorDialog("Firmware upload failed.", error);
+        }).finally(() => {
+          $('#cs-ota-upload').show();
+        });
     }
   </script>
 </body>

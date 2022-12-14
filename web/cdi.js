@@ -96,7 +96,7 @@ function refresh_all_cdi_fields() {
     });
     $('#olcbconfig-empty').show();
     $('#olcbconfig-content').hide();
-    $('#node-cdi-status').text('');
+    $('#node-cdi-status-text').text('');
     $('#node-cdi-status').show();
     download_cdi_fields().then(() => {
         $('#olcbconfig-empty').hide();
@@ -128,7 +128,7 @@ async function download_cdi_fields() {
                 const msg = cdi_fields[fieldIndex].msg;
                 const key = cdi_fields[fieldIndex].key;
                 const start = +new Date();
-                $('#node-cdi-status').text(String.format('Retrieving field: {0}/{1}', fieldIndex, cdi_fields.length));
+                $('#node-cdi-status-text').text(String.format('Retrieving field: {0}/{1}', fieldIndex, cdi_fields.length));
                 new Promise((resolve, reject) => {
                     console.debug('requesting:', key, msg);
                     ws_pending_response[key] = resolve;

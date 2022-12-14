@@ -610,10 +610,12 @@ HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length, off
     Singleton<OTAWatcherFlow>::instance()->report_start();
   }
   HASSERT(ota_partition);
+  LOG(INFO, "[WebSrv] OTA Recevied %zu bytes...", length);
   ESP_ERROR_CHECK(esp_ota_write(otaHandle, data, length));
   Singleton<OTAWatcherFlow>::instance()->report_progress(length);
   if (final)
   {
+    LOG(INFO, "[WebSrv] OTA Received final segment, attempting to validate");
     esp_err_t err = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_end(otaHandle));
     if (err != ESP_OK)
     {
@@ -623,7 +625,7 @@ HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length, off
       *abort_req = true;
       return nullptr;
     }
-    LOG(INFO, "[WebSrv] OTA binary received, setting boot partition: %s", ota_partition->label);
+    LOG(INFO, "[WebSrv] OTA binary validated, setting boot partition: %s", ota_partition->label);
     err = ESP_ERROR_CHECK_WITHOUT_ABORT(
         esp_ota_set_boot_partition(ota_partition));
     if (err != ESP_OK)

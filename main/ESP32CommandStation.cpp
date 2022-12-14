@@ -53,6 +53,7 @@ COPYRIGHT (c) 2017-2021 Mike Dunston
 #include <openlcb/BroadcastTimeServer.hxx>
 #include <openlcb/MemoryConfigClient.hxx>
 #include <openlcb/SimpleStack.hxx>
+#include <OTAWatcher.hxx>
 #include <StatusDisplay.hxx>
 #include <StatusLED.hxx>
 #include <ThermalMonitorFlow.hxx>
@@ -387,9 +388,10 @@ void app_main()
 #if CONFIG_ROSTER_EXPOSE_VMS
     locodb::LocoDatabaseVirtualMemorySpace train_db_vms(&stack);
 #endif // CONFIG_ROSTER_EXPOSE_VMS
+    esp32cs::OTAWatcherFlow ota_watcher(stack.service());
 
     MDNS mdns;
-    http::Httpd httpd(&wifi_manager, &mdns);
+    http::Httpd httpd(&wifi_manager, &mdns, CONFIG_HTTP_PORT);
     esp32cs::ThermalMonitorFlow thermal_monitor(&wifi_manager,
                                                 stack.node(),
                                                 cfg.seg().thermal());
