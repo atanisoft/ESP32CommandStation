@@ -83,16 +83,16 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         <div class="column col-3"><label>Locomotive Address<input class="form-input" type="number" readonly="true"
               id="loco-address" value="0" /></label></div>
         <div class="column col-3"><label for="loco-dir">Direction</label>
-          <button id="loco-dir" class="btn btn-primary"><i class="icon icon-forward"></i></button>
+          <button id="loco-dir" class="btn btn-primary disabled"><i class="icon icon-forward"></i></button>
         </div>
         <div class="column">
-          <button class="btn btn-primary" onclick="showLocoSelect(this);">Change
+          <button class="btn btn-primary" onclick="showLocoSelect(this);">Select
             Locomotive</button>
         </div>
       </div>
       <div class="columns">
         <div class="column">
-          <label for="loco-speed">Speed</label><input class="bar bar-slider" type="range" id="loco-speed" min="0"
+          <label for="loco-speed">Speed</label><input class="bar bar-slider disabled" type="range" id="loco-speed" min="0"
             max="126" value="0" />
         </div>
       </div>
@@ -100,18 +100,18 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         <div class="column">Functions</div>
       </div>
       <div class="columns">
-        <div class="column"><button class="btn btn-primary" id="funct_0">FL<i class="icon"></i></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_1">F1<i class="icon"></i></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_2">F2<i class="icon"></i></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_3">F3<i class="icon"></i></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_4">F4<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_0">FL<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_1">F1<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_2">F2<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_3">F3<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_4">F4<i class="icon"></i></button></div>
       </div>
       <div class="columns">
         <div class="column"></div>
-        <div class="column"><button class="btn btn-primary" id="funct_5">F5<i class="icon"></i></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_6">F6<i class="icon"></i></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_7">F7<i class="icon"></i></button></div>
-        <div class="column"><button class="btn btn-primary" id="funct_8">F8<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_5">F5<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_6">F6<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_7">F7<i class="icon"></i></button></div>
+        <div class="column"><button class="btn btn-primary disabled" id="funct_8">F8<i class="icon"></i></button></div>
       </div>
       <details class="accordion" id="ext_funcs">
         <summary class="accordion-header c-hand"><button id="btn-ext_funcs" class="btn btn-primary">F9-F28<i
@@ -119,38 +119,38 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         <div class="accordion-body">
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_9">F9<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_10">F10<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_11">F11<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_12">F12<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_9">F9<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_10">F10<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_11">F11<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_12">F12<i class="icon"></i></button></div>
           </div>
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_13">F13<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_14">F14<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_15">F15<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_16">F16<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_13">F13<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_14">F14<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_15">F15<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_16">F16<i class="icon"></i></button></div>
           </div>
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_17">F17<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_18">F18<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_19">F19<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_20">F20<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_17">F17<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_18">F18<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_19">F19<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_20">F20<i class="icon"></i></button></div>
           </div>
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_21">F21<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_22">F22<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_23">F23<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_24">F24<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_21">F21<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_22">F22<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_23">F23<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_24">F24<i class="icon"></i></button></div>
           </div>
           <div class="columns">
             <div class="column"></div>
-            <div class="column"><button class="btn btn-primary" id="funct_25">F25<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_26">F26<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_27">F27<i class="icon"></i></button></div>
-            <div class="column"><button class="btn btn-primary" id="funct_28">F28<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_25">F25<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_26">F26<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_27">F27<i class="icon"></i></button></div>
+            <div class="column"><button class="btn btn-primary disabled" id="funct_28">F28<i class="icon"></i></button></div>
           </div>
         </div>
       </details>
@@ -177,7 +177,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             <div id="loco-manual">
               <label class="form-label text-dark" for="loco-manual-address">Address</label>
               <input class="form-input" type="number" pattern="[0-9]*" id="loco-manual-address" value="1" min="1"
-                max="16384">
+                max="10239">
             </div>
           </div>
           <div class="modal-footer">
@@ -411,18 +411,19 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           <div class="modal-title h5"></div>
         </div>
         <div class="modal-body">
-          
         </div>
       </div>
     </div>
     <div class="container" style="display:none;" id="tab-ota">
-      <div class="columns">
-        <div class="input-group">
-          <span class="input-group-addon addon-lg text-light bg-dark">Firmware:</span>
-          <input class="form-input input-lg" type="file" id="firmware_file"
-            placeholder="ESP32CommandStation.bin" />
-          <button class="btn btn-primary input-group-btn btn-lg" id="cs-ota-upload" onclick="upload_ota()">Upload</button>
-        </div>
+      <div id="ota-inputs" class="input-group">
+        <span class="input-group-addon addon-lg text-light bg-dark">Firmware:</span>
+        <input class="form-input input-lg" type="file" id="firmware_file"
+          placeholder="ESP32CommandStation.bin" />
+        <button class="btn btn-primary input-group-btn btn-lg" id="cs-ota-upload" onclick="upload_ota()">Upload</button>
+      </div>
+      <div id="ota-progress-bar" style="display:none;">
+        <h2>Software update in progress...</h2>
+        <progress class="progress"></progress>
       </div>
     </div>
     <div class="modal" id="active-locos">
@@ -547,7 +548,8 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             var tbody = $('#active-locos-table tbody');
             tbody.children().remove();
             for (var idx in data) {
-              $(tbody).append(String.format('<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>', data[idx].addr, data[idx].spd, data[idx].dir));
+              $(tbody).append(String.format('<tr id="active-loco-{0}"><td>{0}</td><td>{1}</td><td>{2}</td><td><button class="btn btn-primary input-group-btn" onclick="removeActiveLoco(\'{0}\');"><i class="icon icon-cross"></i></button></td></tr>',
+                data[idx].addr, data[idx].spd, data[idx].dir));
             }
             $('#active-locos-empty').hide();
             $('#active-locos-table').show();
@@ -558,7 +560,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           toggleModal('#active-locos');
         }).catch(function (error) {
           $(button).toggleClass('loading');
-          showErrorDialog('Failed to retrieve active locomotive list', error);
+          showPopupDialog('Failed to retrieve active locomotive list', error);
           $('#active-locos-empty').show();
           $('#active-locos-table').hide();
           toggleModal('#active-locos');
@@ -569,7 +571,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         toggleModal('#active-locos');
       }
     }
-    function showErrorDialog(text, error) {
+    function showPopupDialog(text, error) {
       error = typeof error !== 'undefined' ? error : "";
       console.error(text, error);
       alert(text);
@@ -609,7 +611,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           if (!json.hasOwnProperty('res')) {
             console.error('Invalid JSON payload (missing res element):', msg);
           } else if (json.res === 'error') {
-            showErrorDialog(json.error);
+            showPopupDialog(json.error);
           } else if (json.res === 'info') {
             $('#node_id').text(pad_hex(json.node_id, 12));
             $('#sw_version').text(json.snip_sw);
@@ -652,16 +654,36 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           } else if (json.res === 'reset-events') {
             refresh_all_fields();
           } else if (json.res === 'loco') {
-            loco_events = false;
-            $("#loco-address").val(json.addr);
-            $("#loco-speed").val(json.spd);
-            $('#loco-dir i').removeClass('icon-back icon-forward');
-            if (json.dir) {
-              $('#loco-dir i').addClass('icon-back');
+            if (json.act === 'del') {
+              $(String.format('#active-loco-{0}', json.addr)).remove();
             } else {
-              $('#loco-dir i').addClass('icon-forward');
+              loco_events = false;
+              $("#loco-address").val(json.addr);
+              $("#loco-speed").val(json.spd);
+              $('#loco-dir i').removeClass('icon-back icon-forward');
+              if (json.dir) {
+                $('#loco-dir i').addClass('icon-back');
+              } else {
+                $('#loco-dir i').addClass('icon-forward');
+              }
+              for (idx = 0; idx < 29; idx++) {
+                if (idx === 0) {
+                  $(String.format('#funct_{0}', idx)).text('FL');
+                } else {
+                  $(String.format('#funct_{0}', idx)).text(String.format('F{0}', idx));
+                }
+              }
+              if (json.hasOwnProperty('fn')) {
+                json.fn.forEach(entry => {
+                  if (entry.id === 0) {
+                    $(String.format('#funct_{0}', entry.id)).text('Front Light');
+                  } else {
+                    $(String.format('#funct_{0}', entry.id)).text(entry.name);
+                  }
+                })
+              }
+              loco_events = true;
             }
-            loco_events = true;
           } else if (json.res === 'function') {
             $(String.format('#funct_{0} i', json.fn)).removeClass('icon-circle-check');
             if (json.state) {
@@ -724,7 +746,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
               $('#' + json.tgt).toggleClass('loading');
               $('#olcbconfig-empty').show();
               $('#olcbconfig-content').hide();
-              showErrorDialog(json.error);
+              showPopupDialog(json.error);
             } else if (json.hasOwnProperty('part')) {
               cdi_download += atob(json.part);
               $('#node-cdi-byte-count').text(cdi_download.length.toString());
@@ -863,8 +885,15 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         id: get_ws_msg_id()
       }));
     }
+    function removeActiveLoco(loco) {
+      ws_tx(JSON.stringify({
+            req: 'loco',
+            addr: parseInt($("#loco-address").val()),
+            act: 'del',
+            id: get_ws_msg_id()
+          }));
+    }
     function setupThrottle() {
-      disableLocoInputs();
       $('#btn-ext_funcs').on('click', function () {
         var icon = $('#ext_funcs').contents().find('i').first();
         if ($('#ext_funcs').attr('open')) {
@@ -876,30 +905,38 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         $(icon).toggleClass('icon-arrow-up');
       });
       $("#loco-speed").on("change", function (event, ui) {
-        if (loco_events) {
+        if (loco_events && parseInt($("#loco-address").val()) > 0) {
           ws_tx(JSON.stringify({
             req: 'loco',
             addr: parseInt($("#loco-address").val()),
             spd: parseInt($("#loco-speed").val()),
+            act: 'upd',
             id: get_ws_msg_id()
           }));
         }
       });
       $('#loco-select-select').on('click', function () {
         toggleModal('#loco-select');
-        changeLocomotive($('#loco-manual-address').val());
+        if($('#loco-manual-address').val() > 0) {
+          changeLocomotive($('#loco-manual-address').val());
+        } else {
+          showPopupDialog('Invalid locomotive address provided. The address must be from 1-10239.');
+        }
       })
       $("#loco-select-add").on("click", function () {
         $("#loco-list").hide();
         $("#loco-manual").show();
       });
       $("#loco-dir").on('click', function () {
-        ws_tx(JSON.stringify({
-          req: 'loco',
-          addr: parseInt($("#loco-address").val()),
-          dir: $('#loco-dir i').hasClass('icon-forward'),
-          id: get_ws_msg_id()
-        }));
+        if (loco_events && parseInt($("#loco-address").val()) > 0) {
+          ws_tx(JSON.stringify({
+            req: 'loco',
+            addr: parseInt($("#loco-address").val()),
+            dir: $('#loco-dir i').hasClass('icon-forward'),
+            act: 'upd',
+            id: get_ws_msg_id()
+          }));
+        }
       });
       $('[id^=funct_]').on('click', function (event) {
         var target = event.target;
@@ -907,13 +944,15 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           target = $(target).parent();
         }
         var id = $(target).prop('id').split(/_/)[1];
-        ws_tx(JSON.stringify({
-          req: 'function',
-          addr: parseInt($("#loco-address").val()),
-          fn: parseInt(id),
-          state: !$(String.format('#funct_{0} i', id)).hasClass('icon-circle-check'),
-          id: get_ws_msg_id()
-        }));
+        if (loco_events && parseInt($("#loco-address").val()) > 0) {
+          ws_tx(JSON.stringify({
+            req: 'function',
+            addr: parseInt($("#loco-address").val()),
+            fn: parseInt(id),
+            state: !$(String.format('#funct_{0} i', id)).hasClass('icon-circle-check'),
+            id: get_ws_msg_id()
+          }));
+        }
       });
       $('#ops_track_power').on('click', function (event) {
         if ($(this).hasClass('text-error')) {
@@ -958,9 +997,9 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
             var count = 0;
             tbody.children().remove();
             for (var idx in data) {
-              if (data[idx].default) {
+              if (data[idx].default || data.length < 5) {
                 count++;
-                $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({1});"><td>{0}</td><td>{1}</td><td>{2}</td></tr>',
+                $(tbody).append(String.format('<tr class="c-hand" onclick="changeLocomotive({2});"><td>{0}</td><td>{1}</td><td>{2}</td></tr>',
                   data[idx].name, data[idx].desc, data[idx].addr));
               }
             }
@@ -980,7 +1019,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           toggleModal('#loco-select');
         }).catch(function (error) {
           $(button).toggleClass('loading');
-          showErrorDialog('Failed to retrieve locomotive roster', error);
+          showPopupDialog('Failed to retrieve locomotive roster', error);
           $("#loco-list").hide();
           $("#loco-manual").show();
           $("#loco-select-add").hide();
@@ -1091,7 +1130,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           if (button) {
             $(button).toggleClass('loading');
           }
-          showErrorDialog('Failed to retrieve accessory decoder list', error);
+          showPopupDialog('Failed to retrieve accessory decoder list', error);
           $("#accessories-table").hide();
           $("#accessories-empty").show();
           $('#tab-accessories').show();
@@ -1124,7 +1163,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
         toggleOpenLCBAccessoryDecoder($('#accessory-olcb'));
         toggleModal('#accessory-editor');
       }).catch(function (error) {
-        showErrorDialog('Failed to retrieve accessory decoder details', error);
+        showPopupDialog('Failed to retrieve accessory decoder details', error);
       });
     }
     function deleteAccessory(address) {
@@ -1174,7 +1213,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           if (button) {
             $(button).toggleClass('loading');
           }
-          showErrorDialog('Failed to retrieve roster', error);
+          showPopupDialog('Failed to retrieve roster', error);
           $("#roster-table").hide();
           $("#roster-empty").show();
           $('#tab-roster').show();
@@ -1206,7 +1245,7 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
           $('#roster-idle').prop('checked', data.idle);
           toggleModal('#roster-editor');
         }).catch(function (error) {
-          showErrorDialog('Failed to retrieve roster entry', error);
+          showPopupDialog('Failed to retrieve roster entry', error);
         });
       }
     }
@@ -1246,12 +1285,13 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       $('#loco-speed').addClass('disabled');
     }
     function changeLocomotive(newAddress) {
-      if (newAddress !== "") {
+      if (newAddress !== "" && newAddress !== 0) {
         ws_tx(JSON.stringify({
           req: 'loco',
           addr: parseInt(newAddress),
           spd: 0,
           dir: false,
+          act: 'sel',
           id: get_ws_msg_id()
         }));
         $('#loco-select').removeClass('active');
@@ -1322,22 +1362,26 @@ stop to all active locomotives"><i class="icon icon-stop" id="ops_estop"></i></d
       var xhr = new XMLHttpRequest();
       var file = $('#firmware_file')[0].files[0];
       if (file.size > (1024 * 1024 * 2)) {
-        showErrorDialog("Firmware is too large for upload, aborting!");
+        showPopupDialog("Firmware binary appears to be too large for upload, aborting!");
         return;
       }
       var data = new FormData();
       data.append('firmware', file, 'firmware.bin');
-      $('#cs-ota-upload').hide();
+      $('#ota-inputs').hide();
+      $('#ota-progress-bar').show();
       fetch('/update', { method: 'POST', body: data })
         .then(response => response.text())
         .then(text => {
-          console.log(text);
-          reload_page();
-        })
-        .catch((error) => {
-          showErrorDialog("Firmware upload failed.", error);
+          json = JSON.parse(text);
+          if (json.status === 'ok') {
+            showPopupDialog("Software Update Successful!\n" + json.text);
+            reload_page();
+          } else {
+            showPopupDialog("Software Update failed!\n" + json.text);
+          }
         }).finally(() => {
-          $('#cs-ota-upload').show();
+          $('#ota-inputs').show();
+          $('#ota-progress-bar').hide();
         });
     }
   </script>

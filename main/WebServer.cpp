@@ -415,29 +415,120 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
         response =
             StringPrintf(R"!^!({"res":"error","error":"The 'addr' field must be provided","id":%d})!^!", req_id->valueint);
       }
+      else if (!cJSON_HasObjectItem(root, "act"))
+      {
+        LOG_ERROR("[WS:%d] One or more required parameters are missing: %s", req_id->valueint, req.c_str());
+        response =
+            StringPrintf(R"!^!({"res":"error","error":"The 'act' field must be provided","id":%d})!^!", req_id->valueint);
+      }
       else
       {
         uint16_t address = cJSON_GetObjectItem(root, "addr")->valueint;
-        GET_LOCO_VIA_EXECUTOR(train, address);
-        auto req_speed = train->get_speed();
-        SpeedType direction = req_speed.direction();
-        if (cJSON_HasObjectItem(root, "spd"))
-        {
-          uint8_t speed = cJSON_GetObjectItem(root, "spd")->valueint;
-          LOG(VERBOSE, "[WS:%d] Setting loco %d speed to %d", req_id->valueint, address, speed);
-          req_speed.set_mph(speed);
+        if (address > 0) {
+          string action = cJSON_GetObjectItem(root, "act")->valuestring;
+          if (action == "del")
+          {
+            LOG(VERBOSE, "[WS:%d] loco %d Delete", req_id->valueint, address);
+            REMOVE_LOCO_VIA_EXECUTOR(address);
+            response =
+              StringPrintf(R"!^!({"res":"loco","addr":%d,"act":"%s","id":%d})!^!",
+                           address, action.c_str(), req_id->valueint);
+          }
+          else if (action == "sel")
+          {
+            LOG(VERBOSE, "[WS:%d] loco %d Select", req_id->valueint, address);
+            GET_LOCO_VIA_EXECUTOR(train, address);
+            response =
+              StringPrintf(R"!^!({"res":"loco","addr":%d,"spd":0,"dir":false,"act":"%s","id":%d)!^!",
+                          address, action.c_str(), req_id->valueint);
+            auto db_entry = cs_traindb->get_entry(address);
+            if (db_entry)
+            {
+              LOG(VERBOSE, "[WS:%d] db entry found, serializing functions",
+                  req_id->valueint);
+              // NOTE: function zero is always mapped to headlight
+              response += StringPrintf(
+                R"!^!(,"fn":[{"id":0,"name":"%s"})!^!",
+                locodb::function_to_string(locodb::Function::HEADLIGHT));
+              uint8_t fn_count = 1;
+              db_entry->start_read_functions();
+              size_t max_function_id = db_entry->get_max_fn();
+              if (max_function_id > locodb::MAX_LOCO_FUNCTIONS)
+              {
+                max_function_id = locodb::MAX_LOCO_FUNCTIONS;
+              }
+              // scan available functions and send function details
+              for (size_t fn = 1;
+                   fn < max_function_id && db_entry->is_function_valid(fn);
+                   fn++)
+              {
+                auto fn_def = db_entry->get_function_def(fn);
+                // skip entries that are metadata only (or otherwise invalid)
+                if (fn_def != locodb::Function::NONEXISTANT &&
+                    fn_def != locodb::Function::UNINITIALIZED &&
+                    fn_def != locodb::Function::MOMENTARY &&
+                    fn_def != locodb::Function::UNKNOWN)
+                {
+                  LOG(VERBOSE, "[WS:%d] fn: %zu, type: %d",
+                      req_id->valueint, fn, fn_def);
+                  if (fn_count > 0)
+                  {
+                    response += ",";
+                  }
+                  const char* label = locodb::function_to_string(fn_def);
+                  if (label)
+                  {
+                    response += StringPrintf(R"!^!({"id":%zu,"name":"%s"})!^!", fn, label);
+                  }
+                  else
+                  {
+                    response += StringPrintf(R"!^!({"id":%zu,"name":"f%d"})!^!", fn, fn);
+                  }
+                  fn_count++;
+                }
+              }
+              response += "]";
+            }
+            response += "}";
+          }
+          else if (action == "upd")
+          {
+            LOG(INFO, "[WS:%d] loco %d Update", req_id->valueint, address);
+            GET_LOCO_VIA_EXECUTOR(train, address);
+            auto req_speed = train->get_speed();
+            SpeedType direction = req_speed.direction();
+            if (cJSON_HasObjectItem(root, "spd"))
+            {
+              uint8_t speed = cJSON_GetObjectItem(root, "spd")->valueint;
+              LOG(VERBOSE, "[WS:%d] Setting loco %d speed to %d",
+                  req_id->valueint, address, speed);
+              req_speed.set_mph(speed);
+            }
+            if (cJSON_HasObjectItem(root, "dir"))
+            {
+              bool direction = cJSON_IsTrue(cJSON_GetObjectItem(root, "dir"));
+              LOG(VERBOSE, "[WS:%d] Setting loco %d direction to %s",
+                  req_id->valueint, address, direction ? "REV" : "FWD");
+              req_speed.set_direction(direction);
+            }
+            train->set_speed(req_speed);
+            response =
+              StringPrintf(R"!^!({"res":"loco","addr":%d,"spd":%d,"dir":%s,"act":"%s","id":%d})!^!",
+                          address, (int)req_speed.mph(),
+                          req_speed.direction() ? "true" : "false", action.c_str(),
+                          req_id->valueint);
+          }
+          else
+          {
+            response =
+              StringPrintf(R"!^!({"res":"error","error":"Action (%s) is not understood for address %d","id":%d})!^!",
+                           action.c_str(), address, req_id->valueint);
+          }
+        } else {
+          response =
+            StringPrintf(R"!^!({"res":"error","error":"The requested address (%d) is not valid","id":%d})!^!",
+                         address, req_id->valueint);
         }
-        if (cJSON_HasObjectItem(root, "dir"))
-        {
-          bool direction = cJSON_IsTrue(cJSON_GetObjectItem(root, "dir"));
-          LOG(VERBOSE, "[WS:%d] Setting loco %d direction to %s", req_id->valueint, address, direction ? "REV" : "FWD");
-          req_speed.set_direction(direction);
-        }
-        train->set_speed(req_speed);
-        response =
-            StringPrintf(R"!^!({"res":"loco","addr":%d,"spd":%d,"dir":%s,"id":%d})!^!",
-                         address, (int)req_speed.mph(),
-                         req_speed.direction() ? "true" : "false", req_id->valueint);
       }
     }
     else if (!strcmp(req_type->valuestring, "accessory"))
@@ -588,6 +679,14 @@ WEBSOCKET_STREAM_HANDLER_IMPL(process_ws, socket, event, data, len)
   }
 }
 
+#define OTA_RETURN_ON_FAILURE(result, message, error_text)          \
+  if (result != ESP_OK)                                             \
+  {                                                                 \
+    Singleton<OTAWatcherFlow>::instance()->report_failure(result);  \
+    *abort_req = true;                                              \
+    return new JsonResponse(error_text);                            \
+  }
+
 esp_ota_handle_t otaHandle;
 esp_partition_t *ota_partition = nullptr;
 HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length, offset, final, abort_req)
@@ -596,51 +695,41 @@ HTTP_STREAM_HANDLER_IMPL(process_ota, request, filename, size, data, length, off
   {
     esp_log_level_set("esp_image", ESP_LOG_VERBOSE);
     ota_partition = (esp_partition_t *)esp_ota_get_next_update_partition(NULL);
-    esp_err_t err = ESP_ERROR_CHECK_WITHOUT_ABORT(
-        esp_ota_begin(ota_partition, size, &otaHandle));
-    if (err != ESP_OK)
-    {
-      LOG_ERROR("[WebSrv] OTA start failed, aborting!");
-      Singleton<OTAWatcherFlow>::instance()->report_failure(err);
-      request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-      *abort_req = true;
-      return nullptr;
-    }
+    OTA_RETURN_ON_FAILURE(
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_begin(ota_partition, size, &otaHandle)),
+      "[WebSrv] OTA start failed, aborting!",
+      R"!^!({"status":"error","text":"Failed to locate a usable flash partition, restart the command station and try again."})!^!")
     LOG(INFO, "[WebSrv] OTA Update starting (%zu bytes, target:%s)...", size, ota_partition->label);
     Singleton<OTAWatcherFlow>::instance()->report_start();
   }
+
   HASSERT(ota_partition);
   LOG(INFO, "[WebSrv] OTA Recevied %zu bytes...", length);
-  ESP_ERROR_CHECK(esp_ota_write(otaHandle, data, length));
+  OTA_RETURN_ON_FAILURE(
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_write(otaHandle, data, length)),
+    "[WebSrv] OTA write failed, aborting!",
+      R"!^!({"status":"error","text":"Failed to write to flash, restart the command station and try again."})!^!")
   Singleton<OTAWatcherFlow>::instance()->report_progress(length);
+
   if (final)
   {
     LOG(INFO, "[WebSrv] OTA Received final segment, attempting to validate");
-    esp_err_t err = ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_end(otaHandle));
-    if (err != ESP_OK)
-    {
-      LOG_ERROR("[WebSrv] OTA end failed, aborting!");
-      Singleton<OTAWatcherFlow>::instance()->report_failure(err);
-      request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-      *abort_req = true;
-      return nullptr;
-    }
+    OTA_RETURN_ON_FAILURE(
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_end(otaHandle)),
+      "[WebSrv] OTA end failed, aborting!",
+      R"!^!({"status":"error","text":"Software update failed validations, restart the command station and try again."})!^!")
     LOG(INFO, "[WebSrv] OTA binary validated, setting boot partition: %s", ota_partition->label);
-    err = ESP_ERROR_CHECK_WITHOUT_ABORT(
-        esp_ota_set_boot_partition(ota_partition));
-    if (err != ESP_OK)
-    {
-      LOG_ERROR("[WebSrv] OTA end failed, aborting!");
-      Singleton<OTAWatcherFlow>::instance()->report_failure(err);
-      request->set_status(HttpStatusCode::STATUS_SERVER_ERROR);
-      *abort_req = true;
-      return nullptr;
-    }
+
+    OTA_RETURN_ON_FAILURE(
+      ESP_ERROR_CHECK_WITHOUT_ABORT(esp_ota_set_boot_partition(ota_partition)),
+      "[WebSrv] OTA partition update failed, aborting!",
+      R"!^!({"status":"error","text":"Software update failed to apply the update, restart the command station and try again."})!^!")
     LOG(INFO, "[WebSrv] OTA Update Complete!");
     Singleton<OTAWatcherFlow>::instance()->report_success();
     request->set_status(HttpStatusCode::STATUS_OK);
-    return new StringResponse("OTA Upload Complete", MIME_TYPE_TEXT_PLAIN);
+    return new JsonResponse(R"!^!({"status":"ok","text":"Software updated, command station will reboot.})!^!");
   }
+
   return nullptr;
 }
 
@@ -882,8 +971,13 @@ HTTP_HANDLER_IMPL(process_loco, request)
     else if (request->has_param("address"))
     {
       uint16_t address = request->param("address", 0);
-      if (request->method() == HttpMethod::PUT ||
-          request->method() == HttpMethod::POST)
+      if (address == 0 || address > dcc::DccLongAddress::ADDRESS_MAX)
+      {
+        LOG_ERROR("[WebSrv] Invalid address provided: %d", address);
+        request->set_status(HttpStatusCode::STATUS_BAD_REQUEST);
+      }
+      else if (request->method() == HttpMethod::PUT ||
+               request->method() == HttpMethod::POST)
       {
         GET_LOCO_VIA_EXECUTOR(loco, address);
         // Creation / Update of active locomotive

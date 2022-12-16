@@ -151,6 +151,11 @@ namespace esp32cs
     std::shared_ptr<locodb::LocoDatabaseEntry> get_entry(
       openlcb::NodeID traction_node_id, unsigned hint = 0) override;
 
+    std::shared_ptr<locodb::LocoDatabaseEntry> get_entry(uint16_t address)
+    {
+      return get_entry(0, address);
+    }
+
     size_t create_entry(uint16_t address, locodb::DriveMode mode) override;
     void set_train_name(uint16_t address, std::string name);
     void set_train_description(uint16_t address, std::string description);
