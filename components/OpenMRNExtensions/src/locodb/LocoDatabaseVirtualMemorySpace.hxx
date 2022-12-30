@@ -1,7 +1,7 @@
 /*
  * SPDX-FileCopyrightText: 2022 Mike Dunston (atanisoft)
  *
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifndef _LOCODB_LOCODATABASEVIRTUALMEMORYSPACE_HXX_

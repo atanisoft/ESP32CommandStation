@@ -1,7 +1,7 @@
 /*
  * SPDX-FileCopyrightText: 2017-2022 Mike Dunston (atanisoft)
  *
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifndef STRINGUTILS_HXX_
