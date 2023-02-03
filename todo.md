@@ -27,6 +27,7 @@
 * [x] Deps: Remove nlohmann_json dependency in favor of cJSON.
 * [ ] Docs: Add user guide and how to build guide under docs tree.
 * [x] FastClock: Re-add FastClock support.
+* [ ] OpenLCB: Add FixedEventProducer<09.00.99.FE.FF.FF.00.02> so JMRI can find the programming track
 * [ ] OpenLCB: Verify bootloader firmware update works as expected.
 * [ ] RailCom: Verify timing of cut-out and adjust timing delay counts.
 * [ ] RailCom: Verify incoming data stream with logic analyzer.

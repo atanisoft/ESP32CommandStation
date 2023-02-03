@@ -49,10 +49,13 @@ COPYRIGHT (c) 2020 Mike Dunston
 namespace esp32cs
 {
 
-template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
-static void esp32_railcom_timer_tick(void *param);
+template <class HW, class DCC_BOOSTER>
+static bool esp32_railcom_timer_tick(void *param);
 
-template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
+//template <class HW, class DCC_BOOSTER>
+//static void esp32_railcom_timer_tick(void *param);
+
+template <class HW, class DCC_BOOSTER>
 static void esp32_railcom_uart_isr(void *param);
 
 static portMUX_TYPE esp32_uart_mux = portMUX_INITIALIZER_UNLOCKED;
@@ -63,12 +66,12 @@ static constexpr uint32_t ESP32_UART_DISABLE_ALL_INTERRUPTS = 0x00000000;
 static constexpr uint32_t ESP32_UART_RX_INTERRUPT_BITS =
   UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA;
 
-template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
+template <class DCC_HW, class RAILCOM_HW>
 class Esp32RailComDriver : public RailcomDriver
 {
 public:
   Esp32RailComDriver()
-    : railComFeedbackBuffer_(DeviceBuffer<dcc::RailcomHubData>::create(HW::PACKET_Q_SIZE))
+    : railComFeedbackBuffer_(DeviceBuffer<dcc::RailcomHubData>::create(RAILCOM_HW::PACKET_Q_SIZE))
   {
   }
 
@@ -77,48 +80,67 @@ public:
     railComHubFlow_ = hubFlow;
 
 #if CONFIG_RAILCOM_DATA_ENABLED
-    HW::hw_init();
+    RAILCOM_HW::hw_init();
     LOG(INFO, "[RailCom] Initializing detector using UART %d, RX pin: %d",
-        HW::UART, HW::RAILCOM_DATA_PIN);
+        RAILCOM_HW::UART, RAILCOM_HW::RAILCOM_DATA_PIN);
 
     portENTER_CRITICAL_SAFE(&esp32_uart_mux);
     // enable the UART clock and disable the reset bit
-    DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, HW::UART_CLOCK_EN_BIT);
-    DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, HW::UART_RESET_BIT);
+    DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, RAILCOM_HW::UART_CLOCK_EN_BIT);
+    DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, RAILCOM_HW::UART_RESET_BIT);
 
     // TODO: switch to UART HAL in IDF v4.2+
     uint32_t baud_clock = (((esp_clk_apb_freq()) << 4) / 250000L);
-    HW::UART_BASE->clk_div.div_int = (baud_clock >> 4);
-    HW::UART_BASE->clk_div.div_frag = (baud_clock & 0xf);
-    HW::UART_BASE->conf0.val = 0x800001c;       // configure for 8N1 mode
-    HW::UART_BASE->conf1.val = 0;
-    HW::UART_BASE->conf1.rx_tout_thrhd = 2;     // two bit times
-    HW::UART_BASE->conf1.rxfifo_full_thrhd = 6; // max length of channel 2 data
-    HW::UART_BASE->conf1.rx_tout_en = 1;        // rx timeout
-    HW::UART_BASE->idle_conf.val = 0;           // tx configuration (unused)
-    HW::UART_BASE->rs485_conf.val = 0;          // RS485 configuration (unused)
-    HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
-    HW::UART_BASE->int_ena.val = ESP32_UART_DISABLE_ALL_INTERRUPTS;
+    RAILCOM_HW::UART_BASE->clk_div.div_int = (baud_clock >> 4);
+    RAILCOM_HW::UART_BASE->clk_div.div_frag = (baud_clock & 0xf);
+    RAILCOM_HW::UART_BASE->conf0.val = 0x800001c;       // configure for 8N1 mode
+    RAILCOM_HW::UART_BASE->conf1.val = 0;
+    RAILCOM_HW::UART_BASE->conf1.rx_tout_thrhd = 2;     // two bit times
+    RAILCOM_HW::UART_BASE->conf1.rxfifo_full_thrhd = 6; // max length of channel 2 data
+    RAILCOM_HW::UART_BASE->conf1.rx_tout_en = 1;        // rx timeout
+    RAILCOM_HW::UART_BASE->idle_conf.val = 0;           // tx configuration (unused)
+    RAILCOM_HW::UART_BASE->rs485_conf.val = 0;          // RS485 configuration (unused)
+    RAILCOM_HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
+    RAILCOM_HW::UART_BASE->int_ena.val = ESP32_UART_DISABLE_ALL_INTERRUPTS;
 
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
     ESP_ERROR_CHECK(
-      esp_intr_alloc(HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED,
-                     esp32_railcom_uart_isr<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>,
+      esp_intr_alloc(RAILCOM_HW::UART_ISR_SOURCE, ESP_INTR_FLAG_LOWMED,
+                     esp32_railcom_uart_isr<DCC_HW, RAILCOM_HW>,
                      this, nullptr));
 #endif // CONFIG_RAILCOM_DATA_ENABLED
 
-    LOG(INFO, "[RailCom] Configuring hardware timer (%d:%d)...", HW::TIMER_GRP,
-        HW::TIMER_IDX);
+    LOG(INFO, "[RailCom] Configuring hardware timer (%d:%d)...",
+        RAILCOM_HW::TIMER_GRP, RAILCOM_HW::TIMER_IDX);
 
+    timer_config_t timer_config =
+    {
+      .alarm_en = TIMER_ALARM_EN,
+      .counter_en = TIMER_PAUSE,
+      .intr_type = TIMER_INTR_LEVEL,
+      .counter_dir = TIMER_COUNT_UP,
+      .auto_reload = TIMER_AUTORELOAD_DIS,
+      .divider = 80,
+#if SOC_TIMER_GROUP_SUPPORT_XTAL
+      .clk_src = TIMER_SRC_CLK_APB,
+#endif
+    };
+    ESP_ERROR_CHECK(
+      timer_init(RAILCOM_HW::TIMER_GRP, RAILCOM_HW::TIMER_IDX, &timer_config));
+    timer_isr_callback_add(RAILCOM_HW::TIMER_GRP, RAILCOM_HW::TIMER_IDX,
+                           esp32_railcom_timer_tick<DCC_HW, RAILCOM_HW>, this, 0);
+
+/*
     // TODO: switch to TIMER HAL in IDF v4.2+
-    periph_module_enable(HW::TIMER_PERIPH);
+    periph_module_enable(RAILCOM_HW::TIMER_PERIPH);
     configure_timer(false, 80, false, true, 1, true);
     ESP_ERROR_CHECK(
-      esp_intr_alloc_intrstatus(HW::TIMER_ISR_SOURCE, ESP_INTR_FLAG_LOWMED,
-                                TIMG_INT_ST_TIMERS_REG(HW::TIMER_GRP),
-                                BIT(HW::TIMER_IDX),
-                                esp32_railcom_timer_tick<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>,
+      esp_intr_alloc_intrstatus(RAILCOM_HW::TIMER_ISR_SOURCE, ESP_INTR_FLAG_LOWMED,
+                                TIMG_INT_ST_TIMERS_REG(RAILCOM_HW::TIMER_GRP),
+                                BIT(RAILCOM_HW::TIMER_IDX),
+                                esp32_railcom_timer_tick<DCC_HW, RAILCOM_HW>,
                                 this, nullptr));
+*/
   }
 
   void feedback_sample() override
@@ -128,8 +150,9 @@ public:
 
   void start_cutout() override
   {
-    ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase1() +
-                 OLCB_DCC_BOOSTER::start_railcom_cutout_phase1());
+#if CONFIG_RAILCOM_CUT_OUT_ENABLED
+
+    ets_delay_us(DCC_HW::InternalBoosterOutput::start_railcom_cutout_phase1());
 
 #if CONFIG_RAILCOM_DATA_ENABLED
     portENTER_CRITICAL_SAFE(&esp32_uart_mux);
@@ -137,20 +160,22 @@ public:
     rx_to_buf(nullptr, 0);
 
     // clear all pending interrupts and enable default RX interrupts.
-    SET_PERI_REG_MASK(UART_INT_CLR_REG(HW::UART), ESP32_UART_RX_INTERRUPT_BITS);
-    SET_PERI_REG_MASK(UART_INT_ENA_REG(HW::UART), ESP32_UART_RX_INTERRUPT_BITS);
+    SET_PERI_REG_MASK(UART_INT_CLR_REG(RAILCOM_HW::UART), ESP32_UART_RX_INTERRUPT_BITS);
+    SET_PERI_REG_MASK(UART_INT_ENA_REG(RAILCOM_HW::UART), ESP32_UART_RX_INTERRUPT_BITS);
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
 #endif // CONFIG_RAILCOM_DATA_ENABLED
 
     // enable the RailCom detector
-    ets_delay_us(DCC_BOOSTER::start_railcom_cutout_phase2() + 
-                 OLCB_DCC_BOOSTER::start_railcom_cutout_phase2());
+    ets_delay_us(DCC_HW::InternalBoosterOutput::start_railcom_cutout_phase2());
 
-    portENTER_CRITICAL_SAFE(&esp32_timer_mux);
+    //portENTER_CRITICAL_SAFE(&esp32_timer_mux);
     // set our phase and start the timer
     railcomPhase_ = RailComPhase::CUTOUT_PHASE1;
-    start_timer(HW::RAILCOM_MAX_READ_DELAY_CH_1);
-    portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
+    timer_group_set_alarm_value_in_isr(RAILCOM_HW::TIMER_GRP, RAILCOM_HW::TIMER_IDX, RAILCOM_HW::RAILCOM_MAX_READ_DELAY_CH_1);
+    timer_group_set_counter_enable_in_isr(RAILCOM_HW::TIMER_GRP, RAILCOM_HW::TIMER_IDX, TIMER_START);
+    //start_timer(RAILCOM_HW::RAILCOM_MAX_READ_DELAY_CH_1);
+    //portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
+#endif // CONFIG_RAILCOM_CUT_OUT_ENABLED
   }
 
   void middle_cutout() override
@@ -165,26 +190,26 @@ public:
 
   void end_cutout() override
   {
+#if CONFIG_RAILCOM_CUT_OUT_ENABLED
+
 #if CONFIG_RAILCOM_DATA_ENABLED
     portENTER_CRITICAL_SAFE(&esp32_uart_mux);
     // disable the UART RX interrupts
-    HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
-    HW::UART_BASE->int_ena.val = ESP32_UART_DISABLE_ALL_INTERRUPTS;
+    RAILCOM_HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
+    RAILCOM_HW::UART_BASE->int_ena.val = ESP32_UART_DISABLE_ALL_INTERRUPTS;
     portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
 #endif // CONFIG_RAILCOM_DATA_ENABLED
+
     // disable the RailCom detector
-    ets_delay_us(DCC_BOOSTER::stop_railcom_cutout_phase1() +
-                 OLCB_DCC_BOOSTER::stop_railcom_cutout_phase1());
-    DCC_BOOSTER::stop_railcom_cutout_phase2();
-    OLCB_DCC_BOOSTER::stop_railcom_cutout_phase2();
-    if (DCC_BOOSTER::should_be_enabled())
+    ets_delay_us(DCC_HW::InternalBoosterOutput::stop_railcom_cutout_phase1());
+    DCC_HW::InternalBoosterOutput::stop_railcom_cutout_phase2();
+
+    if (DCC_HW::InternalBoosterOutput::should_be_enabled())
     {
-      DCC_BOOSTER::enable_output();
+      ets_printf("ENABLE\n");
+      DCC_HW::InternalBoosterOutput::enable_output();
     }
-    if (OLCB_DCC_BOOSTER::should_be_enabled())
-    {
-      OLCB_DCC_BOOSTER::enable_output();
-    }
+#endif // CONFIG_RAILCOM_CUT_OUT_ENABLED
   }
 
   void set_feedback_key(uint32_t key) override
@@ -194,23 +219,27 @@ public:
 
   void timer_tick()
   {
-    portENTER_CRITICAL_SAFE(&esp32_timer_mux);
+    timer_group_set_counter_enable_in_isr(RAILCOM_HW::TIMER_GRP, RAILCOM_HW::TIMER_IDX, TIMER_PAUSE);
+    // portENTER_CRITICAL_SAFE(&esp32_timer_mux);
     // clear the interrupt status register for our timer
-    HW::TIMER_BASE->int_clr_timers.val = BIT(HW::TIMER_IDX);
+    RAILCOM_HW::TIMER_BASE->int_clr_timers.val = BIT(RAILCOM_HW::TIMER_IDX);
 
     if (railcomPhase_ == RailComPhase::CUTOUT_PHASE1)
     {
       middle_cutout();
 
       railcomPhase_ = RailComPhase::CUTOUT_PHASE2;
-      start_timer(HW::RAILCOM_MAX_READ_DELAY_CH_2);
+      timer_group_set_alarm_value_in_isr(RAILCOM_HW::TIMER_GRP, RAILCOM_HW::TIMER_IDX, RAILCOM_HW::RAILCOM_MAX_READ_DELAY_CH_2);
+
+      //start_timer(RAILCOM_HW::RAILCOM_MAX_READ_DELAY_CH_2);
     }
     else if (railcomPhase_ == RailComPhase::CUTOUT_PHASE2)
     {
       end_cutout();
       railcomPhase_ = RailComPhase::PRE_CUTOUT;
     }
-    portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
+    timer_group_set_counter_enable_in_isr(RAILCOM_HW::TIMER_GRP, RAILCOM_HW::TIMER_IDX, TIMER_START);
+    //portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
   }
 
   typedef enum : uint8_t
@@ -248,11 +277,11 @@ public:
     // NOTE: Due to a hardware issue when flushing the RX FIFO it is necessary
     // to read the FIFO until the RX count is zero *AND* read/write addresses
     // in the RX buffer are the same.
-    while(HW::UART_BASE->status.rxfifo_cnt ||
-          (HW::UART_BASE->mem_rx_status.wr_addr !=
-           HW::UART_BASE->mem_rx_status.rd_addr))
+    while(RAILCOM_HW::UART_BASE->status.rxfifo_cnt ||
+          (RAILCOM_HW::UART_BASE->mem_rx_status.wr_addr !=
+           RAILCOM_HW::UART_BASE->mem_rx_status.rd_addr))
     {
-      uint8_t ch = HW::UART_BASE->fifo.rw_byte;
+      uint8_t ch = RAILCOM_HW::UART_BASE->fifo.rw_byte;
       if (rx_bytes < max_len)
       {
         buf[rx_bytes++] = ch;
@@ -269,38 +298,22 @@ private:
     // make sure the ISR is disabled and that the status is cleared before
     // reconfiguring the timer.
 #if CONFIG_IDF_TARGET_ESP32 && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
-    HW::TIMER_BASE->int_ena.val &= (~BIT(HW::TIMER_IDX));
-    HW::TIMER_BASE->int_clr_timers.val = BIT(HW::TIMER_IDX);
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.autoreload = reload;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.divider = divider;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.increase = count_up;
+    RAILCOM_HW::TIMER_BASE->int_ena.val &= (~BIT(RAILCOM_HW::TIMER_IDX));
+    RAILCOM_HW::TIMER_BASE->int_clr_timers.val = BIT(RAILCOM_HW::TIMER_IDX);
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].config.autoreload = reload;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].config.divider = divider;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].config.increase = count_up;
 
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.enable = enable;
-#elif CONFIG_IDF_TARGET_ESP32
-    HW::TIMER_BASE->int_ena_timers.val &= (~BIT(HW::TIMER_IDX));
-    HW::TIMER_BASE->int_clr_timers.val = BIT(HW::TIMER_IDX);
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_autoreload = reload;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_divider = divider;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_increase = count_up;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_level_int_en = 1;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_edge_int_en = 0;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_en = enable;
-#elif CONFIG_IDF_TARGET_ESP32S3
-    HW::TIMER_BASE->int_ena_timers.val &= (~BIT(HW::TIMER_IDX));
-    HW::TIMER_BASE->int_clr_timers.val = BIT(HW::TIMER_IDX);
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_autoreload = reload;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_divider = divider;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_increase = count_up;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_en = enable;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].config.enable = enable;
 #endif
     start_timer(alarm, true, false);
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
     // enable the ISR now that the timer has been configured
-    HW::TIMER_BASE->int_ena.val |= BIT(HW::TIMER_IDX);
+    RAILCOM_HW::TIMER_BASE->int_ena.val |= BIT(RAILCOM_HW::TIMER_IDX);
 #else
     // enable the ISR now that the timer has been configured
-    HW::TIMER_BASE->int_ena_timers.val |= BIT(HW::TIMER_IDX);
+    RAILCOM_HW::TIMER_BASE->int_ena_timers.val |= BIT(RAILCOM_HW::TIMER_IDX);
 #endif    
     portEXIT_CRITICAL_SAFE(&esp32_timer_mux);
   }
@@ -309,50 +322,20 @@ private:
   {
 #if CONFIG_IDF_TARGET_ESP32 && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,0,0)
     // disable the timer since we will reconfigure it
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.enable = 0;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].config.enable = 0;
 
     // reload the timer with a default count of zero
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].load_high = 0UL;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].load_low = 0UL;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].reload = 1;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].load_high = 0UL;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].load_low = 0UL;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].reload = 1;
 
     // set the next alarm period
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarm_high = 0;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarm_low = usec;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.alarm_en = enable_alarm;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].alarm_high = 0;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].alarm_low = usec;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].config.alarm_en = enable_alarm;
 
     // start the timer
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.enable = enable_timer;
-#elif CONFIG_IDF_TARGET_ESP32
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_en = 0;
-
-    // reload the timer with a default count of zero
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].hi.tx_hi = 0UL;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].lo.tx_lo = 0UL;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].update.tx_update = 1;
-
-    // set the next alarm period
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarmhi.val = 0;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarmlo.val = usec;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_alarm_en = enable_alarm;
-
-    // start the timer
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tx_en = enable_timer;
-#elif CONFIG_IDF_TARGET_ESP32S3
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_en = 0;
-
-    // reload the timer with a default count of zero
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].hi.tn_hi = 0UL;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].lo.tn_lo = 0UL;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].update.tn_update = 1;
-
-    // set the next alarm period
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarmhi.val = 0;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].alarmlo.val = usec;
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_alarm_en = enable_alarm;
-
-    // start the timer
-    HW::TIMER_BASE->hw_timer[HW::TIMER_IDX].config.tn_en = enable_timer;
+    RAILCOM_HW::TIMER_BASE->hw_timer[RAILCOM_HW::TIMER_IDX].config.enable = enable_timer;
 #endif
   }
 
@@ -363,20 +346,29 @@ private:
   bool enabled_{false};
 };
 
-template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
-static void esp32_railcom_timer_tick(void *param)
+template <class DCC_HW, class RAILCOM_HW>
+static bool esp32_railcom_timer_tick(void *param)
 {
-  Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER> *driver =
-    reinterpret_cast<Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER> *>(param);
+  Esp32RailComDriver<DCC_HW, RAILCOM_HW> *driver =
+    reinterpret_cast<Esp32RailComDriver<DCC_HW, RAILCOM_HW> *>(param);
   driver->timer_tick();
+  return false;
 }
 
-template <class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
+/*template <class DCC_HW, class RAILCOM_HW>
+static void esp32_railcom_timer_tick(void *param)
+{
+  Esp32RailComDriver<DCC_HW, RAILCOM_HW> *driver =
+    reinterpret_cast<Esp32RailComDriver<DCC_HW, RAILCOM_HW> *>(param);
+  driver->timer_tick();
+}*/
+
+template <class DCC_HW, class RAILCOM_HW>
 static void esp32_railcom_uart_isr(void *param)
 {
   portENTER_CRITICAL_SAFE(&esp32_uart_mux);
-  Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER> *driver =
-    reinterpret_cast<Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER> *>(param);
+  Esp32RailComDriver<DCC_HW, RAILCOM_HW> *driver =
+    reinterpret_cast<Esp32RailComDriver<DCC_HW, RAILCOM_HW> *>(param);
   dcc::RailcomHubData *fb = driver->railcom_buffer();
   uint8_t rx_buf[6] = {0, 0, 0, 0, 0, 0};
   size_t rx_bytes = driver->rx_to_buf(rx_buf, 6);
@@ -385,7 +377,7 @@ static void esp32_railcom_uart_isr(void *param)
     for (size_t idx = 0; idx < rx_bytes; idx++)
     {
       if (driver->railcom_phase() ==
-          Esp32RailComDriver<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>::RailComPhase::CUTOUT_PHASE1)
+          Esp32RailComDriver<DCC_HW, RAILCOM_HW>::RailComPhase::CUTOUT_PHASE1)
       {
         fb->add_ch1_data(rx_buf[idx]);
       }
@@ -397,7 +389,7 @@ static void esp32_railcom_uart_isr(void *param)
     driver->advance_railcom_buffer();
   }
   // clear interrupt status
-  HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
+  RAILCOM_HW::UART_BASE->int_clr.val = ESP32_UART_CLEAR_ALL_INTERRUPTS;
   portEXIT_CRITICAL_SAFE(&esp32_uart_mux);
 }
 

@@ -63,7 +63,7 @@ namespace esp32cs
 ///
 /// NMRA S-9.1 reference:
 /// https://www.nmra.org/sites/default/files/standards/sandrp/pdf/s-9.1_electrical_standards_2020.pdf
-template<class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
+template<class HW, class DCC_BOOSTER>
 class RMTTrackDevice
 {
 public:
@@ -106,26 +106,18 @@ public:
     HASSERT(memoryBlocks <= MAX_RMT_MEMORY_BLOCKS);
     LOG(INFO,
         "[DCC-RMT-%d] DCC config: zero:%duS, one:%duS, preamble-bits:%" PRIu32
-        "/%" PRIu32 ", wave:%s, signal pin:%d, RMT-mem:%d (blocks:%d), "
-        "RMT-CLK:%s (%d)",
+        "/%" PRIu32 ", signal pin:%d, RMT-mem:%d (blocks:%d)",
         HW::RMT_CHANNEL, HW::DCC_ZERO_RMT_TICKS, HW::DCC_ONE_RMT_TICKS,
         HW::DCC_PREAMBLE_BITS, HW::DCC_SERVICE_MODE_PREAMBLE_BITS,
-        HW::RMT_WAVE_FMT, HW::DCC_SIGNAL_PIN_NUM, maxBitCount,
-        memoryBlocks, RMT_CLOCK_SOURCE[HW::RMT_CLOCK_SOURCE],
-        HW::RMT_CLOCK_SOURCE);
+        HW::DCC_SIGNAL_PIN_NUM, maxBitCount, memoryBlocks);
 
     // Configure the RMT channel for TX
-    rmt_config_t config;
-    memset(&config, 0, sizeof(rmt_config_t));
-    config.rmt_mode = RMT_MODE_TX;
-    config.channel = HW::RMT_CHANNEL;
-    config.clk_div = CONFIG_DCC_RMT_CLOCK_DIVIDER;
-    config.gpio_num = HW::DCC_SIGNAL_PIN_NUM;
+    rmt_config_t config =
+      RMT_DEFAULT_CONFIG_TX(HW::DCC_SIGNAL_PIN_NUM, HW::RMT_CHANNEL);
     config.mem_block_num = memoryBlocks;
     ESP_ERROR_CHECK(rmt_config(&config));
     ESP_ERROR_CHECK(
       rmt_driver_install(HW::RMT_CHANNEL, 0 /* rx count */, RMT_ISR_FLAGS));
-    ESP_ERROR_CHECK(rmt_set_source_clk(HW::RMT_CHANNEL, HW::RMT_CLOCK_SOURCE));
 
     LOG(INFO, "[DCC-RMT-%d] Starting signal generator", HW::RMT_CHANNEL);
     // send one bit to kickstart the signal, remaining data will come from the
@@ -225,7 +217,10 @@ public:
   void rmt_transmit_complete()
   {
     BaseType_t woken = pdFALSE;
+
     encode_next_packet(&woken);
+
+#if CONFIG_RAILCOM_CUT_OUT_ENABLED
     if (DCC_BOOSTER::need_railcom_cutout())
     {
       railcomDriver_->start_cutout();
@@ -237,11 +232,13 @@ public:
       {
         DCC_BOOSTER::enable_output();
       }
-      if (OLCB_DCC_BOOSTER::should_be_enabled())
-      {
-        OLCB_DCC_BOOSTER::enable_output();
-      }
     }
+#else
+    if (DCC_BOOSTER::should_be_enabled())
+    {
+      DCC_BOOSTER::enable_output();
+    }
+#endif // CONFIG_RAILCOM_CUT_OUT_ENABLED
 
     // NOTE: This is not using rmt_write_items as it is not safe within an ISR
     // context which this callback is invoked from.
@@ -259,7 +256,6 @@ public:
 private:
   /// Maximum number of bytes to support for DCC packets.
   static constexpr uint8_t MAX_DCC_DLC_LEN = 6;
-
 
 #if CONFIG_IDF_TARGET_ESP32
   /// Maximum number of RMT memory blocks to allow for the DCC signal
@@ -297,13 +293,6 @@ private:
       ESP_INTR_FLAG_LOWMED |  // ISR is implemented in C code
       ESP_INTR_FLAG_SHARED    // ISR is shared across multiple handlers
   );
-
-  /// Visual names for the RMT Clock source.
-  static constexpr const char * const RMT_CLOCK_SOURCE[] =
-  {
-    "REF", // Reference clock, 1MHz.
-    "APB"  // APB clock, 80Mhz.
-  };
 
   /// Maximum number of microseconds that can be added to each bit pulse time.
   ///
@@ -401,6 +390,7 @@ private:
     }
 #endif // CONFIG_PROG_TRACK_ENABLED
 #endif // !CONFIG_OPS_TRACK_ENABLED
+
     // encode the preamble bits
     for (pktLength_ = 0; pktLength_ < preableBitCount; pktLength_++)
     {
@@ -467,23 +457,23 @@ private:
 };
 
 /// DCC ZERO bit pre-encoded in RMT format.
-template<class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
-rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>::DCC_RMT_ZERO_BIT =
+template<class HW, class DCC_BOOSTER>
+rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER>::DCC_RMT_ZERO_BIT =
 {{{
     HW::DCC_ZERO_RMT_TICKS, // number of microseconds for the first half of the
-    HW::RMT_DCC_FIRST_HALF, // DCC signal wave format.
+    1,                      // DCC signal wave format.
     HW::DCC_ZERO_RMT_TICKS, // number of microseconds for the second half of
-    HW::RMT_DCC_SECOND_HALF // the DCC signal wave format.
+    0                       // the DCC signal wave format.
 }}};
 
 /// DCC ONE bit pre-encoded in RMT format.
-template<class HW, class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
-rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER, OLCB_DCC_BOOSTER>::DCC_RMT_ONE_BIT =
+template<class HW, class DCC_BOOSTER>
+rmt_item32_t RMTTrackDevice<HW, DCC_BOOSTER>::DCC_RMT_ONE_BIT =
 {{{
     HW::DCC_ONE_RMT_TICKS,  // number of microseconds for the first half of the
-    HW::RMT_DCC_FIRST_HALF, // DCC signal wave format.
+    1,                      // DCC signal wave format.
     HW::DCC_ONE_RMT_TICKS,  // number of microseconds for the second half of
-    HW::RMT_DCC_SECOND_HALF // the DCC signal wave format.
+    0                       // the DCC signal wave format.
 }}};
 
 } // namespace esp32cs

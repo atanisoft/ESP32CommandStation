@@ -186,6 +186,7 @@ public:
         AutoNotify n(done);
         LOG(VERBOSE, "[CFG] apply_configuration(%d, %d)", fd, initial_load);
 
+#if CONFIG_DCC_OLCB_ENABLE_PIN != GPIO_NUM_NC
         uint8_t dcc_en = CDI_READ_TRIM_DEFAULT(cfg_.advanced().dcc_enable, fd);
         auto lcc_dcc = get_dcc_output(DccOutput::LCC);
         LOG(INFO, "[OpenLCB] DCC signal output: %s",
@@ -200,11 +201,12 @@ public:
           lcc_dcc->disable_output_for_reason(
             DccOutput::DisableReason::CONFIG_SETTING);
         }
+#endif // CONFIG_DCC_OLCB_ENABLE_PIN != GPIO_NUM_NC
 
         uint8_t brownout_en =
           CDI_READ_TRIM_DEFAULT(cfg_.advanced().brownout_enable, fd);
         LOG(INFO, "[OpenLCB] Brownout event publishing: %s",
-            dcc_en ? "Enabled" : "Disabled");
+            brownout_en ? "Enabled" : "Disabled");
         if (resetReason_ == RTCWDT_BROWN_OUT_RESET && brownout_en)
         {
           LOG(INFO, "[OpenLCB] Brownout event detected, trying to send event");
@@ -215,13 +217,13 @@ public:
         uint8_t acc_en =
           CDI_READ_TRIM_DEFAULT(cfg_.advanced().enable_accessory_bus, fd);
         LOG(INFO, "[OpenLCB] DCC Accessory Decoder Listener: %s",
-            dcc_en ? "Enabled" : "Disabled");
+            acc_en ? "Enabled" : "Disabled");
         Singleton<esp32cs::AccessoryDecoderDB>::instance()->configure(acc_en);
 
         uint8_t throttles_en =
           CDI_READ_TRIM_DEFAULT(cfg_.advanced().enable_throttles, fd);
         LOG(INFO, "[OpenLCB] Train Search Listener: %s",
-            dcc_en ? "Enabled" : "Disabled");
+            throttles_en ? "Enabled" : "Disabled");
         Singleton<locomgr::LocoManager>::instance()->set_enabled(throttles_en);
 
         return ConfigUpdateListener::UpdateAction::UPDATED;

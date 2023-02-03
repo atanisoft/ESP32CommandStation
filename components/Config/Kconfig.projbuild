@@ -356,14 +356,6 @@ menu "ESP32 Command Station Configuration"
                         a small amount to spread out the pulses widths to reduce the
                         EMC peak emissions.
 
-                config DCC_RMT_HIGH_FIRST
-                    bool "Generate HIGH,LOW signal"
-                    default y
-                    help
-                        When enabled this will cause the RMT to generate a HIGH then
-                        LOW signal on the output PIN. When disabled it will be LOW then
-                        HIGH.
-
                 config DCC_RMT_TICKS_ZERO_PULSE
                     int "DCC ZERO RMT tick count"
                     range 95 9900
@@ -387,41 +379,6 @@ menu "ESP32 Command Station Configuration"
                         to pad this value with one or two ticks to allow for transition
                         of HIGH to LOW. The default value accounts for this variance of
                         the h-bridges.
-
-                choice DCC_RMT_CLOCK_SOURCE
-                    bool "RMT Clock source"
-                    default DCC_RMT_CLOCK_SOURCE_APB
-                    help
-                        The RMT peripheral supports two clock sources:
-                        * APB  80MHz
-                        * REF   1MHz
-                    config DCC_RMT_CLOCK_SOURCE_APB
-                        bool "APB (80MHz)"
-                    config DCC_RMT_CLOCK_SOURCE_REF
-                        bool "REF_CLK (1MHz)"
-                endchoice
-
-                config DCC_RMT_CLOCK_SOURCE
-                    int
-                    default 0 if DCC_RMT_CLOCK_SOURCE_REF
-                    default 1 if DCC_RMT_CLOCK_SOURCE_APB
-
-                config DCC_RMT_USE_REF_CLOCK
-                    bool "Use REF_TICK clock source (1Mhz)"
-                    default n
-                    help
-                        When enabled this will cause the RMT to use the REF_TICK clock
-                        as the clock source, this is a 1Mhz clock. By default the RMT
-                        will use the APB clock which is an 80Mhz clock.
-
-                config DCC_RMT_CLOCK_DIVIDER
-                    int "RMT clock divider"
-                    range 1 255
-                    default 1 if DCC_RMT_USE_REF_CLOCK
-                    default 80
-                    help
-                        When using the APB clock (80Mhz) this will provide around a
-                        1usec time factor for the RMT pulses.
             endmenu
         endmenu
     endmenu
@@ -816,27 +773,8 @@ menu "ESP32 Command Station Configuration"
         config RAILCOM_DATA_ENABLED
             bool "Receive RailCom data"
 
-        choice RAILCOM_UART
-            bool "UART"
-            default RAILCOM_UART2
-            depends on RAILCOM_DATA_ENABLED
-            config RAILCOM_UART1
-                bool "UART1"
-            config RAILCOM_UART2
-                bool "UART2"
-        endchoice
-
-        config RAILCOM_UART
-            int
-            default 1 if RAILCOM_UART1
-            default 2 if RAILCOM_UART2
-            depends on RAILCOM_DATA_ENABLED
-
         menu "Advanced Configuration"
             depends on RAILCOM_DATA_ENABLED
-            config RAILCOM_DUMP_PACKETS
-                bool "Display all RailCom packets as they are received"
-                default n
 
             config RAILCOM_FEEDBACK_QUEUE
                 int "Feedback queue size"
@@ -889,7 +827,7 @@ menu "ESP32 Command Station Configuration"
         endmenu
 
         menu "OPS DCC"
-            depends on OPS_TRACK_ENABLED && ESP32CS_CUSTOM
+            visible if OPS_TRACK_ENABLED && ESP32CS_CUSTOM
             config OPS_TRACK_ENABLE_PIN
                 int "OPS Track enable/pwm pin"
                 range 0 33 if IDF_TARGET_ESP32
@@ -961,20 +899,11 @@ menu "ESP32 Command Station Configuration"
                 config OPSTRACK_ADC2_CHANNEL_9
                     bool "ADC2 Channel 0 (ESP32-S3:GPIO20)"
                     depends on IDF_TARGET_ESP32S3
-                config OPSTRACK_ADC_I2C_CHANNEL_1
-                    bool "I2C ADC Channel 1"
-                    depends on IDF_TARGET_ESP32S3
-                config OPSTRACK_ADC_I2C_CHANNEL_2
-                    bool "I2C ADC Channel 2"
-                    depends on IDF_TARGET_ESP32S3
-                config OPSTRACK_ADC_I2C_CHANNEL_3
-                    bool "I2C ADC Channel 3"
-                    depends on IDF_TARGET_ESP32S3
             endchoice
         endmenu
 
         menu "PROG DCC"
-            depends on PROG_TRACK_ENABLED && ESP32CS_CUSTOM
+            visible if PROG_TRACK_ENABLED && ESP32CS_CUSTOM
             config PROG_TRACK_ENABLE_PIN
                 int "PROG Track enable/pwm pin"
                 range 0 33 if IDF_TARGET_ESP32
@@ -1046,20 +975,11 @@ menu "ESP32 Command Station Configuration"
                 config PROGTRACK_ADC2_CHANNEL_9
                     bool "ADC2 Channel 0 (ESP32-S3:GPIO20)"
                     depends on IDF_TARGET_ESP32S3
-                config PROGTRACK_ADC_I2C_CHANNEL_1
-                    bool "I2C ADC Channel 1"
-                    depends on IDF_TARGET_ESP32S3
-                config PROGTRACK_ADC_I2C_CHANNEL_2
-                    bool "I2C ADC Channel 2"
-                    depends on IDF_TARGET_ESP32S3
-                config PROGTRACK_ADC_I2C_CHANNEL_3
-                    bool "I2C ADC Channel 3"
-                    depends on IDF_TARGET_ESP32S3
             endchoice
         endmenu
 
         menu "RailCom Receiver"
-            depends on ESP32CS_CUSTOM
+            visible if ESP32CS_CUSTOM
             config RAILCOM_TRIGGER_PIN
                 int "Enable pin"
                 range 0 33 if IDF_TARGET_ESP32
@@ -1081,17 +1001,6 @@ menu "ESP32 Command Station Configuration"
                 help
                     This pin is used for receiving data from the RailCom
                     receiver circuit.
-
-            config RAILCOM_DIRECTION_PIN
-                int "Direction pin"
-                range 0 33 if IDF_TARGET_ESP32
-                range 0 48 if IDF_TARGET_ESP32S3
-                default 25 if IDF_TARGET_ESP32
-                default 48 if IDF_TARGET_ESP32S3
-                depends on RAILCOM_DATA_ENABLED
-                help
-                    This pin is used to indicate the direction of travel when
-                    RailCom data is received.
 
             config RAILCOM_SHORT_PIN
                 int "Short pin"
@@ -1123,15 +1032,6 @@ menu "ESP32 Command Station Configuration"
                 default 8 if IDF_TARGET_ESP32S3
                 help
                     This pin is used for I2C data.
-
-            config I2C_ADC_ALERT_PIN
-                int "ADC Alert pin"
-                range -1 48
-                default 46
-                depends on IDF_TARGET_ESP32S3
-                help
-                    This pin is used for I2C connected ADC chips to alert the ESP32
-                    when a threshold is reached.
         endmenu
 
         menu "Status LED"
@@ -1374,7 +1274,7 @@ menu "ESP32 Command Station Configuration"
 
             menu "SD MMC Pins"
                 # SD_MMC pin mapping is only configurable on the ESP32-S3
-                visible if IDF_TARGET_ESP32S3
+                depends on IDF_TARGET_ESP32S3
                 config SD_MMC_CLOCK
                     int "Clock pin"
                     default 14 if IDF_TARGET_ESP32
@@ -1422,6 +1322,7 @@ menu "ESP32 Command Station Configuration"
 
         choice STATUS_LED_TYPE
             bool "Type"
+            default STATUS_LED_TYPE_TX1812 if ESP32CS_PCB
             default STATUS_LED_TYPE_WS281X
             help
                 This defines the type of LED, the following types are supported:

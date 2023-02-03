@@ -23,15 +23,13 @@ COPYRIGHT (c) 2020-2021 Mike Dunston
 
 namespace esp32cs
 {
-
-template <class DCC_BOOSTER, class OLCB_DCC_BOOSTER>
 class TrackPowerBit : public openlcb::BitEventInterface
 {
 public:
   TrackPowerBit(openlcb::Node *node)
-    : openlcb::BitEventInterface(openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT
-                               , openlcb::Defs::EMERGENCY_OFF_EVENT)
-    , node_(node)
+    : openlcb::BitEventInterface(openlcb::Defs::CLEAR_EMERGENCY_OFF_EVENT,
+                                 openlcb::Defs::EMERGENCY_OFF_EVENT),
+    node_(node)
   {
     LOG(INFO,
        "[Track Power] Registering OpenLCB event consumer (On:%s, Off:%s)",
@@ -42,31 +40,30 @@ public:
   openlcb::EventState get_current_state() override
   {
     LOG(VERBOSE, "[Track Power] Query event state: %d",
-        DCC_BOOSTER::should_be_enabled());
-    if (DCC_BOOSTER::should_be_enabled())
+        get_dcc_output(DccOutput::TRACK)->get_disable_output_reasons());
+    if (get_dcc_output(DccOutput::TRACK)->get_disable_output_reasons())
     {
-      LOG(VERBOSE, "[Track Power] ON (%s)",
-          utils::event_id_to_string(event_on()).c_str());
-      return openlcb::EventState::VALID;
-    }
       LOG(VERBOSE, "[Track Power] OFF (%s)",
           utils::event_id_to_string(event_off()).c_str());
-    return openlcb::EventState::INVALID;
+      return openlcb::EventState::INVALID;
+    }
+    LOG(VERBOSE, "[Track Power] ON (%s)",
+        utils::event_id_to_string(event_on()).c_str());
+    return openlcb::EventState::VALID;
   }
 
   void set_state(bool new_value) override
   {
+    auto track = get_dcc_output(DccOutput::TRACK);
     if (new_value)
     {
       LOG(INFO, "[Track Power] Clearing global emergency off");
-      DCC_BOOSTER::clear_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
-      OLCB_DCC_BOOSTER::clear_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
+      track->clear_disable_output_for_reason(DccOutput::DisableReason::GLOBAL_EOFF);
     }
     else
     {
       LOG(INFO, "[Track Power] Setting global emergency off");
-      DCC_BOOSTER::set_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
-      OLCB_DCC_BOOSTER::set_disable_reason(DccOutput::DisableReason::GLOBAL_EOFF);
+      track->disable_output_for_reason(DccOutput::DisableReason::GLOBAL_EOFF);
     }
   }
 
