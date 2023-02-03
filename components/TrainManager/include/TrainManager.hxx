@@ -1,10 +1,11 @@
 /*
  * SPDX-FileCopyrightText: 2014 Balazs Racz
- * SPDX-FileCopyrightText: 2020-2022 Mike Dunston (atanisoft)
  *
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BSD-2-Clause
+ * 
+ * SPDX-FileContributor: 2020-2022 Mike Dunston (atanisoft)
+ *
  */
-
 #ifndef TRAINMANAGERIMPL_HXX_
 #define TRAINMANAGERIMPL_HXX_
 
