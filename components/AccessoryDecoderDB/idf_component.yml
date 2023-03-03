@@ -1,5 +1,0 @@
-dependencies:
-  OpenMRNIDF:
-    git: https://github.com/atanisoft/OpenMRNIDF.git
-  HttpServer:
-    git: https://github.com/atanisoft/HttpServer.git

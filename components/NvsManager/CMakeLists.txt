@@ -6,6 +6,7 @@ set(IDF_DEPS
 
 set(CUSTOM_DEPS
     Config
+    OpenMRNIDF
     OpenMRNExtensions
     StatusLED
     Utils

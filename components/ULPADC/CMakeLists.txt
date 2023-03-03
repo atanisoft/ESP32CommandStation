@@ -5,6 +5,7 @@ set(IDF_DEPS
 
 set(CUSTOM_DEPS
     Config
+    OpenMRNIDF
 )
   
 idf_build_get_property(target IDF_TARGET)

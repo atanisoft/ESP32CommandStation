@@ -13,6 +13,7 @@ endif()
 set(CUSTOM_DEPS
     Config
     AccessoryDecoderDB
+    OpenMRNIDF
     OpenMRNExtensions
     StatusDisplay
     ULPADC
