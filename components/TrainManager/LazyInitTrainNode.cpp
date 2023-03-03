@@ -1,7 +1,7 @@
 /*
- * SPDX-FileCopyrightText: 2020-2022 Mike Dunston (atanisoft)
+ * SPDX-FileCopyrightText: 2020-2023 Mike Dunston (atanisoft)
  *
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include "LazyInitTrainNode.hxx"
