@@ -1,10 +1,12 @@
-set(CUSTOM_DEPS
-    OpenMRNExtensions
-    Utils
-)
 
 set(IDF_DEPS
     json
+)
+
+set(CUSTOM_DEPS
+    OpenMRNIDF
+    OpenMRNExtensions
+    Utils
 )
 
 idf_component_register(SRCS Esp32TrainDatabase.cpp Esp32TrainDbEntry.cpp
