@@ -84,51 +84,41 @@ idf_build_set_property(COMPILE_DEFINITIONS "-DSNIP_PROJECT_NAME=\"${SNIP_PROJECT
 idf_build_set_property(COMPILE_DEFINITIONS "-DCDI_VERSION=${CDI_VERSION}" APPEND)
 
 ###############################################################################
-# Search for GZIP application
+# Compress the web content with gzip
 ###############################################################################
 
-FIND_PROGRAM(GZIP
-  NAMES gzip
-  PATHS /bin
-        /usr/bin
-        /usr/local/bin
-)
-
-if (NOT GZIP)
-  message(FATAL_ERROR "Unable to find 'gzip' program")
-endif()
-
-###############################################################################
-# Generate a compressed version of web content on-demand
-###############################################################################
-
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/web/index.html
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/index.html
-    VERBATIM)
+file(ARCHIVE_CREATE OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html.gz"
+  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html"
+  FORMAT raw
+  COMPRESSION GZip
+  VERBOSE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html.gz")
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js
-    VERBATIM)
+file(ARCHIVE_CREATE OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js.gz"
+  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../common_web/cash.min.js"
+  FORMAT raw
+  COMPRESSION GZip
+  VERBOSE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js.gz")
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css
-    VERBATIM)
+file(ARCHIVE_CREATE OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz"
+  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../common_web/spectre.min.css"
+  FORMAT raw
+  COMPRESSION GZip
+  VERBOSE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz")
 
-add_custom_command(OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js.gz"
-    COMMAND ${GZIP} -fk ${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js
-    VERBATIM)
+file(ARCHIVE_CREATE OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js.gz"
+  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../common_web/cdi.js"
+  FORMAT raw
+  COMPRESSION GZip
+  VERBOSE)
 set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js.gz")
+
 ###############################################################################
 # Add web content to the binary
 ###############################################################################
