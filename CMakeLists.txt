@@ -96,7 +96,7 @@ set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CL
     "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html.gz")
 
 file(ARCHIVE_CREATE OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js.gz"
-  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../common_web/cash.min.js"
+  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js"
   FORMAT raw
   COMPRESSION GZip
   VERBOSE)
@@ -104,7 +104,7 @@ set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CL
     "${CMAKE_CURRENT_SOURCE_DIR}/web/cash.min.js.gz")
 
 file(ARCHIVE_CREATE OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz"
-  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../common_web/spectre.min.css"
+  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css"
   FORMAT raw
   COMPRESSION GZip
   VERBOSE)
@@ -112,7 +112,7 @@ set_property(TARGET ${CMAKE_PROJECT_NAME}.elf APPEND PROPERTY ADDITIONAL_MAKE_CL
     "${CMAKE_CURRENT_SOURCE_DIR}/web/spectre.min.css.gz")
 
 file(ARCHIVE_CREATE OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js.gz"
-  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../common_web/cdi.js"
+  PATHS "${CMAKE_CURRENT_SOURCE_DIR}/web/cdi.js"
   FORMAT raw
   COMPRESSION GZip
   VERBOSE)
