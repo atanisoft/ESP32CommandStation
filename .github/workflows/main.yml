@@ -15,15 +15,12 @@ jobs:
       max-parallel: 3
       matrix:
         target:
-          - esp32-v4.4-L298
-          - esp32-v4.4-LMD18200
-          - esp32-v4.4-BTS7960B
-          - esp32-v4.4-PCB
-          #- esp32-latest-L298
-          #- esp32-latest-LMD18200
-          #- esp32-latest-BTS7960B
-          #- esp32-latest-PCB
-          #- esp32s3-latest-PCB
+          - esp32-v4.4-L298-NONE
+          - esp32-v4.4-LMD18200-NONE
+          - esp32-v4.4-BTS7960B-NONE
+          - esp32-v4.4-L298-LCD
+          - esp32-v4.4-L298-OLED
+          #- esp32-v4.4-PCB
     steps:
       - uses: actions/checkout@v3
         with:
@@ -34,9 +31,10 @@ jobs:
         with:
           msg: ${{ matrix.target }}
           separator: '-'
-      - name: Configure default pin mapping
+      - name: Configure default pin mapping / display
         run: |
           echo "CONFIG_ESP32CS_${{ steps.target.outputs._2 }}=y" > sdkconfig
+          echo "CONFIG_DISPLAY_TYPE_${{ steps.target.outputs._3 }}=y" >> sdkconfig
       - name: Build
         uses: espressif/esp-idf-ci-action@main
         with:
