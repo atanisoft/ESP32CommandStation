@@ -16,6 +16,7 @@
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <freertos_drivers/esp32/Esp32WiFiManager.hxx>
+#include <utils/format_utils.hxx>
 
 namespace esp32cs
 {
@@ -253,7 +254,7 @@ StateFlowBase::Action StatusDisplay::update()
     else if (rotatingIndex_ == 2)
     {
       uint8_t loco_count =
-        Singleton<trainmgr::LocoManager>::instance()->active_locos();
+        Singleton<locomgr::LocoManager>::instance()->active_locos();
       status("Active Locos:%3d", loco_count);
     }
     else if (rotatingIndex_ == 3)
