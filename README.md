@@ -1,3 +1,6 @@
+# Project Status
+This project is currently not under active development and is unlikely to return to active development anytime soon.
+
 # What is ESP32 Command Station
 ESP32 Command Station is an open-source hardware and software OpenLCB enabled Command Station for the operation of DCC decoder equipped model railroads.
 
@@ -15,4 +18,4 @@ Documentation can be found [here](./docs).
 [![Stars](https://img.shields.io/github/stars/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/stargazers)
 [![License](https://img.shields.io/github/license/atanisoft/ESP32CommandStation.svg)](https://github.com/atanisoft/ESP32CommandStation/blob/master/LICENSE)
 
--Jan 19, 2022
+-Jan 11, 2024
